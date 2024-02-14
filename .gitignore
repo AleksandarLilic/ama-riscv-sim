@@ -1,0 +1,22 @@
+# C++ files
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.o
+
+# Compiled Dynamic libraries
+*.so
+
+# Executables
+*.out
+
+# Vim files
+*.swp
+
+# VSCode files
+.vscode/
+.vscode-ctags
+
+# untracked files
+local/
