@@ -87,8 +87,13 @@ void memory::burn(std::string test_bin) {
     }
 
     size_t file_size = bin_file.tellg();
-    bin_file.seekg(0, std::ios::beg);
+    if (file_size > MEM_SIZE) {
+        std::cerr << "ERROR: File size is greater than memory size."
+                  << " Binary not loaded" << std::endl;
+        return;
+    }
 
+    bin_file.seekg(0, std::ios::beg);
     bin_file.read(reinterpret_cast<char*>(mem.data()), file_size);
     size_t bytesRead = bin_file.gcount();
     if (bytesRead != file_size) {
