@@ -1,15 +1,15 @@
 # C++ files
-# Prerequisites
 *.d
-
-# Compiled Object files
 *.o
-
-# Compiled Dynamic libraries
 *.so
-
-# Executables
 *.out
+ama-riscv-sim
+
+# C files
+*.bin
+*.dump
+*.elf
+*.hex
 
 # Vim files
 *.swp
