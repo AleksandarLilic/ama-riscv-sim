@@ -51,15 +51,12 @@ void memory::wr32(uint32_t address, uint32_t data) {
 
 /* Dump (private) */
 void memory::mem_dump(uint32_t start, uint32_t end) {
-    const uint32_t max_width = std::log10(MEM_SIZE) + 1;
-    const uint32_t bytes_per_row = 16;
-    const uint32_t word_boundary = 4;
+    constexpr uint32_t bytes_per_row = 16;
+    constexpr uint32_t word_boundary = 4;
     uint32_t aligned_start = start - (start % bytes_per_row);
     for (uint32_t i = aligned_start; i < end; i++) {
-        if (i % bytes_per_row == 0) { // insert address at the start
-            std::cout << std::endl << std::setw(max_width) << std::setfill('0') 
-                      << std::hex << i+base_address << ": ";
-        }
+        if (i % bytes_per_row == 0) // insert address at the start
+            std::cout << std::endl << MEM_ADDR_FORMAT(i+base_address) << ": ";
         std::cout << std::setw(2) << std::setfill('0')
                   << static_cast<unsigned>(mem[i]) << " "; 
         if (i % word_boundary == 3)

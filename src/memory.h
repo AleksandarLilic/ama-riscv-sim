@@ -2,8 +2,6 @@
 
 #include "defines.h"
 
-#define MEM_SIZE 512
-
 class memory {
     private:
         std::array<uint8_t, MEM_SIZE> mem;
