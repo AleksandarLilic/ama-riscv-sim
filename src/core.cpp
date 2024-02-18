@@ -15,7 +15,7 @@ core::core(uint32_t base_address, memory *mem) {
     decoder_map[(uint8_t)opcode::jal] = &core::jal;
     decoder_map[(uint8_t)opcode::lui] = &core::lui;
     decoder_map[(uint8_t)opcode::auipc] = &core::auipc;
-    decoder_map[(uint8_t)opcode::system] = &core::system;
+    //decoder_map[(uint8_t)opcode::system] = &core::system;
     // alu operations
     alu_map[(uint8_t)alu_op_t::op_add] = &core::al_add;
     alu_map[(uint8_t)alu_op_t::op_sub] = &core::al_sub;
@@ -48,18 +48,22 @@ core::core(uint32_t base_address, memory *mem) {
 
 void core::exec() {
     inst = mem->rd32(pc);
+    while (get_opcode() != (uint8_t)opcode::system){
 #ifdef PRINT_EXEC
-    std::cout << MEM_ADDR_FORMAT(pc) << " : " << std::setw(8) 
-              << std::setfill('0') << std::hex << inst << std::dec;
+    PRINT_INST(inst);
 #endif
-    auto inst_dec = decoder_map.find(get_opcode());
-    if (inst_dec != decoder_map.end()) (this->*inst_dec->second)();
-    else unsupported();
-    pc = next_pc;
+        auto inst_dec = decoder_map.find(get_opcode());
+        if (inst_dec != decoder_map.end()) (this->*inst_dec->second)();
+        else unsupported();
+        pc = next_pc;
 #ifdef PRINT_EXEC
-    std::cout << std::endl;
+        std::cout << std::endl;
 #endif
-    inst_cnt++;
+        inst_cnt++;
+        inst = mem->rd32(pc);
+    }
+    system();
+    return;
 }
 
 void core::al_reg() {
@@ -148,14 +152,16 @@ void core::system() {
 #ifdef PRINT_EXEC
     std::cout << "  System ";
 #endif
-    // TODO
-    next_pc = pc + 4;
+    PRINT_INST(inst);
+    std::cout << std::endl;
+    dump();
 }
 
 void core::unsupported() {
-    // TODO
     std::cerr << "Unsupported" << std::endl;
-    next_pc = pc + 4;
+    PRINT_INST(inst);
+    std::cout << std::endl;
+    throw std::runtime_error("Unsupported instruction");
 }
 
 void core::reset() {

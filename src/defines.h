@@ -10,7 +10,7 @@
 #include <cmath>
 #include <unordered_map>
 
-#define MEM_SIZE 1024
+#define MEM_SIZE 2048
 const uint32_t MEM_ADDR_BITWIDTH = std::log10(MEM_SIZE) + 1;
 
 // Decoder types
@@ -82,20 +82,29 @@ enum class branch_op_t {
 #define M_IMM_7 uint32_t((0x1)<<7)
 
 // Macros
-#define CHECK_ADDRESS(address, align) \
-    if ((address % 4u) + align > 4u) { \
-        std::cerr << "ERROR: Unaligned access at address: 0x" \
-                  << std::hex << address \
-                  << std::dec << "; for: " << align << " bytes" << std::endl; \
-    } \
-    address -= base_address; \
-    if(address > MEM_SIZE) { \
-        std::cerr << "ERROR: Address out of range: " \
-                  << std::hex << address << std::endl; \
-}
+#define CHECK_ADDRESS(address, align)
+
+/* #define CHECK_ADDRESS(address, align) \
+    bool address_out_of_range = (address >= MEM_SIZE); \
+    bool address_unaligned = ((address % 4u) + align > 4u); \
+    if (address_out_of_range || address_unaligned) { \
+        if (address_out_of_range) { \
+            std::cerr << "ERROR: Address out of range: 0x" \
+                      << std::hex << address << std::dec << std::endl; \
+        } \
+        else { \
+            std::cerr << "ERROR: Unaligned access at address: 0x" \
+                      << std::hex << address \
+                      << std::dec << "; for: " << align << " bytes" << std::endl; \
+        } \
+    } */
 
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr
+
+#define PRINT_INST(inst) \
+    std::cout << MEM_ADDR_FORMAT(pc) << " : " << std::setw(8) \
+              << std::setfill('0') << std::hex << inst << std::dec
 
 #define FRF_DEF(x,y) \
     std::left << std::setw(2) << std::setfill(' ') \

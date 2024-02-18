@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-Wall -Wextra -Werror -pedantic -g -std=gnu++17
+CXXFLAGS=-Wall -Wextra -Werror -pedantic -g -std=gnu++17 -O3
 TARGET=ama-riscv-sim
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)

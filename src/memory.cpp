@@ -7,12 +7,14 @@ memory::memory(uint32_t base_address, std::string test_bin) {
 
 /* Read 8-bit data */
 uint8_t memory::rd8(uint32_t address) {
+    address -= base_address;
     CHECK_ADDRESS(address, 1u)
     return mem[address];
 }
 
 /* Read 16-bit data */
 uint16_t memory::rd16(uint32_t address) {
+    address -= base_address;
     CHECK_ADDRESS(address, 2u)
     return static_cast<uint16_t>(mem[address]) |
            (static_cast<uint16_t>(mem[address + 1]) << 8);
@@ -20,6 +22,7 @@ uint16_t memory::rd16(uint32_t address) {
 
 /* Read 32-bit data */
 uint32_t memory::rd32(uint32_t address) {
+    address -= base_address;
     CHECK_ADDRESS(address, 4u)
     return static_cast<uint32_t>(mem[address]) |
            (static_cast<uint32_t>(mem[address + 1]) << 8) |
@@ -29,12 +32,14 @@ uint32_t memory::rd32(uint32_t address) {
 
 /* Write 8-bit data */
 void memory::wr8(uint32_t address, uint32_t data) {
+    address -= base_address;
     CHECK_ADDRESS(address, 1u)
     mem[address] = static_cast<uint8_t>(data);
 }
 
 /* Write 16-bit data */
 void memory::wr16(uint32_t address, uint32_t data) {
+    address -= base_address;
     CHECK_ADDRESS(address, 2u)
     mem[address] = static_cast<uint8_t>(data & 0xFF);
     mem[address + 1] = static_cast<uint8_t>((data >> 8) & 0xFF);
@@ -42,6 +47,7 @@ void memory::wr16(uint32_t address, uint32_t data) {
 
 /* Write 32-bit data */
 void memory::wr32(uint32_t address, uint32_t data) {
+    address -= base_address;
     CHECK_ADDRESS(address, 4u)
     mem[address] = static_cast<uint8_t>(data & 0xFF);
     mem[address + 1] = static_cast<uint8_t>((data >> 8) & 0xFF);
@@ -87,7 +93,7 @@ void memory::burn(std::string test_bin) {
     if (file_size > MEM_SIZE) {
         std::cerr << "ERROR: File size is greater than memory size."
                   << " Binary not loaded" << std::endl;
-        return;
+        throw std::runtime_error("File size is greater than memory size.");
     }
 
     bin_file.seekg(0, std::ios::beg);
