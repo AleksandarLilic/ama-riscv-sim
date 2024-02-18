@@ -3,6 +3,8 @@
 
 _start: li x3, 0
 
+loop: li x24, 0
+
 op_add:
 li x11, 35
 li x12, 65
@@ -286,7 +288,8 @@ addi x3, x3, 1
 bne x20, x21, fail
 
 li x24, 123456
-done: j done
+done: j loop
+#done: j done
 
 fail: 
 add x28, x0, x3 # store failed test id in x28
