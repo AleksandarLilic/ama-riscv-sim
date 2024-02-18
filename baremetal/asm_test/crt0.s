@@ -2,8 +2,11 @@
 .global     _start
 
 _start: li x3, 0
+li x4, 0 # loop counter
+li x5, 1000000 # loop limit
 
 loop: li x24, 0
+addi x4, x4, 1
 
 op_add:
 li x11, 35
@@ -353,8 +356,10 @@ addi x3, x3, 1
 bne x20, x21, fail
 
 li x24, 123456
+beq x4, x5, end
 done: j loop
 #done: j done
+end: ecall
 
 fail: 
 add x28, x0, x3 # store failed test id in x28
