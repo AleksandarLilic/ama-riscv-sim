@@ -63,6 +63,24 @@ enum class branch_op_t {
     op_bgeu = 0b111
 };
 
+// Instruction field masks
+#define M_OPC7 uint32_t(0x7F)
+#define M_FUNCT7 uint32_t((0x7F)<<25)
+#define M_FUNCT7_B5 uint32_t((0x1)<<30)
+#define M_FUNCT3 uint32_t((0x7)<<12)
+#define M_RD uint32_t((0x1F)<<7)
+#define M_RS1 uint32_t((0x1F)<<15)
+#define M_RS2 uint32_t((0x1F)<<20)
+#define M_IMM_SHAMT uint32_t(0x1F)
+#define M_IMM_31 int32_t((0x1)<<31)
+#define M_IMM_31_20 int32_t((0xFFF)<<20)
+#define M_IMM_30_25 int32_t((0x3F)<<25)
+#define M_IMM_20 uint32_t((0x1)<<20)
+#define M_IMM_19_12 int32_t((0xFF)<<12)
+#define M_IMM_24_21 int32_t((0xF)<<21)
+#define M_IMM_11_8 uint32_t((0xF)<<8)
+#define M_IMM_7 uint32_t((0x1)<<7)
+
 // Macros
 #define CHECK_ADDRESS(address, align) \
     if ((address % 4u) + align > 4u) { \

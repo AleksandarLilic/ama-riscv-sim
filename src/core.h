@@ -26,25 +26,18 @@ class core{
         void reset();
         using decoder = void (core::*)();
         // instruction parsing
-        int32_t get_opcode() { return inst & 0x7F; }
-        int32_t get_rd() { return (inst >> 7) & 0x1F; }
-        int32_t get_funct3() { return (inst >> 12) & 0x7; }
-        int32_t get_rs1() { return (inst >> 15) & 0x1F; }
-        int32_t get_rs2() { return (inst >> 20) & 0x1F; }
-        int32_t get_funct7() { return (inst >> 25) & 0x7F; }
-        int32_t get_funct7_b5() { return (inst >> 30) & 0x1; }
-        int32_t get_imm_i() { return (int32_t)inst >> 20; }
-        int32_t get_imm_s() { return ((inst >> 7) & 0x1F) | 
-                                     ((inst >> 20) & 0xFE0); }
-        int32_t get_imm_b() { return (((inst >> 8) & 0xF) |
-                                     ((inst >> 21) & 0x3F0) |
-                                     ((inst << 3) & 0x400) |
-                                     ((inst >> 20) & 0x800)) << 1; }
-        int32_t get_imm_u() { return inst & 0xFFFFF000; }
-        int32_t get_imm_j() { return (((inst >> 21) & 0x3FF) | 
-                                     ((inst >> 20) & 0x7FE00) |
-                                     ((inst >> 12) & 0xFF000) |
-                                     (inst & 0x100000)) << 1; }
+        uint32_t get_opcode();
+        uint32_t get_rd();
+        uint32_t get_funct3();
+        uint32_t get_rs1();
+        uint32_t get_rs2();
+        uint32_t get_funct7();
+        uint32_t get_funct7_b5();
+        uint32_t get_imm_i();
+        uint32_t get_imm_s();
+        uint32_t get_imm_b();
+        uint32_t get_imm_u();
+        uint32_t get_imm_j();
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) { return int32_t(a) + int32_t(b); };
         uint32_t al_sub(uint32_t a, uint32_t b) { return a - b; };
@@ -100,6 +93,7 @@ class core{
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
+        uint64_t inst_cnt = 0;
         memory *mem;
         std::unordered_map<int8_t, decoder> decoder_map;
         std::unordered_map<int8_t, alu_op> alu_map;

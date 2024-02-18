@@ -48,17 +48,24 @@ core::core(uint32_t base_address, memory *mem) {
 
 void core::exec() {
     inst = mem->rd32(pc);
+#ifdef PRINT_EXEC
     std::cout << MEM_ADDR_FORMAT(pc) << " : " << std::setw(8) 
               << std::setfill('0') << std::hex << inst << std::dec;
+#endif
     auto inst_dec = decoder_map.find(get_opcode());
     if (inst_dec != decoder_map.end()) (this->*inst_dec->second)();
     else unsupported();
     pc = next_pc;
+#ifdef PRINT_EXEC
     std::cout << std::endl;
+#endif
+    inst_cnt++;
 }
 
 void core::al_reg() {
+#ifdef PRINT_EXEC
     std::cout << "  Arith Logic REG ";
+#endif
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
     write_rf(get_rd(), 
         (this->*alu_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
@@ -66,7 +73,9 @@ void core::al_reg() {
 }
 
 void core::al_imm() {
-    std::cout << "  Arith Logic IMM";
+#ifdef PRINT_EXEC
+    std::cout << "  Arith Logic IMM ";
+#endif
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     uint32_t alu_op_sel = ((get_funct3() & 0x3) == 1) ? alu_op_sel_shift : 
                                                         get_funct3();
@@ -76,20 +85,26 @@ void core::al_imm() {
 }
 
 void core::load() {
-    std::cout << "  LOAD";
+#ifdef PRINT_EXEC
+    std::cout << "  Load ";
+#endif
     write_rf(get_rd(),
         (this->*load_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
     next_pc = pc + 4;
 }
 
 void core::store() {
-    std::cout << "  STORE";
+#ifdef PRINT_EXEC
+    std::cout << "  Store ";
+#endif
     (this->*store_map[get_funct3()])(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]);
     next_pc = pc + 4;
 }
 
 void core::branch() {
-    std::cout << "  BRANCH";
+#ifdef PRINT_EXEC
+    std::cout << "  Branch ";
+#endif
     uint32_t alu_op_sel = get_funct3();
     if ((this->*branch_map[alu_op_sel])())
         next_pc = pc + get_imm_b();
@@ -98,32 +113,42 @@ void core::branch() {
 }
 
 void core::jalr() {
-    std::cout << "  JALR";
+#ifdef PRINT_EXEC
+    std::cout << "  JALR ";
+#endif
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     write_rf(get_rd(), pc + 4);
 }
 
 void core::jal() {
-    std::cout << "  JAL";
+#ifdef PRINT_EXEC
+    std::cout << "  JAL ";
+#endif
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
 }
 
 void core::lui() {
-    std::cout << "  LUI";
+#ifdef PRINT_EXEC
+    std::cout << "  LUI ";
+#endif
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
 }
 
 void core::auipc() {
-    std::cout << "  AUIPC";
+#ifdef PRINT_EXEC
+    std::cout << "  AUIPC ";
+#endif
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
 }
 
 void core::system() {
+#ifdef PRINT_EXEC
+    std::cout << "  System ";
+#endif
     // TODO
-    std::cout << "  SYSTEM";
     next_pc = pc + 4;
 }
 
@@ -144,5 +169,40 @@ void core::dump() {
         }
         std::cout << std::endl;
     }
-    std::cout << std::dec << std::endl;
+    std::cout << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
+    std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
+}
+
+uint32_t core::get_opcode() { return (inst & M_OPC7); }
+uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
+uint32_t core::get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
+uint32_t core::get_funct3() { return (inst & M_FUNCT3) >> 12; }
+uint32_t core::get_rd() { return (inst & M_RD) >> 7; }
+uint32_t core::get_rs1() { return (inst & M_RS1) >> 15; }
+uint32_t core::get_rs2() { return (inst & M_RS2) >> 20; }
+//uint32_t get_uimm_zero_ext() { return rs1_addr(inst); }
+uint32_t core::get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
+uint32_t core::get_imm_s() { 
+    return ((int32_t(inst) & M_IMM_30_25) >> 20) |
+        ((inst & M_IMM_11_8) >> 7) |
+        ((inst & M_IMM_7) >> 7);
+}
+uint32_t core::get_imm_b() { 
+    return ((int32_t(inst) & M_IMM_31) >> 19) |
+        ((inst & M_IMM_7) << 4) |
+        ((inst & M_IMM_30_25) >> 20) |
+        ((inst & M_IMM_11_8) >> 7);
+}
+
+uint32_t core::get_imm_j() {
+    return ((int32_t(inst) & M_IMM_31) >> 11) |
+        ((inst & M_IMM_19_12)) |
+        ((inst & M_IMM_20) >> 9) |
+        ((inst & M_IMM_30_25) >> 20) |
+        ((inst & M_IMM_24_21) >> 20);
+}
+
+uint32_t core::get_imm_u() {
+    return ((int32_t(inst) & M_IMM_31_20)) |
+        ((inst & M_IMM_19_12));
 }
