@@ -15,6 +15,7 @@ ama-riscv-sim
 # manuals/helps
 *.help
 *.man
+analysis.gperf.ipynb
 
 # Vim files
 *.swp
