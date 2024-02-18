@@ -101,7 +101,72 @@ li x30, 0
 addi x3, x3, 1
 bne x30, x0, fail
 
-load_type: li x3, 100
+i_type: li x3, 100
+
+op_addi:
+li x11, 35
+addi x10, x11, -36
+li x30, -1
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_slti:
+li x11, -18
+slti x10, x11, -17
+li x30, 1
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_sltiu:
+li x11, 683
+sltiu x10, x11, 682
+li x30, 0
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_xori:
+li x11, 0xFFFFAAAA
+xori x10, x11, 0x555
+li x30, 0xFFFFAFFF
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_ori:
+li x11, 0xFFFF00FF
+ori x10, x11, 0x100
+li x30, 0xFFFF01FF
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_andi:
+li x11, 0xA7A70202
+andi x10, x11, 0x0FF
+li x30, 0x00000002
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_slli:
+li x11, 0xFFFF0001
+slli x10, x11, 31
+li x30, 0x80000000
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_srli:
+li x11, 0xFF001100
+srli x10, x11, 29
+li x30, 7
+addi x3, x3, 1
+bne x30, x10, fail
+
+op_srai:
+li x11, 0xF0000000
+srai x10, x11, 13
+li x30, 0xFFFF8000
+addi x3, x3, 1
+bne x30, x10, fail
+
+load_type: li x3, 200
 
 op_lb1:
 lla x11, dat1
@@ -173,7 +238,7 @@ li x30, 0xe142
 addi x3, x3, 1
 bne x30, x26, fail
 
-store_type: li x3, 200
+store_type: li x3, 300
 
 op_sb:
 li x9, 0x33
@@ -202,7 +267,7 @@ addi x3, x3, 1
 lw x26, 0(x11)
 bne x30, x26, fail
 
-branch_type: li x3, 300
+branch_type: li x3, 400
 
 op_beq:
 li x10, -55
@@ -249,7 +314,7 @@ j fail
 op_b_done:
 nop
 
-jump_type: li x3, 400
+jump_type: li x3, 500
 
 op_jal:
 addi x3, x3, 1
@@ -264,14 +329,14 @@ j fail
 jalr_done:
 nop
 
-upper_type:  li x3, 500
+upper_type:  li x3, 600
 
 op_lui:
 li x20, 0xf # load expected result, part1
 slli x20, x20, 12 # load expected result, part2
 lui x10, 0xf
 addi x3, x3, 1
-bne x20, x10, fail # test op
+bne x20, x10, fail
 
 op_auipc:
 auipc x20, 0x1F4 # x20 = PC + (0x1F4 << 12)
