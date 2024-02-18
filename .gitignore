@@ -10,6 +10,11 @@ ama-riscv-sim
 *.dump
 *.elf
 *.hex
+*.gprof
+
+# manuals/helps
+*.help
+*.man
 
 # Vim files
 *.swp
@@ -20,3 +25,4 @@ ama-riscv-sim
 
 # untracked files
 local/
+
