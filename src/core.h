@@ -89,15 +89,17 @@ class core{
         using branch_op = bool (core::*)();
 
     private:
+        bool running;
         int32_t rf[32];
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
-        uint64_t inst_cnt = 0;
+        uint64_t inst_cnt;
         memory *mem;
         std::unordered_map<int8_t, decoder> decoder_map;
         std::unordered_map<int8_t, alu_op> alu_map;
         std::unordered_map<int8_t, load_op> load_map;
         std::unordered_map<int8_t, store_op> store_map;
         std::unordered_map<int8_t, branch_op> branch_map;
+        uint32_t tohost;
 };

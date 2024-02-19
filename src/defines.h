@@ -81,6 +81,10 @@ enum class branch_op_t {
 #define M_IMM_11_8 uint32_t((0xF)<<8)
 #define M_IMM_7 uint32_t((0x1)<<7)
 
+// Instructions
+#define INST_ECALL 0x73
+#define INST_EBREAK 0x100073
+
 // Macros
 #define CHECK_ADDRESS(address, align)
 

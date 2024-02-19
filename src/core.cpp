@@ -1,10 +1,13 @@
 #include "core.h"
 
 core::core(uint32_t base_address, memory *mem) {
+    running = true;
+    inst_cnt = 0;
     pc = base_address;
     next_pc = 0;
     this->mem = mem;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
+    tohost = 0x0;
     // instruction decoders
     decoder_map[(uint8_t)opcode::al_reg] = &core::al_reg;
     decoder_map[(uint8_t)opcode::al_imm] = &core::al_imm;
@@ -15,7 +18,7 @@ core::core(uint32_t base_address, memory *mem) {
     decoder_map[(uint8_t)opcode::jal] = &core::jal;
     decoder_map[(uint8_t)opcode::lui] = &core::lui;
     decoder_map[(uint8_t)opcode::auipc] = &core::auipc;
-    //decoder_map[(uint8_t)opcode::system] = &core::system;
+    decoder_map[(uint8_t)opcode::system] = &core::system;
     // alu operations
     alu_map[(uint8_t)alu_op_t::op_add] = &core::al_add;
     alu_map[(uint8_t)alu_op_t::op_sub] = &core::al_sub;
@@ -48,7 +51,7 @@ core::core(uint32_t base_address, memory *mem) {
 
 void core::exec() {
     inst = mem->rd32(pc);
-    while (get_opcode() != (uint8_t)opcode::system){
+    while (running){
 #ifdef PRINT_EXEC
     PRINT_INST(inst);
 #endif
@@ -62,7 +65,9 @@ void core::exec() {
         inst_cnt++;
         inst = mem->rd32(pc);
     }
-    system();
+    PRINT_INST(inst);
+    std::cout << std::endl;
+    dump();
     return;
 }
 
@@ -152,9 +157,8 @@ void core::system() {
 #ifdef PRINT_EXEC
     std::cout << "  System ";
 #endif
-    PRINT_INST(inst);
-    std::cout << std::endl;
-    dump();
+    if (inst == INST_EBREAK or inst == INST_EBREAK) running = false;
+    else unsupported(); // should index into CSR map if CSR inst, else unsupported
 }
 
 void core::unsupported() {
