@@ -2,6 +2,23 @@
 .global     _start
 
 _start: li x3, 0
+
+/*csr_type:
+csrwi 0x51e,0
+csrwi 0x51e,4
+li x11, 19
+csrrw x10, 0x51e, x11 # execute tested op
+li x30, 4
+li x3, 101 # load test_id
+bne x30, x10, fail # test op
+
+csrrw x10, 0x51e, x1 # execute tested op
+li x30, 19
+li x3, 102 # load test_id
+bne x30, x10, fail # test op
+
+ecall # temp brake */
+
 li x4, 0 # loop counter
 li x5, 1000000 # loop limit
 
