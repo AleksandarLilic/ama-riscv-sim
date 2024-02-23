@@ -12,10 +12,10 @@ def update_run_cycles(exec_log_file, target_file):
     # replace first occurrence of run parameter for spike
     with open(target_file, 'r') as f:
         lines = f.readlines()
-    pattern = re.compile(r"^r \d+")
+    pattern = re.compile(r"^rs \d+")
     for i, line in enumerate(lines):
         if pattern.match(line):
-            lines[i] = f"r {cycles}\n"
+            lines[i] = f"rs {cycles}\n"
             break
     with open(target_file, 'w') as f:
         f.writelines(lines)
