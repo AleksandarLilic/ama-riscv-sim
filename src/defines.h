@@ -63,6 +63,15 @@ enum class branch_op_t {
     op_bgeu = 0b111
 };
 
+enum class csr_op_t {
+    op_csrrw = 0b001,
+    op_csrrs = 0b010,
+    op_csrrc = 0b011,
+    op_csrrwi = 0b101,
+    op_csrrsi = 0b110,
+    op_csrrci = 0b111
+};
+
 // Instruction field masks
 #define M_OPC7 uint32_t(0x7F)
 #define M_FUNCT7 uint32_t((0x7F)<<25)
@@ -84,6 +93,11 @@ enum class branch_op_t {
 // Instructions
 #define INST_ECALL 0x73
 #define INST_EBREAK 0x100073
+
+// CSRs
+// TODO: convert to enum
+#define CSR_TOHOST 0x51E
+#define CSR_MSCRATCH 0x340
 
 // Macros
 #define CHECK_ADDRESS(address, align)
@@ -111,6 +125,16 @@ enum class branch_op_t {
               << std::setfill('0') << std::hex << inst << std::dec
 
 #define FRF_DEF(x,y) \
-    std::left << std::setw(2) << std::setfill(' ') \
-              << x << ": " << std::left << std::setw(12) << int32_t(y)
+    std::left << std::setw(2) << std::setfill(' ') << x \
+              << ": 0x" \
+              << std::right << std::setw(8) << std::setfill('0') \
+              << std::hex << y << std::dec
 #define FRF(x,y) "  x" << FRF_DEF(x,y) << "  "
+
+#define CSR_DEF(x,y) \
+    std::hex << "0x" \
+             << std::right << std::setw(3) << std::setfill('0') << x \
+             << ": 0x" \
+             << std::left << std::setw(8) << std::setfill(' ') \
+             << y << std::dec
+#define CSR(x,y) "  " << CSR_DEF(x,y) << "  "

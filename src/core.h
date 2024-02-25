@@ -11,6 +11,7 @@ class core{
         void dump();
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
+        void write_csr(uint16_t addr, uint32_t data) { csr[addr] = data; }
         // instruction decoders
         void al_reg();
         void al_imm();
@@ -24,7 +25,7 @@ class core{
         void system();
         void unsupported();
         void reset();
-        using decoder = void (core::*)();
+        using decoder_op = void (core::*)();
         // instruction parsing
         uint32_t get_opcode();
         uint32_t get_rd();
@@ -34,6 +35,8 @@ class core{
         uint32_t get_funct7();
         uint32_t get_funct7_b5();
         uint32_t get_imm_i();
+        uint32_t get_csr_addr();
+        uint32_t get_uimm_csr();
         uint32_t get_imm_s();
         uint32_t get_imm_b();
         uint32_t get_imm_u();
@@ -87,6 +90,15 @@ class core{
         bool branch_ltu() { return rf[get_rs1()] < rf[get_rs2()]; }
         bool branch_geu() { return rf[get_rs1()] >= rf[get_rs2()]; }
         using branch_op = bool (core::*)();
+        // csr
+        void csr_exists();
+        void csr_read_write();
+        void csr_read_set();
+        void csr_read_clear();
+        void csr_read_write_imm();
+        void csr_read_set_imm();
+        void csr_read_clear_imm();
+        using csr_op = void (core::*)();
 
     private:
         bool running;
@@ -96,10 +108,11 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         memory *mem;
-        std::unordered_map<int8_t, decoder> decoder_map;
-        std::unordered_map<int8_t, alu_op> alu_map;
-        std::unordered_map<int8_t, load_op> load_map;
-        std::unordered_map<int8_t, store_op> store_map;
-        std::unordered_map<int8_t, branch_op> branch_map;
-        uint32_t tohost;
+        std::unordered_map<int8_t, decoder_op> decoder_op_map;
+        std::unordered_map<int8_t, alu_op> alu_op_map;
+        std::unordered_map<int8_t, load_op> load_op_map;
+        std::unordered_map<int8_t, store_op> store_op_map;
+        std::unordered_map<int8_t, branch_op> branch_op_map;
+        std::unordered_map<int8_t, csr_op> csr_op_map;
+        std::unordered_map<uint16_t, uint32_t> csr;
 };
