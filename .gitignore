@@ -5,6 +5,10 @@
 *.out
 ama-riscv-sim
 
+# checkers/logs
+*.check
+*.log
+
 # C files
 *.bin
 *.dump
