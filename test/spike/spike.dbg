@@ -1,5 +1,4 @@
-rs 278000019
-pc 0
+rs 99
 reg 0 0
 reg 0 1
 reg 0 2
@@ -32,5 +31,6 @@ reg 0 28
 reg 0 29
 reg 0 30
 reg 0 31
+pc 0
 reg 0 mscratch
 q

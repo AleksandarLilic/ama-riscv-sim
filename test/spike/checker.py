@@ -39,19 +39,20 @@ def compare_hex_values(exec_log_file, output_file):
         print(f"Output file has {len(output_file_hex_values)} hex values, expected 34")
         return False
 
-    # compare the hex values
+    # compare results
+    status = True
     for i in range(34):
         if exec_log_hex_values[i] != output_file_hex_values[i]:
-            if i == 0:
+            if i == 32:
                 print("PC does not match:", end=" ")
             elif i == 33:
                 print("CSR (mscratch) does not match:", end=" ")
             else:
-                print(f"Register x{i-1} does not match:", end=" ")
+                print(f"Register x{i} does not match:", end=" ")
             print(f"{exec_log_hex_values[i]} != {output_file_hex_values[i]}")
-            return False
+            status = False
     
-    return True
+    return status
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:

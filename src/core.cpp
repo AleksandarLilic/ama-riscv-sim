@@ -258,11 +258,11 @@ void core::dump() {
     std::ofstream file;
     file.open("sim.check");
     file << std::dec << inst_cnt << std::endl;
-    file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
     for(uint32_t i = 0; i < 32; i++){
         file << "0x" << std::setw(8) << std::setfill('0') 
              << std::hex << rf[i] << std::endl;
     }
+    file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
     file << "0x" << std::setw(8) << std::setfill('0') 
          << std::hex << csr[CSR_MSCRATCH] << std::endl;
 }
