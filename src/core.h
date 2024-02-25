@@ -87,8 +87,12 @@ class core{
         bool branch_ne() { return rf[get_rs1()] != rf[get_rs2()]; }
         bool branch_lt() { return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]); }
         bool branch_ge() { return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]); }
-        bool branch_ltu() { return rf[get_rs1()] < rf[get_rs2()]; }
-        bool branch_geu() { return rf[get_rs1()] >= rf[get_rs2()]; }
+        bool branch_ltu() {
+            return (uint32_t)rf[get_rs1()] < (uint32_t)rf[get_rs2()];
+        }
+        bool branch_geu() {
+            return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
+        }
         using branch_op = bool (core::*)();
         // csr
         void csr_exists();

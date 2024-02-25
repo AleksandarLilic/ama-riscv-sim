@@ -122,7 +122,8 @@ void core::store() {
 #ifdef PRINT_EXEC
     std::cout << "  Store ";
 #endif
-    (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]);
+    (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
+                                        rf[get_rs2()]);
     next_pc = pc + 4;
 }
 
@@ -281,7 +282,7 @@ uint32_t core::get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
 uint32_t core::get_csr_addr() { return (inst & M_IMM_31_20) >> 20; }
 uint32_t core::get_uimm_csr() { return get_rs1(); }
 uint32_t core::get_imm_s() { 
-    return ((int32_t(inst) & M_IMM_30_25) >> 20) |
+    return ((int32_t(inst) & M_IMM_31_25) >> 20) |
         ((inst & M_IMM_11_8) >> 7) |
         ((inst & M_IMM_7) >> 7);
 }

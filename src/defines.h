@@ -10,7 +10,7 @@
 #include <cmath>
 #include <unordered_map>
 
-#define MEM_SIZE 2048
+#define MEM_SIZE 8192
 const uint32_t MEM_ADDR_BITWIDTH = std::log10(MEM_SIZE) + 1;
 
 // Decoder types
@@ -84,6 +84,7 @@ enum class csr_op_t {
 #define M_IMM_31 int32_t((0x1)<<31)
 #define M_IMM_31_20 int32_t((0xFFF)<<20)
 #define M_IMM_30_25 int32_t((0x3F)<<25)
+#define M_IMM_31_25 int32_t((0x7F)<<25)
 #define M_IMM_20 uint32_t((0x1)<<20)
 #define M_IMM_19_12 int32_t((0xFF)<<12)
 #define M_IMM_24_21 int32_t((0xF)<<21)

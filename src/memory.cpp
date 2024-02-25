@@ -92,6 +92,8 @@ void memory::burn(std::string test_bin) {
     size_t file_size = bin_file.tellg();
     if (file_size > MEM_SIZE) {
         std::cerr << "ERROR: File size is greater than memory size."
+                  << " Binary size: " << file_size << "B"
+                  << " Memory size: " << MEM_SIZE << "B"
                   << " Binary not loaded" << std::endl;
         throw std::runtime_error("File size is greater than memory size.");
     }
