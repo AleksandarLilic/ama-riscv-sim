@@ -2,22 +2,54 @@
 .global     _start
 
 _start: li x3, 0
+li x5, 0 # override spike
 
-/*csr_type:
-csrwi 0x51e,0
-csrwi 0x51e,4
+csr_rwi:
+csrwi 0x340, 4 # x0 is rd
 li x11, 19
-csrrw x10, 0x51e, x11 # execute tested op
+csrrw x10, 0x340, x11
 li x30, 4
-li x3, 101 # load test_id
-bne x30, x10, fail # test op
+li x3, 101
+bne x30, x10, fail
 
-csrrw x10, 0x51e, x1 # execute tested op
+csr_rw:
+li x1, 0x4d
+csrrw x10, 0x340, x1
 li x30, 19
-li x3, 102 # load test_id
-bne x30, x10, fail # test op
+li x3, 102
+bne x30, x10, fail
 
-ecall # temp brake */
+csr_rs:
+li x2, 0x12
+csrrs x0, 0x340, x2 # store to CSR
+csrrwi x10, 0x340, 21 # move CSR to x10, 0x15 to CSR for csrrc
+li x30, 0x5f
+li x3, 103
+bne x30, x10, fail
+
+csr_rc:
+li x2, 0x7
+csrrc x0, 0x340, x2
+csrrwi x10, 0x340, 17
+li x30, 0x10
+li x3, 104
+bne x30, x10, fail
+
+csr_rsi:
+csrrsi x0, 0x340, 2
+csrrwi x10, 0x340, 5 # move CSR to x10
+li x30, 19
+li x3, 105
+bne x30, x10, fail
+
+csr_rci:
+csrrci x0, 0x340, 3
+csrrwi x10, 0x340, 31 # move CSR to x10
+li x30, 4
+li x3, 106
+bne x30, x10, fail
+
+#ecall
 
 li x4, 0 # loop counter
 li x5, 1000000 # loop limit
@@ -253,8 +285,10 @@ bne x30, x26, fail
 
 op_lhu:
 lla x11, dat3
-lhu x26, 1(x11)
-li x30, 0xe142
+# lhu x26, 1(x11) # supposedly this is unaligned access in spike
+# li x30, 0xe142
+lhu x26, 0(x11)
+li x30, 0x42e2
 addi x3, x3, 1
 bne x30, x26, fail
 
@@ -270,12 +304,12 @@ lbu x26, 3(x11)
 bne x30, x26, fail
 
 op_sh:
-li x9, 0xa1a2
+li x9, 0xa5a6
 lla x11, dat4
-sh x9, 1(x11)
-li x30, 0xa1a2
+sh x9, 0(x11)
+li x30, 0xa5a6
 addi x3, x3, 1
-lhu x26, 1(x11)
+lhu x26, 0(x11)
 bne x30, x26, fail
 
 op_sw:
@@ -375,13 +409,11 @@ bne x20, x21, fail
 li x24, 123456
 beq x4, x5, end
 done: j loop
-#done: j done
-end: ecall
 
 fail: 
 add x28, x0, x3 # store failed test id in x28
 
-failed: j failed
+end: ecall
 
 .data
 dat1: .word 0x55551f12
