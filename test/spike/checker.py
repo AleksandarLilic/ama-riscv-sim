@@ -42,7 +42,13 @@ def compare_hex_values(exec_log_file, output_file):
     # compare the hex values
     for i in range(34):
         if exec_log_hex_values[i] != output_file_hex_values[i]:
-            print(f"Hex values do not match at position {i+1}: {exec_log_hex_values[i]} != {output_file_hex_values[i]}")
+            if i == 0:
+                print("PC does not match:", end=" ")
+            elif i == 33:
+                print("CSR (mscratch) does not match:", end=" ")
+            else:
+                print(f"Register x{i-1} does not match:", end=" ")
+            print(f"{exec_log_hex_values[i]} != {output_file_hex_values[i]}")
             return False
     
     return True
