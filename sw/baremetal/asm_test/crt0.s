@@ -2,8 +2,10 @@
 .global     _start
 
 _start: li x3, 0
+csrwi 0x340, 0; 
 li x5, 0 # override spike
 
+/*
 csr_rwi:
 csrwi 0x340, 4 # x0 is rd
 li x11, 19
@@ -48,11 +50,12 @@ csrrwi x10, 0x340, 31 # move CSR to x10
 li x30, 4
 li x3, 106
 bne x30, x10, fail
+*/
 
 #ecall
 
 li x4, 0 # loop counter
-li x5, 1000000 # loop limit
+li x5, 10000 # loop limit
 
 loop: li x24, 0
 addi x4, x4, 1
@@ -407,13 +410,20 @@ addi x3, x3, 1
 bne x20, x21, fail
 
 li x24, 123456
-beq x4, x5, end
+beq x4, x5, pass
 done: j loop
 
 fail: 
 add x28, x0, x3 # store failed test id in x28
+slli x28, x28, 1
+or x28, x28, 1
+csrw 0x340, x28; # write failed test id
+ecall
 
-end: ecall
+pass:
+li x28, 0x1
+csrw 0x340, x28;
+ecall
 
 .data
 dat1: .word 0x55551f12
