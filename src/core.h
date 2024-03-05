@@ -8,6 +8,7 @@ class core{
         core() = delete;
         core(uint32_t base_address, memory *mem);
         void exec();
+        void exec_inst();
         void dump();
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }

@@ -1,7 +1,6 @@
 #include "core.h"
 
 core::core(uint32_t base_address, memory *mem) {
-    running = true;
     inst_cnt = 0;
     pc = base_address;
     next_pc = 0;
@@ -59,6 +58,7 @@ core::core(uint32_t base_address, memory *mem) {
 }
 
 void core::exec() {
+    running = true;
     inst = mem->rd32(pc);
     while (running){
 #ifdef PRINT_EXEC
@@ -78,6 +78,16 @@ void core::exec() {
     std::cout << std::endl;
     dump();
     return;
+}
+
+void core::exec_inst() {
+    inst = mem->rd32(pc);
+    PRINT_INST(inst) << std::endl;
+    auto inst_dec = decoder_op_map.find(get_opcode());
+    if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
+    else unsupported();
+    pc = next_pc;
+    inst_cnt++;
 }
 
 void core::reset() {
@@ -186,7 +196,7 @@ void core::system() {
 }
 
 void core::unsupported() {
-    std::cerr << "Unsupported" << std::endl;
+    std::cerr << "Unsupported instruction: ";
     PRINT_INST(inst);
     std::cout << std::endl;
     throw std::runtime_error("Unsupported instruction");
