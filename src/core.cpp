@@ -82,7 +82,6 @@ void core::exec() {
 
 void core::exec_inst() {
     inst = mem->rd32(pc);
-    PRINT_INST(inst) << std::endl;
     auto inst_dec = decoder_op_map.find(get_opcode());
     if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
     else unsupported();
@@ -101,6 +100,7 @@ void core::al_reg() {
 #ifdef PRINT_EXEC
     std::cout << "  Arith Logic REG ";
 #endif
+    inst_asm = "ALU REG";
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
@@ -111,6 +111,7 @@ void core::al_imm() {
 #ifdef PRINT_EXEC
     std::cout << "  Arith Logic IMM ";
 #endif
+    inst_asm = "ALU IMM";
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     uint32_t alu_op_sel = ((get_funct3() & 0x3) == 1) ? alu_op_sel_shift : 
                                                         get_funct3();
@@ -123,6 +124,7 @@ void core::load() {
 #ifdef PRINT_EXEC
     std::cout << "  Load ";
 #endif
+    inst_asm = "Load";
     write_rf(get_rd(),
         (this->*load_op_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
     next_pc = pc + 4;
@@ -132,6 +134,7 @@ void core::store() {
 #ifdef PRINT_EXEC
     std::cout << "  Store ";
 #endif
+    inst_asm = "Store";
     (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
                                         rf[get_rs2()]);
     next_pc = pc + 4;
@@ -141,6 +144,7 @@ void core::branch() {
 #ifdef PRINT_EXEC
     std::cout << "  Branch ";
 #endif
+    inst_asm = "Branch";
     uint32_t alu_op_sel = get_funct3();
     if ((this->*branch_op_map[alu_op_sel])())
         next_pc = pc + get_imm_b();
@@ -152,6 +156,7 @@ void core::jalr() {
 #ifdef PRINT_EXEC
     std::cout << "  JALR ";
 #endif
+    inst_asm = "JALR";
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     write_rf(get_rd(), pc + 4);
 }
@@ -160,6 +165,7 @@ void core::jal() {
 #ifdef PRINT_EXEC
     std::cout << "  JAL ";
 #endif
+    inst_asm = "JAL";
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
 }
@@ -168,6 +174,7 @@ void core::lui() {
 #ifdef PRINT_EXEC
     std::cout << "  LUI ";
 #endif
+    inst_asm = "LUI";
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
 }
@@ -176,6 +183,7 @@ void core::auipc() {
 #ifdef PRINT_EXEC
     std::cout << "  AUIPC ";
 #endif
+    inst_asm = "AUIPC";
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
 }
@@ -186,7 +194,9 @@ void core::system() {
 #endif
     if (inst == INST_ECALL or inst == INST_EBREAK) {
         running = false;
+        inst_asm = "ECALL/EBREAK";
     } else {
+        inst_asm = "CSR";
         csr_exists();
         auto csr_op = csr_op_map.find(get_funct3());
         if (csr_op != csr_op_map.end()) (this->*csr_op->second)();

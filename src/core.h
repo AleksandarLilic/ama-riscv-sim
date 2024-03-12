@@ -10,6 +10,10 @@ class core{
         void exec();
         void exec_inst();
         void dump();
+        uint32_t get_pc() { return pc; }
+        uint32_t get_inst() { return inst; }
+        std::string get_inst_asm() { return inst_asm; }
+        uint32_t get_reg(uint32_t reg) { return rf[reg]; }
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) { csr[addr] = data; }
@@ -111,6 +115,7 @@ class core{
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
+        std::string inst_asm;
         uint64_t inst_cnt;
         memory *mem;
         std::unordered_map<int8_t, decoder_op> decoder_op_map;
