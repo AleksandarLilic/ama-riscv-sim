@@ -55,7 +55,7 @@ bne x30, x10, fail
 #ecall
 
 li x4, 0 # loop counter
-li x5, 10000 # loop limit
+li x5, 1 # loop limit
 
 loop: li x24, 0
 addi x4, x4, 1

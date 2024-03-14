@@ -4,7 +4,7 @@ SHELL  := /bin/bash
 
 C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.s)
-LD_SRC := $(TARGET).ld
+LD_SRC := link.ld
 
 GCC_OPTS := -march=rv32i -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -T $(LD_SRC) -Wl,--build-id=none
 SRCS = $(C_SRCS) $(S_SRCS)
