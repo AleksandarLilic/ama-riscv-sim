@@ -61,16 +61,13 @@ void core::exec() {
     running = true;
     inst = mem->rd32(pc);
     while (running){
-#ifdef PRINT_EXEC
-    PRINT_INST(inst);
-#endif
         auto inst_dec = decoder_op_map.find(get_opcode());
         if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
         else unsupported();
+        #ifdef PRINT_EXEC
+        PRINT_INST(inst) << " " << inst_asm << std::endl;
+        #endif
         pc = next_pc;
-#ifdef PRINT_EXEC
-        std::cout << std::endl;
-#endif
         inst_cnt++;
         inst = mem->rd32(pc);
     }
@@ -94,13 +91,10 @@ void core::reset() {
 }
 
 /*
-* Integer extension
-*/
+ * Integer extension
+ */
 void core::al_reg() {
-#ifdef PRINT_EXEC
-    std::cout << "  Arith Logic REG ";
-#endif
-    inst_asm = "ALU REG";
+    inst_asm = "ALU register";
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
@@ -108,10 +102,7 @@ void core::al_reg() {
 }
 
 void core::al_imm() {
-#ifdef PRINT_EXEC
-    std::cout << "  Arith Logic IMM ";
-#endif
-    inst_asm = "ALU IMM";
+    inst_asm = "ALU immediate";
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     uint32_t alu_op_sel = ((get_funct3() & 0x3) == 1) ? alu_op_sel_shift : 
                                                         get_funct3();
@@ -121,9 +112,6 @@ void core::al_imm() {
 }
 
 void core::load() {
-#ifdef PRINT_EXEC
-    std::cout << "  Load ";
-#endif
     inst_asm = "Load";
     write_rf(get_rd(),
         (this->*load_op_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
@@ -131,9 +119,6 @@ void core::load() {
 }
 
 void core::store() {
-#ifdef PRINT_EXEC
-    std::cout << "  Store ";
-#endif
     inst_asm = "Store";
     (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
                                         rf[get_rs2()]);
@@ -141,9 +126,6 @@ void core::store() {
 }
 
 void core::branch() {
-#ifdef PRINT_EXEC
-    std::cout << "  Branch ";
-#endif
     inst_asm = "Branch";
     uint32_t alu_op_sel = get_funct3();
     if ((this->*branch_op_map[alu_op_sel])())
@@ -153,45 +135,30 @@ void core::branch() {
 }
 
 void core::jalr() {
-#ifdef PRINT_EXEC
-    std::cout << "  JALR ";
-#endif
     inst_asm = "JALR";
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     write_rf(get_rd(), pc + 4);
 }
 
 void core::jal() {
-#ifdef PRINT_EXEC
-    std::cout << "  JAL ";
-#endif
     inst_asm = "JAL";
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
 }
 
 void core::lui() {
-#ifdef PRINT_EXEC
-    std::cout << "  LUI ";
-#endif
     inst_asm = "LUI";
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
 }
 
 void core::auipc() {
-#ifdef PRINT_EXEC
-    std::cout << "  AUIPC ";
-#endif
     inst_asm = "AUIPC";
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
 }
 
 void core::system() {
-#ifdef PRINT_EXEC
-    std::cout << "  System ";
-#endif
     if (inst == INST_ECALL or inst == INST_EBREAK) {
         running = false;
         inst_asm = "ECALL/EBREAK";
@@ -213,8 +180,8 @@ void core::unsupported() {
 }
 
 /*
-* Zicsr extension
-*/
+ * Zicsr extension
+ */
 void core::csr_exists() {
     uint32_t csr_address = get_csr_addr();
     auto it = csr.find(csr_address);
@@ -226,6 +193,7 @@ void core::csr_exists() {
 }
 
 void core::csr_read_write() {
+    inst_asm = "CSRRW";
     // using temp in case rd and rs1 are the same register
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
@@ -233,35 +201,40 @@ void core::csr_read_write() {
 }
 
 void core::csr_read_set() {
+    inst_asm = "CSRRS";
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
     write_csr(get_csr_addr(), csr[get_csr_addr()] | init_val_rs1);
 }
 
 void core::csr_read_clear() {
+    inst_asm = "CSRRC";
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
     write_csr(get_csr_addr(), csr[get_csr_addr()] & ~init_val_rs1);
 }
 
 void core::csr_read_write_imm(){
+    inst_asm = "CSRRWI";
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
     write_csr(get_csr_addr(), get_uimm_csr());
 }
 
 void core::csr_read_set_imm(){
+    inst_asm = "CSRRSI";
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
     write_csr(get_csr_addr(), csr[get_csr_addr()] | get_uimm_csr());
 }
 
 void core::csr_read_clear_imm(){
+    inst_asm = "CSRRCI";
     write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
     write_csr(get_csr_addr(), csr[get_csr_addr()] & ~get_uimm_csr());
 }
 
 /*
-* Utilities
-*/
+ * Utilities
+ */
 void core::dump() {
     std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
     std::cout << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
@@ -289,8 +262,8 @@ void core::dump() {
 }
 
 /*
-* Immediate extraction
-*/
+ * Immediate extraction
+ */
 uint32_t core::get_opcode() { return (inst & M_OPC7); }
 uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
 uint32_t core::get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }

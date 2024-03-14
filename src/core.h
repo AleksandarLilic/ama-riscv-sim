@@ -14,6 +14,7 @@ class core{
         uint32_t get_inst() { return inst; }
         std::string get_inst_asm() { return inst_asm; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
+        uint32_t get_inst_cnt() { return inst_cnt; }
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) { csr[addr] = data; }
