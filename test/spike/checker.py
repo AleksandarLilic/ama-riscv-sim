@@ -3,6 +3,8 @@ import os
 import re
 import subprocess
 
+SPIKE_ISA = "RV32I_zicsr"
+
 def update_run_cycles(exec_log_file, target_file):
     # get cycle count from exec log
     spike_cycles_offset = 4
@@ -56,7 +58,7 @@ def compare_hex_values(exec_log_file, output_file):
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python script.py <execution_log_file> <target_file> <spike_elf>")
+        print("Usage: python checker.py <execution_log_file> <target_file> <spike_elf>")
         sys.exit(1)
 
     exec_log_file = sys.argv[1]
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     spike_log = os.path.join(spike_out_path, "spike.log")
     with open(spike_checker, "w") as f:
         subprocess.run(["spike", "-l", f"--log={spike_log}", "-d",
-                        f"--debug-cmd={spike_dbg_file}", "--isa=RV32I_zicsr",
+                        f"--debug-cmd={spike_dbg_file}", f"--isa={SPIKE_ISA}",
                         spike_elf], stdout=f, stderr=f)
 
     status = compare_hex_values(exec_log_file, spike_checker)
