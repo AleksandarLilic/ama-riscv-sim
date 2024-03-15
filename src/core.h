@@ -49,7 +49,7 @@ class core{
         uint32_t get_imm_j();
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) { return int32_t(a) + int32_t(b); };
-        uint32_t al_sub(uint32_t a, uint32_t b) { return a - b; };
+        uint32_t al_sub(uint32_t a, uint32_t b) { return int32_t(a) - int32_t(b); };
         uint32_t al_sll(uint32_t a, uint32_t b) { return a << b; };
         uint32_t al_srl(uint32_t a, uint32_t b) { return a >> b; };
         uint32_t al_sra(uint32_t a, uint32_t b) { return int32_t(a) >> b; };
