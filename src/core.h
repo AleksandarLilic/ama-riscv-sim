@@ -12,12 +12,14 @@ class core{
         void dump();
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
-        std::string get_inst_asm() { return inst_asm; }
+        std::string get_inst_asm() { return dasm.asm_str; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
+    
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
-        void write_csr(uint16_t addr, uint32_t data) { csr[addr] = data; }
+        void write_csr(uint16_t addr, uint32_t data) { csr.at(addr).value = data; }
+        
         // instruction decoders
         void al_reg();
         void al_imm();
@@ -31,7 +33,7 @@ class core{
         void system();
         void unsupported();
         void reset();
-        using decoder_op = void (core::*)();
+        
         // instruction parsing
         uint32_t get_opcode();
         uint32_t get_rd();
@@ -47,59 +49,119 @@ class core{
         uint32_t get_imm_b();
         uint32_t get_imm_u();
         uint32_t get_imm_j();
+        
         // arithmetic and logic operations
-        uint32_t al_add(uint32_t a, uint32_t b) { return int32_t(a) + int32_t(b); };
-        uint32_t al_sub(uint32_t a, uint32_t b) { return int32_t(a) - int32_t(b); };
-        uint32_t al_sll(uint32_t a, uint32_t b) { return a << b; };
-        uint32_t al_srl(uint32_t a, uint32_t b) { return a >> b; };
-        uint32_t al_sra(uint32_t a, uint32_t b) { return int32_t(a) >> b; };
-        uint32_t al_slt(uint32_t a, uint32_t b) { return int32_t(a) < int32_t(b); };
-        uint32_t al_sltu(uint32_t a, uint32_t b) { return a < b; };
-        uint32_t al_xor(uint32_t a, uint32_t b) { return a ^ b; };
-        uint32_t al_or(uint32_t a, uint32_t b) { return a | b; };
-        uint32_t al_and(uint32_t a, uint32_t b) { return a & b; };
-        uint32_t al_unsupported(uint32_t a, uint32_t b) { 
+        uint32_t al_add(uint32_t a, uint32_t b) {
+            dasm.op = "add";
+            return int32_t(a) + int32_t(b); 
+        };
+        uint32_t al_sub(uint32_t a, uint32_t b) {
+            dasm.op = "sub";
+            return int32_t(a) - int32_t(b);
+        };
+        uint32_t al_sll(uint32_t a, uint32_t b) {
+            dasm.op = "sll";
+            return a << b;
+        };
+        uint32_t al_srl(uint32_t a, uint32_t b) {
+            dasm.op = "srl";
+            return a >> b;
+        };
+        uint32_t al_sra(uint32_t a, uint32_t b) {
+            dasm.op = "sra";
+            return int32_t(a) >> b;
+        };
+        uint32_t al_slt(uint32_t a, uint32_t b) {
+            dasm.op = "slt";
+            return int32_t(a) < int32_t(b);
+        };
+        uint32_t al_sltu(uint32_t a, uint32_t b) {
+            dasm.op = "sltu";
+            return a < b;
+        };
+        uint32_t al_xor(uint32_t a, uint32_t b) {
+            dasm.op = "xor";
+            return a ^ b;
+        };
+        uint32_t al_or(uint32_t a, uint32_t b) {
+            dasm.op = "or";
+            return a | b;
+        };
+        uint32_t al_and(uint32_t a, uint32_t b) {
+            dasm.op = "and";
+            return a & b;
+        };
+        uint32_t al_unsupported(uint32_t a, uint32_t b) {
+            dasm.op = "unsupported";
             std::cout << "ERROR: ALU unsupported function with arguments: A: "
                       << a << " and B: " << b << std::endl;
             return 1u;
         };
-        using alu_op = uint32_t (core::*)(uint32_t, uint32_t);
+        
         // load
-        uint32_t load_byte(uint32_t address) { 
+        uint32_t load_byte(uint32_t address) {
+            dasm.op = "lb";
             return static_cast<uint32_t>(
                 static_cast<int8_t>(mem->rd8(address)));
         }
-        uint32_t load_half(uint32_t address) { 
+        uint32_t load_half(uint32_t address) {
+            dasm.op = "lh";
             return static_cast<uint32_t>(
                 static_cast<int16_t>(mem->rd16(address))); 
         }
-        uint32_t load_word(uint32_t address) { return mem->rd32(address); }
-        uint32_t load_byte_u(uint32_t address) { return mem->rd8(address); }
-        uint32_t load_half_u(uint32_t address) { return mem->rd16(address); }
-        using load_op = uint32_t (core::*)(uint32_t);
+        uint32_t load_word(uint32_t address) {
+            dasm.op = "lw";
+            return mem->rd32(address);
+        };
+        uint32_t load_byte_u(uint32_t address) {
+            dasm.op = "lbu";
+            return mem->rd8(address);
+        };
+        uint32_t load_half_u(uint32_t address) {
+            dasm.op = "lhu";
+            return mem->rd16(address);
+        };
+        
         // store
-        void store_byte(uint32_t address, uint32_t data) { 
+        void store_byte(uint32_t address, uint32_t data) {
+            dasm.op = "sb";
             mem->wr8(address, data); 
         }
-        void store_half(uint32_t address, uint32_t data) { 
+        void store_half(uint32_t address, uint32_t data) {
+            dasm.op = "sh";
             mem->wr16(address, data); 
         }
-        void store_word(uint32_t address, uint32_t data) { 
+        void store_word(uint32_t address, uint32_t data) {
+            dasm.op = "sw";
             mem->wr32(address, data); 
         }
-        using store_op = void (core::*)(uint32_t, uint32_t);
+        
         // branch
-        bool branch_eq() { return rf[get_rs1()] == rf[get_rs2()]; }
-        bool branch_ne() { return rf[get_rs1()] != rf[get_rs2()]; }
-        bool branch_lt() { return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]); }
-        bool branch_ge() { return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]); }
+        bool branch_eq() {
+            dasm.op = "beq";
+            return rf[get_rs1()] == rf[get_rs2()];
+        };
+        bool branch_ne() {
+            dasm.op = "bne";
+            return rf[get_rs1()] != rf[get_rs2()];
+        };
+        bool branch_lt() {
+            dasm.op = "blt";
+            return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]);
+        };
+        bool branch_ge() {
+            dasm.op = "bge";
+            return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]);
+        };
         bool branch_ltu() {
+            dasm.op = "bltu";
             return (uint32_t)rf[get_rs1()] < (uint32_t)rf[get_rs2()];
         }
         bool branch_geu() {
+            dasm.op = "bgeu";
             return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
         }
-        using branch_op = bool (core::*)();
+        
         // csr
         void csr_exists();
         void csr_read_write();
@@ -108,22 +170,72 @@ class core{
         void csr_read_write_imm();
         void csr_read_set_imm();
         void csr_read_clear_imm();
+
+        // function pointers
+        using decoder_op = void (core::*)();
+        using alu_op = uint32_t (core::*)(uint32_t, uint32_t);
+        using load_op = uint32_t (core::*)(uint32_t);
+        using store_op = void (core::*)(uint32_t, uint32_t);
+        using branch_op = bool (core::*)();
         using csr_op = void (core::*)();
 
     private:
         bool running;
-        int32_t rf[32];
+        std::array<int32_t, 32> rf;
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
-        std::string inst_asm;
         uint64_t inst_cnt;
+        dasm_str dasm;
         memory *mem;
-        std::unordered_map<int8_t, decoder_op> decoder_op_map;
-        std::unordered_map<int8_t, alu_op> alu_op_map;
-        std::unordered_map<int8_t, load_op> load_op_map;
-        std::unordered_map<int8_t, store_op> store_op_map;
-        std::unordered_map<int8_t, branch_op> branch_op_map;
-        std::unordered_map<int8_t, csr_op> csr_op_map;
-        std::unordered_map<uint16_t, uint32_t> csr;
+        static constexpr std::array<CSR_entry, 2> supported_csrs = {{
+            {0x51e, "tohost"},
+            {0x340, "mscratch"}
+        }};
+        
+        // function maps
+        std::unordered_map<uint8_t, decoder_op> decoder_op_map;
+        std::unordered_map<uint8_t, alu_op> alu_op_map;
+        std::unordered_map<uint8_t, load_op> load_op_map;
+        std::unordered_map<uint8_t, store_op> store_op_map;
+        std::unordered_map<uint8_t, branch_op> branch_op_map;
+        std::unordered_map<uint8_t, csr_op> csr_op_map;
+        std::unordered_map<uint16_t, CSR> csr;
+
+        // register names
+        static constexpr std::array<std::array<const char*, 2>, 32> 
+        rf_names = {{
+            {{"x0", "zero"}}, // hard-wired zero
+            {{"x1", "ra"}},   // return address
+            {{"x2", "sp"}},   // stack pointer 
+            {{"x3", "gp"}},   // global pointer
+            {{"x4", "tp"}},   // thread pointer
+            {{"x5", "t0"}},   // temporary/alternate link register
+            {{"x6", "t1"}},   // temporary
+            {{"x7", "t2"}},   // temporary
+            {{"x8", "s0"}},   // saved register/frame pointer
+            {{"x9", "s1"}},   // saved register
+            {{"x10", "a0"}},  // function argument/return value
+            {{"x11", "a1"}},  // function argument/return value
+            {{"x12", "a2"}},  // function argument
+            {{"x13", "a3"}},  // function argument
+            {{"x14", "a4"}},  // function argument
+            {{"x15", "a5"}},  // function argument
+            {{"x16", "a6"}},  // function argument
+            {{"x17", "a7"}},  // function argument
+            {{"x18", "s2"}},  // saved register
+            {{"x19", "s3"}},  // saved register
+            {{"x20", "s4"}},  // saved register
+            {{"x21", "s5"}},  // saved register
+            {{"x22", "s6"}},  // saved register
+            {{"x23", "s7"}},  // saved register
+            {{"x24", "s8"}},  // saved register
+            {{"x25", "s9"}},  // saved register
+            {{"x26", "s10"}}, // saved register
+            {{"x27", "s11"}}, // saved register
+            {{"x28", "t3"}},  // temporary
+            {{"x29", "t4"}},  // temporary
+            {{"x30", "t5"}},  // temporary
+            {{"x31", "t6"}},  // temporary
+        }};
 };

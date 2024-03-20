@@ -4,7 +4,7 @@ TARGET=ama-riscv-sim
 SOURCES=$(wildcard *.cpp)
 OBJECTS=$(SOURCES:.cpp=.o)
 DEPS=$(SOURCES:.cpp=.d)
-DEFINES=-DPRINT_EXEC
+DEFINES=-DPRINT_EXEC -DUSE_ABI_NAMES
 
 all: $(TARGET)
 

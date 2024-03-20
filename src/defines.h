@@ -10,6 +10,14 @@
 #include <cmath>
 #include <unordered_map>
 
+#ifdef USE_ABI_NAMES
+#define RF_NAMES 1u
+#define FRF_W 4
+#else
+#define RF_NAMES 0u
+#define FRF_W 3
+#endif
+
 #define MEM_SIZE 8192
 const uint32_t MEM_ADDR_BITWIDTH = std::log10(MEM_SIZE) + 1;
 
@@ -28,16 +36,16 @@ enum class opcode{
 };
 
 enum class alu_op_t {
-    op_add = (0b0000),
-    op_sub = (0b1000),
-    op_sll = (0b0001),
-    op_srl = (0b0101),
-    op_sra = (0b1101),
-    op_slt = (0b0010),
-    op_sltu = (0b0011),
-    op_xor = (0b0100),
-    op_or = (0b0110),
-    op_and = (0b0111)
+    op_add = 0b0000,
+    op_sub = 0b1000,
+    op_sll = 0b0001,
+    op_srl = 0b0101,
+    op_sra = 0b1101,
+    op_slt = 0b0010,
+    op_sltu = 0b0011,
+    op_xor = 0b0100,
+    op_or = 0b0110,
+    op_and = 0b0111
 };
 
 enum class load_op_t {
@@ -72,6 +80,12 @@ enum class csr_op_t {
     op_csrrci = 0b111
 };
 
+struct dasm_str {
+    std::stringstream asm_ss;
+    std::string asm_str;
+    std::string op;
+};
+
 // Instruction field masks
 #define M_OPC7 uint32_t(0x7F)
 #define M_FUNCT7 uint32_t((0x7F)<<25)
@@ -96,9 +110,17 @@ enum class csr_op_t {
 #define INST_EBREAK 0x100073
 
 // CSRs
-// TODO: convert to enum
-#define CSR_TOHOST 0x51E
-#define CSR_MSCRATCH 0x340
+struct CSR {
+    const char* name;
+    int value;
+    CSR() : name(""), value(0) {} // FIXME
+    CSR(const char* name, int value) : name(name), value(value) {}
+};
+
+struct CSR_entry {
+    const uint16_t csr_addr;
+    const char* csr_name;
+};
 
 // Macros
 #define CHECK_ADDRESS(address, align)
@@ -125,17 +147,25 @@ enum class csr_op_t {
     std::cout << MEM_ADDR_FORMAT(pc) << " : " << std::setw(8) \
               << std::setfill('0') << std::hex << inst << std::dec
 
-#define FRF_DEF(x,y) \
-    std::left << std::setw(2) << std::setfill(' ') << x \
-              << ": 0x" \
-              << std::right << std::setw(8) << std::setfill('0') \
-              << std::hex << y << std::dec
-#define FRF(x,y) "  x" << FRF_DEF(x,y) << "  "
+// Format Register File print
+#define FRF(addr, val) \
+    std::left << std::setw(FRF_W) << std::setfill(' ') << addr \
+              << ": 0x" << std::right << std::setw(8) << std::setfill('0') \
+              << std::hex << val << std::dec << "  "
 
-#define CSR_DEF(x,y) \
-    std::hex << "0x" \
-             << std::right << std::setw(3) << std::setfill('0') << x \
-             << ": 0x" \
-             << std::left << std::setw(8) << std::setfill(' ') \
-             << y << std::dec
-#define CSR(x,y) "  " << CSR_DEF(x,y) << "  "
+// Format CSR print
+#define CSRF(it) \
+    std::hex << "0x" << std::right << std::setw(4) << std::setfill('0') \
+             << it->first << " (" << it->second.name << ")" \
+             << ": 0x" << std::left << std::setw(8) << std::setfill(' ') \
+             << it->second.value << std::dec
+
+#define CSR_REG_DASM \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
+                << csr.at(get_csr_addr()).name << "," \
+                << rf_names[get_rs1()][RF_NAMES]
+
+#define CSR_IMM_DASM \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
+            << csr.at(get_csr_addr()).name << "," \
+            << get_uimm_csr()

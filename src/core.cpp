@@ -7,8 +7,8 @@ core::core(uint32_t base_address, memory *mem) {
     this->mem = mem;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
-    csr[CSR_TOHOST] = 0x0;
-    csr[CSR_MSCRATCH] = 0x0;
+    for (const auto &c : supported_csrs)
+        csr.insert({c.csr_addr, CSR(c.csr_name, 0x0)});
     // instruction decoders
     decoder_op_map[(uint8_t)opcode::al_reg] = &core::al_reg;
     decoder_op_map[(uint8_t)opcode::al_imm] = &core::al_imm;
@@ -59,20 +59,7 @@ core::core(uint32_t base_address, memory *mem) {
 
 void core::exec() {
     running = true;
-    inst = mem->rd32(pc);
-    while (running){
-        auto inst_dec = decoder_op_map.find(get_opcode());
-        if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
-        else unsupported();
-        #ifdef PRINT_EXEC
-        PRINT_INST(inst) << " " << inst_asm << std::endl;
-        #endif
-        pc = next_pc;
-        inst_cnt++;
-        inst = mem->rd32(pc);
-    }
-    PRINT_INST(inst);
-    std::cout << std::endl;
+    while (running) exec_inst();
     dump();
     return;
 }
@@ -82,6 +69,11 @@ void core::exec_inst() {
     auto inst_dec = decoder_op_map.find(get_opcode());
     if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
     else unsupported();
+    dasm.asm_str = dasm.asm_ss.str();
+    dasm.asm_ss.str("");
+    #ifdef PRINT_EXEC
+    PRINT_INST(inst) << " " << dasm.asm_str << std::endl;
+    #endif
     pc = next_pc;
     inst_cnt++;
 }
@@ -94,76 +86,95 @@ void core::reset() {
  * Integer extension
  */
 void core::al_reg() {
-    inst_asm = "ALU register";
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << rf_names[get_rs1()][RF_NAMES] << ","
+                << rf_names[get_rs2()][RF_NAMES];
 }
 
 void core::al_imm() {
-    inst_asm = "ALU immediate";
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     uint32_t alu_op_sel = ((get_funct3() & 0x3) == 1) ? alu_op_sel_shift : 
                                                         get_funct3();
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], get_imm_i()));
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << "i " << rf_names[get_rd()][RF_NAMES] << ","
+                << rf_names[get_rs1()][RF_NAMES] << "," << (int)get_imm_i();
 }
 
 void core::load() {
-    inst_asm = "Load";
     write_rf(get_rd(),
         (this->*load_op_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << (int)get_imm_i() 
+                << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
 }
 
 void core::store() {
-    inst_asm = "Store";
     (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
                                         rf[get_rs2()]);
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rs2()][RF_NAMES] << ","
+                << (int)get_imm_s() 
+                << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
 }
 
 void core::branch() {
-    inst_asm = "Branch";
     uint32_t alu_op_sel = get_funct3();
     if ((this->*branch_op_map[alu_op_sel])())
         next_pc = pc + get_imm_b();
     else
         next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rs1()][RF_NAMES] << ","
+                << rf_names[get_rs2()][RF_NAMES] << ","
+                << std::hex << pc + (int)get_imm_b() << std::dec;
 }
 
 void core::jalr() {
-    inst_asm = "JALR";
+    dasm.op = "jalr";
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     write_rf(get_rd(), pc + 4);
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << (int)get_imm_i()
+                << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
 }
 
 void core::jal() {
-    inst_asm = "JAL";
+    dasm.op = "jal";
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << std::hex << pc + (int)get_imm_j() << std::dec;
 }
 
 void core::lui() {
-    inst_asm = "LUI";
+    dasm.op = "lui";
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
 }
 
 void core::auipc() {
-    inst_asm = "AUIPC";
+    dasm.op = "auipc";
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
+                << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
 }
 
 void core::system() {
     if (inst == INST_ECALL or inst == INST_EBREAK) {
+        dasm.op = "ecall";
+        if (inst == INST_EBREAK) dasm.op = "ebreak";
         running = false;
-        inst_asm = "ECALL/EBREAK";
+        dasm.asm_ss << dasm.op;
     } else {
-        inst_asm = "CSR";
         csr_exists();
         auto csr_op = csr_op_map.find(get_funct3());
         if (csr_op != csr_op_map.end()) (this->*csr_op->second)();
@@ -182,7 +193,7 @@ void core::unsupported() {
 /*
  * Zicsr extension
  */
-void core::csr_exists() {
+void core::csr_exists() { // FIXME: change to only one look up, and return iterator to exec func
     uint32_t csr_address = get_csr_addr();
     auto it = csr.find(csr_address);
     if (it == csr.end()) {
@@ -193,43 +204,49 @@ void core::csr_exists() {
 }
 
 void core::csr_read_write() {
-    inst_asm = "CSRRW";
+    dasm.op = "csrrw";
     // using temp in case rd and rs1 are the same register
     uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), init_val_rs1);
+    CSR_REG_DASM;
 }
 
 void core::csr_read_set() {
-    inst_asm = "CSRRS";
+    dasm.op = "csrrs";
     uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
-    write_csr(get_csr_addr(), csr[get_csr_addr()] | init_val_rs1);
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
+    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | init_val_rs1);
+    CSR_REG_DASM;
 }
 
 void core::csr_read_clear() {
-    inst_asm = "CSRRC";
+    dasm.op = "csrrc";
     uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
-    write_csr(get_csr_addr(), csr[get_csr_addr()] & ~init_val_rs1);
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
+    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~init_val_rs1);
+    CSR_REG_DASM;
 }
 
 void core::csr_read_write_imm(){
-    inst_asm = "CSRRWI";
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
+    dasm.op = "csrrwi";
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), get_uimm_csr());
+    CSR_IMM_DASM;
 }
 
 void core::csr_read_set_imm(){
-    inst_asm = "CSRRSI";
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
-    write_csr(get_csr_addr(), csr[get_csr_addr()] | get_uimm_csr());
+    dasm.op = "csrrsi";
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
+    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | get_uimm_csr());
+    CSR_IMM_DASM;
 }
 
 void core::csr_read_clear_imm(){
-    inst_asm = "CSRRCI";
-    write_rf(get_rd(), (uint32_t)csr[get_csr_addr()]);
-    write_csr(get_csr_addr(), csr[get_csr_addr()] & ~get_uimm_csr());
+    dasm.op = "csrrci";
+    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
+    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~get_uimm_csr());
+    CSR_IMM_DASM;
 }
 
 /*
@@ -240,13 +257,12 @@ void core::dump() {
     std::cout << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
     for(uint32_t i = 0; i < 32; i+=4){
         for(uint32_t j = 0; j < 4; j++) {
-            std::cout << FRF(i+j, rf[i+j]) << " ";
+            std::cout << FRF(rf_names[i+j][RF_NAMES], rf[i+j]);
         }
         std::cout << std::endl;
     }
-    // iterate over CSR map and print addresses and values as hex
     for (auto it = csr.begin(); it != csr.end(); it++)
-        std::cout << CSR_DEF(it->first, it->second) << std::endl;
+        std::cout << CSRF(it) << std::endl;
     
     // open file for check log
     std::ofstream file;
@@ -258,11 +274,11 @@ void core::dump() {
     }
     file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
     file << "0x" << std::setw(8) << std::setfill('0') 
-         << std::hex << csr[CSR_MSCRATCH] << std::endl;
+         << std::hex << csr.at(0x340).value << std::endl;
 }
 
 /*
- * Immediate extraction
+ * Instruction parsing
  */
 uint32_t core::get_opcode() { return (inst & M_OPC7); }
 uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
