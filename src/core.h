@@ -12,9 +12,11 @@ class core{
         void dump();
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
-        std::string get_inst_asm() { return dasm.asm_str; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
+        #ifdef ENABLE_DASM
+        std::string get_inst_asm() { return dasm.asm_str; }
+        #endif
     
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
@@ -43,6 +45,7 @@ class core{
         uint32_t get_funct7();
         uint32_t get_funct7_b5();
         uint32_t get_imm_i();
+        uint32_t get_imm_i_shamt();
         uint32_t get_csr_addr();
         uint32_t get_uimm_csr();
         uint32_t get_imm_s();
@@ -52,47 +55,48 @@ class core{
         
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
-            dasm.op = "add";
+            DASM_OP("add");
             return int32_t(a) + int32_t(b); 
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
-            dasm.op = "sub";
+            DASM_OP("sub");
             return int32_t(a) - int32_t(b);
         };
         uint32_t al_sll(uint32_t a, uint32_t b) {
-            dasm.op = "sll";
+            DASM_OP("sll");
             return a << b;
         };
         uint32_t al_srl(uint32_t a, uint32_t b) {
-            dasm.op = "srl";
+            DASM_OP("srl");
             return a >> b;
         };
         uint32_t al_sra(uint32_t a, uint32_t b) {
-            dasm.op = "sra";
+            DASM_OP("sra");
+            b &= 0x1f;
             return int32_t(a) >> b;
         };
         uint32_t al_slt(uint32_t a, uint32_t b) {
-            dasm.op = "slt";
+            DASM_OP("slt");
             return int32_t(a) < int32_t(b);
         };
         uint32_t al_sltu(uint32_t a, uint32_t b) {
-            dasm.op = "sltu";
+            DASM_OP("sltu");
             return a < b;
         };
         uint32_t al_xor(uint32_t a, uint32_t b) {
-            dasm.op = "xor";
+            DASM_OP("xor");
             return a ^ b;
         };
         uint32_t al_or(uint32_t a, uint32_t b) {
-            dasm.op = "or";
+            DASM_OP("or");
             return a | b;
         };
         uint32_t al_and(uint32_t a, uint32_t b) {
-            dasm.op = "and";
+            DASM_OP("and");
             return a & b;
         };
         uint32_t al_unsupported(uint32_t a, uint32_t b) {
-            dasm.op = "unsupported";
+            DASM_OP("unsupported");
             std::cout << "ERROR: ALU unsupported function with arguments: A: "
                       << a << " and B: " << b << std::endl;
             return 1u;
@@ -100,65 +104,65 @@ class core{
         
         // load
         uint32_t load_byte(uint32_t address) {
-            dasm.op = "lb";
+            DASM_OP("lb");
             return static_cast<uint32_t>(
                 static_cast<int8_t>(mem->rd8(address)));
         }
         uint32_t load_half(uint32_t address) {
-            dasm.op = "lh";
+            DASM_OP("lh");
             return static_cast<uint32_t>(
                 static_cast<int16_t>(mem->rd16(address))); 
         }
         uint32_t load_word(uint32_t address) {
-            dasm.op = "lw";
+            DASM_OP("lw");
             return mem->rd32(address);
         };
         uint32_t load_byte_u(uint32_t address) {
-            dasm.op = "lbu";
+            DASM_OP("lbu");
             return mem->rd8(address);
         };
         uint32_t load_half_u(uint32_t address) {
-            dasm.op = "lhu";
+            DASM_OP("lhu");
             return mem->rd16(address);
         };
         
         // store
         void store_byte(uint32_t address, uint32_t data) {
-            dasm.op = "sb";
+            DASM_OP("sb");
             mem->wr8(address, data); 
         }
         void store_half(uint32_t address, uint32_t data) {
-            dasm.op = "sh";
+            DASM_OP("sh");
             mem->wr16(address, data); 
         }
         void store_word(uint32_t address, uint32_t data) {
-            dasm.op = "sw";
+            DASM_OP("sw");
             mem->wr32(address, data); 
         }
         
         // branch
         bool branch_eq() {
-            dasm.op = "beq";
+            DASM_OP("beq");
             return rf[get_rs1()] == rf[get_rs2()];
         };
         bool branch_ne() {
-            dasm.op = "bne";
+            DASM_OP("bne");
             return rf[get_rs1()] != rf[get_rs2()];
         };
         bool branch_lt() {
-            dasm.op = "blt";
+            DASM_OP("blt");
             return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]);
         };
         bool branch_ge() {
-            dasm.op = "bge";
+            DASM_OP("bge");
             return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]);
         };
         bool branch_ltu() {
-            dasm.op = "bltu";
+            DASM_OP("bltu");
             return (uint32_t)rf[get_rs1()] < (uint32_t)rf[get_rs2()];
         }
         bool branch_geu() {
-            dasm.op = "bgeu";
+            DASM_OP("bgeu");
             return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
         }
         
@@ -186,7 +190,9 @@ class core{
         uint32_t next_pc;
         uint32_t inst;
         uint64_t inst_cnt;
+        #ifdef ENABLE_DASM
         dasm_str dasm;
+        #endif
         memory *mem;
         static constexpr std::array<CSR_entry, 2> supported_csrs = {{
             {0x51e, "tohost"},
@@ -201,7 +207,8 @@ class core{
         std::unordered_map<uint8_t, branch_op> branch_op_map;
         std::unordered_map<uint8_t, csr_op> csr_op_map;
         std::unordered_map<uint16_t, CSR> csr;
-
+        
+        #ifdef ENABLE_DASM
         // register names
         static constexpr std::array<std::array<const char*, 2>, 32> 
         rf_names = {{
@@ -238,4 +245,5 @@ class core{
             {{"x30", "t5"}},  // temporary
             {{"x31", "t6"}},  // temporary
         }};
+        #endif
 };

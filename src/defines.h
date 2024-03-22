@@ -102,6 +102,7 @@ struct dasm_str {
 #define M_IMM_20 uint32_t((0x1)<<20)
 #define M_IMM_19_12 int32_t((0xFF)<<12)
 #define M_IMM_24_21 int32_t((0xF)<<21)
+#define M_IMM_24_20 int32_t((0x1F)<<20)
 #define M_IMM_11_8 uint32_t((0xF)<<8)
 #define M_IMM_7 uint32_t((0x1)<<7)
 
@@ -169,3 +170,10 @@ struct CSR_entry {
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
             << csr.at(get_csr_addr()).name << "," \
             << get_uimm_csr()
+
+#ifdef ENABLE_DASM
+#define DASM_OP(o) \
+    dasm.op = o;
+#else
+#define DASM_OP(op)
+#endif

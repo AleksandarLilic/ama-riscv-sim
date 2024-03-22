@@ -69,10 +69,12 @@ void core::exec_inst() {
     auto inst_dec = decoder_op_map.find(get_opcode());
     if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
     else unsupported();
+    #ifdef ENABLE_DASM
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
     #ifdef PRINT_EXEC
     PRINT_INST(inst) << " " << dasm.asm_str << std::endl;
+    #endif
     #endif
     pc = next_pc;
     inst_cnt++;
@@ -90,38 +92,54 @@ void core::al_reg() {
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
     next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << rf_names[get_rs1()][RF_NAMES] << ","
                 << rf_names[get_rs2()][RF_NAMES];
+    #endif
 }
 
 void core::al_imm() {
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
-    uint32_t alu_op_sel = ((get_funct3() & 0x3) == 1) ? alu_op_sel_shift : 
-                                                        get_funct3();
+    bool is_shift = (get_funct3() & 0x3) == 1;
+    uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : get_funct3();
     write_rf(get_rd(), 
         (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], get_imm_i()));
     next_pc = pc + 4;
-    dasm.asm_ss << dasm.op << "i " << rf_names[get_rd()][RF_NAMES] << ","
-                << rf_names[get_rs1()][RF_NAMES] << "," << (int)get_imm_i();
+    #ifdef ENABLE_DASM
+    if (dasm.op == "sltu")
+        dasm.op = "sltiu ";
+    else
+        dasm.op += "i ";
+    dasm.asm_ss << dasm.op << rf_names[get_rd()][RF_NAMES] << ","
+                << rf_names[get_rs1()][RF_NAMES] << ",";
+    if (is_shift)
+        dasm.asm_ss << std::hex << "0x" << get_imm_i_shamt() << std::dec;
+    else
+        dasm.asm_ss << (int)get_imm_i();
+    #endif
 }
 
 void core::load() {
     write_rf(get_rd(),
         (this->*load_op_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
     next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << (int)get_imm_i() 
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
+    #endif
 }
 
 void core::store() {
     (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
                                         rf[get_rs2()]);
     next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs2()][RF_NAMES] << ","
                 << (int)get_imm_s() 
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
+    #endif
 }
 
 void core::branch() {
@@ -130,50 +148,62 @@ void core::branch() {
         next_pc = pc + get_imm_b();
     else
         next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs1()][RF_NAMES] << ","
                 << rf_names[get_rs2()][RF_NAMES] << ","
                 << std::hex << pc + (int)get_imm_b() << std::dec;
+    #endif
 }
 
 void core::jalr() {
-    dasm.op = "jalr";
+    DASM_OP("jalr")
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     write_rf(get_rd(), pc + 4);
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << (int)get_imm_i()
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
+    #endif
 }
 
 void core::jal() {
-    dasm.op = "jal";
+    DASM_OP("jal")
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << std::hex << pc + (int)get_imm_j() << std::dec;
+    #endif
 }
 
 void core::lui() {
-    dasm.op = "lui";
+    DASM_OP("lui")
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
+    #endif
 }
 
 void core::auipc() {
-    dasm.op = "auipc";
+    DASM_OP("auipc")
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
+    #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
+    #endif
 }
 
 void core::system() {
     if (inst == INST_ECALL or inst == INST_EBREAK) {
-        dasm.op = "ecall";
-        if (inst == INST_EBREAK) dasm.op = "ebreak";
         running = false;
+        #ifdef ENABLE_DASM
+        DASM_OP("ecall")
+        if (inst == INST_EBREAK) DASM_OP("ebreak")
         dasm.asm_ss << dasm.op;
+        #endif
     } else {
         csr_exists();
         auto csr_op = csr_op_map.find(get_funct3());
@@ -204,49 +234,61 @@ void core::csr_exists() { // FIXME: change to only one look up, and return itera
 }
 
 void core::csr_read_write() {
-    dasm.op = "csrrw";
+    DASM_OP("csrrw")
     // using temp in case rd and rs1 are the same register
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), init_val_rs1);
+    #ifdef ENABLE_DASM
     CSR_REG_DASM;
+    #endif
 }
 
 void core::csr_read_set() {
-    dasm.op = "csrrs";
+    DASM_OP("csrrs")
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | init_val_rs1);
+    #ifdef ENABLE_DASM
     CSR_REG_DASM;
+    #endif
 }
 
 void core::csr_read_clear() {
-    dasm.op = "csrrc";
+    DASM_OP("csrrc")
     uint32_t init_val_rs1 = rf[get_rs1()];
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~init_val_rs1);
+    #ifdef ENABLE_DASM
     CSR_REG_DASM;
+    #endif
 }
 
 void core::csr_read_write_imm(){
-    dasm.op = "csrrwi";
+    DASM_OP("csrrwi")
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), get_uimm_csr());
+    #ifdef ENABLE_DASM
     CSR_IMM_DASM;
+    #endif
 }
 
 void core::csr_read_set_imm(){
-    dasm.op = "csrrsi";
+    DASM_OP("csrrsi")
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | get_uimm_csr());
+    #ifdef ENABLE_DASM
     CSR_IMM_DASM;
+    #endif
 }
 
 void core::csr_read_clear_imm(){
-    dasm.op = "csrrci";
+    DASM_OP("csrrci")
     write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
     write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~get_uimm_csr());
+    #ifdef ENABLE_DASM
     CSR_IMM_DASM;
+    #endif
 }
 
 /*
@@ -288,6 +330,7 @@ uint32_t core::get_rd() { return (inst & M_RD) >> 7; }
 uint32_t core::get_rs1() { return (inst & M_RS1) >> 15; }
 uint32_t core::get_rs2() { return (inst & M_RS2) >> 20; }
 uint32_t core::get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
+uint32_t core::get_imm_i_shamt() { return (inst & M_IMM_24_20) >> 20; }
 uint32_t core::get_csr_addr() { return (inst & M_IMM_31_20) >> 20; }
 uint32_t core::get_uimm_csr() { return get_rs1(); }
 uint32_t core::get_imm_s() { 
