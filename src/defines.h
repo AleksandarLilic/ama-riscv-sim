@@ -32,7 +32,8 @@ enum class opcode{
     jal = 0b110'1111, // J format
     lui = 0b011'0111, // U format
     auipc = 0b001'0111, // U format
-    system = 0b111'0011 // I format
+    system = 0b111'0011, // I format
+    misc_mem = 0b000'1111 // I format
 };
 
 enum class alu_op_t {
@@ -109,6 +110,8 @@ struct dasm_str {
 // Instructions
 #define INST_ECALL 0x73
 #define INST_EBREAK 0x100073
+#define INST_FENCE 0x100F
+#define INST_NOP 0x13
 
 // CSRs
 struct CSR {

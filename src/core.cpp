@@ -20,6 +20,7 @@ core::core(uint32_t base_address, memory *mem) {
     decoder_op_map[(uint8_t)opcode::lui] = &core::lui;
     decoder_op_map[(uint8_t)opcode::auipc] = &core::auipc;
     decoder_op_map[(uint8_t)opcode::system] = &core::system;
+    decoder_op_map[(uint8_t)opcode::misc_mem] = &core::misc_mem;
     // alu operations
     alu_op_map[(uint8_t)alu_op_t::op_add] = &core::al_add;
     alu_op_map[(uint8_t)alu_op_t::op_sub] = &core::al_sub;
@@ -210,6 +211,19 @@ void core::system() {
         if (csr_op != csr_op_map.end()) (this->*csr_op->second)();
         else unsupported();
         next_pc = pc + 4;
+    }
+}
+
+void core::misc_mem() {
+    if (inst == INST_FENCE) {
+        // nop
+        next_pc = pc + 4;
+        #ifdef ENABLE_DASM
+        DASM_OP("fence.i")
+        dasm.asm_ss << dasm.op;
+        #endif
+    } else {
+        unsupported();
     }
 }
 

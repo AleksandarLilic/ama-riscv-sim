@@ -7,8 +7,8 @@ DIR ?= riscv-tests/isa/rv32ui
 
 TESTS := $(notdir $(shell find $(DIR) -type f -name "*.S"))
 TESTS_BIN := $(subst .S,.bin,$(TESTS))
-# remove "fence_i" and "ma_data" from the list of tests if they exist
-TESTS_BIN := $(filter-out %fence_i.bin %ma_data.bin,$(TESTS_BIN))
+# remove "ma_data" from the list of tests if it exists
+TESTS_BIN := $(filter-out %ma_data.bin,$(TESTS_BIN))
 
 all: $(TESTS_BIN)
 

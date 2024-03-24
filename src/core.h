@@ -33,6 +33,7 @@ class core{
         void lui();
         void auipc();
         void system();
+        void misc_mem();
         void unsupported();
         void reset();
         
@@ -208,7 +209,6 @@ class core{
         std::unordered_map<uint8_t, csr_op> csr_op_map;
         std::unordered_map<uint16_t, CSR> csr;
         
-        #ifdef ENABLE_DASM
         // register names
         static constexpr std::array<std::array<const char*, 2>, 32> 
         rf_names = {{
@@ -245,5 +245,4 @@ class core{
             {{"x30", "t5"}},  // temporary
             {{"x31", "t6"}},  // temporary
         }};
-        #endif
 };
