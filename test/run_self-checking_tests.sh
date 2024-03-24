@@ -43,6 +43,9 @@ done
 
 grep "bin\|0x340" $run_log | grep -v "0x340: 0x1" | grep -B 1 0x340 > $failed_runs_log
 
+total_tests=$(echo "$binaries_found" | wc -l)
+echo "Total tests: $total_tests"
+
 if [[ -s $failed_runs_log ]]; then
     echo "Some tests failed"
     echo "Failed tests:"

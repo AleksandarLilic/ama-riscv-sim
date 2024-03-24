@@ -28,30 +28,30 @@ def extract_hex_values(file_path):
     hex_values = re.findall(r'0x[0-9A-Fa-f]+', content)
     return hex_values
 
-def compare_hex_values(exec_log_file, output_file):
+def compare_hex_values(exec_log_file, spike_out_file):
     # extract hex values from both files
     exec_log_hex_values = extract_hex_values(exec_log_file)
-    output_file_hex_values = extract_hex_values(output_file)
+    spike_out_hex_values = extract_hex_values(spike_out_file)
     
     # check if both files have the same number of hex values (34 expected)
     if len(exec_log_hex_values) < 34:
         print(f"Execution log file has {len(exec_log_hex_values)} hex values, expected 34")
         return False
-    if len(output_file_hex_values) < 34:
-        print(f"Output file has {len(output_file_hex_values)} hex values, expected 34")
+    if len(spike_out_hex_values) < 34:
+        print(f"Spike out file has {len(spike_out_hex_values)} hex values, expected 34")
         return False
 
     # compare results
     status = True
     for i in range(34):
-        if exec_log_hex_values[i] != output_file_hex_values[i]:
+        if exec_log_hex_values[i] != spike_out_hex_values[i]:
             if i == 32:
                 print("PC does not match:", end=" ")
             elif i == 33:
                 print("CSR (mscratch) does not match:", end=" ")
             else:
                 print(f"Register x{i} does not match:", end=" ")
-            print(f"{exec_log_hex_values[i]} != {output_file_hex_values[i]}")
+            print(f"{exec_log_hex_values[i]} != {spike_out_hex_values[i]}")
             status = False
     
     return status
