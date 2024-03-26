@@ -1,25 +1,27 @@
 # C++ files
-*.d
-*.o
-*.so
-*.out
+src/*.d
+src/*.ii
+src/*.s
+src/*.o
+src/*.so
+src/*.out
 ama-riscv-sim
 
 # checkers/logs
 *.check
 *.log
 
-# C files
-*.bin
-*.dump
-*.elf
-*.hex
-*.gprof
+# RISC-V program files
+sw/**/*.bin
+sw/**/*.dump
+sw/**/*.elf
+sw/**/*.hex
 
 # manuals/helps
 *.help
 *.man
-analysis.gperf.ipynb
+*.gprof
+analysis.gprof.ipynb
 
 # Vim files
 *.swp
@@ -30,4 +32,3 @@ analysis.gperf.ipynb
 
 # untracked files
 local/
-
