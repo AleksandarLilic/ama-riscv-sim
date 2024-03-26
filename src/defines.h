@@ -64,21 +64,21 @@ enum class store_op_t {
 };
 
 enum class branch_op_t {
-    op_beq = 0b000,
-    op_bne = 0b001,
-    op_blt = 0b100,
-    op_bge = 0b101,
-    op_bltu = 0b110,
-    op_bgeu = 0b111
+    op_eq = 0b000,
+    op_ne = 0b001,
+    op_lt = 0b100,
+    op_ge = 0b101,
+    op_ltu = 0b110,
+    op_geu = 0b111
 };
 
 enum class csr_op_t {
-    op_csrrw = 0b001,
-    op_csrrs = 0b010,
-    op_csrrc = 0b011,
-    op_csrrwi = 0b101,
-    op_csrrsi = 0b110,
-    op_csrrci = 0b111
+    op_rw = 0b001,
+    op_rs = 0b010,
+    op_rc = 0b011,
+    op_rwi = 0b101,
+    op_rsi = 0b110,
+    op_rci = 0b111
 };
 
 struct dasm_str {
@@ -127,22 +127,55 @@ struct CSR_entry {
 };
 
 // Macros
-#define CHECK_ADDRESS(address, align)
+#define CASE_DECODER(op) \
+    case (uint8_t)opcode::op: \
+        op(); break;
 
-/* #define CHECK_ADDRESS(address, align) \
-    bool address_out_of_range = (address >= MEM_SIZE); \
-    bool address_unaligned = ((address % 4u) + align > 4u); \
-    if (address_out_of_range || address_unaligned) { \
-        if (address_out_of_range) { \
-            std::cerr << "ERROR: Address out of range: 0x" \
-                      << std::hex << address << std::dec << std::endl; \
+#define CASE_ALU_OP(op) \
+    case (uint8_t)alu_op_t::op_##op: \
+        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
+
+#define CASE_ALU_OP_IMM(op) \
+    case (uint8_t)alu_op_t::op_##op: \
+        write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); break;
+
+#define CASE_LOAD(op) \
+    case (uint8_t)load_op_t::op_##op: \
+        write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); break;
+
+#define CASE_STORE(op) \
+    case (uint8_t)store_op_t::op_##op: \
+        store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); break;
+
+#define CASE_BRANCH(op) \
+    case (uint8_t)branch_op_t::op_##op: \
+        if(branch_##op()) next_pc = pc + get_imm_b(); break;
+
+#define CASE_CSR(op) \
+    case (uint8_t)csr_op_t::op_##op: \
+        csr_##op(); break;
+
+#define W_CSR(expr) \
+    write_csr(get_csr_addr(), expr)
+
+//#define CHECK_ADDRESS(address, align)
+
+#define CHECK_ADDRESS(address, align) \
+    do { \
+        bool address_out_of_range = (address >= MEM_SIZE); \
+        bool address_unaligned = ((address % 4u) + align > 4u); \
+        if (address_out_of_range || address_unaligned) { \
+            if (address_out_of_range) { \
+                std::cerr << "ERROR: Address out of range: 0x" \
+                        << std::hex << address << std::dec << std::endl; \
+            } \
+            else { \
+                std::cerr << "ERROR: Unaligned access at address: 0x" \
+                        << std::hex << address \
+                        << std::dec << "; for: " << align << " bytes" << std::endl; \
+            } \
         } \
-        else { \
-            std::cerr << "ERROR: Unaligned access at address: 0x" \
-                      << std::hex << address \
-                      << std::dec << "; for: " << align << " bytes" << std::endl; \
-        } \
-    } */
+    } while(0);
 
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr

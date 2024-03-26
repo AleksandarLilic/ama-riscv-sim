@@ -15,6 +15,7 @@ class memory {
         uint8_t rd8(uint32_t address);
         uint16_t rd16(uint32_t address);
         uint32_t rd32(uint32_t address);
+        uint32_t get_inst(uint32_t address);
         void wr8(uint32_t address, uint32_t data);
         void wr16(uint32_t address, uint32_t data);
         void wr32(uint32_t address, uint32_t data);

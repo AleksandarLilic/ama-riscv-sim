@@ -9,53 +9,6 @@ core::core(uint32_t base_address, memory *mem) {
     // initialize CSRs
     for (const auto &c : supported_csrs)
         csr.insert({c.csr_addr, CSR(c.csr_name, 0x0)});
-    // instruction decoders
-    decoder_op_map[(uint8_t)opcode::al_reg] = &core::al_reg;
-    decoder_op_map[(uint8_t)opcode::al_imm] = &core::al_imm;
-    decoder_op_map[(uint8_t)opcode::load] = &core::load;
-    decoder_op_map[(uint8_t)opcode::store] = &core::store;
-    decoder_op_map[(uint8_t)opcode::branch] = &core::branch;
-    decoder_op_map[(uint8_t)opcode::jalr] = &core::jalr;
-    decoder_op_map[(uint8_t)opcode::jal] = &core::jal;
-    decoder_op_map[(uint8_t)opcode::lui] = &core::lui;
-    decoder_op_map[(uint8_t)opcode::auipc] = &core::auipc;
-    decoder_op_map[(uint8_t)opcode::system] = &core::system;
-    decoder_op_map[(uint8_t)opcode::misc_mem] = &core::misc_mem;
-    // alu operations
-    alu_op_map[(uint8_t)alu_op_t::op_add] = &core::al_add;
-    alu_op_map[(uint8_t)alu_op_t::op_sub] = &core::al_sub;
-    alu_op_map[(uint8_t)alu_op_t::op_sll] = &core::al_sll;
-    alu_op_map[(uint8_t)alu_op_t::op_srl] = &core::al_srl;
-    alu_op_map[(uint8_t)alu_op_t::op_sra] = &core::al_sra;
-    alu_op_map[(uint8_t)alu_op_t::op_slt] = &core::al_slt;
-    alu_op_map[(uint8_t)alu_op_t::op_sltu] = &core::al_sltu;
-    alu_op_map[(uint8_t)alu_op_t::op_xor] = &core::al_xor;
-    alu_op_map[(uint8_t)alu_op_t::op_or] = &core::al_or;
-    alu_op_map[(uint8_t)alu_op_t::op_and] = &core::al_and;
-    // load operations
-    load_op_map[(uint8_t)load_op_t::op_byte] = &core::load_byte;
-    load_op_map[(uint8_t)load_op_t::op_half] = &core::load_half;
-    load_op_map[(uint8_t)load_op_t::op_word] = &core::load_word;
-    load_op_map[(uint8_t)load_op_t::op_byte_u] = &core::load_byte_u;
-    load_op_map[(uint8_t)load_op_t::op_half_u] = &core::load_half_u;
-    // store operations
-    store_op_map[(uint8_t)store_op_t::op_byte] = &core::store_byte;
-    store_op_map[(uint8_t)store_op_t::op_half] = &core::store_half;
-    store_op_map[(uint8_t)store_op_t::op_word] = &core::store_word;
-    // branch operations
-    branch_op_map[(uint8_t)branch_op_t::op_beq] = &core::branch_eq;
-    branch_op_map[(uint8_t)branch_op_t::op_bne] = &core::branch_ne;
-    branch_op_map[(uint8_t)branch_op_t::op_blt] = &core::branch_lt;
-    branch_op_map[(uint8_t)branch_op_t::op_bge] = &core::branch_ge;
-    branch_op_map[(uint8_t)branch_op_t::op_bltu] = &core::branch_ltu;
-    branch_op_map[(uint8_t)branch_op_t::op_bgeu] = &core::branch_geu;
-    // csr operations
-    csr_op_map[(uint8_t)csr_op_t::op_csrrw] = &core::csr_read_write;
-    csr_op_map[(uint8_t)csr_op_t::op_csrrwi] = &core::csr_read_write_imm;
-    csr_op_map[(uint8_t)csr_op_t::op_csrrs] = &core::csr_read_set;
-    csr_op_map[(uint8_t)csr_op_t::op_csrrc] = &core::csr_read_clear;
-    csr_op_map[(uint8_t)csr_op_t::op_csrrsi] = &core::csr_read_set_imm;
-    csr_op_map[(uint8_t)csr_op_t::op_csrrci] = &core::csr_read_clear_imm;
 }
 
 void core::exec() {
@@ -66,10 +19,21 @@ void core::exec() {
 }
 
 void core::exec_inst() {
-    inst = mem->rd32(pc);
-    auto inst_dec = decoder_op_map.find(get_opcode());
-    if (inst_dec != decoder_op_map.end()) (this->*inst_dec->second)();
-    else unsupported();
+    inst = mem->get_inst(pc);
+    switch (get_opcode()) {
+        CASE_DECODER(al_reg)
+        CASE_DECODER(al_imm)
+        CASE_DECODER(load)
+        CASE_DECODER(store)
+        CASE_DECODER(branch)
+        CASE_DECODER(jalr)
+        CASE_DECODER(jal)
+        CASE_DECODER(lui)
+        CASE_DECODER(auipc)
+        CASE_DECODER(system)
+        CASE_DECODER(misc_mem)
+        default: unsupported();
+    }
     #ifdef ENABLE_DASM
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
@@ -90,8 +54,19 @@ void core::reset() {
  */
 void core::al_reg() {
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
-    write_rf(get_rd(), 
-        (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], rf[get_rs2()]));
+    switch (alu_op_sel) {
+        CASE_ALU_OP(add)
+        CASE_ALU_OP(sub)
+        CASE_ALU_OP(sll)
+        CASE_ALU_OP(srl)
+        CASE_ALU_OP(sra)
+        CASE_ALU_OP(slt)
+        CASE_ALU_OP(sltu)
+        CASE_ALU_OP(xor)
+        CASE_ALU_OP(or)
+        CASE_ALU_OP(and)
+        default: unsupported();
+    }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
@@ -104,8 +79,19 @@ void core::al_imm() {
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     bool is_shift = (get_funct3() & 0x3) == 1;
     uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : get_funct3();
-    write_rf(get_rd(), 
-        (this->*alu_op_map[alu_op_sel])(rf[get_rs1()], get_imm_i()));
+    switch (alu_op_sel) {
+        CASE_ALU_OP_IMM(add)
+        CASE_ALU_OP_IMM(sub)
+        CASE_ALU_OP_IMM(sll)
+        CASE_ALU_OP_IMM(srl)
+        CASE_ALU_OP_IMM(sra)
+        CASE_ALU_OP_IMM(slt)
+        CASE_ALU_OP_IMM(sltu)
+        CASE_ALU_OP_IMM(xor)
+        CASE_ALU_OP_IMM(or)
+        CASE_ALU_OP_IMM(and)
+        default: unsupported();
+    }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     if (dasm.op == "sltu")
@@ -122,8 +108,14 @@ void core::al_imm() {
 }
 
 void core::load() {
-    write_rf(get_rd(),
-        (this->*load_op_map[get_funct3()])(rf[get_rs1()]+get_imm_i()));
+    switch (get_funct3()) {
+        CASE_LOAD(byte)
+        CASE_LOAD(half)
+        CASE_LOAD(word)
+        CASE_LOAD(byte_u)
+        CASE_LOAD(half_u)
+        default: unsupported();
+    }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
@@ -133,8 +125,11 @@ void core::load() {
 }
 
 void core::store() {
-    (this->*store_op_map[get_funct3()])(rf[get_rs1()]+get_imm_s(),
-                                        rf[get_rs2()]);
+    switch (get_funct3()) {
+        CASE_STORE(byte)
+        CASE_STORE(half)
+        CASE_STORE(word)
+    }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs2()][RF_NAMES] << ","
@@ -144,11 +139,16 @@ void core::store() {
 }
 
 void core::branch() {
-    uint32_t alu_op_sel = get_funct3();
-    if ((this->*branch_op_map[alu_op_sel])())
-        next_pc = pc + get_imm_b();
-    else
-        next_pc = pc + 4;
+    next_pc = pc + 4;
+    switch (get_funct3()) {
+        CASE_BRANCH(eq)
+        CASE_BRANCH(ne)
+        CASE_BRANCH(lt)
+        CASE_BRANCH(ge)
+        CASE_BRANCH(ltu)
+        CASE_BRANCH(geu)
+        default: unsupported();
+    }
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs1()][RF_NAMES] << ","
                 << rf_names[get_rs2()][RF_NAMES] << ","
@@ -206,10 +206,7 @@ void core::system() {
         dasm.asm_ss << dasm.op;
         #endif
     } else {
-        csr_exists();
-        auto csr_op = csr_op_map.find(get_funct3());
-        if (csr_op != csr_op_map.end()) (this->*csr_op->second)();
-        else unsupported();
+        csr_access();
         next_pc = pc + 4;
     }
 }
@@ -237,72 +234,30 @@ void core::unsupported() {
 /*
  * Zicsr extension
  */
-void core::csr_exists() { // FIXME: change to only one look up, and return iterator to exec func
+void core::csr_access() {
     uint32_t csr_address = get_csr_addr();
     auto it = csr.find(csr_address);
     if (it == csr.end()) {
         std::cerr << "Unsupported CSR. Address: " << std::hex << csr_address 
                   << std::dec <<std::endl;
         throw std::runtime_error("Unsupported CSR");
+    } else {
+        // using temp in case rd and rs1 are the same register
+        uint32_t init_val_rs1 = rf[get_rs1()];
+        write_rf(get_rd(), it->second.value);
+        switch (get_funct3()) {
+            case (uint8_t)csr_op_t::op_rw: csr_rw(init_val_rs1); break;
+            case (uint8_t)csr_op_t::op_rs: csr_rs(init_val_rs1); break;
+            case (uint8_t)csr_op_t::op_rc: csr_rc(init_val_rs1); break;
+            case (uint8_t)csr_op_t::op_rwi: csr_rwi(); break;
+            case (uint8_t)csr_op_t::op_rsi: csr_rsi(); break;
+            case (uint8_t)csr_op_t::op_rci: csr_rci(); break;
+            default: unsupported();
+        }
+        #ifdef ENABLE_DASM
+        CSR_REG_DASM;
+        #endif
     }
-}
-
-void core::csr_read_write() {
-    DASM_OP("csrrw")
-    // using temp in case rd and rs1 are the same register
-    uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), init_val_rs1);
-    #ifdef ENABLE_DASM
-    CSR_REG_DASM;
-    #endif
-}
-
-void core::csr_read_set() {
-    DASM_OP("csrrs")
-    uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | init_val_rs1);
-    #ifdef ENABLE_DASM
-    CSR_REG_DASM;
-    #endif
-}
-
-void core::csr_read_clear() {
-    DASM_OP("csrrc")
-    uint32_t init_val_rs1 = rf[get_rs1()];
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~init_val_rs1);
-    #ifdef ENABLE_DASM
-    CSR_REG_DASM;
-    #endif
-}
-
-void core::csr_read_write_imm(){
-    DASM_OP("csrrwi")
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), get_uimm_csr());
-    #ifdef ENABLE_DASM
-    CSR_IMM_DASM;
-    #endif
-}
-
-void core::csr_read_set_imm(){
-    DASM_OP("csrrsi")
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value | get_uimm_csr());
-    #ifdef ENABLE_DASM
-    CSR_IMM_DASM;
-    #endif
-}
-
-void core::csr_read_clear_imm(){
-    DASM_OP("csrrci")
-    write_rf(get_rd(), (uint32_t)csr.at(get_csr_addr()).value);
-    write_csr(get_csr_addr(), csr.at(get_csr_addr()).value & ~get_uimm_csr());
-    #ifdef ENABLE_DASM
-    CSR_IMM_DASM;
-    #endif
 }
 
 /*

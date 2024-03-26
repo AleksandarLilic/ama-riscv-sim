@@ -30,6 +30,14 @@ uint32_t memory::rd32(uint32_t address) {
            (static_cast<uint32_t>(mem[address + 3]) << 24);
 }
 
+uint32_t memory::get_inst(uint32_t address) {
+    address -= base_address;
+    return static_cast<uint32_t>(mem[address]) |
+           (static_cast<uint32_t>(mem[address + 1]) << 8) |
+           (static_cast<uint32_t>(mem[address + 2]) << 16) |
+           (static_cast<uint32_t>(mem[address + 3]) << 24);
+}
+
 /* Write 8-bit data */
 void memory::wr8(uint32_t address, uint32_t data) {
     address -= base_address;

@@ -103,7 +103,7 @@ class core{
             return 1u;
         };
         
-        // load
+        // load operations
         uint32_t load_byte(uint32_t address) {
             DASM_OP("lb");
             return static_cast<uint32_t>(
@@ -127,7 +127,7 @@ class core{
             return mem->rd16(address);
         };
         
-        // store
+        // store operations
         void store_byte(uint32_t address, uint32_t data) {
             DASM_OP("sb");
             mem->wr8(address, data); 
@@ -141,7 +141,7 @@ class core{
             mem->wr32(address, data); 
         }
         
-        // branch
+        // branch operations
         bool branch_eq() {
             DASM_OP("beq");
             return rf[get_rs1()] == rf[get_rs2()];
@@ -167,22 +167,32 @@ class core{
             return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
         }
         
-        // csr
-        void csr_exists();
-        void csr_read_write();
-        void csr_read_set();
-        void csr_read_clear();
-        void csr_read_write_imm();
-        void csr_read_set_imm();
-        void csr_read_clear_imm();
-
-        // function pointers
-        using decoder_op = void (core::*)();
-        using alu_op = uint32_t (core::*)(uint32_t, uint32_t);
-        using load_op = uint32_t (core::*)(uint32_t);
-        using store_op = void (core::*)(uint32_t, uint32_t);
-        using branch_op = bool (core::*)();
-        using csr_op = void (core::*)();
+        // csr operations
+        void csr_access();
+        void csr_rw(uint32_t init_val_rs1) {
+            DASM_OP("csrrw")
+            W_CSR(init_val_rs1);
+        }
+        void csr_rs(uint32_t init_val_rs1) {
+            DASM_OP("csrrs")
+            W_CSR(csr.at(get_csr_addr()).value | init_val_rs1);
+        }
+        void csr_rc(uint32_t init_val_rs1) {
+            DASM_OP("csrrc")
+            W_CSR(csr.at(get_csr_addr()).value & ~init_val_rs1);
+        }
+        void csr_rwi() {
+            DASM_OP("csrrwi")
+            W_CSR(get_uimm_csr());
+        }
+        void csr_rsi() {
+            DASM_OP("csrrsi")
+            W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());
+        }
+        void csr_rci() {
+            DASM_OP("csrrci")
+            W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());
+        }
 
     private:
         bool running;
@@ -200,13 +210,7 @@ class core{
             {0x340, "mscratch"}
         }};
         
-        // function maps
-        std::unordered_map<uint8_t, decoder_op> decoder_op_map;
-        std::unordered_map<uint8_t, alu_op> alu_op_map;
-        std::unordered_map<uint8_t, load_op> load_op_map;
-        std::unordered_map<uint8_t, store_op> store_op_map;
-        std::unordered_map<uint8_t, branch_op> branch_op_map;
-        std::unordered_map<uint8_t, csr_op> csr_op_map;
+        // csr map
         std::unordered_map<uint16_t, CSR> csr;
         
         // register names
