@@ -2,10 +2,10 @@
 .global     _start
 
 _start: li x3, 0
-csrwi 0x340, 0; 
+csrwi 0x340, 0;
 li x5, 0 # override spike
 
-/*
+
 csr_rwi:
 csrwi 0x340, 4 # x0 is rd
 li x11, 19
@@ -50,12 +50,11 @@ csrrwi x10, 0x340, 31 # move CSR to x10
 li x30, 4
 li x3, 106
 bne x30, x10, fail
-*/
 
 #ecall
 
 li x4, 0 # loop counter
-li x5, 1 # loop limit
+li x5, 1000000 # loop limit
 
 loop: li x24, 0
 addi x4, x4, 1
