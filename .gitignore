@@ -16,6 +16,10 @@ sw/**/*.bin
 sw/**/*.dump
 sw/**/*.elf
 sw/**/*.hex
+sw/**/*.o
+sw/**/*.d
+sw/**/*.i
+sw/**/*.s
 
 # manuals/helps
 *.help
