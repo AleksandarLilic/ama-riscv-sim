@@ -1,6 +1,7 @@
 #define LOOP_COUNT 100000
 
 void fail();
+void pass();
 
 const unsigned int ref[16] = {116, 131, 144, 155, 164, 171, 176, 179, 180, 179, 176, 171, 164, 155, 144, 131};
 
@@ -21,7 +22,7 @@ void set_c() {
     }
 }
 
-int main(void) {
+void main(void) {
     for (int i = 0; i < LOOP_COUNT; i++) {
         set_c();
         
@@ -44,5 +45,6 @@ int main(void) {
             }
         }
     }
+    pass();
     asm volatile("ecall");
 }
