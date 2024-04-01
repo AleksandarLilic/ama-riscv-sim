@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "memory.h"
+#include "profiler.h"
 
 class core{
     public:
@@ -57,43 +58,53 @@ class core{
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
             DASM_OP("add");
+            PROF_AL(add);
             return int32_t(a) + int32_t(b); 
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
             DASM_OP("sub");
+            PROF_AL(sub);
             return int32_t(a) - int32_t(b);
         };
         uint32_t al_sll(uint32_t a, uint32_t b) {
             DASM_OP("sll");
+            PROF_AL(sll);
             return a << b;
         };
         uint32_t al_srl(uint32_t a, uint32_t b) {
             DASM_OP("srl");
+            PROF_AL(srl);
             return a >> b;
         };
         uint32_t al_sra(uint32_t a, uint32_t b) {
             DASM_OP("sra");
+            PROF_AL(sra);
             b &= 0x1f;
             return int32_t(a) >> b;
         };
         uint32_t al_slt(uint32_t a, uint32_t b) {
             DASM_OP("slt");
+            PROF_AL(slt);
             return int32_t(a) < int32_t(b);
         };
         uint32_t al_sltu(uint32_t a, uint32_t b) {
             DASM_OP("sltu");
+            PROF_AL(sltu);
             return a < b;
         };
         uint32_t al_xor(uint32_t a, uint32_t b) {
             DASM_OP("xor");
+            PROF_AL(xor);
             return a ^ b;
         };
         uint32_t al_or(uint32_t a, uint32_t b) {
             DASM_OP("or");
+            PROF_AL(or);
             return a | b;
         };
         uint32_t al_and(uint32_t a, uint32_t b) {
             DASM_OP("and");
+            PROF_AL(and);
             return a & b;
         };
         uint32_t al_unsupported(uint32_t a, uint32_t b) {
@@ -106,38 +117,46 @@ class core{
         // load operations
         uint32_t load_byte(uint32_t address) {
             DASM_OP("lb");
+            PROF_MEM(lb);
             return static_cast<uint32_t>(
                 static_cast<int8_t>(mem->rd8(address)));
         }
         uint32_t load_half(uint32_t address) {
             DASM_OP("lh");
+            PROF_MEM(lh);
             return static_cast<uint32_t>(
                 static_cast<int16_t>(mem->rd16(address))); 
         }
         uint32_t load_word(uint32_t address) {
             DASM_OP("lw");
+            PROF_MEM(lw);
             return mem->rd32(address);
         };
         uint32_t load_byte_u(uint32_t address) {
             DASM_OP("lbu");
+            PROF_MEM(lbu);
             return mem->rd8(address);
         };
         uint32_t load_half_u(uint32_t address) {
             DASM_OP("lhu");
+            PROF_MEM(lhu);
             return mem->rd16(address);
         };
         
         // store operations
         void store_byte(uint32_t address, uint32_t data) {
             DASM_OP("sb");
+            PROF_MEM(sb);
             mem->wr8(address, data); 
         }
         void store_half(uint32_t address, uint32_t data) {
             DASM_OP("sh");
+            PROF_MEM(sh);
             mem->wr16(address, data); 
         }
         void store_word(uint32_t address, uint32_t data) {
             DASM_OP("sw");
+            PROF_MEM(sw);
             mem->wr32(address, data); 
         }
         
@@ -170,27 +189,33 @@ class core{
         // csr operations
         void csr_access();
         void csr_rw(uint32_t init_val_rs1) {
-            DASM_OP("csrrw")
+            DASM_OP("csrrw");
+            PROF_CSR(csrrw);
             W_CSR(init_val_rs1);
         }
         void csr_rs(uint32_t init_val_rs1) {
-            DASM_OP("csrrs")
+            DASM_OP("csrrs");
+            PROF_CSR(csrrs);
             W_CSR(csr.at(get_csr_addr()).value | init_val_rs1);
         }
         void csr_rc(uint32_t init_val_rs1) {
-            DASM_OP("csrrc")
+            DASM_OP("csrrc");
+            PROF_CSR(csrrc);
             W_CSR(csr.at(get_csr_addr()).value & ~init_val_rs1);
         }
         void csr_rwi() {
-            DASM_OP("csrrwi")
+            DASM_OP("csrrwi");
+            PROF_CSR(csrrwi);
             W_CSR(get_uimm_csr());
         }
         void csr_rsi() {
-            DASM_OP("csrrsi")
+            DASM_OP("csrrsi");
+            PROF_CSR(csrrsi);
             W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());
         }
         void csr_rci() {
-            DASM_OP("csrrci")
+            DASM_OP("csrrci");
+            PROF_CSR(csrrci);
             W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());
         }
 
@@ -209,6 +234,9 @@ class core{
             {0x51e, "tohost"},
             {0x340, "mscratch"}
         }};
+        #ifdef ENABLE_PROF
+        profiler prof;
+        #endif
         
         // csr map
         std::unordered_map<uint16_t, CSR> csr;

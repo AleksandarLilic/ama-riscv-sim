@@ -23,17 +23,17 @@ const uint32_t MEM_ADDR_BITWIDTH = std::log10(MEM_SIZE) + 1;
 
 // Decoder types
 enum class opcode{ 
-    al_reg = 0b011'0011, // R format
-    al_imm = 0b001'0011, // I format
-    load = 0b000'0011, // I format
-    store = 0b010'0011, // S format
-    branch = 0b110'0011, // B format
-    jalr = 0b110'0111, // I format
-    jal = 0b110'1111, // J format
-    lui = 0b011'0111, // U format
-    auipc = 0b001'0111, // U format
-    system = 0b111'0011, // I format
-    misc_mem = 0b000'1111 // I format
+    al_reg = 0b011'0011, // R type
+    al_imm = 0b001'0011, // I type
+    load = 0b000'0011, // I type
+    store = 0b010'0011, // S type
+    branch = 0b110'0011, // B type
+    jalr = 0b110'0111, // I type
+    jal = 0b110'1111, // J type
+    lui = 0b011'0111, // U type
+    auipc = 0b001'0111, // U type
+    system = 0b111'0011, // I type
+    misc_mem = 0b000'1111 // I type
 };
 
 enum class alu_op_t {
@@ -129,7 +129,8 @@ struct CSR_entry {
 // Macros
 #define CASE_DECODER(op) \
     case (uint8_t)opcode::op: \
-        op(); break;
+        op(); \
+        break;
 
 #define CASE_ALU_OP(op) \
     case (uint8_t)alu_op_t::op_##op: \
@@ -149,7 +150,13 @@ struct CSR_entry {
 
 #define CASE_BRANCH(op) \
     case (uint8_t)branch_op_t::op_##op: \
-        if(branch_##op()) next_pc = pc + get_imm_b(); break;
+        if(branch_##op()) { \
+            next_pc = pc + get_imm_b(); \
+            PROF_B_T(op); \
+        } else { \
+            PROF_B_NT(op); \
+        } \
+        break;
 
 #define CASE_CSR(op) \
     case (uint8_t)csr_op_t::op_##op: \
@@ -212,4 +219,44 @@ struct CSR_entry {
     dasm.op = o;
 #else
 #define DASM_OP(op)
+#endif
+
+#ifdef ENABLE_PROF
+#define PROF_AL_TYPE(op) \
+    prof.set_al_type(al_type_t::op);
+
+#define PROF_AL(op) \
+    prof.log_inst(opc_al::i_##op);
+
+#define PROF_MEM(op) \
+    prof.log_inst(opc_mem::i_##op);
+
+#define PROF_UPP(op) \
+    prof.log_inst(opc_upp::i_##op);
+
+#define PROF_SYS(op) \
+    prof.log_inst(opc_sys::i_##op);
+
+#define PROF_CSR(op) \
+    prof.log_inst(opc_csr::i_##op);
+
+#define PROF_J(op) \
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
+
+#define PROF_B_T(op) \
+    prof.log_inst(opc_j::i_b##op, true, b_dir_t(next_pc > pc));
+
+#define PROF_B_NT(op) \
+    prof.log_inst(opc_j::i_b##op, false, b_dir_t((pc + get_imm_b()) > pc));
+
+#else
+#define PROF_AL_TYPE(op)
+#define PROF_AL(op)
+#define PROF_MEM(op)
+#define PROF_UPP(op)
+#define PROF_SYS(op)
+#define PROF_CSR(op)
+#define PROF_J(op)
+#define PROF_B_T(op)
+#define PROF_B_NT(op)
 #endif

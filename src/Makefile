@@ -1,10 +1,14 @@
-CXX=g++
-CXXFLAGS=-Wall -Wextra -Werror -pedantic -g -std=gnu++17 -O3
-TARGET=ama-riscv-sim
-SOURCES=$(wildcard *.cpp)
-OBJECTS=$(SOURCES:.cpp=.o)
-DEPS=$(SOURCES:.cpp=.d)
-DEFINES=-DPRINT_EXEC -DENABLE_DASM -DUSE_ABI_NAMES
+CXX := g++
+CXXFLAGS := -Wall -Wextra -Werror -pedantic -g -std=gnu++17 -O3 -save-temps # -pg
+TARGET := ama-riscv-sim
+SOURCES := $(wildcard *.cpp)
+OBJECTS := $(SOURCES:.cpp=.o)
+DEPS := $(SOURCES:.cpp=.d)
+DEFINES =
+#DEFINES += -DPRINT_EXEC
+#DEFINES += -DENABLE_DASM
+#DEFINES += -DUSE_ABI_NAMES
+DEFINES += -DENABLE_PROF
 
 all: $(TARGET)
 

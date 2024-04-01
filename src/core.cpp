@@ -15,11 +15,17 @@ void core::exec() {
     running = true;
     while (running) exec_inst();
     dump();
+    #ifdef ENABLE_PROF
+    prof.dump(); // TODO: profile logs to file
+    #endif
     return;
 }
 
 void core::exec_inst() {
     inst = mem->get_inst(pc);
+    #ifdef ENABLE_PROF
+    prof.new_inst(inst);
+    #endif
     switch (get_opcode()) {
         CASE_DECODER(al_reg)
         CASE_DECODER(al_imm)
@@ -54,6 +60,7 @@ void core::reset() {
  */
 void core::al_reg() {
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
+    PROF_AL_TYPE(reg)
     switch (alu_op_sel) {
         CASE_ALU_OP(add)
         CASE_ALU_OP(sub)
@@ -79,9 +86,9 @@ void core::al_imm() {
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     bool is_shift = (get_funct3() & 0x3) == 1;
     uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : get_funct3();
+    PROF_AL_TYPE(imm)
     switch (alu_op_sel) {
         CASE_ALU_OP_IMM(add)
-        CASE_ALU_OP_IMM(sub)
         CASE_ALU_OP_IMM(sll)
         CASE_ALU_OP_IMM(srl)
         CASE_ALU_OP_IMM(sra)
@@ -159,6 +166,7 @@ void core::branch() {
 void core::jalr() {
     DASM_OP("jalr")
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
+    PROF_J(jalr)
     write_rf(get_rd(), pc + 4);
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
@@ -171,6 +179,7 @@ void core::jal() {
     DASM_OP("jal")
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
+    PROF_J(jal)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << std::hex << pc + (int)get_imm_j() << std::dec;
@@ -179,6 +188,7 @@ void core::jal() {
 
 void core::lui() {
     DASM_OP("lui")
+    PROF_UPP(lui);
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -189,6 +199,7 @@ void core::lui() {
 
 void core::auipc() {
     DASM_OP("auipc")
+    PROF_UPP(auipc);
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -198,11 +209,18 @@ void core::auipc() {
 }
 
 void core::system() {
-    if (inst == INST_ECALL or inst == INST_EBREAK) {
+    if (inst == INST_ECALL) {
         running = false;
+        PROF_SYS(ecall)
         #ifdef ENABLE_DASM
         DASM_OP("ecall")
-        if (inst == INST_EBREAK) DASM_OP("ebreak")
+        #endif
+    }
+    else if (inst == INST_EBREAK) {
+        running = false;
+        PROF_SYS(ebreak)
+        #ifdef ENABLE_DASM
+        DASM_OP("ebreak")
         dasm.asm_ss << dasm.op;
         #endif
     } else {
