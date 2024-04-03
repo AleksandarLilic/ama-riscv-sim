@@ -21,11 +21,12 @@ sw/**/*.d
 sw/**/*.i
 sw/**/*.s
 
-# manuals/helps
+# manuals/helps/profiling
 *.help
 *.man
 *.gprof
 analysis.gprof.ipynb
+*_inst_profiler.json
 
 # Vim files
 *.swp
