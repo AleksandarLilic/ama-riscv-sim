@@ -1,7 +1,8 @@
 #include "profiler.h"
 
-profiler::profiler() {
+profiler::profiler(std::string log_name) {
     inst_cnt = 0;
+    this->log_name = log_name;
     
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_add)] = {"add", 0};
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_sub)] = {"sub", 0};
@@ -95,81 +96,54 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
     }
 }
 
-void profiler::dump() {
-    // TODO: rework, possibly log to file
-    uint32_t total_insts = 0;
-    std::cout << "Instructions executed: " << inst_cnt << std::endl;
-    std::cout << "Instruction breakdown:" << std::endl;
+void profiler::log_to_file() {
+    profiled_inst_cnt = 0;
+    out_stream.open(log_name + "_inst_profiler.json");
+    out_stream << "{\n";
     for (auto &i : prof_alr_arr) {
         if (i.name != "") {
-            std::cout << i.name << ": " << i.count << std::endl;
-            total_insts += i.count;
+            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            profiled_inst_cnt += i.count;
         }
     }
     for (auto &i : prof_ali_arr) {
         if (i.name != "") {
-            std::cout << i.name << ": " << i.count << std::endl;
-            total_insts += i.count;
+            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            profiled_inst_cnt += i.count;
         }
     }
     for (auto &i : prof_mem_arr) {
-        std::cout << i.name << ": " << i.count << std::endl;
-        total_insts += i.count;
+        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_upp_arr) {
-        std::cout << i.name << ": " << i.count << std::endl;
-        total_insts += i.count;
+        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_sys_arr) {
-        std::cout << i.name << ": " << i.count << std::endl;
-        total_insts += i.count;
+        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_csr_arr) {
-        std::cout << i.name << ": " << i.count << std::endl;
-        total_insts += i.count;
+        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        profiled_inst_cnt += i.count;
     }
     
-    uint32_t total_taken = 0;
-    uint32_t total_taken_fwd = 0;
-    uint32_t total_not_taken = 0;
-    uint32_t total_not_taken_fwd = 0;
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
         inst_prof_j& e = prof_j_arr[i];
-        std::cout << e.name << ": " << e.count_taken + e.count_not_taken 
-                  << "; t: " << e.count_taken << " (f/b: " 
-                  << e.count_taken_fwd << "/" 
-                  << e.count_taken - e.count_taken_fwd << ")";
-        
-        if ((opc_j)i == opc_j::i_jalr || (opc_j)i == opc_j::i_jal) {
-            // jumps always taken
-            std::cout << std::endl;
-        } else {
-            std::cout << "; nt: " << e.count_not_taken << " (f/b: " 
-                      << e.count_not_taken_fwd << "/" 
-                      << e.count_not_taken - e.count_not_taken_fwd << ")" 
-                      << std::endl;
-            
-            total_taken += e.count_taken;
-            total_taken_fwd += e.count_taken_fwd;
-            total_not_taken += e.count_not_taken;
-            total_not_taken_fwd += e.count_not_taken_fwd;
-        }
-        total_insts += e.count_taken + e.count_not_taken;
+        out_stream << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd, 
+                                   e.count_not_taken, e.count_not_taken_fwd);
+        out_stream << std::endl;
+        profiled_inst_cnt += e.count_taken + e.count_not_taken;
     }
 
-    std::cout << "total branches: " << total_taken + total_not_taken 
-              << "; t: " << total_taken << " (f/b: " 
-              << total_taken_fwd << "/" 
-              << total_taken - total_taken_fwd << ")"
-              << "; nt: " << total_not_taken << " (f/b: " 
-              << total_not_taken_fwd << "/" 
-              << total_not_taken - total_not_taken_fwd << ")" 
-              << std::endl;
-    
-    float predicted = (total_taken - total_taken_fwd) + total_not_taken_fwd;
-    float mispredicted = total_taken_fwd + (total_not_taken - total_not_taken_fwd);
-    std::cout << "BTFN - p: " << predicted << ", mp: " << mispredicted
-              << "; prediction ratio: " << predicted / (predicted + mispredicted)
-              << std::endl;
-    std::cout << "Instructions profiled: " << total_insts << std::endl;
+    out_stream << "\"_profiled_instructions\": " << profiled_inst_cnt;
+    out_stream << "\n}\n";
+    out_stream.close();
+    info();
+}
+
+void profiler::info() {
+    std::cout << "Instructions executed: " << inst_cnt << std::endl;
+    std::cout << "Instructions profiled: " << profiled_inst_cnt << std::endl;
 }

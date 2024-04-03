@@ -4,6 +4,7 @@ TARGET := ama-riscv-sim
 SOURCES := $(wildcard *.cpp)
 OBJECTS := $(SOURCES:.cpp=.o)
 DEPS := $(SOURCES:.cpp=.d)
+USER_DEFINES =
 DEFINES =
 #DEFINES += -DPRINT_EXEC
 #DEFINES += -DENABLE_DASM
@@ -16,7 +17,7 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES)
+	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES)
 
 -include $(DEPS)
 

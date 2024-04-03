@@ -7,7 +7,7 @@
 class core{
     public:
         core() = delete;
-        core(uint32_t base_address, memory *mem);
+        core(uint32_t base_address, memory *mem, std::string log_name);
         void exec();
         void exec_inst();
         void dump();

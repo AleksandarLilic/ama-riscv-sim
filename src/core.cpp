@@ -1,6 +1,10 @@
 #include "core.h"
 
-core::core(uint32_t base_address, memory *mem) {
+core::core(uint32_t base_address, memory *mem, std::string log_name)
+    #ifdef ENABLE_PROF
+    : prof(log_name)
+    #endif
+{
     inst_cnt = 0;
     pc = base_address;
     next_pc = 0;
@@ -16,7 +20,7 @@ void core::exec() {
     while (running) exec_inst();
     dump();
     #ifdef ENABLE_PROF
-    prof.dump(); // TODO: profile logs to file
+    prof.log_to_file();
     #endif
     return;
 }
@@ -293,6 +297,7 @@ void core::dump() {
     for (auto it = csr.begin(); it != csr.end(); it++)
         std::cout << CSRF(it) << std::endl;
     
+    #ifdef CHECK_LOG
     // open file for check log
     std::ofstream file;
     file.open("sim.check");
@@ -304,6 +309,8 @@ void core::dump() {
     file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
     file << "0x" << std::setw(8) << std::setfill('0') 
          << std::hex << csr.at(0x340).value << std::endl;
+    file.close();
+    #endif
 }
 
 /*

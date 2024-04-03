@@ -2,6 +2,21 @@
 
 #include "defines.h"
 
+#define JSON_ENTRY(name, count) \
+    "\"" << name << "\"" << ": {\"count\": " << count << "}, "
+
+#define JSON_ENTRY_J(name, count_taken, count_taken_fwd, \
+                     count_not_taken, count_not_taken_fwd) \
+    "\"" << name << "\"" << ": {\"count\": " << count_taken + count_not_taken \
+    << ", \"breakdown\": {" \
+    << "\"taken\": " << count_taken << ", " \
+    << "\"taken_fwd\": " << count_taken_fwd << ", " \
+    << "\"taken_bwd\": " << count_taken - count_taken_fwd << ", " \
+    << "\"not_taken\": " << count_not_taken << ", " \
+    << "\"not_taken_fwd\": " << count_not_taken_fwd << ", " \
+    << "\"not_taken_bwd\": " << count_not_taken - count_not_taken_fwd \
+    <<  "}},"
+
 enum class b_dir_t {
     backward, forward
 };
@@ -52,7 +67,9 @@ struct inst_prof_j {
 
 class profiler{
     private:
+        std::ofstream out_stream;
         uint32_t inst_cnt;
+        uint32_t profiled_inst_cnt;
         uint32_t inst;
         al_type_t al_type;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
@@ -71,9 +88,12 @@ class profiler{
             prof_j_arr;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
             *prof_al_arr_ptrs[2] = {&prof_alr_arr, &prof_ali_arr};
+        
+        std::string log_name;
 
     public:
-        profiler();
+        profiler() = delete;
+        profiler(std::string log_name);
         void set_al_type(al_type_t type) { al_type = type; }
         void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
         void log_inst(opc_al opc);
@@ -82,5 +102,8 @@ class profiler{
         void log_inst(opc_sys opc);
         void log_inst(opc_csr opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void dump();
+        void log_to_file();
+    
+    private:
+        void info();
 };
