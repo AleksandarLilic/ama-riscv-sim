@@ -9,6 +9,7 @@ core::core(uint32_t base_address, memory *mem, std::string log_name)
     pc = base_address;
     next_pc = 0;
     this->mem = mem;
+    this->log_name = log_name;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
     for (const auto &c : supported_csrs)
@@ -18,10 +19,7 @@ core::core(uint32_t base_address, memory *mem, std::string log_name)
 void core::exec() {
     running = true;
     while (running) exec_inst();
-    dump();
-    #ifdef ENABLE_PROF
-    prof.log_to_file();
-    #endif
+    finish(true);
     return;
 }
 
@@ -57,6 +55,13 @@ void core::exec_inst() {
 
 void core::reset() {
     // TODO
+}
+
+void core::finish(bool dump_regs) {
+    if (dump_regs) dump();
+    #ifdef ENABLE_PROF
+    prof.log_to_file();
+    #endif
 }
 
 /*

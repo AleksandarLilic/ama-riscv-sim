@@ -11,6 +11,7 @@ class core{
         void exec();
         void exec_inst();
         void dump();
+        void finish(bool dump_regs);
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
@@ -226,6 +227,7 @@ class core{
         uint32_t next_pc;
         uint32_t inst;
         uint64_t inst_cnt;
+        std::string log_name;
         #ifdef ENABLE_DASM
         dasm_str dasm;
         #endif
