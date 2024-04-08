@@ -228,6 +228,9 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         std::string log_name;
+        #ifdef LOG_EXEC
+        std::ofstream log_stream;
+        #endif
         #ifdef ENABLE_DASM
         dasm_str dasm;
         #endif

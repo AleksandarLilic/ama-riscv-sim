@@ -187,9 +187,9 @@ struct CSR_entry {
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr
 
-#define PRINT_INST(inst) \
-    std::cout << MEM_ADDR_FORMAT(pc) << ": " << std::setw(8) \
-              << std::setfill('0') << std::hex << inst << std::dec
+#define FORMAT_INST(inst) \
+    MEM_ADDR_FORMAT(pc) << ": " << std::setw(8) \
+    << std::setfill('0') << std::hex << inst << std::dec
 
 // Format Register File print
 #define FRF(addr, val) \

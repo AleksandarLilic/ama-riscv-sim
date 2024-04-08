@@ -144,6 +144,6 @@ void profiler::log_to_file() {
 }
 
 void profiler::info() {
-    std::cout << "Instructions executed: " << inst_cnt << std::endl;
-    std::cout << "Instructions profiled: " << profiled_inst_cnt << std::endl;
+    std::cout << "Profiler: instructions captured: " << inst_cnt << std::endl;
+    std::cout << "Profiler: instructions profiled: " << profiled_inst_cnt << std::endl;
 }

@@ -17,6 +17,9 @@ core::core(uint32_t base_address, memory *mem, std::string log_name)
 }
 
 void core::exec() {
+    #ifdef LOG_EXEC
+    log_stream.open(log_name + "_exec.log");
+    #endif
     running = true;
     while (running) exec_inst();
     finish(true);
@@ -45,8 +48,8 @@ void core::exec_inst() {
     #ifdef ENABLE_DASM
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
-    #ifdef PRINT_EXEC
-    PRINT_INST(inst) << " " << dasm.asm_str << std::endl;
+    #ifdef LOG_EXEC
+    log_stream << FORMAT_INST(inst) << " " << dasm.asm_str << std::endl;
     #endif
     #endif
     pc = next_pc;
@@ -223,6 +226,7 @@ void core::system() {
         PROF_SYS(ecall)
         #ifdef ENABLE_DASM
         DASM_OP("ecall")
+        dasm.asm_ss << dasm.op;
         #endif
     }
     else if (inst == INST_EBREAK) {
@@ -253,8 +257,7 @@ void core::misc_mem() {
 
 void core::unsupported() {
     std::cerr << "Unsupported instruction: ";
-    PRINT_INST(inst);
-    std::cout << std::endl;
+    std::cout << FORMAT_INST(inst) << std::endl;
     throw std::runtime_error("Unsupported instruction");
 }
 
