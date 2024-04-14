@@ -1,14 +1,18 @@
 #pragma once
 
 #include "defines.h"
+#include "main_memory.h"
+#include "uart.h"
 
 class memory {
     private:
-        std::array<uint8_t, MEM_SIZE> mem;
-        uint32_t base_address;
+        main_memory mm;
+        uart uart0;
+        dev *dev_ptr;
+        std::array<mem_entry, 2> mem_map;
     private:
-        void burn(std::string test_bin);
         void mem_dump(uint32_t start, uint32_t end);
+        uint32_t set_addr(uint32_t address);
     public:
         memory() = delete;
         memory(uint32_t base_address, std::string test_bin);
@@ -20,5 +24,5 @@ class memory {
         void wr16(uint32_t address, uint32_t data);
         void wr32(uint32_t address, uint32_t data);
         void dump();
-        void dump(uint32_t start, uint32_t end);
+        void dump(uint32_t start, uint32_t size);
 };

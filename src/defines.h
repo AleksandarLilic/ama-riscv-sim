@@ -5,10 +5,12 @@
 #include <iostream>
 #include <iomanip>
 #include <array>
+#include <vector>
 #include <fstream>
 #include <string>
 #include <cmath>
 #include <unordered_map>
+#include "dev.h"
 
 #ifdef USE_ABI_NAMES
 #define RF_NAMES 1u
@@ -18,8 +20,10 @@
 #define FRF_W 3
 #endif
 
+#define BASE_ADDR 0x80000000
 #define MEM_SIZE 8192
-const uint32_t MEM_ADDR_BITWIDTH = std::log10(MEM_SIZE) + 1;
+#define MEM_ADDR_BITWIDTH 8
+#define UART0_SIZE 12 // 3 32-bit registers
 
 // Decoder types
 enum class opcode{ 
@@ -165,11 +169,17 @@ struct CSR_entry {
 #define W_CSR(expr) \
     write_csr(get_csr_addr(), expr)
 
+struct mem_entry {
+    uint32_t base;
+    uint32_t size;
+    dev *ptr;
+};
+
 //#define CHECK_ADDRESS(address, align)
 
 #define CHECK_ADDRESS(address, align) \
     do { \
-        bool address_out_of_range = (address >= MEM_SIZE); \
+        bool address_out_of_range = (address >= MEM_SIZE + UART0_SIZE); \
         bool address_unaligned = ((address % 4u) + align > 4u); \
         if (address_out_of_range || address_unaligned) { \
             if (address_out_of_range) { \

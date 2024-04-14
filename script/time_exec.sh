@@ -1,7 +1,5 @@
 #!/bin/bash
 
-START_ADDR="0x80000000"
-
 RV_BIN=$1
 # check if the binary exists
 if [ ! -f "$RV_BIN" ]; then
@@ -25,7 +23,7 @@ fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 EXEC_BIN="$REPO_ROOT/src/ama-riscv-sim"
-RUN_SIM="$EXEC_BIN $RV_BIN $START_ADDR"
+RUN_SIM="$EXEC_BIN $RV_BIN"
 
 # get instruction count for the initial iteration
 INST_CNT=$($RUN_SIM | grep "Inst Counter:" | awk '{print $3}')

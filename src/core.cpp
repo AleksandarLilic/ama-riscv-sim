@@ -256,8 +256,7 @@ void core::misc_mem() {
 }
 
 void core::unsupported() {
-    std::cerr << "Unsupported instruction: ";
-    std::cout << FORMAT_INST(inst) << std::endl;
+    std::cerr << "Unsupported instruction: " << FORMAT_INST(inst) << std::endl;
     throw std::runtime_error("Unsupported instruction");
 }
 
