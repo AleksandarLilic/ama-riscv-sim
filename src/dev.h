@@ -8,6 +8,6 @@ class dev {
     public:
         dev() = delete;
         dev(size_t size) : mem(size) {}
-        uint8_t rd(uint32_t address) { return mem[address]; }
+        virtual uint8_t rd(uint32_t address) { return mem[address]; }
         virtual void wr(uint32_t address, uint8_t data) { mem[address] = data; }
 };

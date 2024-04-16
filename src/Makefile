@@ -6,11 +6,12 @@ OBJECTS := $(SOURCES:.cpp=.o)
 DEPS := $(SOURCES:.cpp=.d)
 USER_DEFINES =
 DEFINES =
-DEFINES += -DLOG_EXEC
-DEFINES += -DENABLE_DASM
+#DEFINES += -DLOG_EXEC
+#DEFINES += -DENABLE_DASM
 #DEFINES += -DUSE_ABI_NAMES
-DEFINES += -DENABLE_PROF
-#DEFINES += -CHECK_LOG
+#DEFINES += -DENABLE_PROF
+#DEFINES += -DCHECK_LOG
+#DEFINES += -DUART_INPUT_ENABLED
 
 all: $(TARGET)
 
@@ -23,6 +24,6 @@ $(TARGET): $(OBJECTS)
 -include $(DEPS)
 
 clean:
-	rm -f $(TARGET) $(OBJECTS) $(DEPS)
+	rm -f $(TARGET) $(OBJECTS) $(DEPS) *.log *inst_profiler.json *.i *.s *.d *.ii
 
 .PHONY: all clean
