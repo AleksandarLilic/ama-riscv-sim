@@ -2,10 +2,14 @@
 
 memory::memory(uint32_t base_address, std::string test_bin) :
     mm(MEM_SIZE, test_bin),
+    #ifdef UART_ENABLE
     uart0(UART0_SIZE),
+    #endif
     mem_map {{
         {base_address, MEM_SIZE, &mm},
+        #ifdef UART_ENABLE
         {base_address + MEM_SIZE, UART0_SIZE, &uart0}
+        #endif
     }}
  { 
     dev_ptr = nullptr;

@@ -2,12 +2,16 @@
 
 #include "defines.h"
 #include "main_memory.h"
+#ifdef UART_ENABLE
 #include "uart.h"
+#endif
 
 class memory {
     private:
         main_memory mm;
+        #ifdef UART_ENABLE
         uart uart0;
+        #endif
         dev *dev_ptr;
         std::array<mem_entry, 2> mem_map;
     private:

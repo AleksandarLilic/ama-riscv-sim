@@ -3,7 +3,7 @@
 #include "defines.h"
 #include "dev.h"
 
-#ifdef UART_INPUT_ENABLED
+#ifdef UART_INPUT_ENABLE
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -28,7 +28,7 @@ class uart : public dev {
         static const uint8_t UART_STATUS = 0x00;
         static const uint8_t UART_RX_DATA = 0x04;
         static const uint8_t UART_TX_DATA = 0x08;
-        #ifdef UART_INPUT_ENABLED
+        #ifdef UART_INPUT_ENABLE
         std::mutex mtx;
         std::thread uart_thread;
         std::atomic<bool> uart_running;
@@ -40,7 +40,7 @@ class uart : public dev {
         ~uart();
         uint8_t rd(uint32_t address);
         void wr(uint32_t address, uint8_t data);
-    #ifdef UART_INPUT_ENABLED
+    #ifdef UART_INPUT_ENABLE
     private:
         void uart_stdin(uart_baud_rate baud_rate);
     #endif
