@@ -8,7 +8,8 @@ uart::uart(size_t size) :
     #ifdef UART_INPUT_ENABLED
     uart_running = true;
     uart_in_ready = false;
-    uart_thread = std::thread(&uart::uart_stdin, this, 115200);
+    uart_thread = std::thread(&uart::uart_stdin, this, 
+                              uart_baud_rate::baud_115200);
     std::unique_lock<std::mutex> lock(mtx);
     cv.wait(lock, [this] () { return uart_in_ready.load(); });
     #endif
@@ -45,9 +46,9 @@ inline uint8_t uart::rd(uint32_t address) {
 }
 
 #ifdef UART_INPUT_ENABLED
-void uart::uart_stdin(uint32_t baud_rate) {
+void uart::uart_stdin(uart_baud_rate baud_rate) {
     // assuming 10 bits per character for 8N1
-    auto delay = std::chrono::microseconds(1'000'000 * 10 / baud_rate);
+    auto delay = std::chrono::microseconds(1'000'000 * 10 / (int)baud_rate);
     {
         std::lock_guard<std::mutex> lock(mtx);
         uart_in_ready = true;

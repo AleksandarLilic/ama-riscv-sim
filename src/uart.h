@@ -9,6 +9,16 @@
 #include <atomic>
 #include <condition_variable>
 #include <chrono>
+
+enum class uart_baud_rate {
+    baud_9600 = 9600,
+    baud_19200 = 19200,
+    baud_38400 = 38400,
+    baud_57600 = 57600,
+    baud_115200 = 115200,
+    baud_230400 = 230400,
+    baud_460800 = 460800
+};
 #endif
 
 class uart : public dev {
@@ -32,6 +42,6 @@ class uart : public dev {
         void wr(uint32_t address, uint8_t data);
     #ifdef UART_INPUT_ENABLED
     private:
-        void uart_stdin(uint32_t baud_rate = 9600);
+        void uart_stdin(uart_baud_rate baud_rate);
     #endif
 };
