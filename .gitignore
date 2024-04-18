@@ -27,6 +27,7 @@ sw/**/*.s
 *.gprof
 analysis.gprof.ipynb
 *_inst_profiler.json
+*.nm
 
 # Vim files
 *.swp
