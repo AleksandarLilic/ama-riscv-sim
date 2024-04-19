@@ -5,7 +5,6 @@ _start: li x3, 0
 csrwi 0x340, 0;
 li x5, 0 # override spike
 
-
 csr_rwi:
 csrwi 0x340, 4 # x0 is rd
 li x11, 19
@@ -426,6 +425,10 @@ ecall
 pass:
 li x28, 0x1
 csrw 0x340, x28;
+nop
+nop
+nop
+nop
 ecall
 
 .data
