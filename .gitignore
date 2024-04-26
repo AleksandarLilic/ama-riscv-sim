@@ -26,7 +26,7 @@ sw/**/*.s
 *.man
 *.gprof
 analysis.gprof.ipynb
-*_inst_profiler.json
+*_inst_profiler.*
 *.nm
 
 # Vim files
