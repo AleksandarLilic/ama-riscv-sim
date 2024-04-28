@@ -1,0 +1,6 @@
+{
+    "cpu_frequency_mhz" : 100,
+    "pipeline_latency" : 5,
+    "branch_latency" : 2,
+    "jump_latency" : 2
+}

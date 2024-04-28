@@ -5,7 +5,17 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_HWPM = os.path.join(SCRIPT_PATH, "hw_perf_metrics.json")
 PROFILER_ENDS = "_inst_profiler.json"
+ARITH = "ARITH"
+MEM = "MEM"
+BRANCH = "BRANCH"
+JUMP = "JUMP"
+CSR = "CSR"
+ENV = "ENV"
+NOP = "NOP"
+FENCE = "FENCE"
 MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
@@ -15,16 +25,16 @@ inst_t_mem = {
 }
 
 inst_t = {
-    "ARITH": ["add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or", "and", 
-              "addi", "slli", "srli", "srai", "slti", "sltiu", "xori", "ori", "andi",
-              "lui", "auipc"],
-    "MEM": inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
-    "BRANCH": ["beq", "bne", "blt", "bge", "bltu", "bgeu"],
-    "JUMP": ["jalr", "jal"],
-    "CSR": ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
-    "ENV": ["ecall", "ebreak"],
-    "NOP": ["nop"],
-    "FENCE": ["fence.i"],
+    ARITH: ["add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or", "and", 
+            "addi", "slli", "srli", "srai", "slti", "sltiu", "xori", "ori", "andi",
+            "lui", "auipc"],
+    MEM: inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
+    BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu"],
+    JUMP: ["jalr", "jal"],
+    CSR: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
+    ENV: ["ecall", "ebreak"],
+    NOP: ["nop"],
+    FENCE: ["fence.i"],
 }
 
 # create a reverse map for instruction types
@@ -71,24 +81,46 @@ def find_gs(x):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze profiling log")
-    parser.add_argument('-l', '--json_log', type=str, help="JSON file with profiling data")
-    parser.add_argument('-d', '--json_dir', type=str, help="Directory with JSON files with profiling data")
+    parser.add_argument('-l', '--json_log', type=str, help="JSON log with profiling data")
+    parser.add_argument('-d', '--json_dir', type=str, help="Directory with JSON logs with profiling data")
     parser.add_argument('-t', '--top', type=int, help="Number of N most common instructions to display. Default is all.")
-    #parser.add_argument('-e', '--exclude', type=str, nargs='+', help="Exclude specific instructions")
+    #parser.add_argument('--exclude', type=str, nargs='+', help="Exclude specific instructions")
     #parser.add_argument('--exclude_type', type=str, nargs='+', help="Exclude specific instruction types")
-    #parser.add_argument('-i', '--include', type=str, nargs='+', help="Include only specific instructions")
+    #parser.add_argument('--include', type=str, nargs='+', help="Include only specific instructions")
     #parser.add_argument('--include_type', type=str, nargs='+', help="Include only specific instruction types")
-    parser.add_argument('--highlight', '--hi', type=str, nargs='+', help="Highlight specific instructions")
-    parser.add_argument('--silent', action='store_true', help="Don't display the chart(s) in pop-up window")
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions")
+    parser.add_argument('--silent', action='store_true', help="Don't display chart(s) in pop-up window")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     #parser.add_argument('--save_pdf', action='store_true', help="Save charts as PDF")
     #parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
     parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single json file is provided")
     #parser.add_argument('-o', '--output', type=str, help="Output directory for the combined charts/data. Ignored if single json file is provided. Default is current directory. Standalone charts/data will be saved in the same directory as the source json file.")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed")
-    #parser.add_arument('--estimate_perf', type=str, help="Estimate performance based on instruction count. Requires JSON file with HW performance metrics")
+    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'.")
     
     return parser.parse_args()
+
+def estimate_perf(df, hwpm):
+    expected_metrics = ["cpu_frequency_mhz", "pipeline_latency", 
+                        "branch_latency", "jump_latency"]
+    # check if all expected metrics are present
+    for metric in expected_metrics:
+        if metric not in hwpm:
+            raise ValueError(f"Missing metric '{metric}' in " + \
+                              "HW performance metrics JSON file")
+    
+    branches = df[df['i_type'] == BRANCH]['count'].sum()
+    jumps = df[df['i_type'] == JUMP]['count'].sum()
+    all_inst = df['count'].sum()
+    other_inst = all_inst - branches - jumps
+    cycles = hwpm["pipeline_latency"] + other_inst + \
+             branches * hwpm["branch_latency"] + \
+             jumps * hwpm["jump_latency"]
+    cpi = cycles / all_inst
+    cpu_period = 1 / (hwpm["cpu_frequency_mhz"])
+    exec_time_us = cycles * cpu_period
+    mips = all_inst / exec_time_us
+    return hwpm["cpu_frequency_mhz"], cpi, exec_time_us, mips
 
 def analyze_log(df, hl_groups, log, args, combined=False):
     title = os.path.basename(log.replace(PROFILER_ENDS, ""))
@@ -108,6 +140,12 @@ def analyze_log(df, hl_groups, log, args, combined=False):
     if not args.allow_zero:
         df = df[df['count'] != 0]
 
+    hw_perf = []
+    if args.estimate_perf:
+        with open(args.estimate_perf, 'r') as file:
+            hw_perf_metrics = json.load(file)
+            hw_perf = estimate_perf(df, hw_perf_metrics)
+    
     # add a bar chart
     ROWS = 2
     COLS = 1
@@ -118,7 +156,11 @@ def analyze_log(df, hl_groups, log, args, combined=False):
                            gridspec_kw=find_gs(len(df)+len(df_g)))
     suptitle_str = f"Execution profile for {title}"
     suptitle_str += f"\nInstructions profiled: {df['count'].sum()}"
-    #suptitle_str += f"\nEstimated HW perf: ..."
+    if args.estimate_perf and not combined:
+        suptitle_str += f"\nEstimated HW perf at {hw_perf[0]}MHz: "
+        suptitle_str += f"CPI={hw_perf[1]:.3f}, exec_time={hw_perf[2]:.1f}us, "
+        suptitle_str += f"MIPS={hw_perf[3]:.1f}"
+    
     fig.suptitle(suptitle_str)
     rect.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
     rect.append(ax[1].barh(df_g.index, df_g['count'], color=colors["blue_base"]))
@@ -182,16 +224,19 @@ def main():
             raise FileNotFoundError(f"Directory {args.json_dir} not found")
         all_in_dir = glob.glob(os.path.join(args.json_dir, "*" + PROFILER_ENDS))
         if not all_in_dir:
-            raise FileNotFoundError(f"No JSON files found in directory {args.json_dir}")
+            raise FileNotFoundError(f"No JSON files found in directory " + \
+                                    f"{args.json_dir}")
         all_logs.extend(all_in_dir)
 
     hl_groups = []
     if not (args.highlight == None):
         if len(args.highlight) > len(highlight_colors):
-            raise ValueError(f"Too many instructions to highlight, max is {len(highlight_colors)}, got {len(args.highlight)}")
+            raise ValueError(f"Too many instructions to highlight " + \
+                             f"max is {len(highlight_colors)}, " + \
+                             f"got {len(args.highlight)}")
         else:
-            hl_groups = [args.highlight.split(",") for args.highlight in args.highlight]
-
+            hl_groups = [args.highlight.split(",") 
+                         for args.highlight in args.highlight]
 
     df_arr = []
     for log in all_logs:
@@ -220,7 +265,8 @@ def main():
             df_combined = df_combined.drop(columns=['i_mem_type'])
         df_combined = df_combined.groupby('name', as_index=False).sum()
         df_combined = df_combined.sort_values(by='count', ascending=True)
-        analyze_log(df_combined, hl_groups, f"all workloads", args, combined=True)
+        analyze_log(df_combined, hl_groups, f"all workloads", 
+                    args, combined=True)
 
 if __name__ == "__main__":
     main()
