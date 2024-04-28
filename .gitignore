@@ -26,8 +26,11 @@ sw/**/*.s
 *.man
 *.gprof
 analysis.gprof.ipynb
-*_inst_profiler.*
+*inst_profiler.*
 *.nm
+
+# python files
+__pycache__/
 
 # Vim files
 *.swp
