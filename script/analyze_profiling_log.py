@@ -4,6 +4,7 @@ import json
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_HWPM = os.path.join(SCRIPT_PATH, "hw_perf_metrics.json")
@@ -36,6 +37,12 @@ inst_t = {
     NOP: ["nop"],
     FENCE: ["fence.i"],
 }
+
+all_inst = []
+for k, v in inst_t.items():
+    all_inst.extend(v)
+
+all_inst_types = list(inst_t.keys()) + list(inst_t_mem.keys())
 
 # create a reverse map for instruction types
 inst_t_map = {}
@@ -79,24 +86,34 @@ def find_gs(x):
         'top': round(m2 * x + b2, prec)
     }
 
+def inst_exists(inst):
+    if inst not in all_inst:
+        raise ValueError(f"Invalid instruction '{inst}'. " + \
+                         f"Available instructions are: {', '.join(all_inst)}")
+    return inst
+
+def inst_type_exists(inst_type):
+    if inst_type not in all_inst_types:
+        raise ValueError(f"Invalid instruction type '{inst_type}'. " + \
+                         f"Available types are: {', '.join(all_inst_types)}")
+    return inst_type
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze profiling log")
     parser.add_argument('-l', '--json_log', type=str, help="JSON log with profiling data")
     parser.add_argument('-d', '--json_dir', type=str, help="Directory with JSON logs with profiling data")
-    parser.add_argument('-t', '--top', type=int, help="Number of N most common instructions to display. Default is all.")
-    #parser.add_argument('--exclude', type=str, nargs='+', help="Exclude specific instructions")
-    #parser.add_argument('--exclude_type', type=str, nargs='+', help="Exclude specific instruction types")
-    #parser.add_argument('--include', type=str, nargs='+', help="Include only specific instructions")
-    #parser.add_argument('--include_type', type=str, nargs='+', help="Include only specific instruction types")
-    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions")
-    parser.add_argument('--silent', action='store_true', help="Don't display chart(s) in pop-up window")
-    parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
-    #parser.add_argument('--save_pdf', action='store_true', help="Save charts as PDF")
-    #parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
-    parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single json file is provided")
-    #parser.add_argument('-o', '--output', type=str, help="Output directory for the combined charts/data. Ignored if single json file is provided. Default is current directory. Standalone charts/data will be saved in the same directory as the source json file.")
+    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions")
+    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}")
+    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all.")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed")
-    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'.")
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions")
+    parser.add_argument('-s-', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
+    parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
+    parser.add_argument('--save_pdf', type=str, nargs='?', const=os.getcwd(), default=None, help="Save charts as PDF. Saved as a single PDF file if multiple charts are generated. Requires path to save the PDF file. Default is current directory.")
+    parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
+    parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided")
+    parser.add_argument('-o', '--output', type=str, default=os.getcwd(), help="Output directory for the combined PNG and CSV. Ignored if single json file is provided. Default is current directory. Standalone PNGs and CSVs will be saved in the same directory as the source json file irrespective of this option.")
+    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation.")
     
     return parser.parse_args()
 
@@ -124,52 +141,63 @@ def estimate_perf(df, hwpm):
 
 def analyze_log(df, hl_groups, log, args, combined=False):
     title = os.path.basename(log.replace(PROFILER_ENDS, ""))
-
-    # separate the instructions by type
+    inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
-    df_g = df[['i_type', 'count']].groupby('i_type').sum()
-    df_g = df_g.sort_values(by='count', ascending=True)
-
-    # separate the memory instructions by type
     df['i_mem_type'] = df['name'].map(inst_t_mem_map)
-    df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
-    df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
 
+    if args.estimate_perf:
+        with open(args.estimate_perf, 'r') as file:
+            hw_perf_metrics = json.load(file)
+            hw_perf = estimate_perf(df, hw_perf_metrics)
+
+    # filter out instructions if needed
+    if args.exclude:
+        df = df[~df['name'].isin(args.exclude)]
+    
+    if args.exclude_type:
+        df = df[~df['i_type'].isin(args.exclude_type)]
+    
     if args.top:
         df = df.tail(args.top)
     if not args.allow_zero:
         df = df[df['count'] != 0]
 
-    hw_perf = []
-    if args.estimate_perf:
-        with open(args.estimate_perf, 'r') as file:
-            hw_perf_metrics = json.load(file)
-            hw_perf = estimate_perf(df, hw_perf_metrics)
+    # separate the instructions by type
+    df_g = df[['i_type', 'count']].groupby('i_type').sum()
+    df_g = df_g.sort_values(by='count', ascending=True)
+
+    # separate the memory instructions by type
+    df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
+    df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
     
     # add a bar chart
     ROWS = 2
     COLS = 1
-    rect = []
+    box = []
     fig, ax = plt.subplots(ROWS, COLS,
                            figsize=(COLS*10, ROWS*(len(df)+len(df_g))/6),
                            height_ratios=(len(df)*.95, len(df_g)),
                            gridspec_kw=find_gs(len(df)+len(df_g)))
     suptitle_str = f"Execution profile for {title}"
-    suptitle_str += f"\nInstructions profiled: {df['count'].sum()}"
+    #suptitle_str += f"\nInstructions profiled: {df['count'].sum()}"
+    suptitle_str += f"\nInstructions profiled: {inst_profiled}"
+    if args.exclude or args.exclude_type:
+        suptitle_str += f" ({df['count'].sum()} shown, "
+        suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
     if args.estimate_perf and not combined:
-        suptitle_str += f"\nEstimated HW perf at {hw_perf[0]}MHz: "
-        suptitle_str += f"CPI={hw_perf[1]:.3f}, exec_time={hw_perf[2]:.1f}us, "
+        suptitle_str += f"\nEstimated HW performance at {hw_perf[0]}MHz: "
+        suptitle_str += f"CPI={hw_perf[1]:.2f}, exec_time={hw_perf[2]:.1f}us, "
         suptitle_str += f"MIPS={hw_perf[3]:.1f}"
     
     fig.suptitle(suptitle_str)
-    rect.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
-    rect.append(ax[1].barh(df_g.index, df_g['count'], color=colors["blue_base"]))
+    box.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
+    box.append(ax[1].barh(df_g.index, df_g['count'], color=colors["blue_base"]))
     y_ax0_offset = min(0.025, len(df)/2_000)
     ax[0].margins(y=0.03-y_ax0_offset)
     ax[1].margins(y=0.03)
 
     for i in range(ROWS):
-        ax[i].bar_label(rect[i], padding=3)
+        ax[i].bar_label(box[i], padding=3)
         ax[i].set_xlabel('Count')
         ax[i].grid(axis='x')
         ax[i].margins(x=0.06)
@@ -177,11 +205,12 @@ def analyze_log(df, hl_groups, log, args, combined=False):
     # highlight specific instructions, if any
     hc = 0
     for hl_inst in hl_groups:
-        for i, r in enumerate(rect[0]):
+        for i, r in enumerate(box[0]):
             if df.iloc[i]['name'] in hl_inst:
                 r.set_color(highlight_colors[hc])
         hc += 1
     
+    # add memory instructions breakdown, if any
     df_mem_g = df_mem_g[df_mem_g['count'] != 0] # never label if count is zero
     if len(df_mem_g) > 0:
         mem_type_index = df_g.index.get_loc("MEM")
@@ -195,21 +224,14 @@ def analyze_log(df, hl_groups, log, args, combined=False):
 
         ax[1].legend(loc='lower right')
 
-    # handle display and saving
+    # handle display
     if not args.silent:
-        if combined:
-            plt.show()
-        else:
-            plt.show()
-    
-    if args.save_png:
-        plt.savefig(log.replace(".json", ".png"))
+        plt.show()
     
     plt.close()
+    return fig
 
-def main():
-    args = parse_args()
-
+def run(args):
     if not args.json_log and not args.json_dir:
         raise ValueError("No JSON file or directory provided")
     
@@ -238,7 +260,11 @@ def main():
             hl_groups = [args.highlight.split(",") 
                          for args.highlight in args.highlight]
 
+    if not os.path.exists(args.output):
+        raise FileNotFoundError(f"Output directory {args.output} not found")
+
     df_arr = []
+    fig_arr = []
     for log in all_logs:
         with open(log, 'r') as file:
             data = json.load(file)
@@ -254,10 +280,15 @@ def main():
             df_arr.append(df)
 
             if not args.combined_only:
-                analyze_log(df, hl_groups, log, args)
+                fig_arr.append([
+                    os.path.realpath(log),
+                    analyze_log(df, hl_groups, log, args)
+                ])
     
     # combine all the data
+    combined_fig = None
     if len(all_logs) > 1:
+        title_combined = "all_workloads"
         df_combined = pd.concat(df_arr)
         if 'i_type' in df_combined.columns:
             df_combined = df_combined.drop(columns=['i_type'])
@@ -265,8 +296,45 @@ def main():
             df_combined = df_combined.drop(columns=['i_mem_type'])
         df_combined = df_combined.groupby('name', as_index=False).sum()
         df_combined = df_combined.sort_values(by='count', ascending=True)
-        analyze_log(df_combined, hl_groups, f"all workloads", 
-                    args, combined=True)
-
+        combined_fig = [
+            f"{title_combined}{PROFILER_ENDS}",
+            analyze_log(df_combined, hl_groups, title_combined, args, True)
+        ]
+        
+    if combined_fig:
+        combined_out_path = os.path.join(
+            args.output, 
+            f"{title_combined}{PROFILER_ENDS}".replace(" ", "_")
+        )
+    
+    if args.save_png: # each chart is saved as a separate PNG file
+        for name, fig in fig_arr:
+            fig.savefig(name.replace(" ", "_").replace(".json", ".png"))
+            combined_fig[1].savefig(combined_out_path.replace(".json", ".png"))
+    
+    if combined_fig: # add combined chart as the first one in the list (ie pdf)
+        fig_arr.insert(0, combined_fig)
+    
+    if args.save_pdf: # all charts are saved in a single PDF file
+        pdf_path =  os.path.join(args.save_pdf, 
+                                 PROFILER_ENDS[1:].replace(".json", ".pdf"))
+        with PdfPages(pdf_path) as pdf:
+            total_pages = len(fig_arr)
+            page = 1
+            for name, fig in fig_arr:
+                fig.supxlabel(f"Page {page} of {total_pages}", 
+                              x=0.93, fontsize=10)
+                page += 1
+                pdf.savefig(fig)
+    
+    if args.save_csv: # each log is saved as a separate CSV file
+        for log, df in zip(all_logs, df_arr):
+            df.to_csv(log.replace(".json", ".csv"), index=False)
+        
+        if len(all_logs) > 1: # and also saved as a combined CSV file
+            df_combined.to_csv(combined_out_path.replace(".json", ".csv"),
+                               index=False)
+    
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    run(args)
