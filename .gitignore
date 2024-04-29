@@ -27,6 +27,7 @@ sw/**/*.s
 *.gprof
 analysis.gprof.ipynb
 *inst_profiler.*
+*pc_profiler.*
 *.nm
 
 # python files
