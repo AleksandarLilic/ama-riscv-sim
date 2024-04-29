@@ -3,7 +3,8 @@
 profiler::profiler(std::string log_name) {
     inst_cnt = 0;
     this->log_name = log_name;
-    
+    pc_hist.fill(0);
+
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_add)] = {"add", 0};
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_sub)] = {"sub", 0};
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_sll)] = {"sll", 0};
@@ -96,8 +97,12 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
     }
 }
 
+void profiler::log_pc(uint32_t pc) {
+    pc_hist[pc]++;
+}
+
 void profiler::log_to_file() {
-    profiled_inst_cnt = 0;
+    uint32_t profiled_inst_cnt = 0;
     out_stream.open(log_name + "_inst_profiler.json");
     out_stream << "{\n";
     for (auto &i : prof_alr_arr) {
@@ -131,7 +136,7 @@ void profiler::log_to_file() {
     
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
         inst_prof_j& e = prof_j_arr[i];
-        out_stream << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd, 
+        out_stream << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
                                    e.count_not_taken, e.count_not_taken_fwd);
         out_stream << std::endl;
         profiled_inst_cnt += e.count_taken + e.count_not_taken;
@@ -140,10 +145,25 @@ void profiler::log_to_file() {
     out_stream << "\"_profiled_instructions\": " << profiled_inst_cnt;
     out_stream << "\n}\n";
     out_stream.close();
-    info();
+
+    uint32_t executed_pcs = 0;
+    out_stream.open(log_name + "_pc_profiler.json");
+    out_stream << "{\n";
+    for (size_t i = 0; i < pc_hist.size(); i++) {
+        out_stream << JSON_ENTRY(i, pc_hist[i]) << std::endl;
+        executed_pcs += (pc_hist[i] > 0);
+    }
+    out_stream << "\"_executed_pcs\": " << profiled_inst_cnt;
+    out_stream << "\n}\n";
+    out_stream.close();
+    #ifndef DPI
+    info(inst_cnt, profiled_inst_cnt);
+    #endif
 }
 
-void profiler::info() {
-    std::cout << "Profiler: instructions captured: " << inst_cnt << std::endl;
-    std::cout << "Profiler: instructions profiled: " << profiled_inst_cnt << std::endl;
+void profiler::info(uint32_t inst_cnt, uint32_t profiled_inst_cnt){
+    std::cout << "Profiler: instructions captured: " 
+              << inst_cnt << std::endl;
+    std::cout << "Profiler: instructions profiled: "
+              << profiled_inst_cnt << std::endl;
 }

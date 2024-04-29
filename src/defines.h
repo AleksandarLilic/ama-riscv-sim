@@ -21,7 +21,7 @@
 #endif
 
 #define BASE_ADDR 0x80000000
-#define MEM_SIZE 8192
+#define MEM_SIZE 16384
 #define MEM_ADDR_BITWIDTH 8
 #define UART0_SIZE 12 // 3 32-bit registers
 

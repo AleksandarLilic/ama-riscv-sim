@@ -30,6 +30,7 @@ void core::exec_inst() {
     inst = mem->get_inst(pc);
     #ifdef ENABLE_PROF
     prof.new_inst(inst);
+    prof.log_pc((pc - BASE_ADDR)>>2);
     #endif
     switch (get_opcode()) {
         CASE_DECODER(al_reg)
