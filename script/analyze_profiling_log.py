@@ -1,14 +1,16 @@
 import os
+import sys
 import glob
 import json
 import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_HWPM = os.path.join(SCRIPT_PATH, "hw_perf_metrics.json")
-PROFILER_ENDS = "_inst_profiler.json"
+PROFILER_ENDS = "_profiler.json"
 ARITH = "ARITH"
 MEM = "MEM"
 BRANCH = "BRANCH"
@@ -19,6 +21,10 @@ NOP = "NOP"
 FENCE = "FENCE"
 MEM_S = "MEM_S"
 MEM_L = "MEM_L"
+
+INST_BYTES = 4
+CACHE_LINE_BYTES = 64//INST_BYTES
+BASE_ADDR = 0x80000000
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw"],
@@ -86,6 +92,18 @@ def find_gs(x):
         'top': round(m2 * x + b2, prec)
     }
 
+def get_norm_pc(pc):
+    return int(pc,16) - int(BASE_ADDR)
+
+def get_count(parts, df):
+    pc = get_norm_pc(parts[0].strip())
+    count_series  = df.loc[df["pc_real"] == pc, "count"]
+    count = count_series.squeeze() if not count_series.empty else 0
+    return count, pc
+
+def num_to_hex(val, pos):
+    return f"0x{int(val*INST_BYTES):03X}"
+
 def inst_exists(inst):
     if inst not in all_inst:
         raise ValueError(f"Invalid instruction '{inst}'. " + \
@@ -99,21 +117,34 @@ def inst_type_exists(inst_type):
     return inst_type
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Analyze profiling log")
-    parser.add_argument('-l', '--json_log', type=str, help="JSON log with profiling data")
-    parser.add_argument('-d', '--json_dir', type=str, help="Directory with JSON logs with profiling data")
-    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions")
-    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}")
-    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all.")
-    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed")
-    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions")
-    parser.add_argument('-s-', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
+    parser = argparse.ArgumentParser(description="Analyze profiling instruction and PC log")
+    # either
+    parser.add_argument('-i', '--inst_log', type=str, help="JSON instruction log with profiling data")
+    parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
+    # or
+    parser.add_argument('-p', '--pc_log', type=str, help="JSON PC log with profiling data")
+    parser.add_argument('--pc_dir', type=str, help="Directory with JSON PC logs with profiling data")
+    
+    # instruction log only options
+    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction log only option")
+    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction log only option")
+    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction log only option")
+    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction log only option")
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Instruction log only option")
+    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation. Instruction log only option")
+    
+    # pc log only options
+    parser.add_argument('--dasm', type=str, help="Disassembly dasm file to backannotate the PC log. PC log only option")
+    #parser.add_argument('--pc_begin', type=str, help="Start PC address to filter the PC log. PC log only option")
+    #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC log. PC log only option")
+
+    # common options
+    parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_pdf', type=str, nargs='?', const=os.getcwd(), default=None, help="Save charts as PDF. Saved as a single PDF file if multiple charts are generated. Requires path to save the PDF file. Default is current directory.")
     parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
     parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided")
     parser.add_argument('-o', '--output', type=str, default=os.getcwd(), help="Output directory for the combined PNG and CSV. Ignored if single json file is provided. Default is current directory. Standalone PNGs and CSVs will be saved in the same directory as the source json file irrespective of this option.")
-    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation.")
     
     return parser.parse_args()
 
@@ -137,9 +168,9 @@ def estimate_perf(df, hwpm):
     cpu_period = 1 / (hwpm["cpu_frequency_mhz"])
     exec_time_us = cycles * cpu_period
     mips = all_inst / exec_time_us
-    return hwpm["cpu_frequency_mhz"], cpi, exec_time_us, mips
+    return hwpm["cpu_frequency_mhz"], cycles, cpi, exec_time_us, mips
 
-def analyze_log(df, hl_groups, log, args, combined=False):
+def analyze_inst_log(df, hl_groups, log, args, combined=False):
     title = os.path.basename(log.replace(PROFILER_ENDS, ""))
     inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
@@ -179,17 +210,16 @@ def analyze_log(df, hl_groups, log, args, combined=False):
                            height_ratios=(len(df)*.95, len(df_g)),
                            gridspec_kw=find_gs(len(df)+len(df_g)))
     suptitle_str = f"Execution profile for {title}"
-    #suptitle_str += f"\nInstructions profiled: {df['count'].sum()}"
     suptitle_str += f"\nInstructions profiled: {inst_profiled}"
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
     if args.estimate_perf and not combined:
         suptitle_str += f"\nEstimated HW performance at {hw_perf[0]}MHz: "
-        suptitle_str += f"CPI={hw_perf[1]:.2f}, exec_time={hw_perf[2]:.1f}us, "
-        suptitle_str += f"MIPS={hw_perf[3]:.1f}"
+        suptitle_str += f"cycles = {hw_perf[1]:.0f}, CPI={hw_perf[2]:.2f}, exec time={hw_perf[3]:.1f}us, "
+        suptitle_str += f"MIPS={hw_perf[4]:.1f}"
     
-    fig.suptitle(suptitle_str)
+    fig.suptitle(suptitle_str, size=12)
     box.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
     box.append(ax[1].barh(df_g.index, df_g['count'], color=colors["blue_base"]))
     y_ax0_offset = min(0.025, len(df)/2_000)
@@ -231,37 +261,205 @@ def analyze_log(df, hl_groups, log, args, combined=False):
     plt.close()
     return fig
 
-def run(args):
-    if not args.json_log and not args.json_dir:
-        raise ValueError("No JSON file or directory provided")
-    
-    all_logs = []
-    if args.json_log:
-        if not os.path.exists(args.json_log):
-            raise FileNotFoundError(f"File {args.json_log} not found")
-        all_logs.append(args.json_log)
-    
-    if args.json_dir:
-        if not os.path.isdir(args.json_dir):
-            raise FileNotFoundError(f"Directory {args.json_dir} not found")
-        all_in_dir = glob.glob(os.path.join(args.json_dir, "*" + PROFILER_ENDS))
-        if not all_in_dir:
-            raise FileNotFoundError(f"No JSON files found in directory " + \
-                                    f"{args.json_dir}")
-        all_logs.extend(all_in_dir)
+def run_inst_log(ar, hl_groups, log, args):
+    df = pd.DataFrame(ar, columns=['name', 'count'])
+    df = df.sort_values(by='count', ascending=True)
+    if not args.combined_only:
+        fig = analyze_inst_log(df, hl_groups, log, args)
+    return df, fig
 
-    hl_groups = []
-    if not (args.highlight == None):
-        if len(args.highlight) > len(highlight_colors):
-            raise ValueError(f"Too many instructions to highlight " + \
-                             f"max is {len(highlight_colors)}, " + \
-                             f"got {len(args.highlight)}")
-        else:
-            hl_groups = [args.highlight.split(",") 
-                         for args.highlight in args.highlight]
+def backannotate_dasm(log, df):
+    symbols = {}
+    dasm_ext = os.path.splitext(log)[1]
+    with open(log, 'r') as infile, \
+    open(log.replace(dasm_ext, '.prof' + dasm_ext), 'w') as outfile:
+        current_symbol = None
+        append = False
+        NUM_DIGITS = len(str(df['count'].max())) + 1
+        
+        for line in infile:
+            if line.startswith('Disassembly of section .text:'):
+                append = True
+                outfile.write(line)
+                continue
+            elif line.startswith('Disassembly of section .'):
+                append = False
+            
+            if append and line.strip():
+                parts = line.split(':')
+                
+                if len(parts) == 2 and parts[1].startswith('\n'):
+                    # detected symbol
+                    parts = parts[0].split(" ")
+                    pc_start = get_norm_pc(parts[0].strip())
+                    symbol_name = parts[1][1:-1] # remove <> from symbol name
+                    if current_symbol:
+                        symbols[current_symbol]['pc_end'] = hex(previous_pc)
+                    current_symbol = symbol_name
+                    symbols[current_symbol] = {
+                        'pc_start': hex(pc_start),
+                        "pc_end": None,
+                        "acc_count": 0
+                    }
+                    previous_pc = pc_start
+                
+                if len(parts) == 2 and parts[1].startswith('\t'):
+                    # detected instruction
+                    count, previous_pc = get_count(parts, df)
+                    outfile.write("{:{}} {}".format(count, NUM_DIGITS, line))
+                    symbols[current_symbol]['acc_count'] += count
+                
+                else: # not an instruction
+                    outfile.write(line)
+                
+            else: # not .text section
+                outfile.write(line)
+        
+        # write the last symbol
+        symbols[current_symbol]['pc_end'] = hex(previous_pc)
+    
+    return symbols
+
+def run_pc_log(ar, log, args):
+    title = os.path.basename(log.replace(PROFILER_ENDS, ""))
+    df = pd.DataFrame(ar, columns=['pc', 'count'])
+    df['pc'] = df['pc'].astype(int)
+    df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
+    df['pc_real'] = df['pc'] * INST_BYTES
+    df['pc_real_hex'] = df['pc_real'].apply(lambda x: f'{x:08x}')
+
+    # find the first non-zero element in the 'count' column
+    #first_non_zero = df['count'].ne(0).idxmax()
+    # reverse df and find the first non-zero element again
+    last_non_zero = df['count'][::-1].ne(0).idxmax()
+    # FIXME when filtering is implemented, assumes exec starts from 0 for now
+    df = df.loc[0:last_non_zero]
+
+    # TODO: consider option to reverse the PC log so it grows down from the top
+    # like .dump does
+
+    # slice df based on the input
+    # TODO filtering as a feature, has to be taken into account when 
+    # labeling the chart and when backannotating the .dasm file
+    #df = df.loc[
+    #    (df.pc >= (int("0x220", 16)//4)) & 
+    #    (df.pc < (int("0x300", 16)//4))
+    #]
+
+    symbols = {}
+    if args.dasm:
+        symbols = backannotate_dasm(args.dasm, df)
+
+    # TODO: should probably limit the number of PC entries to display or 
+    # auto enlarge the figure size (but up to a point, then limit anyways)
+    gs = {'top': 0.93, 'bottom': 0.07}
+    fig, ax = plt.subplots(figsize=(12,15), gridspec_kw=gs)
+    ax.barh(df['pc'], df['count'], height=1, alpha=0.8)
+    #       , edgecolor=(0, 0, 0, 0.1))
+    ax.set_xscale('log')
+
+    # update axis
+    #formatter = LogFormatter(base=10, labelOnlyBase=True)
+    formatter = LogFormatterSciNotation(base=10)
+    ax.xaxis.set_major_formatter(formatter)
+    ax.yaxis.set_major_locator(MultipleLocator(32//INST_BYTES))
+    ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
+    ax.set_xlim(left=0.5)
+    ax.margins(y=0.01, x=0.1)
+
+    # add a second x-axis
+    ax_top = ax.twiny()
+    ax_top.set_xlim(ax.get_xlim())
+    ax_top.set_xscale('log')
+    ax_top.xaxis.set_ticks_position('top')
+    ax_top.xaxis.set_major_formatter(formatter)
+
+    # label
+    ax.set_xlabel("Count (log scale)")
+    ax.set_ylabel("Program Counter")
+    ax.set_title(f"PC frequency profile for {title}")
+
+    ax.grid(axis='x', linestyle='-', alpha=1, which='major')
+    ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
+
+    # add cache line coloring
+    for i in range(df.index.min(), df.index.max(), CACHE_LINE_BYTES):
+        color = 'green' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'white'
+        ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.1)
+
+    # add lines for symbols, if any
+    text_offset = round(df.index.max()/160,1)
+    for sym in symbols:
+        pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
+        pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
+        ax.axhline(y=pc_start-.5, color='black', linestyle='-', alpha=0.5)
+        ax.text(df['count'].max()/4, pc_start + text_offset,
+                f"^ {sym} ({symbols[sym]['acc_count']})", color='black',
+                fontsize=9, ha='left', va='center',
+                bbox=dict(facecolor='white', alpha=0.6, linewidth=0, pad=1)
+                )
+
+    if symbols:
+        # add line for the last symbol
+        ax.axhline(y=pc_end+.5, color='black', linestyle='-', alpha=0.5)    
+
+    return df, fig
+
+def run_main(args):
+    inst_args = [args.inst_log, args.inst_dir]
+    pc_args = [args.pc_log, args.pc_dir]
+    run_inst = any(inst_args)
+    run_pc = any(pc_args)
+
+    if run_inst and run_pc:
+        raise ValueError("Inst and pc options cannot be mixed")
+
+    if not run_inst and not run_pc:
+        raise ValueError("No JSON instruction or PC log provided")
 
     if not os.path.exists(args.output):
         raise FileNotFoundError(f"Output directory {args.output} not found")
+    
+    if args.pc_dir and args.dasm:
+        raise ValueError("Cannot backannotate multiple PC logs at once. " + \
+                         "Provide a single PC log file to backannotate or " + \
+                         "remove the --dasm option")
+    
+    if run_pc:
+        args_log = args.pc_log
+        args_dir = args.pc_dir
+        profiler_str = "pc"
+    else:
+        args_log = args.inst_log
+        args_dir = args.inst_dir
+        profiler_str = "inst"
+    
+    all_logs = []
+    if args_log:
+        if not os.path.exists(args_log):
+            raise FileNotFoundError(f"File {args_log} not found")
+        all_logs.append(args_log)
+    
+    if args_dir:
+        if not os.path.isdir(args_dir):
+            raise FileNotFoundError(f"Directory {args_dir} not found")
+        all_in_dir = glob.glob(os.path.join(args_dir, 
+                                            "*" + profiler_str + PROFILER_ENDS))
+        if not all_in_dir:
+            raise FileNotFoundError(f"No JSON files found in directory " + \
+                                    f"{args_dir}")
+        all_logs.extend(all_in_dir)
+
+    if run_inst:
+        hl_groups = []
+        if not (args.highlight == None):
+            if len(args.highlight) > len(highlight_colors):
+                raise ValueError(f"Too many instructions to highlight " + \
+                                f"max is {len(highlight_colors)}, " + \
+                                f"got {len(args.highlight)}")
+            else:
+                hl_groups = [args.highlight.split(",") 
+                            for args.highlight in args.highlight]
 
     df_arr = []
     fig_arr = []
@@ -275,19 +473,18 @@ def run(args):
                     continue
                 ar.append([key, data[key]['count']])
 
-            df = pd.DataFrame(ar, columns=['name', 'count'])
-            df = df.sort_values(by='count', ascending=True)
-            df_arr.append(df)
+            if run_inst:
+                df, fig = run_inst_log(ar, hl_groups, log, args)
+                df_arr.append(df)
+                fig_arr.append([os.path.realpath(log),fig])
+            else:
+                df, fig = run_pc_log(ar, log, args)
+                df_arr.append(df)
+                fig_arr.append([os.path.realpath(log),fig])
 
-            if not args.combined_only:
-                fig_arr.append([
-                    os.path.realpath(log),
-                    analyze_log(df, hl_groups, log, args)
-                ])
-    
     # combine all the data
     combined_fig = None
-    if len(all_logs) > 1:
+    if len(all_logs) > 1 and run_inst:
         title_combined = "all_workloads"
         df_combined = pd.concat(df_arr)
         if 'i_type' in df_combined.columns:
@@ -298,7 +495,7 @@ def run(args):
         df_combined = df_combined.sort_values(by='count', ascending=True)
         combined_fig = [
             f"{title_combined}{PROFILER_ENDS}",
-            analyze_log(df_combined, hl_groups, title_combined, args, True)
+            analyze_inst_log(df_combined, hl_groups, title_combined, args, True)
         ]
         
     if combined_fig:
@@ -310,7 +507,9 @@ def run(args):
     if args.save_png: # each chart is saved as a separate PNG file
         for name, fig in fig_arr:
             fig.savefig(name.replace(" ", "_").replace(".json", ".png"))
-            combined_fig[1].savefig(combined_out_path.replace(".json", ".png"))
+            if combined_fig:
+                combined_fig[1].savefig(combined_out_path.replace(".json", 
+                                                                  ".png"))
     
     if combined_fig: # add combined chart as the first one in the list (ie pdf)
         fig_arr.insert(0, combined_fig)
@@ -337,4 +536,4 @@ def run(args):
     
 if __name__ == "__main__":
     args = parse_args()
-    run(args)
+    run_main(args)
