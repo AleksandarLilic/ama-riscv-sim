@@ -328,13 +328,6 @@ def run_pc_log(ar, log, args):
     df['pc_real'] = df['pc'] * INST_BYTES
     df['pc_real_hex'] = df['pc_real'].apply(lambda x: f'{x:08x}')
 
-    # find the first non-zero element in the 'count' column
-    #first_non_zero = df['count'].ne(0).idxmax()
-    # reverse df and find the first non-zero element again
-    last_non_zero = df['count'][::-1].ne(0).idxmax()
-    # FIXME when filtering is implemented, assumes exec starts from 0 for now
-    df = df.loc[0:last_non_zero]
-
     # TODO: consider option to reverse the PC log so it grows down from the top
     # like .dump does
 
@@ -383,12 +376,13 @@ def run_pc_log(ar, log, args):
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
     # add cache line coloring
-    for i in range(df.index.min(), df.index.max(), CACHE_LINE_BYTES):
+    # FIXME when filtering is implemented, assumes exec starts from 0 for now
+    for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_BYTES):
         color = 'green' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'white'
         ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.1)
 
     # add lines for symbols, if any
-    text_offset = round(df.index.max()/160,1)
+    text_offset = round(df.pc.max()/160,1)
     for sym in symbols:
         pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
         pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES

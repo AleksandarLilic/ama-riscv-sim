@@ -27,6 +27,6 @@ $(TARGET): $(OBJECTS)
 -include $(DEPS)
 
 clean:
-	rm -f $(TARGET) $(OBJECTS) $(DEPS) *.log *inst_profiler.json *.i *.s *.d *.ii
+	rm -f $(TARGET) $(OBJECTS) $(DEPS) *.log *_profiler.* *.i *.s *.d *.ii
 
 .PHONY: all clean
