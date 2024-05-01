@@ -119,10 +119,10 @@ def inst_type_exists(inst_type):
 def parse_args():
     parser = argparse.ArgumentParser(description="Analyze profiling instruction and PC log")
     # either
-    parser.add_argument('-i', '--inst_log', type=str, help="JSON instruction log with profiling data")
+    parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
     parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
     # or
-    parser.add_argument('-p', '--pc_log', type=str, help="JSON PC log with profiling data")
+    parser.add_argument('-p', '--pc_log', type=str, nargs='+', help="JSON PC log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --pc_dir")
     parser.add_argument('--pc_dir', type=str, help="Directory with JSON PC logs with profiling data")
     
     # instruction log only options
@@ -264,6 +264,7 @@ def analyze_inst_log(df, hl_groups, log, args, combined=False):
 def run_inst_log(ar, hl_groups, log, args):
     df = pd.DataFrame(ar, columns=['name', 'count'])
     df = df.sort_values(by='count', ascending=True)
+    fig = None
     if not args.combined_only:
         fig = analyze_inst_log(df, hl_groups, log, args)
     return df, fig
@@ -414,15 +415,10 @@ def run_main(args):
     if not os.path.exists(args.output):
         raise FileNotFoundError(f"Output directory {args.output} not found")
     
-    if args.pc_dir and args.dasm:
-        raise ValueError("Cannot backannotate multiple PC logs at once. " + \
-                         "Provide a single PC log file to backannotate or " + \
-                         "remove the --dasm option")
-    
     if run_pc:
         args_log = args.pc_log
         args_dir = args.pc_dir
-        profiler_str = "pc"
+        profiler_str = "pc-cnt"
     else:
         args_log = args.inst_log
         args_dir = args.inst_dir
@@ -430,9 +426,10 @@ def run_main(args):
     
     all_logs = []
     if args_log:
-        if not os.path.exists(args_log):
-            raise FileNotFoundError(f"File {args_log} not found")
-        all_logs.append(args_log)
+        for l in args_log:
+            if not os.path.exists(l):
+                raise FileNotFoundError(f"File {l} not found")
+            all_logs.append(l)
     
     if args_dir:
         if not os.path.isdir(args_dir):
@@ -444,6 +441,11 @@ def run_main(args):
                                     f"{args_dir}")
         all_logs.extend(all_in_dir)
 
+    if len(all_logs) > 1 and args.dasm:
+        raise ValueError("Cannot backannotate multiple PC logs at once. " + \
+                         "Provide a single PC log file to backannotate or " + \
+                         "remove the --dasm option")
+    
     if run_inst:
         hl_groups = []
         if not (args.highlight == None):
@@ -469,11 +471,11 @@ def run_main(args):
 
             if run_inst:
                 df, fig = run_inst_log(ar, hl_groups, log, args)
-                df_arr.append(df)
-                fig_arr.append([os.path.realpath(log),fig])
             else:
                 df, fig = run_pc_log(ar, log, args)
-                df_arr.append(df)
+            
+            df_arr.append(df)
+            if not args.combined_only:
                 fig_arr.append([os.path.realpath(log),fig])
 
     # combine all the data
