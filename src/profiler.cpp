@@ -3,7 +3,6 @@
 profiler::profiler(std::string log_name) {
     inst_cnt = 0;
     this->log_name = log_name;
-    pc_cnt.fill(0);
 
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_add)] = {"add", 0};
     prof_alr_arr[static_cast<uint32_t>(opc_al::i_sub)] = {"sub", 0};
@@ -142,28 +141,12 @@ void profiler::log_to_file() {
     out_stream << "\n}\n";
     out_stream.close();
 
-    uint32_t executed_pcs = 0;
-    out_stream.open(log_name + "_pc-cnt_profiler.json");
-    out_stream << "{\n";
-    for (size_t i = 0; i < pc_cnt.size(); i++) {
-        if (pc_cnt[i] == 0) continue;
-        out_stream << JSON_ENTRY(i, pc_cnt[i]) << std::endl;
-        executed_pcs += pc_cnt[i];
-    }
-    out_stream << "\"_executed_pcs\": " << profiled_inst_cnt;
-    out_stream << "\n}\n";
-    out_stream.close();
-
     // TODO: add instruction dasm to the profiler as a second entry?
-    // executed_pcs = 0;
-    // out_stream.open(log_name + "_pc-exec_profiler.json");
-    // out_stream << "{\n";
-    // for (size_t i = 0; i < pc_exec.size(); i++) {
-    //     out_stream << JSON_ENTRY(i, pc_exec[i]) << std::endl;
-    //     executed_pcs++;
-    // }
-    // out_stream << "\"_executed_pcs\": " << executed_pcs;
-    // out_stream << "\n}\n";
+    out_stream.open(log_name + "_pc_trace.csv");
+    out_stream << "pc\n";
+    for (size_t i = 0; i < pc_exec.size(); i++)
+        out_stream << pc_exec[i] << std::endl;
+    out_stream.close();
 
     #ifndef DPI
     info(inst_cnt, profiled_inst_cnt);

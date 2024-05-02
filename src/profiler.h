@@ -70,8 +70,7 @@ class profiler{
         std::ofstream out_stream;
         uint32_t inst_cnt;
         uint32_t inst;
-        std::array<uint32_t, (MEM_SIZE>>2)> pc_cnt;
-        // std::vector<uint32_t> pc_exec;
+        std::vector<uint32_t> pc_exec;
         al_type_t al_type;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
             prof_alr_arr;
@@ -103,7 +102,7 @@ class profiler{
         void log_inst(opc_sys opc);
         void log_inst(opc_csr opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void log_pc(uint32_t pc) { pc_cnt[pc]++; /* pc_exec.push_back(pc); */ }
+        void log_pc(uint32_t pc) { pc_exec.push_back(pc); }
         void log_to_file();
     
     private:
