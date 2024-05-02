@@ -142,10 +142,9 @@ void profiler::log_to_file() {
     out_stream.close();
 
     // TODO: add instruction dasm to the profiler as a second entry?
-    out_stream.open(log_name + "_pc_trace.csv");
-    out_stream << "pc\n";
-    for (size_t i = 0; i < pc_exec.size(); i++)
-        out_stream << pc_exec[i] << std::endl;
+    out_stream.open(log_name + "_pc_trace.bin", std::ios::binary);
+    out_stream.write(reinterpret_cast<char*>(pc_exec.data()), 
+                     pc_exec.size() * sizeof(uint32_t));
     out_stream.close();
 
     #ifndef DPI

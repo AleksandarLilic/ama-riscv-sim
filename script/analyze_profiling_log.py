@@ -4,9 +4,10 @@ import glob
 import json
 import argparse
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation
+from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation, MaxNLocator
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_HWPM = os.path.join(SCRIPT_PATH, "hw_perf_metrics.json")
@@ -117,13 +118,14 @@ def inst_type_exists(inst_type):
     return inst_type
 
 def parse_args():
+    TIME_SERIES_LIMIT = 50000
     parser = argparse.ArgumentParser(description="Analyze profiling instruction and PC log")
     # either
     parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
     parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
     # or
-    parser.add_argument('-p', '--pc_trace', type=str, nargs='+', help="CSV PC trace of the execution. Multiple traces can be provided at once without repeating the option. Can be combined with --pc_dir")
-    parser.add_argument('--pc_dir', type=str, help="Directory with CSV PC traces of the execution")
+    parser.add_argument('-p', '--pc_trace', type=str, nargs='+', help="Binary PC trace of the execution. Multiple traces can be provided at once without repeating the option. Can be combined with --pc_dir")
+    parser.add_argument('--pc_dir', type=str, help="Directory with Binary PC traces of the execution")
     
     # instruction log only options
     parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction log only option")
@@ -135,6 +137,7 @@ def parse_args():
     
     # pc trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
+    parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. PC trace only option")
     #parser.add_argument('--pc_begin', type=str, help="Start PC address to filter the PC trace. PC trace only option")
     #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC trace. PC trace only option")
 
@@ -331,7 +334,10 @@ def backannotate_dasm(log, df):
     
     return symbols
 
-def annotate_pc_chart(df, symbols, ax, symbol_pos):
+def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
+    if symbol_pos is None:
+        symbol_pos = ax.get_xlim()[1]
+    
     # add cache line coloring
     # FIXME when filtering is implemented, assumes exec starts from 0 for now
     for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
@@ -344,8 +350,8 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos):
         pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
         pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
         ax.axhline(y=pc_start-.5, color='black', linestyle='-', alpha=0.5)
-        ax.text(symbol_pos, pc_start + text_offset,
-                f"^ {sym} ({symbols[sym]['acc_count']})", color='black',
+        ax.text(symbol_pos, pc_start, # + text_offset,
+                f" ^ {sym} ({symbols[sym]['acc_count']})", color='black',
                 fontsize=9, ha='left', va='center',
                 bbox=dict(facecolor='white', alpha=0.6, linewidth=0, pad=1)
                 )
@@ -390,7 +396,7 @@ def draw_pc_freq(df, title, symbols):
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
     # annotate the chart
-    ax = annotate_pc_chart(df, symbols, ax, symbol_pos=df['count'].max()/4)
+    ax = annotate_pc_chart(df, symbols, ax)
 
     # handle display
     if not args.silent:
@@ -405,8 +411,11 @@ def draw_pc_exec(df, title, symbols):
     ax.step(df.index, df['pc'], where='post', linewidth=2, color=(0,.3,.6,0.2),
             marker='.', markersize=4, markerfacecolor='b', markeredgecolor='b')
     #ax.scatter(df.index, df['pc'], s=2, color='b')
+    
     # update axis
-    ax.set_xticks(df.index[::200])
+    current_nbins = len(ax.get_xticks())
+    locator = MaxNLocator(nbins=current_nbins*2, integer=True)
+    ax.xaxis.set_major_locator(locator)
     ax.set_yticks(range(0, df['pc'].max(), CACHE_LINE_INSTS))
     ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax.margins(y=0.03, x=0.01)
@@ -414,7 +423,7 @@ def draw_pc_exec(df, title, symbols):
     # add a second x-axis
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
-    ax_top.set_xticks(df.index[::200])
+    ax_top.xaxis.set_major_locator(locator)
     ax_top.xaxis.set_ticks_position('top')
 
     # label
@@ -422,7 +431,7 @@ def draw_pc_exec(df, title, symbols):
     ax.set_ylabel('Program Counter')
     ax.set_title(f"PC execution profile for {title}")
 
-    ax = annotate_pc_chart(df, symbols, ax, symbol_pos=df.index.max()*1.02)
+    ax = annotate_pc_chart(df, symbols, ax)
 
     # handle display
     if not args.silent:
@@ -431,8 +440,9 @@ def draw_pc_exec(df, title, symbols):
     plt.close()
     return fig
 
-def run_pc_log(log, title, args):
-    df_og = pd.read_csv(log)
+def run_pc_log(bin_log, title, args):
+    data = np.fromfile(bin_log, dtype=np.uint32)
+    df_og = pd.DataFrame(data, columns=['pc'])
     df = df_og.groupby('pc').size().reset_index(name='count')
     df = df.sort_values(by='pc', ascending=True)
     df['pc'] = df['pc'].astype(int)
@@ -456,7 +466,13 @@ def run_pc_log(log, title, args):
         symbols = backannotate_dasm(args.dasm, df)
 
     fig = draw_pc_freq(df, title, symbols)
-    fig2 = draw_pc_exec(df_og, title, symbols)
+    if len(df_og) > args.pc_time_series_limit:
+        print(f"Warning: too many PC entries to display in the time series " + \
+              f"chart ({len(df_og)}). Limit is {args.pc_time_series_limit}" + \
+              f" entries. Either increase the limit or filter the data.")
+        fig2 = None
+    else:
+        fig2 = draw_pc_exec(df_og, title, symbols)
 
     return df, fig, fig2
 
@@ -470,7 +486,7 @@ def run_main(args):
         raise ValueError("Inst and pc options cannot be mixed")
 
     if not run_inst and not run_pc:
-        raise ValueError("No JSON instruction or PC log provided")
+        raise ValueError("No JSON instruction log or PC trace provided")
 
     if not os.path.exists(args.output):
         raise FileNotFoundError(f"Output directory {args.output} not found")
@@ -478,7 +494,7 @@ def run_main(args):
     if run_pc:
         args_log = args.pc_trace
         args_dir = args.pc_dir
-        profiler_str = "_pc_profiler.csv"
+        profiler_str = "_pc_trace.bin"
     else:
         args_log = args.inst_log
         args_dir = args.inst_dir
@@ -502,8 +518,8 @@ def run_main(args):
 
     if len(all_logs) > 1 and args.dasm:
         raise ValueError("Cannot backannotate multiple PC logs at once. " + \
-                         "Provide a single PC log file to backannotate or " + \
-                         "remove the --dasm option")
+                         "Provide a single PC trace file to backannotate " + \
+                         "or remove the --dasm option")
     
     if run_inst:
         hl_groups = []
