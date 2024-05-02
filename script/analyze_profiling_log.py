@@ -23,7 +23,7 @@ MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
 INST_BYTES = 4
-CACHE_LINE_BYTES = 64//INST_BYTES
+CACHE_LINE_INSTS = 64//INST_BYTES
 BASE_ADDR = 0x80000000
 
 inst_t_mem = {
@@ -122,8 +122,8 @@ def parse_args():
     parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
     parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
     # or
-    parser.add_argument('-p', '--pc_log', type=str, nargs='+', help="JSON PC log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --pc_dir")
-    parser.add_argument('--pc_dir', type=str, help="Directory with JSON PC logs with profiling data")
+    parser.add_argument('-p', '--pc_trace', type=str, nargs='+', help="CSV PC trace of the execution. Multiple traces can be provided at once without repeating the option. Can be combined with --pc_dir")
+    parser.add_argument('--pc_dir', type=str, help="Directory with CSV PC traces of the execution")
     
     # instruction log only options
     parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction log only option")
@@ -133,14 +133,15 @@ def parse_args():
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Instruction log only option")
     parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation. Instruction log only option")
     
-    # pc log only options
-    parser.add_argument('--dasm', type=str, help="Disassembly dasm file to backannotate the PC log. PC log only option")
-    #parser.add_argument('--pc_begin', type=str, help="Start PC address to filter the PC log. PC log only option")
-    #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC log. PC log only option")
+    # pc trace only options
+    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
+    #parser.add_argument('--pc_begin', type=str, help="Start PC address to filter the PC trace. PC trace only option")
+    #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC trace. PC trace only option")
 
     # common options
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
+    parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
     parser.add_argument('--save_pdf', type=str, nargs='?', const=os.getcwd(), default=None, help="Save charts as PDF. Saved as a single PDF file if multiple charts are generated. Requires path to save the PDF file. Default is current directory.")
     parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
     parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided")
@@ -170,8 +171,7 @@ def estimate_perf(df, hwpm):
     mips = all_inst / exec_time_us
     return hwpm["cpu_frequency_mhz"], cycles, cpi, exec_time_us, mips
 
-def analyze_inst_log(df, hl_groups, log, args, combined=False):
-    title = os.path.basename(log.replace(PROFILER_ENDS, ""))
+def draw_inst_log(df, hl_groups, title, args, combined=False):
     inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
     df['i_mem_type'] = df['name'].map(inst_t_mem_map)
@@ -261,12 +261,22 @@ def analyze_inst_log(df, hl_groups, log, args, combined=False):
     plt.close()
     return fig
 
-def run_inst_log(ar, hl_groups, log, args):
+def run_inst_log(log, hl_groups, title, args):
+    ar = []
+    with open(log, 'r') as file:
+        data = json.load(file)
+        for key in data:
+            if key.startswith('_'): # skip internal keys
+                continue
+            ar.append([key, data[key]['count']])
+    
     df = pd.DataFrame(ar, columns=['name', 'count'])
     df = df.sort_values(by='count', ascending=True)
+    
     fig = None
     if not args.combined_only:
-        fig = analyze_inst_log(df, hl_groups, log, args)
+        fig = draw_inst_log(df, hl_groups, title, args)
+    
     return df, fig
 
 def backannotate_dasm(log, df):
@@ -321,32 +331,35 @@ def backannotate_dasm(log, df):
     
     return symbols
 
-def run_pc_log(ar, log, args):
-    title = os.path.basename(log.replace(PROFILER_ENDS, ""))
-    df = pd.DataFrame(ar, columns=['pc', 'count'])
-    df['pc'] = df['pc'].astype(int)
-    df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
-    df['pc_real'] = df['pc'] * INST_BYTES
-    df['pc_real_hex'] = df['pc_real'].apply(lambda x: f'{x:08x}')
+def annotate_pc_chart(df, symbols, ax, symbol_pos):
+    # add cache line coloring
+    # FIXME when filtering is implemented, assumes exec starts from 0 for now
+    for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
+        color = 'green' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'white'
+        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.1)
 
-    # TODO: consider option to reverse the PC log so it grows down from the top
-    # like .dump does
+    # add lines for symbols, if any
+    text_offset = round(df.pc.max()/160,1)
+    for sym in symbols:
+        pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
+        pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
+        ax.axhline(y=pc_start-.5, color='black', linestyle='-', alpha=0.5)
+        ax.text(symbol_pos, pc_start + text_offset,
+                f"^ {sym} ({symbols[sym]['acc_count']})", color='black',
+                fontsize=9, ha='left', va='center',
+                bbox=dict(facecolor='white', alpha=0.6, linewidth=0, pad=1)
+                )
 
-    # slice df based on the input
-    # TODO filtering as a feature, has to be taken into account when 
-    # labeling the chart and when backannotating the .dasm file
-    #df = df.loc[
-    #    (df.pc >= (int("0x220", 16)//4)) & 
-    #    (df.pc < (int("0x300", 16)//4))
-    #]
+    # add line for the last symbol
+    if symbols:
+        ax.axhline(y=pc_end+.5, color='black', linestyle='-', alpha=0.5)
+    
+    return ax
 
-    symbols = {}
-    if args.dasm:
-        symbols = backannotate_dasm(args.dasm, df)
-
+def draw_pc_freq(df, title, symbols):
     # TODO: should probably limit the number of PC entries to display or 
     # auto enlarge the figure size (but up to a point, then limit anyways)
-    gs = {'top': 0.93, 'bottom': 0.07}
+    gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.1, 'right': 0.95}
     fig, ax = plt.subplots(figsize=(12,15), gridspec_kw=gs)
     ax.barh(df['pc'], df['count'], height=1, alpha=0.8)
     #       , edgecolor=(0, 0, 0, 0.1))
@@ -376,33 +389,80 @@ def run_pc_log(ar, log, args):
     ax.grid(axis='x', linestyle='-', alpha=1, which='major')
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
-    # add cache line coloring
-    # FIXME when filtering is implemented, assumes exec starts from 0 for now
-    for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_BYTES):
-        color = 'green' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'white'
-        ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.1)
+    # annotate the chart
+    ax = annotate_pc_chart(df, symbols, ax, symbol_pos=df['count'].max()/4)
 
-    # add lines for symbols, if any
-    text_offset = round(df.pc.max()/160,1)
-    for sym in symbols:
-        pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
-        pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
-        ax.axhline(y=pc_start-.5, color='black', linestyle='-', alpha=0.5)
-        ax.text(df['count'].max()/4, pc_start + text_offset,
-                f"^ {sym} ({symbols[sym]['acc_count']})", color='black',
-                fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='white', alpha=0.6, linewidth=0, pad=1)
-                )
+    # handle display
+    if not args.silent:
+        plt.show()
+    
+    plt.close()
+    return fig
 
-    if symbols:
-        # add line for the last symbol
-        ax.axhline(y=pc_end+.5, color='black', linestyle='-', alpha=0.5)    
+def draw_pc_exec(df, title, symbols):
+    gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
+    fig, ax = plt.subplots(figsize=(24,12), gridspec_kw=gs)
+    ax.step(df.index, df['pc'], where='post', linewidth=2, color=(0,.3,.6,0.2),
+            marker='.', markersize=4, markerfacecolor='b', markeredgecolor='b')
+    #ax.scatter(df.index, df['pc'], s=2, color='b')
+    # update axis
+    ax.set_xticks(df.index[::200])
+    ax.set_yticks(range(0, df['pc'].max(), CACHE_LINE_INSTS))
+    ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
+    ax.margins(y=0.03, x=0.01)
 
-    return df, fig
+    # add a second x-axis
+    ax_top = ax.twiny()
+    ax_top.set_xlim(ax.get_xlim())
+    ax_top.set_xticks(df.index[::200])
+    ax_top.xaxis.set_ticks_position('top')
+
+    # label
+    ax.set_xlabel('Instruction Count')
+    ax.set_ylabel('Program Counter')
+    ax.set_title(f"PC execution profile for {title}")
+
+    ax = annotate_pc_chart(df, symbols, ax, symbol_pos=df.index.max()*1.02)
+
+    # handle display
+    if not args.silent:
+        plt.show()
+
+    plt.close()
+    return fig
+
+def run_pc_log(log, title, args):
+    df_og = pd.read_csv(log)
+    df = df_og.groupby('pc').size().reset_index(name='count')
+    df = df.sort_values(by='pc', ascending=True)
+    df['pc'] = df['pc'].astype(int)
+    df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
+    df['pc_real'] = df['pc'] * INST_BYTES
+    df['pc_real_hex'] = df['pc_real'].apply(lambda x: f'{x:08x}')
+
+    # TODO: consider option to reverse the PC log so it grows down from the top
+    # like .dump does
+
+    # slice df based on the input
+    # TODO filtering as a feature, has to be taken into account when 
+    # labeling the chart and when backannotating the .dasm file
+    #df = df.loc[
+    #    (df.pc >= (int("0x220", 16)//4)) & 
+    #    (df.pc < (int("0x300", 16)//4))
+    #]
+
+    symbols = {}
+    if args.dasm:
+        symbols = backannotate_dasm(args.dasm, df)
+
+    fig = draw_pc_freq(df, title, symbols)
+    fig2 = draw_pc_exec(df_og, title, symbols)
+
+    return df, fig, fig2
 
 def run_main(args):
     inst_args = [args.inst_log, args.inst_dir]
-    pc_args = [args.pc_log, args.pc_dir]
+    pc_args = [args.pc_trace, args.pc_dir]
     run_inst = any(inst_args)
     run_pc = any(pc_args)
 
@@ -416,13 +476,13 @@ def run_main(args):
         raise FileNotFoundError(f"Output directory {args.output} not found")
     
     if run_pc:
-        args_log = args.pc_log
+        args_log = args.pc_trace
         args_dir = args.pc_dir
-        profiler_str = "pc-cnt"
+        profiler_str = "_pc_profiler.csv"
     else:
         args_log = args.inst_log
         args_dir = args.inst_dir
-        profiler_str = "inst"
+        profiler_str = "_inst_profiler.json"
     
     all_logs = []
     if args_log:
@@ -434,8 +494,7 @@ def run_main(args):
     if args_dir:
         if not os.path.isdir(args_dir):
             raise FileNotFoundError(f"Directory {args_dir} not found")
-        all_in_dir = glob.glob(os.path.join(args_dir, 
-                                            "*" + profiler_str + PROFILER_ENDS))
+        all_in_dir = glob.glob(os.path.join(args_dir, "*" + profiler_str))
         if not all_in_dir:
             raise FileNotFoundError(f"No JSON files found in directory " + \
                                     f"{args_dir}")
@@ -459,24 +518,21 @@ def run_main(args):
 
     df_arr = []
     fig_arr = []
+    fig_arr2 = []
+    ext = os.path.splitext(all_logs[0])[1]
     for log in all_logs:
-        with open(log, 'r') as file:
-            data = json.load(file)
-
-            ar = []
-            for key in data:
-                if key.startswith('_'): # skip internal keys
-                    continue
-                ar.append([key, data[key]['count']])
-
-            if run_inst:
-                df, fig = run_inst_log(ar, hl_groups, log, args)
-            else:
-                df, fig = run_pc_log(ar, log, args)
-            
-            df_arr.append(df)
-            if not args.combined_only:
-                fig_arr.append([os.path.realpath(log),fig])
+        title = os.path.basename(log.replace(profiler_str, ""))
+        if run_pc:
+            df, fig, fig2 = run_pc_log(log, title, args)
+        else:
+            df, fig = run_inst_log(log, hl_groups, title, args)
+        
+        df_arr.append(df)
+        if not args.combined_only:
+            log_path = os.path.realpath(log)
+            fig_arr.append([log_path, fig])
+            if run_pc:
+                fig_arr2.append([log_path.replace(ext, f"_exec{ext}"), fig2])
 
     # combine all the data
     combined_fig = None
@@ -490,46 +546,58 @@ def run_main(args):
         df_combined = df_combined.groupby('name', as_index=False).sum()
         df_combined = df_combined.sort_values(by='count', ascending=True)
         combined_fig = [
-            f"{title_combined}{PROFILER_ENDS}",
-            analyze_inst_log(df_combined, hl_groups, title_combined, args, True)
+            f"{title_combined}{profiler_str}",
+            draw_inst_log(df_combined, hl_groups, title_combined, args, True)
         ]
         
     if combined_fig:
         combined_out_path = os.path.join(
-            args.output, 
-            f"{title_combined}{PROFILER_ENDS}".replace(" ", "_")
+            args.output, f"{title_combined}{profiler_str}".replace(" ", "_")
         )
     
     if args.save_png: # each chart is saved as a separate PNG file
-        for name, fig in fig_arr:
-            fig.savefig(name.replace(" ", "_").replace(".json", ".png"))
+        for name, fig in (fig_arr + fig_arr2):
+            fig.savefig(name.replace(" ", "_").replace(ext, ".png"))
             if combined_fig:
-                combined_fig[1].savefig(combined_out_path.replace(".json", 
-                                                                  ".png"))
+                combined_fig[1].savefig(combined_out_path.replace(ext, ".png"))
+    
+    if args.save_svg: # each chart is saved as a separate SVG file
+        for name, fig in (fig_arr + fig_arr2):
+            fig.savefig(name.replace(" ", "_").replace(ext, ".svg"))
+            if combined_fig:
+                combined_fig[1].savefig(combined_out_path.replace(ext, ".svg"))
     
     if combined_fig: # add combined chart as the first one in the list (ie pdf)
         fig_arr.insert(0, combined_fig)
     
     if args.save_pdf: # all charts are saved in a single PDF file
-        pdf_path =  os.path.join(args.save_pdf, 
-                                 PROFILER_ENDS[1:].replace(".json", ".pdf"))
+        pdf_name = f"{profiler_str[1:].split('.')[0]}.pdf"
+        pdf_path =  os.path.join(args.save_pdf, pdf_name)
+        
         with PdfPages(pdf_path) as pdf:
-            total_pages = len(fig_arr)
-            page = 1
-            for name, fig in fig_arr:
-                fig.supxlabel(f"Page {page} of {total_pages}", 
-                              x=0.93, fontsize=10)
-                page += 1
-                pdf.savefig(fig)
+            save_pdf(fig_arr, pdf)
+        
+        if run_pc: # also save the second set of charts, if any
+            pdf_path2 = pdf_path.replace(".pdf", "_exec.pdf")
+            with PdfPages(pdf_path2) as pdf:
+                save_pdf(fig_arr2, pdf)
     
     if args.save_csv: # each log is saved as a separate CSV file
         for log, df in zip(all_logs, df_arr):
-            df.to_csv(log.replace(".json", ".csv"), index=False)
+            df.to_csv(log.replace(ext, "_df.csv"), index=False)
         
-        if len(all_logs) > 1: # and also saved as a combined CSV file
+        if len(all_logs) > 1 and run_inst: # and also saved as a combined CSV
             df_combined.to_csv(combined_out_path.replace(".json", ".csv"),
                                index=False)
     
+def save_pdf(fig_arr, pdf):
+    total_pages = len(fig_arr)
+    page = 1
+    for name, fig in fig_arr:
+        fig.supxlabel(f"Page {page} of {total_pages}", x=0.93, fontsize=10)
+        page += 1
+        pdf.savefig(fig)
+
 if __name__ == "__main__":
     args = parse_args()
     run_main(args)
