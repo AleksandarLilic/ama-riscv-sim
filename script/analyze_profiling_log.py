@@ -70,10 +70,12 @@ colors = {
 }
 
 highlight_colors = [
-    "#2a9d8f",
-    "#e9c46a",
-    "#f4a261",
-    "#e76f51",
+    #"#2a9d8f", # teal
+    #"#33C1B1", # keppel
+    "#3ECCBB", # turquoise
+    "#e9c46a", # yellow
+    "#f4a261", # orange
+    "#e76f51", # red
 ]
 
 # memory instructions breakdown store vs load
@@ -93,11 +95,11 @@ def find_gs(x):
         'top': round(m2 * x + b2, prec)
     }
 
-def get_norm_pc(pc):
+def get_base_int_pc(pc):
     return int(pc,16) - int(BASE_ADDR)
 
 def get_count(parts, df):
-    pc = get_norm_pc(parts[0].strip())
+    pc = get_base_int_pc(parts[0].strip())
     count_series  = df.loc[df["pc_real"] == pc, "count"]
     count = count_series.squeeze() if not count_series.empty else 0
     return count, pc
@@ -132,7 +134,6 @@ def parse_args():
     parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction log only option")
     parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction log only option")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction log only option")
-    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Instruction log only option")
     parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation. Instruction log only option")
     
     # pc trace only options
@@ -142,6 +143,8 @@ def parse_args():
     #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC trace. PC trace only option")
 
     # common options
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
+    # TODO: add highlighting for function calls/PC ?
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
@@ -219,8 +222,8 @@ def draw_inst_log(df, hl_groups, title, args, combined=False):
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
     if args.estimate_perf and not combined:
         suptitle_str += f"\nEstimated HW performance at {hw_perf[0]}MHz: "
-        suptitle_str += f"cycles = {hw_perf[1]:.0f}, CPI={hw_perf[2]:.2f}, exec time={hw_perf[3]:.1f}us, "
-        suptitle_str += f"MIPS={hw_perf[4]:.1f}"
+        suptitle_str += f"cycles = {hw_perf[1]:.0f}, CPI={hw_perf[2]:.2f}, "
+        suptitle_str += f"exec time={hw_perf[3]:.1f}us, MIPS={hw_perf[4]:.1f}"
     
     fig.suptitle(suptitle_str, size=12)
     box.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
@@ -237,9 +240,9 @@ def draw_inst_log(df, hl_groups, title, args, combined=False):
 
     # highlight specific instructions, if any
     hc = 0
-    for hl_inst in hl_groups:
+    for hl_insts in hl_groups:
         for i, r in enumerate(box[0]):
-            if df.iloc[i]['name'] in hl_inst:
+            if df.iloc[i]['name'] in hl_insts:
                 r.set_color(highlight_colors[hc])
         hc += 1
     
@@ -284,6 +287,7 @@ def run_inst_log(log, hl_groups, title, args):
 
 def backannotate_dasm(log, df):
     symbols = {}
+    pc_inst_map_arr = []
     dasm_ext = os.path.splitext(log)[1]
     with open(log, 'r') as infile, \
     open(log.replace(dasm_ext, '.prof' + dasm_ext), 'w') as outfile:
@@ -305,7 +309,7 @@ def backannotate_dasm(log, df):
                 if len(parts) == 2 and parts[1].startswith('\n'):
                     # detected symbol
                     parts = parts[0].split(" ")
-                    pc_start = get_norm_pc(parts[0].strip())
+                    pc_start = get_base_int_pc(parts[0].strip())
                     symbol_name = parts[1][1:-1] # remove <> from symbol name
                     if current_symbol:
                         symbols[current_symbol]['pc_end'] = hex(previous_pc)
@@ -322,6 +326,14 @@ def backannotate_dasm(log, df):
                     count, previous_pc = get_count(parts, df)
                     outfile.write("{:{}} {}".format(count, NUM_DIGITS, line))
                     symbols[current_symbol]['acc_count'] += count
+
+                    im = line.split('\t')
+                    im = [x.strip() for x in im]
+                    pc_inst_map_arr.append(
+                        [get_base_int_pc(im[0].replace(':', ''))//4, # pc
+                         im[2], # instruction mnemonic
+                         ' '.join(im[2:]) # full instruction
+                         ])
                 
                 else: # not an instruction
                     outfile.write(line)
@@ -332,7 +344,8 @@ def backannotate_dasm(log, df):
         # write the last symbol
         symbols[current_symbol]['pc_end'] = hex(previous_pc)
     
-    return symbols
+    df = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
+    return symbols, df
 
 def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
     if symbol_pos is None:
@@ -341,36 +354,47 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
     # add cache line coloring
     # FIXME when filtering is implemented, assumes exec starts from 0 for now
     for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
-        color = 'green' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'white'
-        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.1)
+        color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
+        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08)
 
     # add lines for symbols, if any
-    text_offset = round(df.pc.max()/160,1)
     for sym in symbols:
         pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
         pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
-        ax.axhline(y=pc_start-.5, color='black', linestyle='-', alpha=0.5)
+        ax.axhline(y=pc_start-.5, color='k', linestyle='-', alpha=0.5)
         ax.text(symbol_pos, pc_start, # + text_offset,
-                f" ^ {sym} ({symbols[sym]['acc_count']})", color='black',
+                f" ^ {sym} ({symbols[sym]['acc_count']})", color='k',
                 fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='white', alpha=0.6, linewidth=0, pad=1)
+                bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1)
                 )
 
     # add line for the last symbol
     if symbols:
-        ax.axhline(y=pc_end+.5, color='black', linestyle='-', alpha=0.5)
+        ax.axhline(y=pc_end+.5, color='k', linestyle='-', alpha=0.5)
     
     return ax
 
-def draw_pc_freq(df, title, symbols):
+def draw_pc_freq(df, hl_groups, title, symbols):
     # TODO: should probably limit the number of PC entries to display or 
     # auto enlarge the figure size (but up to a point, then limit anyways)
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.1, 'right': 0.95}
     fig, ax = plt.subplots(figsize=(12,15), gridspec_kw=gs)
-    ax.barh(df['pc'], df['count'], height=1, alpha=0.8)
+    box = ax.barh(df['pc'], df['count'], height=1, alpha=0.8)
     #       , edgecolor=(0, 0, 0, 0.1))
     ax.set_xscale('log')
 
+    # highlight specific instructions, if any
+    hc = 0
+    for hl_g in hl_groups:
+        for i, r in enumerate(box):
+            if df.iloc[i]['inst_mnm'] in hl_g:
+                r.set_color(highlight_colors[hc])
+        # add a dummy bar for the legend
+        ax.barh(0, 0, color=highlight_colors[hc], label=', '.join(hl_g))
+        hc += 1
+
+    if len(hl_groups) > 0:
+        ax.legend(loc='upper right', title='Highlighted Instructions')
     # update axis
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
     formatter = LogFormatterSciNotation(base=10)
@@ -405,12 +429,28 @@ def draw_pc_freq(df, title, symbols):
     plt.close()
     return fig
 
-def draw_pc_exec(df, title, symbols):
+def draw_pc_exec(df, hl_groups, title, symbols):
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
     fig, ax = plt.subplots(figsize=(24,12), gridspec_kw=gs)
+    
+    # plot the PC trace and don't interpolate linearly between points
+    # but step from one to the next
     ax.step(df.index, df['pc'], where='post', linewidth=2, color=(0,.3,.6,0.2),
-            marker='.', markersize=4, markerfacecolor='b', markeredgecolor='b')
-    #ax.scatter(df.index, df['pc'], s=2, color='b')
+            marker='.', markersize=5, markerfacecolor='b', markeredgecolor='b')
+    
+    # scatter plot points from df where inst matches inst_mnm
+    hc = 0
+    for hl_g in hl_groups:
+        for inst in hl_g:
+            df_hl = df[df['inst_mnm'] == inst]
+            ax.scatter(df_hl.index, df_hl['pc'], color=highlight_colors[hc], 
+                       s=10, zorder=10)
+        # add a dummy scatter plot for the legend
+        ax.scatter([], [], color=highlight_colors[hc], label=', '.join(hl_g))
+        hc += 1
+    
+    if len(hl_groups) > 0:
+        ax.legend(loc='upper right', title='Highlighted Instructions')
     
     # update axis
     current_nbins = len(ax.get_xticks())
@@ -440,7 +480,7 @@ def draw_pc_exec(df, title, symbols):
     plt.close()
     return fig
 
-def run_pc_log(bin_log, title, args):
+def run_pc_log(bin_log, hl_groups, title, args):
     data = np.fromfile(bin_log, dtype=np.uint32)
     df_og = pd.DataFrame(data, columns=['pc'])
     df = df_og.groupby('pc').size().reset_index(name='count')
@@ -462,17 +502,23 @@ def run_pc_log(bin_log, title, args):
     #]
 
     symbols = {}
+    m_hl_groups = []
     if args.dasm:
-        symbols = backannotate_dasm(args.dasm, df)
-
-    fig = draw_pc_freq(df, title, symbols)
+        m_hl_groups = hl_groups
+        symbols, df_map = backannotate_dasm(args.dasm, df)
+        # merge df_map into df by keeping only records in the df
+        df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
+        df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
+    
+    fig = draw_pc_freq(df, m_hl_groups, title, symbols)
+    
     if len(df_og) > args.pc_time_series_limit:
         print(f"Warning: too many PC entries to display in the time series " + \
               f"chart ({len(df_og)}). Limit is {args.pc_time_series_limit}" + \
               f" entries. Either increase the limit or filter the data.")
         fig2 = None
     else:
-        fig2 = draw_pc_exec(df_og, title, symbols)
+        fig2 = draw_pc_exec(df_og, m_hl_groups, title, symbols)
 
     return df, fig, fig2
 
@@ -521,16 +567,19 @@ def run_main(args):
                          "Provide a single PC trace file to backannotate " + \
                          "or remove the --dasm option")
     
-    if run_inst:
-        hl_groups = []
-        if not (args.highlight == None):
-            if len(args.highlight) > len(highlight_colors):
-                raise ValueError(f"Too many instructions to highlight " + \
-                                f"max is {len(highlight_colors)}, " + \
-                                f"got {len(args.highlight)}")
-            else:
-                hl_groups = [args.highlight.split(",") 
-                            for args.highlight in args.highlight]
+    hl_groups = []
+    if not (args.highlight == None):
+        if len(args.highlight) > len(highlight_colors):
+            raise ValueError(f"Too many instructions to highlight " + \
+                            f"max is {len(highlight_colors)}, " + \
+                            f"got {len(args.highlight)}")
+        else:
+            if len(args.highlight) == 1: # multiple arguments but 1 element
+                hl_groups = args.highlight[0].split()
+            else: # already split on whitespace (somehow?)
+                hl_groups = args.highlight
+            hl_groups = [ah.split(",") for ah in hl_groups]
+
 
     df_arr = []
     fig_arr = []
@@ -539,7 +588,7 @@ def run_main(args):
     for log in all_logs:
         title = os.path.basename(log.replace(profiler_str, ""))
         if run_pc:
-            df, fig, fig2 = run_pc_log(log, title, args)
+            df, fig, fig2 = run_pc_log(log, hl_groups, title, args)
         else:
             df, fig = run_inst_log(log, hl_groups, title, args)
         
