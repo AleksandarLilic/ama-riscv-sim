@@ -157,7 +157,7 @@ def parse_args():
 
 def estimate_perf(df, hwpm):
     expected_metrics = ["cpu_frequency_mhz", "pipeline_latency", 
-                        "branch_latency", "jump_latency"]
+                        "branch_resolution", "jump_resolution"]
     # check if all expected metrics are present
     for metric in expected_metrics:
         if metric not in hwpm:
@@ -169,8 +169,8 @@ def estimate_perf(df, hwpm):
     all_inst = df['count'].sum()
     other_inst = all_inst - branches - jumps
     cycles = hwpm["pipeline_latency"] + other_inst + \
-             branches * hwpm["branch_latency"] + \
-             jumps * hwpm["jump_latency"]
+             branches * (1 + hwpm["branch_resolution"]) + \
+             jumps * (1 + hwpm["jump_resolution"])
     cpi = cycles / all_inst
     cpu_period = 1 / (hwpm["cpu_frequency_mhz"])
     exec_time_us = cycles * cpu_period
@@ -185,7 +185,7 @@ def draw_inst_log(df, hl_groups, title, args, combined=False):
     if args.estimate_perf:
         with open(args.estimate_perf, 'r') as file:
             hw_perf_metrics = json.load(file)
-            hw_perf = estimate_perf(df, hw_perf_metrics)
+        hw_perf = estimate_perf(df, hw_perf_metrics)
 
     # filter out instructions if needed
     if args.exclude:
@@ -267,7 +267,7 @@ def draw_inst_log(df, hl_groups, title, args, combined=False):
     plt.close()
     return fig
 
-def run_inst_log(log, hl_groups, title, args):
+def json_prof_to_df(log):
     ar = []
     with open(log, 'r') as file:
         data = json.load(file)
@@ -277,8 +277,12 @@ def run_inst_log(log, hl_groups, title, args):
             ar.append([key, data[key]['count']])
     
     df = pd.DataFrame(ar, columns=['name', 'count'])
+    df['count'] = df['count'].astype(int)
     df = df.sort_values(by='count', ascending=True)
-    
+    return df
+
+def run_inst_log(log, hl_groups, title, args):
+    df = json_prof_to_df(log)
     fig = None
     if not args.combined_only:
         fig = draw_inst_log(df, hl_groups, title, args)
