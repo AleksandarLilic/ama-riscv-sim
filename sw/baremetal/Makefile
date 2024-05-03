@@ -17,7 +17,7 @@ all: $(TARGET).elf
 
 $(TARGET).elf: $(SRCS)
 	$(RV_GNU)-gcc $(GCC_OPTS) -I$(INC) $^ -o $@ $(USER_DEFINES)
-	$(RV_GNU)-objdump -D -Mnumeric --disassembler-options=no-aliases $@ > $(basename $@).dump
+	$(RV_GNU)-objdump -D -Mnumeric -t --disassembler-options=no-aliases $@ > $(basename $@).dump
 	$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin
 	$(RV_GNU)-bin2hex -w 32 $(basename $@).bin $(basename $@).hex
 

@@ -1,6 +1,6 @@
-#define UART_REG_CTRL ((volatile unsigned int*) 0x80002000)
-#define UART_REG_RX_DATA ((volatile unsigned int*) 0x80002004)
-#define UART_REG_TX_DATA ((volatile unsigned int*) 0x80002008)
+#define UART_REG_CTRL ((volatile unsigned int*) 0x80004000)
+#define UART_REG_RX_DATA ((volatile unsigned int*) 0x80004004)
+#define UART_REG_TX_DATA ((volatile unsigned int*) 0x80004008)
 
 #define UART_TX_READY_MASK 0b01
 #define UART_RX_VALID_MASK 0b10
