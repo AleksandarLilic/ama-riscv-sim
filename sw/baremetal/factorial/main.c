@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "common.h"
 
 #define LOOP_COUNT 1u
 
@@ -29,19 +30,10 @@ void main() {
     for (uint32_t i = 0; i < LOOP_COUNT; i++) {
         uint64_t result = factorial(n);
         
-        asm volatile("add x29, x0, %0"
-                    :
-                    : "r"(result>>32));
-        asm volatile("add x30, x0, %0"
-                    :
-                    : "r"(result & 0xFFFFFFFF));
         if (result != EXPECTED_FACT_RESULT){
-            asm volatile("addi x28, x0, 1"
-                        :
-                        : );
+            write_mismatch(result>>32, result & 0xFFFFFFFF, 0);
             fail();
         }
     }
-        
     pass();
 }

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "common.h"
 
 #define LOOP_COUNT 1u
 
@@ -27,18 +28,6 @@ void set_c() {
     for (uint8_t i = 0; i < 16; i++) {
         c[i] = 0;
     }
-}
-
-void write_mismatch(uint32_t c, uint32_t ref, uint8_t j) {
-    asm volatile("add x29, x0, %0"
-                 :
-                 : "r"(c));
-    asm volatile("add x30, x0, %0"
-                 :
-                 : "r"(ref));
-    asm volatile("add x28, x0, %0"
-                 :
-                 : "r"(j+1)); // so that 0th index is 1st
 }
 
 void main(void) {

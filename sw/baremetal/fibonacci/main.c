@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "common.h"
 
 #define LOOP_COUNT 1u
 
@@ -25,19 +26,10 @@ void main() {
     for (uint32_t i = 0; i < LOOP_COUNT; i++) {
         uint32_t result = fib(n);
         
-        asm volatile("add x29, x0, %0"
-                    :
-                    : "r"(EXPECTED_FIB_RESULT));
-        asm volatile("add x30, x0, %0"
-                    :
-                    : "r"(result));
         if (result != EXPECTED_FIB_RESULT){
-            asm volatile("addi x28, x0, 1"
-                        :
-                        : );
+            write_mismatch(result, EXPECTED_FIB_RESULT, 0);
             fail();
         }
     }
-        
     pass();
 }

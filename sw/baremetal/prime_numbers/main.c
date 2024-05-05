@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include "common.h"
 
 #define MAX_LIMIT 10000
 //#define EXPECTED_PRIME_COUNT 4 // for n = 10
@@ -32,16 +33,8 @@ void sieve_of_eratosthenes(volatile uint32_t n) {
         if (prime[p])
             prime_count++;
 
-    asm volatile("add x29, x0, %0"
-                  :
-                  : "r"(EXPECTED_PRIME_COUNT));
-    asm volatile("add x30, x0, %0"
-                  :
-                  : "r"(prime_count));
     if (prime_count != EXPECTED_PRIME_COUNT){
-        asm volatile("addi x28, x0, 1"
-                      :
-                      : );
+        write_mismatch(prime_count, EXPECTED_PRIME_COUNT, 0);
         fail();
     }
 }

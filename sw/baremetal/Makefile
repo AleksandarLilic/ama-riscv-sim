@@ -6,7 +6,7 @@ C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.S)
 LD_SRC := ../link.ld
 SRCS := $(C_SRCS) $(S_SRCS) $(CRT0)
-INC := ../defines
+INC := ../inc
 USER_DEFINES =
 
 GCC_OPTS += -march=rv32i -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -T $(LD_SRC) -Wl,--build-id=none -save-temps
