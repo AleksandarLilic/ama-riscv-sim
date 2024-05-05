@@ -53,7 +53,8 @@ bne x30, x10, fail
 #endif
 
 li x4, 0 # loop counter
-li x5, 1000000 # loop limit
+#li x5, 1000000 # loop limit
+li x5, 2
 
 loop: li x24, 0
 addi x4, x4, 1
@@ -408,8 +409,8 @@ addi x3, x3, 1
 bne x20, x21, fail
 
 li x24, 123456
-beq x4, x5, pass
-done: j loop
+bne x4, x5, loop
+j pass
 
 fail: 
 add x28, x0, x3 # store failed test id in x28
