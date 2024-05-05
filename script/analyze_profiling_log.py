@@ -357,6 +357,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
     if symbol_pos is None:
         symbol_pos = ax.get_xlim()[1]
     
+    sym_log = []
     # add cache line coloring
     # FIXME when filtering is implemented, assumes exec starts from 0 for now
     for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
@@ -368,17 +369,20 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
         pc_start = int(symbols[sym]['pc_start'], 16)//INST_BYTES
         pc_end = int(symbols[sym]['pc_end'], 16)//INST_BYTES
         ax.axhline(y=pc_start-.5, color='k', linestyle='-', alpha=0.5)
-        ax.text(symbol_pos, pc_start, # + text_offset,
-                f" ^ {sym} ({symbols[sym]['acc_count']})", color='k',
+        func_text = f"{sym} ({symbols[sym]['acc_count']})"
+        ax.text(symbol_pos, pc_start,
+                f" ^ {func_text}", color='k',
                 fontsize=9, ha='left', va='center',
                 bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1)
                 )
+        sym_log.append(f"{num_to_hex(pc_start, None)} - " + \
+                       f"{num_to_hex(pc_end, None)}: {func_text}")
 
     # add line for the last symbol
     if symbols:
         ax.axhline(y=pc_end+.5, color='k', linestyle='-', alpha=0.5)
     
-    return ax
+    return ax, sym_log
 
 def draw_pc_freq(df, hl_groups, title, symbols):
     # TODO: should probably limit the number of PC entries to display or 
@@ -405,7 +409,7 @@ def draw_pc_freq(df, hl_groups, title, symbols):
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
     formatter = LogFormatterSciNotation(base=10)
     ax.xaxis.set_major_formatter(formatter)
-    ax.yaxis.set_major_locator(MultipleLocator(32//INST_BYTES))
+    ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_INSTS))
     ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax.set_xlim(left=0.5)
     ax.margins(y=0.01, x=0.1)
@@ -426,14 +430,14 @@ def draw_pc_freq(df, hl_groups, title, symbols):
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
     # annotate the chart
-    ax = annotate_pc_chart(df, symbols, ax)
+    ax, sym_log = annotate_pc_chart(df, symbols, ax)
 
     # handle display
     if not args.silent:
         plt.show()
     
     plt.close()
-    return fig
+    return fig, sym_log
 
 def draw_pc_exec(df, hl_groups, title, symbols):
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
@@ -477,7 +481,7 @@ def draw_pc_exec(df, hl_groups, title, symbols):
     ax.set_ylabel('Program Counter')
     ax.set_title(f"PC execution profile for {title}")
 
-    ax = annotate_pc_chart(df, symbols, ax)
+    ax, _ = annotate_pc_chart(df, symbols, ax)
 
     # handle display
     if not args.silent:
@@ -516,7 +520,7 @@ def run_pc_log(bin_log, hl_groups, title, args):
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
     
-    fig = draw_pc_freq(df, m_hl_groups, title, symbols)
+    fig, sym_log = draw_pc_freq(df, m_hl_groups, title, symbols)
     
     if len(df_og) > args.pc_time_series_limit:
         print(f"Warning: too many PC entries to display in the time series " + \
@@ -526,6 +530,10 @@ def run_pc_log(bin_log, hl_groups, title, args):
     else:
         fig2 = draw_pc_exec(df_og, m_hl_groups, title, symbols)
 
+    # print sym_log line by line, in reverse
+    for sym in sym_log[::-1]:
+        print(sym)
+    
     return df, fig, fig2
 
 def run_main(args):
