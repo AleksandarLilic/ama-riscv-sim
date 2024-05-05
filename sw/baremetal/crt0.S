@@ -3,8 +3,11 @@
 .section    .start
 .global     _start
 
+#define RAM_START 0x80000000
+#define RAM_SIZE  0x4000
+
 _start:
-    li      sp, 0x80001000
+    li      sp, RAM_START + RAM_SIZE
     jal     main
 
 .global fail

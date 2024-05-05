@@ -4,7 +4,7 @@ SHELL  := /bin/bash
 
 C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.S)
-LD_SRC := link.ld
+LD_SRC := ../link.ld
 SRCS := $(C_SRCS) $(S_SRCS) $(CRT0)
 INC := ../defines
 USER_DEFINES =
