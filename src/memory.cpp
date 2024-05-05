@@ -16,9 +16,10 @@ memory::memory(uint32_t base_address, std::string test_bin) :
  }
 
 uint32_t memory::set_addr(uint32_t address) {
+    #ifdef UART_ENABLE
     bool dev_set = false;
     if (address < BASE_ADDR)
-        throw std::runtime_error("Address out of range: below base address");
+        MEM_OUT_OF_RANGE(address, "below base address");
     
     for (auto &entry : mem_map) {
         if (address < entry.base + entry.size) {
@@ -28,10 +29,16 @@ uint32_t memory::set_addr(uint32_t address) {
             break;
         }
     }
-    
+
     if (!dev_set)
-        throw std::runtime_error("Address out of range: above max address");
+        MEM_OUT_OF_RANGE(address, "above base address");
     
+    #else
+    address = address - mem_map[0].base;
+    dev_ptr = mem_map[0].ptr;
+    
+    #endif
+
     return address;
 }
 

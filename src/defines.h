@@ -175,6 +175,15 @@ struct mem_entry {
     dev *ptr;
 };
 
+#define MEM_OUT_OF_RANGE(addr, reson) \
+    do { \
+        std::stringstream ss; \
+        ss << MEM_ADDR_FORMAT(address); \
+        std::string hex_addr = ss.str(); \
+        throw std::runtime_error("Address " + hex_addr + \
+                                " out of range: " + reson); \
+    } while(0);
+
 //#define CHECK_ADDRESS(address, align)
 
 #define CHECK_ADDRESS(address, align) \
