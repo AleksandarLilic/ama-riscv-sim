@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define LOOP_COUNT 1u
 
 void fail();
@@ -15,17 +17,17 @@ void pass();
 #define INPUT 20
 #define EXPECTED_FACT_RESULT 2432902008176640000ULL
 
-unsigned long long factorial(int n) {
+uint64_t factorial(uint32_t n) {
     if (n == 0)
         return 1;
     return n * factorial(n-1);
 }
 
-int main() {
-    volatile unsigned int n = INPUT;
+void main() {
+    volatile uint32_t n = INPUT;
     
-    for (unsigned int i = 0; i < LOOP_COUNT; i++) {
-        unsigned long long result = factorial(n);
+    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+        uint64_t result = factorial(n);
         
         asm volatile("add x29, x0, %0"
                     :

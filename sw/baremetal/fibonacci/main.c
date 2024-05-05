@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define LOOP_COUNT 1u
 
 void fail();
@@ -10,18 +12,18 @@ void pass();
 //#define EXPECTED_FIB_RESULT 832040 // for n = 30
 //#define EXPECTED_FIB_RESULT 102334155 // for n = 40
 
-int fib(unsigned int n) {
+uint32_t fib(uint32_t n) {
     if (n <= 2)
         return 1;
     else
         return fib(n-1) + fib(n-2);
 }
 
-int main() {
-    volatile unsigned int n = 18;
+void main() {
+    volatile uint32_t n = 18;
     
-    for (unsigned int i = 0; i < LOOP_COUNT; i++) {
-        unsigned int result = fib(n);
+    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+        uint32_t result = fib(n);
         
         asm volatile("add x29, x0, %0"
                     :
