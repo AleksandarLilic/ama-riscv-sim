@@ -9,7 +9,7 @@ void pass();
 // Static memory allocation
 volatile char prime[MAX_LIMIT + 1];
 
-void sieveOfEratosthenes(volatile int n) {
+void sieve_of_eratosthenes(volatile int n) {
     asm(".global set_defaults");
     asm("set_defaults:");
     unsigned int prime_count = 0;
@@ -45,6 +45,6 @@ void sieveOfEratosthenes(volatile int n) {
 
 int main() {
     int n = 3000;
-    sieveOfEratosthenes(n);
+    sieve_of_eratosthenes(n);
     pass();
 }

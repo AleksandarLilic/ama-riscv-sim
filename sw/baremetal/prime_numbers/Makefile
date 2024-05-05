@@ -1,4 +1,4 @@
 TARGET := prime_numbers
-GCC_OPTS += -O0
-#GCC_OPTS += g
+CRT0 := ../crt0.S
+GCC_OPTS += -O2
 include ../Makefile

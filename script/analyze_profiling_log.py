@@ -73,7 +73,9 @@ highlight_colors = [
     #"#2a9d8f", # teal
     #"#33C1B1", # keppel
     "#3ECCBB", # turquoise
-    "#e9c46a", # yellow
+    #"#e9c46a", # yellow
+    #"#ECCE83", # jasmine
+    "#EED595", # peach yellow
     "#f4a261", # orange
     "#e76f51", # red
 ]
@@ -300,7 +302,7 @@ def backannotate_dasm(log, df):
         NUM_DIGITS = len(str(df['count'].max())) + 1
         
         for line in infile:
-            if line.startswith('Disassembly of section .text:'):
+            if line.startswith('Disassembly of section .text'):
                 append = True
                 outfile.write(line)
                 continue

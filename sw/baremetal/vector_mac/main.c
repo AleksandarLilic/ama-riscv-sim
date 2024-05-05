@@ -1,4 +1,4 @@
-#define LOOP_COUNT 1000u
+#define LOOP_COUNT 1u
 
 void fail();
 void pass();
