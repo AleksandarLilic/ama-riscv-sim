@@ -3,9 +3,6 @@
 
 #define LOOP_COUNT 1u
 
-void fail();
-void pass();
-
 //#define INPUT 10
 //#define EXPECTED_FACT_RESULT 3628800
 
@@ -31,7 +28,7 @@ void main() {
         uint64_t result = factorial(n);
         
         if (result != EXPECTED_FACT_RESULT){
-            write_mismatch(result>>32, result & 0xFFFFFFFF, 0);
+            write_mismatch(result>>32, result & 0xFFFFFFFF, 1);
             fail();
         }
     }

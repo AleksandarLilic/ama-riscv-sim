@@ -3,9 +3,6 @@
 
 #define LOOP_COUNT 1u
 
-void fail();
-void pass();
-
 //#define EXPECTED_FIB_RESULT 55 // for n = 10
 //#define EXPECTED_FIB_RESULT 610 // for n = 15
 #define EXPECTED_FIB_RESULT 2584 // for n = 18
@@ -27,7 +24,7 @@ void main() {
         uint32_t result = fib(n);
         
         if (result != EXPECTED_FIB_RESULT){
-            write_mismatch(result, EXPECTED_FIB_RESULT, 0);
+            write_mismatch(result, EXPECTED_FIB_RESULT, 1);
             fail();
         }
     }

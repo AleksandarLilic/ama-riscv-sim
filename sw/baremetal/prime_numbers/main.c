@@ -7,9 +7,6 @@
 //#define EXPECTED_PRIME_COUNT 25 // for n = 100
 #define EXPECTED_PRIME_COUNT 430 // for n = 3000
 
-void fail();
-void pass();
-
 // Static memory allocation
 volatile _Bool prime[MAX_LIMIT + 1];
 
@@ -18,14 +15,14 @@ void sieve_of_eratosthenes(volatile uint32_t n) {
     asm("set_defaults:");
     uint32_t prime_count = 0;
     for (uint32_t i = 2; i <= n; i++)
-        prime[i] = 1;
+        prime[i] = true;
 
     asm(".global find_primes");
     asm("find_primes:");
     for (uint32_t p = 2; p * p <= n; p++)
         if (prime[p] == 1)
             for (uint32_t i = p * p; i <= n; i += p)
-                prime[i] = 0;
+                prime[i] = false;
 
     asm(".global count_primes");
     asm("count_primes:");
@@ -34,7 +31,7 @@ void sieve_of_eratosthenes(volatile uint32_t n) {
             prime_count++;
 
     if (prime_count != EXPECTED_PRIME_COUNT){
-        write_mismatch(prime_count, EXPECTED_PRIME_COUNT, 0);
+        write_mismatch(prime_count, EXPECTED_PRIME_COUNT, 1);
         fail();
     }
 }

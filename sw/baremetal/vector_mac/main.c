@@ -3,9 +3,6 @@
 
 #define LOOP_COUNT 1u
 
-void fail();
-void pass();
-
 uint8_t a[16] = {
     99, 228, 216, 184, 167, 203, 173, 107, 177, 205, 12, 128, 51, 95, 222, 212};
 uint8_t b[16] = {
@@ -25,9 +22,8 @@ int asm_add(uint32_t a, uint32_t b) {
 }
 
 void set_c() {
-    for (uint8_t i = 0; i < 16; i++) {
+    for (uint8_t i = 0; i < 16; i++)
         c[i] = 0;
-    }
 }
 
 void main(void) {
@@ -41,7 +37,7 @@ void main(void) {
 
         for (uint8_t j = 0; j < 16; j++) {
             if (c[j] != ref[j]) {
-                write_mismatch(c[j], ref[j], j);
+                write_mismatch(c[j], ref[j], j+1); // +1 to avoid writing 0
                 fail();
             }
         }
