@@ -26,7 +26,10 @@ $(TARGET): $(OBJECTS)
 
 -include $(DEPS)
 
-clean:
-	rm -f $(TARGET) $(OBJECTS) $(DEPS) *.log *_profiler.* *.i *.s *.d *.ii
+cleanlogs:
+	rm -f *.log *_profiler.* *pc_trace*
+
+clean: cleanlogs
+	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii
 
 .PHONY: all clean
