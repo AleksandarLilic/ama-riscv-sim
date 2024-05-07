@@ -13,19 +13,23 @@ def mul(a, b): return a * b
 def div(a, b): return a / b
 
 ops = [add, sub, mul, div]
-op_choices = [op.__name__ for op in ops]
+ops_n = [op.__name__ for op in ops]
 ops_sign = ["+", "-", "*", "/"]
 
 ARR_LEN = 32
-rnd = {
-    "uint8_t": {"off_add": 0, "off_sub": 0, "off_mul": 0, "off_div": 0, "nf_in": np.uint8, "nf_out": np.uint32},
-    "int8_t": {"off_add": 0, "off_sub": 0, "off_mul": 0, "off_div": 0, "nf_in": np.int8, "nf_out": np.int32},
-    "uint16_t": {"off_add": 0, "off_sub": 0, "off_mul": 0, "off_div": 0, "nf_in": np.uint16, "nf_out": np.uint32},
-    "int16_t": {"off_add": 0, "off_sub": 0, "off_mul": 0, "off_div": 0, "nf_in": np.int16, "nf_out": np.int32},
-    "uint32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "off_div": 0, "nf_in": np.uint32, "nf_out": np.uint32},
-    "int32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "off_div": 0, "nf_in": np.int32, "nf_out": np.int32},
-    "uint64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2, "nf_in": np.uint64, "nf_out": np.uint64},
-    "int64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2, "nf_in": np.int64, "nf_out": np.int64},
+num = {
+    "uint8_t": {"nf_in": np.uint8, "nf_out": np.uint32},
+    "int8_t": {"nf_in": np.int8, "nf_out": np.int32},
+    "uint16_t": {"nf_in": np.uint16, "nf_out": np.uint32},
+    "int16_t": {"nf_in": np.int16, "nf_out": np.int32},
+    "uint32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16,
+                 "nf_in": np.uint32, "nf_out": np.uint32},
+    "int32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16,
+                "nf_in": np.int32, "nf_out": np.int32},
+    "uint64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2,
+                 "nf_in": np.uint64, "nf_out": np.uint64},
+    "int64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2,
+                "nf_in": np.int64, "nf_out": np.int64},
     #"half": {"min": -1, "max": 1, "nf_in": np.float16, "nf_out": np.float32},
     "float": {"min": -1, "max": 1, "nf_in": np.float32, "nf_out": np.float32},
     "double": {"min": -1, "max": 1, "nf_in": np.float64, "nf_out": np.float64},
@@ -34,15 +38,14 @@ rnd = {
 fp_c_map = {np.float16: "_Float16", np.float32: "float", np.float64: "double"}
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Generate code for vector tests')
-    parser.add_argument('--op', required=True, type=str, choices=op_choices, help='Operation type')
+    parser = argparse.ArgumentParser(
+        description='Generate code for the vector test and specified operation')
+    parser.add_argument(
+        '--op', required=True, type=str, choices=ops_n, help='Operation type')
     return parser.parse_args()
 
 args = parse_args()
-
 OUT = f"test_arrays_{args.op}.h"
-
-random.seed(0)
 
 # find the operation
 op, idx = [zop for zop in zip(ops, range(len(ops))) 
@@ -53,7 +56,8 @@ code.append("#include <stdint.h>\n")
 code.append("#define ARR_LEN 32\n")
 code.append("#define OP " + ops_sign[idx] + "\n")
 
-for key,value in rnd.items():
+random.seed(0)
+for key,value in num.items():
     def_check = "#if " if key == "uint8_t" else "#elif "
     code.append(def_check + "defined(NF_" + \
                 value["nf_in"].__name__.upper() + ")")
@@ -63,8 +67,9 @@ for key,value in rnd.items():
         typ_max = value["max"]
         ctypes = [fp_c_map[value["nf_in"]], fp_c_map[value["nf_out"]]]
     else:
-        typ_min = np.iinfo(value["nf_in"]).min >> value[f"off_{op.__name__}"]
-        typ_max = np.iinfo(value["nf_in"]).max >> value[f"off_{op.__name__}"]
+        shift_amount = value.get(f"off_{op.__name__}", 0)
+        typ_min = np.iinfo(value["nf_in"]).min >> shift_amount
+        typ_max = np.iinfo(value["nf_in"]).max >> shift_amount
         ctypes = [value["nf_in"].__name__ + "_t",
                   value["nf_out"].__name__ + "_t"]
     
