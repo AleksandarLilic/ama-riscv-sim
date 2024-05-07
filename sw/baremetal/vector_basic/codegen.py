@@ -26,7 +26,12 @@ rnd = {
     "int32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "off_div": 0, "nf_in": np.int32, "nf_out": np.int32},
     "uint64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2, "nf_in": np.uint64, "nf_out": np.uint64},
     "int64_t": {"off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2, "nf_in": np.int64, "nf_out": np.int64},
+    #"half": {"min": -1, "max": 1, "nf_in": np.float16, "nf_out": np.float32},
+    "float": {"min": -1, "max": 1, "nf_in": np.float32, "nf_out": np.float32},
+    "double": {"min": -1, "max": 1, "nf_in": np.float64, "nf_out": np.float64},
 }
+
+fp_c_map = {np.float16: "_Float16", np.float32: "float", np.float64: "double"}
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Generate code for vector tests')
@@ -52,28 +57,38 @@ for key,value in rnd.items():
     def_check = "#if " if key == "uint8_t" else "#elif "
     code.append(def_check + "defined(NF_" + \
                 value["nf_in"].__name__.upper() + ")")
-    code.append("#define NF_IN " + value["nf_in"].__name__ + "_t")
-    code.append("#define NF_OUT " + value["nf_out"].__name__ + "_t")
-    typ_min = np.iinfo(value["nf_in"]).min >> value[f"off_{op.__name__}"]
-    typ_max = np.iinfo(value["nf_in"]).max >> value[f"off_{op.__name__}"]
+
+    if "float" in value["nf_in"].__name__:
+        typ_min = value["min"]
+        typ_max = value["max"]
+        ctypes = [fp_c_map[value["nf_in"]], fp_c_map[value["nf_out"]]]
+    else:
+        typ_min = np.iinfo(value["nf_in"]).min >> value[f"off_{op.__name__}"]
+        typ_max = np.iinfo(value["nf_in"]).max >> value[f"off_{op.__name__}"]
+        ctypes = [value["nf_in"].__name__ + "_t",
+                  value["nf_out"].__name__ + "_t"]
+    
+    code.append("#define NF_IN " + ctypes[0])
+    code.append("#define NF_OUT " + ctypes[1])
+    
     value['a'] = (np.array([random.uniform(typ_min,typ_max) 
                             for _ in range(ARR_LEN)], dtype=value["nf_in"]))
     value['b'] = (np.array([random.uniform(typ_min,typ_max) 
                             for _ in range(ARR_LEN)], dtype=value["nf_in"]))
     
-    # bias for unsigned subtraction
-    if "ui" in key and op.__name__ == "sub":
-            value['b'] = value['b'] >> (4 + ("32" in key)*2 + ("64" in key)*8)
-    
-     # bias for unsigned subtraction
-    if "ui" in key and op.__name__ == "sub":
+    # bias for unsigned int subtraction
+    if "uint" in key and op.__name__ == "sub":
         value['b'] = value['b'] >> (4 + ("32" in key)*2 + ("64" in key)*8)
     
-    # bias for division
-    if op.__name__ == "div":
+    # bias for int division
+    if "int" in key and op.__name__ == "div":
         value['b'] = value['b'] >> (4 + ("32" in key)*2 + ("64" in key)*6)
         # ensure no zeros in the denominator
         value['b'] = np.where(value['b'] == 0, 13, value['b'])
+    
+    # ensure no zeros in the denominator for float division
+    if "float" in key and op.__name__ == "div":
+        value['b'] = np.where(value['b'] == 0, 0.01, value['b'])
     
     # cast all to nf_out
     value['a'] = value['a'].astype(value["nf_out"])
