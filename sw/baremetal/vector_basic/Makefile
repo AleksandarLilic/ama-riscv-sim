@@ -4,14 +4,11 @@ OPS := add_ sub_ mul_ div_
 FLAVORS := $(foreach op,$(OPS),$(addprefix $(op),$(TYPES)))
 TARGETS := $(addsuffix .elf, $(FLAVORS))
 
-OPT := -O0
-
+OPT := -O2
 CFLAGS :=
 export CFLAGS
-
 TARGET := 
 export TARGET
-
 CRT0 := ../crt0.S
 export CRT0
 
