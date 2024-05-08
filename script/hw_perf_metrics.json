@@ -2,5 +2,8 @@
     "cpu_frequency_mhz" : 125,
     "pipeline_latency" : 5,
     "branch_resolution" : 1,
-    "jump_resolution" : 1
+    "jump_resolution" : 1,
+    "memory_response" : 0,
+    "mispredict_penalty" : 1,
+    "prediction_resolution" : 0
 }

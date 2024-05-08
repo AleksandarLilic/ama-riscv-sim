@@ -9,8 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation, MaxNLocator
 
-SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_HWPM = os.path.join(SCRIPT_PATH, "hw_perf_metrics.json")
+#SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 PROFILER_ENDS = "_profiler.json"
 ARITH = "ARITH"
 MEM = "MEM"
@@ -136,7 +135,6 @@ def parse_args():
     parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction log only option")
     parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction log only option")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction log only option")
-    parser.add_argument('--estimate_perf', type=str, nargs='?', const=DEFAULT_HWPM, default=None, help=f"Estimate performance based on instruction count. Requires JSON file with HW performance metrics. Default is '{DEFAULT_HWPM}'. Filtering options (exclude, exclude_type, top, allow_zero) are ignored for performance estimation. Instruction log only option")
     
     # pc trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
@@ -157,37 +155,10 @@ def parse_args():
     
     return parser.parse_args()
 
-def estimate_perf(df, hwpm):
-    expected_metrics = ["cpu_frequency_mhz", "pipeline_latency", 
-                        "branch_resolution", "jump_resolution"]
-    # check if all expected metrics are present
-    for metric in expected_metrics:
-        if metric not in hwpm:
-            raise ValueError(f"Missing metric '{metric}' in " + \
-                              "HW performance metrics JSON file")
-    
-    branches = df[df['i_type'] == BRANCH]['count'].sum()
-    jumps = df[df['i_type'] == JUMP]['count'].sum()
-    all_inst = df['count'].sum()
-    other_inst = all_inst - branches - jumps
-    cycles = hwpm["pipeline_latency"] + other_inst + \
-             branches * (1 + hwpm["branch_resolution"]) + \
-             jumps * (1 + hwpm["jump_resolution"])
-    cpi = cycles / all_inst
-    cpu_period = 1 / (hwpm["cpu_frequency_mhz"])
-    exec_time_us = cycles * cpu_period
-    mips = all_inst / exec_time_us
-    return hwpm["cpu_frequency_mhz"], cycles, cpi, exec_time_us, mips
-
-def draw_inst_log(df, hl_groups, title, args, combined=False):
+def draw_inst_log(df, hl_groups, title, args):
     inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
     df['i_mem_type'] = df['name'].map(inst_t_mem_map)
-
-    if args.estimate_perf:
-        with open(args.estimate_perf, 'r') as file:
-            hw_perf_metrics = json.load(file)
-        hw_perf = estimate_perf(df, hw_perf_metrics)
 
     # filter out instructions if needed
     if args.exclude:
@@ -222,10 +193,6 @@ def draw_inst_log(df, hl_groups, title, args, combined=False):
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
-    if args.estimate_perf and not combined:
-        suptitle_str += f"\nEstimated HW performance at {hw_perf[0]}MHz: "
-        suptitle_str += f"cycles = {hw_perf[1]:.0f}, CPI={hw_perf[2]:.2f}, "
-        suptitle_str += f"exec time={hw_perf[3]:.1f}us, MIPS={hw_perf[4]:.1f}"
     
     fig.suptitle(suptitle_str, size=12)
     box.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
@@ -384,7 +351,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None):
     
     return ax, sym_log
 
-def draw_pc_freq(df, hl_groups, title, symbols):
+def draw_pc_freq(df, hl_groups, title, symbols, args):
     # TODO: should probably limit the number of PC entries to display or 
     # auto enlarge the figure size (but up to a point, then limit anyways)
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.1, 'right': 0.95}
@@ -439,7 +406,7 @@ def draw_pc_freq(df, hl_groups, title, symbols):
     plt.close()
     return fig, sym_log
 
-def draw_pc_exec(df, hl_groups, title, symbols):
+def draw_pc_exec(df, hl_groups, title, symbols, args):
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
     fig, ax = plt.subplots(figsize=(24,12), gridspec_kw=gs)
     
@@ -520,7 +487,7 @@ def run_pc_log(bin_log, hl_groups, title, args):
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
     
-    fig, sym_log = draw_pc_freq(df, m_hl_groups, title, symbols)
+    fig, sym_log = draw_pc_freq(df, m_hl_groups, title, symbols, args)
     
     if len(df_og) > args.pc_time_series_limit:
         print(f"Warning: too many PC entries to display in the time series " + \
@@ -528,9 +495,10 @@ def run_pc_log(bin_log, hl_groups, title, args):
               f" entries. Either increase the limit or filter the data.")
         fig2 = None
     else:
-        fig2 = draw_pc_exec(df_og, m_hl_groups, title, symbols)
+        fig2 = draw_pc_exec(df_og, m_hl_groups, title, symbols, args)
 
     # print sym_log line by line, in reverse
+    print(f"Symbols found in {args.dasm}:")
     for sym in sym_log[::-1]:
         print(sym)
     
@@ -626,7 +594,7 @@ def run_main(args):
         df_combined = df_combined.sort_values(by='count', ascending=True)
         combined_fig = [
             f"{title_combined}{profiler_str}",
-            draw_inst_log(df_combined, hl_groups, title_combined, args, True)
+            draw_inst_log(df_combined, hl_groups, title_combined, args)
         ]
         
     if combined_fig:
