@@ -27,7 +27,7 @@ $(TARGET): $(OBJECTS)
 -include $(DEPS)
 
 cleanlogs:
-	rm -f *.log *_profiler.* *pc_trace*
+	rm -f *.log *_profiler.* *pc_trace* *_perf_est.csv
 
 clean: cleanlogs
 	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii
