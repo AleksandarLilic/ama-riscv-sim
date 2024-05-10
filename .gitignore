@@ -20,13 +20,14 @@ sw/**/*.o
 sw/**/*.d
 sw/**/*.i
 sw/**/*.s
+sw/**/local/
 
 # manuals/helps/profiling
 *.help
 *.man
 *.gprof
 analysis.gprof.ipynb
-*_profiler.*
+*_profiler*
 *_trace.*
 *_exec.*
 *.nm
