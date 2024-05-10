@@ -11,16 +11,8 @@ uint8_t b[ARR_LEN] = {
 uint32_t c[ARR_LEN] = {0};
 
 const uint32_t ref[ARR_LEN] = {
-    963072, 3458304, 1285632, 2944000, 2137600, 2000768, 2048320, 520448,
-    11328, 1220160, 44544, 655360, 287232, 753920, 1776000, 3405568
-};
-
-int asm_add(uint32_t a, uint32_t b) {
-    asm volatile("add %0, %1, %2" 
-                 : "=r"(a)
-                 : "r"(a), "r"(b));
-    return a;
-}
+    51456, 20224, 29952, 6400, 7168, 32768, 17920, 81920, 6656,
+    157184, 304384, 534784, 1087488, 2159616, 4223744, 8420608};
 
 void set_c() {
     for (uint8_t i = 0; i < ARR_LEN; i++)
@@ -28,11 +20,14 @@ void set_c() {
 }
 
 void main(void) {
+    uint32_t ac1, ac2;
     for (uint32_t i = 0; i < LOOP_COUNT; i++) {
         set_c();
         for (uint8_t j = 0; j < 64; j++) {
             for (uint8_t k = 0; k < ARR_LEN; k++) {
-                c[k] = asm_add(c[k], a[k] * b[k]);
+                ac1 = (a[k] && b[k]>>2)<<k;
+                ac2 = ((a[k] ^ 0xAA) - (b[k] || 0x2F));
+                c[k] += (ac1 + ac2) << 2;
             }
         }
 
