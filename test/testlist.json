@@ -1,11 +1,11 @@
 {
-    "asm_test": ["asm_test"],
-    "factorial": ["factorial"],
-    "fibonacci": ["fibonacci"],
-    "gcd_lcm": ["gcd_lcm"],
-    "prime_numbers": ["prime_numbers"],
-    "vector_accumulate": ["vector_accumulate"],
-    "vector_mac": ["vector_mac"],
+    "asm_test": ["basic"],
+    "factorial": ["n_20"],
+    "fibonacci": ["n_18"],
+    "gcd_lcm": ["n_large"],
+    "prime_numbers": ["n_3000"],
+    "vector_accumulate": ["va_uint8"],
+    "vector_mac": ["vm_uint8"],
     "vector_basic": [
         "add_float32",
         "add_float64",

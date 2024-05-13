@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include "common.h"
 
-#define LOOP_COUNT 1u
 #define ARR_LEN 16
 
 uint8_t a[ARR_LEN] = {
@@ -21,7 +20,7 @@ void set_c() {
 
 void main(void) {
     uint32_t ac1, ac2;
-    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+    for (uint32_t i = 0; i < LOOPS; i++) {
         set_c();
         for (uint8_t j = 0; j < 64; j++) {
             for (uint8_t k = 0; k < ARR_LEN; k++) {

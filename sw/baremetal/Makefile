@@ -13,7 +13,7 @@ GCC_OPTS += -march=rv32i -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden
 #GCC_OPTS += g
 
 # run with RTL_SIM=1 to generate hex file for RTL simulation
-$(TARGET).elf: $(SRCS)
+$(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0)
 	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $^ -o $@ $(USER_DEFINES) -lgcc
 	@$(RV_GNU)-objdump -D -Mnumeric -t --disassembler-options=no-aliases $@ > $(basename $@).dump
 	@$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin

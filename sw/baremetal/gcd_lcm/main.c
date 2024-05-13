@@ -2,21 +2,23 @@
 #include "common.h"
 #include "func.h"
 
-#define LOOP_COUNT 1u
-
-#define INPUT_A 10440125
-#define INPUT_B 157216
-#define EXPECTED_GCD 4913
-#define EXPECTED_LCM 334084000
+#ifdef N_LARGE
+#define SET_A volatile uint32_t a = 10440125;
+#define SET_B volatile uint32_t b = 157216;
+//#define EXPECTED_GCD 4913
+#define SET_EXP uint32_t expected = 334084000;
+#else
+_Static_assert(0, "Input is not supported");
+#endif
 
 void main() {
-    volatile uint32_t a = INPUT_A;
-    volatile uint32_t b = INPUT_B;
-    
-    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+    SET_A
+    SET_B
+    SET_EXP
+    for (uint32_t i = 0; i < LOOPS; i++) {
         uint64_t result = lcm(a, b);
-        if (result != EXPECTED_LCM){
-            write_mismatch(result, EXPECTED_LCM, 1);
+        if (result != expected){
+            write_mismatch(result, expected, 1);
             fail();
         }
     }

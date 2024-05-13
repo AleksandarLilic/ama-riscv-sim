@@ -2,15 +2,25 @@
 #include <stdbool.h>
 #include "common.h"
 
+#if (N_IN == 3000)
+#define SET_N volatile uint32_t n = 3000;
+#define SET_EXP uint32_t expected = 430;
+#elif (N_IN == 100)
+#define SET_N volatile uint32_t n = 100;
+#define SET_EXP uint32_t expected = 25;
+#else
+_Static_assert(0, "N_IN is not supported");
+#endif
+
 #define MAX_LIMIT 10000
-//#define EXPECTED_PRIME_COUNT 4 // for n = 10
-//#define EXPECTED_PRIME_COUNT 25 // for n = 100
-#define EXPECTED_PRIME_COUNT 430 // for n = 3000
+_Static_assert(MAX_LIMIT >= N_IN, "MAX_LIMIT is smaller than N_IN");
+#undef MAX_LIMIT
+#define MAX_LIMIT N_IN
 
 // Static memory allocation
 volatile _Bool prime[MAX_LIMIT + 1];
 
-void sieve_of_eratosthenes(volatile uint32_t n) {
+void sieve_of_eratosthenes(volatile uint32_t n, volatile uint32_t expected) {
     asm(".global set_defaults");
     asm("set_defaults:");
     uint32_t prime_count = 0;
@@ -30,14 +40,17 @@ void sieve_of_eratosthenes(volatile uint32_t n) {
         if (prime[p])
             prime_count++;
 
-    if (prime_count != EXPECTED_PRIME_COUNT){
-        write_mismatch(prime_count, EXPECTED_PRIME_COUNT, 1);
+    if (prime_count != expected){
+        write_mismatch(prime_count, expected, 1);
         fail();
     }
 }
 
 void main() {
-    uint32_t n = 3000;
-    sieve_of_eratosthenes(n);
+    SET_N
+    SET_EXP
+    for (uint32_t i = 0; i < LOOPS; i++) {
+        sieve_of_eratosthenes(n, expected);
+    }
     pass();
 }

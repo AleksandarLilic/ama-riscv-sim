@@ -1,2 +1,2 @@
-TARGET := asm_test
+TARGET := basic
 include ../Makefile
