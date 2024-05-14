@@ -83,7 +83,8 @@ for key,value in num.items():
     
     # bias for unsigned int subtraction
     if "uint" in key and op.__name__ == "sub":
-        value['b'] = value['b'] >> (4 + ("32" in key)*2 + ("64" in key)*8)
+        value['b'] = value['b'] >> (2 + ("32" in key)*2 + ("64" in key)*4)
+        value['b'] = np.minimum(value['a'], value['b'])
     
     # bias for int division
     if "int" in key and op.__name__ == "div":
