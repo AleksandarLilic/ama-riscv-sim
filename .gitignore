@@ -21,6 +21,12 @@ sw/**/*.d
 sw/**/*.i
 sw/**/*.s
 sw/**/local/
+sw/baremetal/vector_basic/test_arrays_*h
+
+# test files
+test/*_dump.log
+test/gtest_testlist.txt
+test/ama-riscv-sim_test
 
 # manuals/helps/profiling
 *.help
