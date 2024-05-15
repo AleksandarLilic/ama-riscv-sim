@@ -12,17 +12,25 @@ SECTIONS
     .text : {
         * (.start)
         * (.text)
-    } > ram
-    .bss : {
-        *(.bss)
-        *(.bss.*)
-    } > ram
-    .data : {
-        *(.data)
-        *(.data.*)
+        . = ALIGN(4);
     } > ram
     .rodata : {
         *(.rodata)
         *(.rodata.*)
+        . = ALIGN(4);
+    } > ram
+    .data : {
+        __global_pointer$ = . + 0x800;
+        *(.data)
+        *(.data.*)
+        . = ALIGN(4);
+    } > ram
+    .bss : {
+        __bss_start = .;
+        *(.bss)
+        *(.bss.*)
+        *(COMMON)
+        . = ALIGN(4);
+        __BSS_END__ = .;
     } > ram
 }
