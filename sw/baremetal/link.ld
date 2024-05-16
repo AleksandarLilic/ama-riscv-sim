@@ -3,8 +3,8 @@ ENTRY( _start )
 
 MEMORY
 {
-    ram : ORIGIN = 0x80000000, LENGTH = 0x4000
-    peripherals : ORIGIN = 0x80004000, LENGTH = 12
+    ram (rwx) : ORIGIN = 0x80000000, LENGTH = 0x4000
+    peripherals (rw) : ORIGIN = 0x80004000, LENGTH = 12
 }
 
 SECTIONS
@@ -33,4 +33,7 @@ SECTIONS
         . = ALIGN(4);
         __BSS_END__ = .;
     } > ram
+
+    _end = .;
+    __stack_top = ORIGIN(ram) + LENGTH(ram);
 }

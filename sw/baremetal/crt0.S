@@ -3,11 +3,8 @@
 .section    .start
 .global     _start
 
-#define RAM_START 0x80000000
-#define RAM_SIZE  0x4000
-
 _start:
-    li      sp, RAM_START + RAM_SIZE
+    la      sp,__stack_top
 .option push
 .option norelax
 	la		gp,__global_pointer$
