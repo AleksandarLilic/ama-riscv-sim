@@ -1,5 +1,3 @@
-#include "defines.h"
-
 .section    .start
 .global     _start
 
@@ -17,13 +15,12 @@ clear_bss:
     addi    a0,a0,1        # a0++;
     j       clear_bss
 done_bss:   
-    jal     main
+    call     main
 
-.global fail
-fail:
-    RVTEST_FAIL
-
-.global pass
-pass:
-    RVTEST_PASS
-
+.global test_end
+test_end:
+    nop
+    nop
+    nop
+    nop
+    ecall

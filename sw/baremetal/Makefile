@@ -4,11 +4,13 @@ RV_GNU := $(RV_GNU_LATEST)
 # e.g. export RV_GNU_LATEST=riscv64-unknown-elf
 SHELL  := /bin/bash
 
+COMMON = ../common
+CRT0 ?= $(COMMON)/crt0.S
 C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.S)
-LD_SRC := ../link.ld
+LD_SRC := $(COMMON)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS) $(CRT0)
-INC := ../inc
+INC := $(COMMON)
 LIBS += -lgcc
 USER_DEFINES =
 

@@ -13,8 +13,6 @@ CFLAGS :=
 export CFLAGS
 TARGET := 
 export TARGET
-CRT0 := ../crt0.S
-export CRT0
 
 # Default target
 all: $(TARGETS)

@@ -36,4 +36,5 @@ SECTIONS
 
     _end = .;
     __stack_top = ORIGIN(ram) + LENGTH(ram);
+    __uart0_base = ORIGIN(peripherals);
 }
