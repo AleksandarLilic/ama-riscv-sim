@@ -9,7 +9,7 @@ all: build_sim prepare run
 run: $(TARGET)
 	./$(TARGET)
 
-$(TARGET): $(SOURCES) 
+$(TARGET): $(SOURCES)
 	$(CXX) -o $@ $^ $(CXXFLAGS)
 
 prepare:
@@ -17,7 +17,7 @@ prepare:
 
 build_sim:
 	make -C ../src --no-print-directory clean
-	make -C ../src --no-print-directory -j DEFINES=
+	make -C ../src --no-print-directory -j DEFINES=-DUART_ENABLE
 
 clean:
 	rm -rf $(TARGET) *.o *.d *.i *.s *.ii *_dump.log

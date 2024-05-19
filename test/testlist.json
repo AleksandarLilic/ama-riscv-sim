@@ -47,5 +47,7 @@
         "sub_uint32",
         "sub_uint64",
         "sub_uint8"
-    ]
+    ],
+    "uart_direct_send": ["hello_world"],
+    "uart_printf": ["hello_world"]
 }
