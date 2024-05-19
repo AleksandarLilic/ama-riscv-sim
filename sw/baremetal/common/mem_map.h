@@ -9,7 +9,7 @@ typedef struct {
     volatile uint32_t tx_data;
 } UART_t;
 
-extern uint32_t __uart0_base;
+extern uint32_t __uart0_base; // defined in linker script
 #define UART0 ((UART_t*) &__uart0_base)
 #define UART0_TX_READY (UART0->ctrl & 0b01)
 #define UART0_RX_VALID (UART0->ctrl & 0b10)

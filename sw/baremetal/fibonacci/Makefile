@@ -5,7 +5,7 @@ TARGET := n_$(N_IN)
 CFLAGS += -DN_IN=$(N_IN) -DLOOPS=$(LOOPS)
 GCC_OPTS += -O2
 
-include ../Makefile
+include ../Makefile.inc
 
 #define EXPECTED_FIB_RESULT 55 // for n = 10
 #define EXPECTED_FIB_RESULT 610 // for n = 15

@@ -1,2 +1,2 @@
 TARGET := basic
-include ../Makefile
+include ../Makefile.inc

@@ -27,7 +27,7 @@ headers: $(HEADERS)
 	$(eval NF := $(word 2, $(subst _, ,$(basename $@))))
 	$(eval CFLAGS := $(OPT) -DNF_$(shell echo $(NF) | tr '[:lower:]' '[:upper:]') -DOP_$(shell echo $(OP) | tr '[:lower:]' '[:upper:]'))
 	@echo Building $@ with $(CFLAGS)
-	@$(MAKE) -f ../Makefile --no-print-directory
+	@$(MAKE) -f ../Makefile.inc --no-print-directory
 
 $(HEADERS): $(CODEGEN_PY)
 	$(PYVER) $(CODEGEN_PY) --op $(word 3, $(subst _, ,$*))
@@ -35,4 +35,4 @@ $(HEADERS): $(CODEGEN_PY)
 clean_headers:
 	rm -f $(HEADERS)
 
-include ../Makefile
+include ../Makefile.inc

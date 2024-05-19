@@ -11,5 +11,5 @@ void main(void) {
         // convert to uppercase and send back
         UART0->tx_data = received_byte - OFFSET;
     }
-    asm volatile("ecall");
+    pass();
 }

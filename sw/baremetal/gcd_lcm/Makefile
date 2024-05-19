@@ -6,4 +6,4 @@ TARGET := n_$(N_NAME)
 CFLAGS += -D$(N_IN) -DLOOPS=$(LOOPS)
 GCC_OPTS += -O2
 
-include ../Makefile
+include ../Makefile.inc
