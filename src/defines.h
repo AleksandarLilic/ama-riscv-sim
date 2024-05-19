@@ -21,12 +21,16 @@
 #endif
 
 #define BASE_ADDR 0x80000000
-#define MEM_SIZE 16384
 #define MEM_ADDR_BITWIDTH 8
+//#define MEM_SIZE 16384 // 0x4000
+//#define MEM_SIZE 131072 // 0x20000
+//#define MEM_SIZE 196608 // 0x30000
+#define MEM_SIZE 262144 // 0x40000
+//#define MEM_SIZE 524288 // 0x80000
 #define UART0_SIZE 12 // 3 32-bit registers
 
 // Decoder types
-enum class opcode{ 
+enum class opcode {
     al_reg = 0b011'0011, // R type
     al_imm = 0b001'0011, // I type
     load = 0b000'0011, // I type

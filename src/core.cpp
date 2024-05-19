@@ -139,7 +139,7 @@ void core::load() {
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
-                << (int)get_imm_i() 
+                << (int)get_imm_i()
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
     #endif
 }
@@ -153,7 +153,7 @@ void core::store() {
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs2()][RF_NAMES] << ","
-                << (int)get_imm_s() 
+                << (int)get_imm_s()
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
     #endif
 }
@@ -268,7 +268,7 @@ void core::csr_access() {
     uint32_t csr_address = get_csr_addr();
     auto it = csr.find(csr_address);
     if (it == csr.end()) {
-        std::cerr << "Unsupported CSR. Address: " << std::hex << csr_address 
+        std::cerr << "Unsupported CSR. Address: " << std::hex << csr_address
                   << std::dec <<std::endl;
         throw std::runtime_error("Unsupported CSR");
     } else {
@@ -294,6 +294,9 @@ void core::csr_access() {
  * Utilities
  */
 void core::dump() {
+    #ifdef UART_ENABLE
+    std::cout << std::endl;
+    #endif
     std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
     std::cout << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
     for(uint32_t i = 0; i < 32; i+=4){
@@ -304,18 +307,18 @@ void core::dump() {
     }
     for (auto it = csr.begin(); it != csr.end(); it++)
         std::cout << CSRF(it) << std::endl;
-    
+
     #ifdef CHECK_LOG
     // open file for check log
     std::ofstream file;
     file.open("sim.check");
     file << std::dec << inst_cnt << std::endl;
     for(uint32_t i = 0; i < 32; i++){
-        file << "0x" << std::setw(8) << std::setfill('0') 
+        file << "0x" << std::setw(8) << std::setfill('0')
              << std::hex << rf[i] << std::endl;
     }
     file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
-    file << "0x" << std::setw(8) << std::setfill('0') 
+    file << "0x" << std::setw(8) << std::setfill('0')
          << std::hex << csr.at(0x340).value << std::endl;
     file.close();
     #endif
@@ -335,13 +338,13 @@ uint32_t core::get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
 uint32_t core::get_imm_i_shamt() { return (inst & M_IMM_24_20) >> 20; }
 uint32_t core::get_csr_addr() { return (inst & M_IMM_31_20) >> 20; }
 uint32_t core::get_uimm_csr() { return get_rs1(); }
-uint32_t core::get_imm_s() { 
+uint32_t core::get_imm_s() {
     return ((int32_t(inst) & M_IMM_31_25) >> 20) |
         ((inst & M_IMM_11_8) >> 7) |
         ((inst & M_IMM_7) >> 7);
 }
 
-uint32_t core::get_imm_b() { 
+uint32_t core::get_imm_b() {
     return ((int32_t(inst) & M_IMM_31) >> 19) |
         ((inst & M_IMM_7) << 4) |
         ((inst & M_IMM_30_25) >> 20) |
