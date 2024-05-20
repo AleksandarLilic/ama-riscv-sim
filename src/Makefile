@@ -2,6 +2,7 @@ CXX := g++
 CXXFLAGS := -Wall -Wextra -Werror -pedantic -std=gnu++17 -save-temps
 CXXFLAGS += -O3 -s
 #CXXFLAGS += -pg
+LDFLAGS :=
 TARGET := ama-riscv-sim
 SOURCES := $(wildcard *.cpp)
 OBJECTS := $(SOURCES:.cpp=.o)
@@ -19,7 +20,7 @@ DEFINES += -DUART_ENABLE
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES)
@@ -30,6 +31,6 @@ cleanlogs:
 	rm -f *.log *_profiler.* *pc_trace* *_perf_est.csv
 
 clean: cleanlogs
-	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii
+	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii *.gc*
 
 .PHONY: all clean
