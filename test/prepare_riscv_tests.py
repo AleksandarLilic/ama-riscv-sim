@@ -25,13 +25,13 @@ def check_make_status(make_status, msg: str):
         print("Makefile steps:")
         print(make_status.stdout.decode('utf-8'))
         raise RuntimeError(f"Error: Makefile failed to {msg}.")
-    
-    # FIXME: warnings should not be ignored
-    # remove lines with 'warning' from stderr
-    make_status.stderr = b"\n".join([
-        line for line in make_status.stderr.split(b"\n") 
-            if b"warning" not in line
-        ])
+
+    ## FIXME: warnings should not be ignored
+    ## remove lines with 'warning' from stderr
+    #make_status.stderr = b"\n".join([
+    #    line for line in make_status.stderr.split(b"\n")
+    #        if b"warning" not in line
+    #    ])
     if make_status.stderr:
         print("Makefile stderr:")
         print(make_status.stderr.decode('utf-8'))
@@ -61,7 +61,7 @@ if args.isa_tests:
     os.chdir(ISA_TEST_DIR)
     subprocess.run(["make", "clean"], stdout=subprocess.PIPE)
     subprocess.run(["make", "-j"], stdout=subprocess.PIPE)
-    subprocess.run(["make", "DIR=modified_riscv-tests/isa/rv32mi/"], 
+    subprocess.run(["make", "DIR=modified_riscv-tests/isa/rv32mi/"],
                    stdout=subprocess.PIPE)
     isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
 

@@ -12,9 +12,10 @@ SECTIONS
     .text : {
         * (.start)
         * (.text)
+        * (.text.*)
         . = ALIGN(4);
     } > ram
-    .rodata : {
+    .rodata (READONLY) : {
         *(.rodata)
         *(.rodata.*)
         . = ALIGN(4);
