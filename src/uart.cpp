@@ -8,7 +8,7 @@ uart::uart(size_t size) :
     #ifdef UART_INPUT_ENABLE
     uart_running = true;
     uart_in_ready = false;
-    uart_thread = std::thread(&uart::uart_stdin, this, 
+    uart_thread = std::thread(&uart::uart_stdin, this,
                               uart_baud_rate::baud_115200);
     std::unique_lock<std::mutex> lock(mtx);
     cv.wait(lock, [this] () { return uart_in_ready.load(); });
@@ -31,10 +31,11 @@ inline void uart::wr(uint32_t address, uint8_t data) {
     }
 }
 
+#ifdef UART_INPUT_ENABLE
 inline uint8_t uart::rd(uint32_t address) {
     if (address < UART_RX_DATA) // reads from status register
         return mem[address];
-    
+
     if (address == UART_RX_DATA) { // reads from rx_data register with lock
         #ifdef UART_INPUT_ENABLE
         std::lock_guard<std::mutex> lock(mtx);
@@ -45,7 +46,6 @@ inline uint8_t uart::rd(uint32_t address) {
     return 0; // tx data not readable, return 0
 }
 
-#ifdef UART_INPUT_ENABLE
 void uart::uart_stdin(uart_baud_rate baud_rate) {
     // assuming 10 bits per character for 8N1
     auto delay = std::chrono::microseconds(1'000'000 * 10 / (int)baud_rate);

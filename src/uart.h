@@ -38,9 +38,9 @@ class uart : public dev {
     public:
         uart(size_t size);
         ~uart();
-        uint8_t rd(uint32_t address);
         void wr(uint32_t address, uint8_t data);
     #ifdef UART_INPUT_ENABLE
+        uint8_t rd(uint32_t address);
     private:
         void uart_stdin(uart_baud_rate baud_rate);
     #endif
