@@ -157,10 +157,11 @@ def parse_args() -> argparse.Namespace:
 
     # pc trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
-    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. PC trace only option")
-    parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. PC trace only option")
     parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. PC trace only option")
     parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. PC trace only option")
+    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. PC trace only option")
+    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. PC trace only option")
+    parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. PC trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
@@ -369,6 +370,18 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     for sym in sym_log[::-1]:
         print(sym)
 
+    if args.save_symbols:
+        # convert to python types first
+        symbols_py = {}
+        for k,v in symbols.items():
+            for k2,v2 in v.items():
+                if isinstance(v2, np.int64):
+                    v[k2] = int(v2)
+            symbols_py[k] = dict(v)
+
+        with open(log.replace(dasm_ext, '_symbols.json'), 'w') as sym_file:
+            json.dump(symbols_py, sym_file, indent=4)
+
     df_out = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
     return symbols, df_out
 
@@ -570,10 +583,10 @@ def run_main(args) -> None:
     if not os.path.exists(args.output):
         raise FileNotFoundError(f"Output directory {args.output} not found")
 
-    if args.symbols_only and run_inst:
+    if (args.symbols_only or args.save_symbols) and run_inst:
         raise ValueError("--symbols_only cannot be used with instruction logs")
 
-    if args.symbols_only and not args.dasm:
+    if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
     if (args.pc_begin or args.pc_end):
