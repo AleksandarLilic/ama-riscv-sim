@@ -26,6 +26,10 @@ MEM_L = "MEM_L"
 INST_BYTES = 4
 CACHE_LINE_INSTS = 64//INST_BYTES
 BASE_ADDR = 0x80000000
+# offset is requred to move bars/dots up by half a unit
+# in order not to be centered around the PC but start from it
+# compressed ISA whill change this, when supported
+PC_OFFSET = 0.5
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw"],
@@ -34,7 +38,7 @@ inst_t_mem = {
 
 inst_t = {
     ARITH: [
-        "add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or", "and", 
+        "add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or", "and",
         "addi", "slli", "srli", "srai", "slti", "sltiu", "xori", "ori", "andi",
         "lui", "auipc"
     ],
@@ -143,20 +147,20 @@ def parse_args() -> argparse.Namespace:
     # or
     parser.add_argument('-p', '--pc_trace', type=str, nargs='+', help="Binary PC trace of the execution. Multiple traces can be provided at once without repeating the option. Can be combined with --pc_dir")
     parser.add_argument('--pc_dir', type=str, help="Directory with Binary PC traces of the execution")
-    
+
     # instruction count log only options
     parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
     parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction count log only option")
     parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction count log only option")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
     parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided. Instruction count log only option")
-    
+
     # pc trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. PC trace only option")
     parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. PC trace only option")
-    #parser.add_argument('--pc_begin', type=str, help="Start PC address to filter the PC trace. PC trace only option")
-    #parser.add_argument('--pc_end', type=str, help="End PC address to filter the PC trace. PC trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. PC trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. PC trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
@@ -167,7 +171,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--save_pdf', type=str, nargs='?', const=os.getcwd(), default=None, help="Save charts as PDF. Saved as a single PDF file if multiple charts are generated. Requires path to save the PDF file. Default is current directory.")
     parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
     parser.add_argument('-o', '--output', type=str, default=os.getcwd(), help="Output directory for the combined PNG and CSV. Ignored if single json file is provided. Default is current directory. Standalone PNGs and CSVs will be saved in the same directory as the source json file irrespective of this option.")
-    
+
     return parser.parse_args()
 
 def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
@@ -178,10 +182,10 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     # filter out instructions if needed
     if args.exclude:
         df = df[~df['name'].isin(args.exclude)]
-    
+
     if args.exclude_type:
         df = df[~df['i_type'].isin(args.exclude_type)]
-    
+
     if args.top:
         df = df.tail(args.top)
     if not args.allow_zero:
@@ -194,7 +198,7 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     # separate the memory instructions by type
     df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
     df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
-    
+
     # add a bar chart
     ROWS = 2
     COLS = 1
@@ -208,7 +212,7 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
-    
+
     fig.suptitle(suptitle_str, size=12)
     box.append(ax[0].barh(df['name'], df['count'], color=colors["blue_base"]))
     box.append(ax[1].barh(df_g.index, df_g['count'], color=colors["blue_base"]))
@@ -230,18 +234,18 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
                 r.set_color(highlight_colors[hc])
         ax[0].barh(0, 0, color=highlight_colors[hc], label=', '.join(hl_g))
         hc += 1
-    
+
     if len(hl_groups) > 0:
         add_legend_for_hl_groups(ax[0], "log")
-    
+
     # add memory instructions breakdown, if any
     df_mem_g = df_mem_g[df_mem_g['count'] != 0] # never label if count is zero
     if len(df_mem_g) > 0:
         mem_type_index = df_g.index.get_loc("MEM")
         left_start = 0
         for i, row in df_mem_g.iterrows():
-            rect_m = ax[1].barh(mem_type_index, row['count'], left=left_start, 
-                                label=inst_mem_bd[row.name][0], 
+            rect_m = ax[1].barh(mem_type_index, row['count'], left=left_start,
+                                label=inst_mem_bd[row.name][0],
                                 color=inst_mem_bd[row.name][1])
             ax[1].bar_label(rect_m, padding=0, label_type='center', size=7)
             left_start += row['count']
@@ -251,7 +255,7 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     # handle display
     if not args.silent:
         plt.show()
-    
+
     plt.close()
     return fig
 
@@ -263,7 +267,7 @@ def json_prof_to_df(log) -> pd.DataFrame:
             if key.startswith('_'): # skip internal keys
                 continue
             ar.append([key, data[key]['count']])
-    
+
     df = pd.DataFrame(ar, columns=['name', 'count'])
     df['count'] = df['count'].astype(int)
     df = df.sort_values(by='count', ascending=True)
@@ -271,17 +275,17 @@ def json_prof_to_df(log) -> pd.DataFrame:
 
 def run_inst_log(log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
-    
+
     df = json_prof_to_df(log)
     fig = None
     if not args.combined_only:
         fig = draw_inst_log(df, hl_groups, title, args)
-    
+
     return df, fig
 
 def backannotate_dasm(log, df) -> \
 Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
-    
+
     symbols = {}
     pc_inst_map_arr = []
     dasm_ext = os.path.splitext(log)[1]
@@ -290,7 +294,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         current_sym = None
         append = False
         NUM_DIGITS = len(str(df['count'].max())) + 1
-        
+
         for line in infile:
             if line.startswith('Disassembly of section .text'):
                 append = True
@@ -298,10 +302,10 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 continue
             elif line.startswith('Disassembly of section .'):
                 append = False
-            
+
             if append and line.strip():
                 parts = line.split(':')
-                
+
                 if len(parts) == 2 and parts[1].startswith('\n'):
                     # detected symbol
                     parts = parts[0].split(" ")
@@ -315,7 +319,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                         "acc_count": 0
                     }
                     prev_pc = pc_start
-                
+
                 if len(parts) == 2 and parts[1].startswith('\t'):
                     # detected instruction
                     count, prev_pc = get_count(parts, df)
@@ -329,36 +333,50 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                          im[2], # instruction mnemonic
                          ' '.join(im[2:]) # full instruction
                          ])
-                
+
                 else: # not an instruction
                     outfile.write(line)
-                
+
             else: # not .text section
                 outfile.write(line)
-        
+
         # write the last symbol
         symbols[current_sym]['pc_end_real'] = prev_pc
-    
+
+    filter_str = []
+    if args.pc_begin:
+        filter_str.append(f"PC >= {args.pc_begin}")
+        pc_begin = get_base_int_pc(args.pc_begin)
+        symbols = {k: v for k, v in symbols.items()
+                   if v['pc_start_real'] >= pc_begin}
+
+    if args.pc_end:
+        filter_str.append(f"PC <= {args.pc_end}")
+        pc_end = get_base_int_pc(args.pc_end)
+        symbols = {k: v for k, v in symbols.items()
+                   if v['pc_end_real'] <= pc_end}
+
     sym_log = []
     for k,v in symbols.items():
         v['func_text'] = f"{k} ({v['acc_count']})"
         sym_log.append(f"{num_to_hex(v['pc_start_real']//4, None)} - " + \
                        f"{num_to_hex(v['pc_end_real']//4, None)}: " + \
                        f"{v['func_text']}")
-    
+
     print(f"Symbols found in {log}:")
+    if filter_str:
+        print(f"Filtered by: {' and '.join(filter_str)}")
     for sym in sym_log[::-1]:
         print(sym)
-    
+
     df_out = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
     return symbols, df_out
 
 def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
     if symbol_pos is None:
         symbol_pos = ax.get_xlim()[1]
-    
+
     # add cache line coloring
-    # FIXME when filtering is implemented, assumes exec starts from 0 for now
     for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
         color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
         ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08)
@@ -367,7 +385,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
     for k,v in symbols.items():
         pc_start = v['pc_start_real']//INST_BYTES
         pc_end = v['pc_end_real']//INST_BYTES
-        ax.axhline(y=pc_start-.5, color='k', linestyle='-', alpha=0.5)
+        ax.axhline(y=pc_start, color='k', linestyle='-', alpha=0.5)
         ax.text(symbol_pos, pc_start,
                 f" ^ {v['func_text']}", color='k',
                 fontsize=9, ha='left', va='center',
@@ -376,16 +394,22 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
 
     # add line for the last symbol, if any
     if symbols:
-        ax.axhline(y=pc_end+.5, color='k', linestyle='-', alpha=0.5)
-    
+        # ends after last PC entry
+        ax.axhline(y=pc_end+1, color='k', linestyle='-', alpha=0.5)
+
+    if args.pc_begin:
+        ax.set_ylim(bottom=get_base_int_pc(args.pc_begin)//4)
+    if args.pc_end:
+        ax.set_ylim(top=get_base_int_pc(args.pc_end)//4)
+
     return ax
 
 def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
-    # TODO: should probably limit the number of PC entries to display or 
+    # TODO: should probably limit the number of PC entries to display or
     # auto enlarge the figure size (but up to a point, then limit anyways)
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.1, 'right': 0.95}
     fig, ax = plt.subplots(figsize=(12,15), gridspec_kw=gs)
-    box = ax.barh(df['pc'], df['count'], height=1, alpha=0.8)
+    box = ax.barh(df['pc']+PC_OFFSET, df['count'], height=.9, alpha=0.8)
     #       , edgecolor=(0, 0, 0, 0.1))
     ax.set_xscale('log')
 
@@ -394,14 +418,18 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     for hl_g in hl_groups:
         for i, r in enumerate(box):
             if df.iloc[i]['inst_mnm'] in hl_g:
-                r.set_color(highlight_colors[hc])
+                # has to be removed as set_color doesn't respect original height
+                r.remove()
+                # add a new bar with the highlight color
+                ax.barh(df.iloc[i]['pc']+PC_OFFSET, df.iloc[i]['count'],
+                        height=.9, color=highlight_colors[hc], alpha=0.8)
         # add a dummy bar for the legend
         ax.barh(0, 0, color=highlight_colors[hc], label=', '.join(hl_g))
         hc += 1
 
     if len(hl_groups) > 0:
         add_legend_for_hl_groups(ax, "trace")
-    
+
     # update axis
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
     formatter = LogFormatterSciNotation(base=10)
@@ -432,33 +460,34 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     # handle display
     if not args.silent:
         plt.show()
-    
+
     plt.close()
     return fig
 
 def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
     fig, ax = plt.subplots(figsize=(24,12), gridspec_kw=gs)
-    
+
     # plot the PC trace and don't interpolate linearly between points
     # but step from one to the next
-    ax.step(df.index, df['pc'], where='post', linewidth=2, color=(0,.3,.6,0.2),
-            marker='.', markersize=5, markerfacecolor='b', markeredgecolor='b')
-    
+    ax.step(df.index, df['pc']+PC_OFFSET, where='post', linewidth=2,
+            color=(0,.3,.6,0.2), marker='.', markersize=5,
+            markerfacecolor='#649ac9', markeredgecolor='#649ac9')
+
     # scatter plot points from df where inst matches inst_mnm
     hc = 0
     for hl_g in hl_groups:
         for inst in hl_g:
             df_hl = df[df['inst_mnm'] == inst]
-            ax.scatter(df_hl.index, df_hl['pc'], color=highlight_colors[hc], 
-                       s=10, zorder=10)
+            ax.scatter(df_hl.index, df_hl['pc']+PC_OFFSET,
+                       color=highlight_colors[hc], s=10, zorder=10)
         # add a dummy scatter plot for the legend
         ax.scatter([], [], color=highlight_colors[hc], label=', '.join(hl_g))
         hc += 1
-    
+
     if len(hl_groups) > 0:
         add_legend_for_hl_groups(ax, "trace")
-    
+
     # update axis
     current_nbins = len(ax.get_xticks())
     locator = MaxNLocator(nbins=current_nbins*2, integer=True)
@@ -489,7 +518,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
 
 def run_pc_log(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
-    
+
     data = np.fromfile(bin_log, dtype=np.uint32)
     df_og = pd.DataFrame(data, columns=['pc'])
     df = df_og.groupby('pc').size().reset_index(name='count')
@@ -502,14 +531,6 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     # TODO: consider option to reverse the PC log so it grows down from the top
     # like .dump does
 
-    # slice df based on the input
-    # TODO filtering as a feature, has to be taken into account when 
-    # labeling the chart and when backannotating the .dasm file
-    #df = df.loc[
-    #    (df.pc >= (int("0x220", 16)//4)) & 
-    #    (df.pc < (int("0x300", 16)//4))
-    #]
-
     symbols = {}
     m_hl_groups = []
     if args.dasm:
@@ -518,12 +539,12 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         # merge df_map into df by keeping only records in the df
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
-    
+
     if args.symbols_only:
         return df, None, None
 
     fig = draw_pc_freq(df, m_hl_groups, title, symbols, args)
-    
+
     if len(df_og) > args.pc_time_series_limit:
         print(f"Warning: too many PC entries to display in the time series " + \
               f"chart ({len(df_og)}). Limit is {args.pc_time_series_limit} " + \
@@ -531,7 +552,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         fig2 = None
     else:
         fig2 = draw_pc_exec(df_og, m_hl_groups, title, symbols, args)
-    
+
     return df, fig, fig2
 
 def run_main(args) -> None:
@@ -551,10 +572,18 @@ def run_main(args) -> None:
 
     if args.symbols_only and run_inst:
         raise ValueError("--symbols_only cannot be used with instruction logs")
-    
+
     if args.symbols_only and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
-    
+
+    if (args.pc_begin or args.pc_end):
+        if not args.pc_trace:
+            raise ValueError("--pc_begin and --pc_end require single PC trace")
+        if not args.dasm:
+            raise ValueError("--pc_begin and --pc_end require --dasm")
+        if int(args.pc_begin, 16) >= int(args.pc_end, 16):
+            raise ValueError("--pc_begin must be less than --pc_end")
+
     if run_pc:
         args_log = args.pc_trace
         args_dir = args.pc_dir
@@ -563,14 +592,14 @@ def run_main(args) -> None:
         args_log = args.inst_log
         args_dir = args.inst_dir
         profiler_str = "_inst_profiler.json"
-    
+
     all_logs = []
     if args_log:
         for l in args_log:
             if not os.path.exists(l):
                 raise FileNotFoundError(f"File {l} not found")
             all_logs.append(l)
-    
+
     if args_dir:
         if not os.path.isdir(args_dir):
             raise FileNotFoundError(f"Directory {args_dir} not found")
@@ -584,7 +613,7 @@ def run_main(args) -> None:
         raise ValueError("Cannot backannotate multiple PC logs at once. " + \
                          "Provide a single PC trace file to backannotate " + \
                          "or remove the --dasm option")
-    
+
     hl_groups = []
     if not (args.highlight == None):
         if len(args.highlight) > len(highlight_colors):
@@ -609,7 +638,7 @@ def run_main(args) -> None:
             df, fig, fig2 = run_pc_log(log, hl_groups, title, args)
         else:
             df, fig = run_inst_log(log, hl_groups, title, args)
-        
+
         df_arr.append(df)
         if not args.combined_only:
             log_path = os.path.realpath(log)
@@ -636,46 +665,46 @@ def run_main(args) -> None:
     if args.save_csv: # each log is saved as a separate CSV file
         for log, df in zip(all_logs, df_arr):
             df.to_csv(log.replace(ext, "_df.csv"), index=False)
-        
+
         if len(all_logs) > 1 and run_inst: # and also saved as a combined CSV
             df_combined.to_csv(combined_out_path.replace(".json", ".csv"),
                                index=False)
-    
+
     if args.symbols_only and run_pc:
         return
-    
+
     if combined_fig:
         combined_out_path = os.path.join(
             args.output, f"{title_combined}{profiler_str}".replace(" ", "_")
         )
-    
+
     if args.save_png: # each chart is saved as a separate PNG file
         for name, fig in (fig_arr + fig_arr2):
             fig.savefig(name.replace(" ", "_").replace(ext, ".png"))
             if combined_fig:
                 combined_fig[1].savefig(combined_out_path.replace(ext, ".png"))
-    
+
     if args.save_svg: # each chart is saved as a separate SVG file
         for name, fig in (fig_arr + fig_arr2):
             fig.savefig(name.replace(" ", "_").replace(ext, ".svg"))
             if combined_fig:
                 combined_fig[1].savefig(combined_out_path.replace(ext, ".svg"))
-    
+
     if combined_fig: # add combined chart as the first one in the list (ie pdf)
         fig_arr.insert(0, combined_fig)
-    
+
     if args.save_pdf: # all charts are saved in a single PDF file
         pdf_name = f"{profiler_str[1:].split('.')[0]}.pdf"
         pdf_path =  os.path.join(args.save_pdf, pdf_name)
-        
+
         with PdfPages(pdf_path) as pdf:
             save_pdf(fig_arr, pdf)
-        
+
         if run_pc: # also save the second set of charts, if any
             pdf_path2 = pdf_path.replace(".pdf", "_exec.pdf")
             with PdfPages(pdf_path2) as pdf:
                 save_pdf(fig_arr2, pdf)
-    
+
 def save_pdf(fig_arr, pdf) -> None:
     total_pages = len(fig_arr)
     page = 1
