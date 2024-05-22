@@ -155,7 +155,8 @@ void core::load() {
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT((int)get_imm_i() + rf[get_rs1()]) << "] -> "
+             << MEM_ADDR_FORMAT((int)get_imm_i() + rf[get_rs1()]) << "] (0x"
+             << rf[get_rd()]<< ") -> "
              << rf_names[get_rd()][RF_NAMES] << std::endl;
     #endif
 }
@@ -173,7 +174,7 @@ void core::store() {
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[get_rs2()][RF_NAMES] << " (" << rf[get_rs2()]
+    mem_ostr << INDENT << rf_names[get_rs2()][RF_NAMES] << " (0x" << rf[get_rs2()]
              << ") -> mem[" << MEM_ADDR_FORMAT((int)get_imm_s() + rf[get_rs1()])
              << "]" << std::endl;
     #endif
