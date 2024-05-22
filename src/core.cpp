@@ -1,5 +1,7 @@
 #include "core.h"
 
+#define INDENT "    "
+
 core::core(uint32_t base_address, memory *mem, std::string log_name)
     #ifdef ENABLE_PROF
     : prof(log_name)
@@ -17,8 +19,9 @@ core::core(uint32_t base_address, memory *mem, std::string log_name)
 }
 
 void core::exec() {
-    #ifdef LOG_EXEC
-    log_stream.open(log_name + "_exec.log");
+    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+    log_ofstream.open(log_name + "_exec.log");
+    mem_ostr.str("");
     #endif
     running = true;
     while (running) exec_inst();
@@ -46,12 +49,21 @@ void core::exec_inst() {
         CASE_DECODER(misc_mem)
         default: unsupported();
     }
+
     #ifdef ENABLE_DASM
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
-    #ifdef LOG_EXEC
-    log_stream << FORMAT_INST(inst) << " " << dasm.asm_str << std::endl;
+
+    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+    log_ofstream << FORMAT_INST(inst) << " " << dasm.asm_str << std::endl;
     #endif
+
+    #ifdef LOG_EXEC_ALL
+    log_ofstream << mem_ostr.str();
+    mem_ostr.str("");
+    log_ofstream << dump_state() << std::endl;
+    #endif
+
     #endif
     pc = next_pc;
     inst_cnt++;
@@ -142,6 +154,11 @@ void core::load() {
                 << (int)get_imm_i()
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
     #endif
+    #ifdef LOG_EXEC_ALL
+    mem_ostr << INDENT << "mem["
+             << MEM_ADDR_FORMAT((int)get_imm_i() + rf[get_rs1()]) << "] -> "
+             << rf_names[get_rd()][RF_NAMES] << std::endl;
+    #endif
 }
 
 void core::store() {
@@ -155,6 +172,11 @@ void core::store() {
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs2()][RF_NAMES] << ","
                 << (int)get_imm_s()
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
+    #endif
+    #ifdef LOG_EXEC_ALL
+    mem_ostr << INDENT << rf_names[get_rs2()][RF_NAMES] << " (" << rf[get_rs2()]
+             << ") -> mem[" << MEM_ADDR_FORMAT((int)get_imm_s() + rf[get_rs1()])
+             << "]" << std::endl;
     #endif
 }
 
@@ -298,15 +320,7 @@ void core::dump() {
     std::cout << std::endl;
     #endif
     std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
-    std::cout << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
-    for(uint32_t i = 0; i < 32; i+=4){
-        for(uint32_t j = 0; j < 4; j++) {
-            std::cout << FRF(rf_names[i+j][RF_NAMES], rf[i+j]);
-        }
-        std::cout << std::endl;
-    }
-    for (auto it = csr.begin(); it != csr.end(); it++)
-        std::cout << CSRF(it) << std::endl;
+    std::cout << dump_state() << std::endl;
 
     #ifdef CHECK_LOG
     // open file for check log
@@ -322,6 +336,22 @@ void core::dump() {
          << std::hex << csr.at(0x340).value << std::endl;
     file.close();
     #endif
+}
+
+std::string core::dump_state() {
+    std::ostringstream state;
+    state << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
+    for(uint32_t i = 0; i < 32; i+=4){
+        state << INDENT;
+        for(uint32_t j = 0; j < 4; j++) {
+            state << FRF(rf_names[i+j][RF_NAMES], rf[i+j]);
+        }
+        state << std::endl;
+    }
+    for (auto it = csr.begin(); it != csr.end(); it++)
+        state << INDENT << CSRF(it) << std::endl;
+
+    return state.str();
 }
 
 /*

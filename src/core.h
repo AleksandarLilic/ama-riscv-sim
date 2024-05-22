@@ -11,6 +11,7 @@ class core{
         void exec();
         void exec_inst();
         void dump();
+        std::string dump_state();
         void finish(bool dump_regs);
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
@@ -19,11 +20,11 @@ class core{
         #ifdef ENABLE_DASM
         std::string get_inst_asm() { return dasm.asm_str; }
         #endif
-    
+
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) { csr.at(addr).value = data; }
-        
+
         // instruction decoders
         void al_reg();
         void al_imm();
@@ -38,7 +39,7 @@ class core{
         void misc_mem();
         void unsupported();
         void reset();
-        
+
         // instruction parsing
         uint32_t get_opcode();
         uint32_t get_rd();
@@ -55,12 +56,12 @@ class core{
         uint32_t get_imm_b();
         uint32_t get_imm_u();
         uint32_t get_imm_j();
-        
+
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
             DASM_OP("add");
             PROF_AL(add);
-            return int32_t(a) + int32_t(b); 
+            return int32_t(a) + int32_t(b);
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
             DASM_OP("sub");
@@ -114,7 +115,7 @@ class core{
                       << a << " and B: " << b << std::endl;
             return 1u;
         };
-        
+
         // load operations
         uint32_t load_byte(uint32_t address) {
             DASM_OP("lb");
@@ -126,7 +127,7 @@ class core{
             DASM_OP("lh");
             PROF_MEM(lh);
             return static_cast<uint32_t>(
-                static_cast<int16_t>(mem->rd16(address))); 
+                static_cast<int16_t>(mem->rd16(address)));
         }
         uint32_t load_word(uint32_t address) {
             DASM_OP("lw");
@@ -143,24 +144,24 @@ class core{
             PROF_MEM(lhu);
             return mem->rd16(address);
         };
-        
+
         // store operations
         void store_byte(uint32_t address, uint32_t data) {
             DASM_OP("sb");
             PROF_MEM(sb);
-            mem->wr8(address, data); 
+            mem->wr8(address, data);
         }
         void store_half(uint32_t address, uint32_t data) {
             DASM_OP("sh");
             PROF_MEM(sh);
-            mem->wr16(address, data); 
+            mem->wr16(address, data);
         }
         void store_word(uint32_t address, uint32_t data) {
             DASM_OP("sw");
             PROF_MEM(sw);
-            mem->wr32(address, data); 
+            mem->wr32(address, data);
         }
-        
+
         // branch operations
         bool branch_eq() {
             DASM_OP("beq");
@@ -186,7 +187,7 @@ class core{
             DASM_OP("bgeu");
             return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
         }
-        
+
         // csr operations
         void csr_access();
         void csr_rw(uint32_t init_val_rs1) {
@@ -228,8 +229,11 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         std::string log_name;
-        #ifdef LOG_EXEC
-        std::ofstream log_stream;
+        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+        std::ofstream log_ofstream;
+        #endif
+        #if defined(LOG_EXEC_ALL)
+        std::ostringstream mem_ostr;
         #endif
         #ifdef ENABLE_DASM
         dasm_str dasm;
@@ -242,16 +246,16 @@ class core{
         #ifdef ENABLE_PROF
         profiler prof;
         #endif
-        
+
         // csr map
         std::unordered_map<uint16_t, CSR> csr;
-        
+
         // register names
-        static constexpr std::array<std::array<const char*, 2>, 32> 
+        static constexpr std::array<std::array<const char*, 2>, 32>
         rf_names = {{
             {{"x0", "zero"}}, // hard-wired zero
             {{"x1", "ra"}},   // return address
-            {{"x2", "sp"}},   // stack pointer 
+            {{"x2", "sp"}},   // stack pointer
             {{"x3", "gp"}},   // global pointer
             {{"x4", "tp"}},   // thread pointer
             {{"x5", "t0"}},   // temporary/alternate link register

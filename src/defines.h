@@ -90,7 +90,7 @@ enum class csr_op_t {
 };
 
 struct dasm_str {
-    std::stringstream asm_ss;
+    std::ostringstream asm_ss;
     std::string asm_str;
     std::string op;
 };
