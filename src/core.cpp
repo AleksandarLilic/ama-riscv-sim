@@ -21,7 +21,6 @@ core::core(uint32_t base_address, memory *mem, std::string log_name)
 void core::exec() {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
     log_ofstream.open(log_name + "_exec.log");
-    mem_ostr.str("");
     #endif
     running = true;
     while (running) exec_inst();
