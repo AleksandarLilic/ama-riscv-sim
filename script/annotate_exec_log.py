@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import argparse
 import pandas as pd
@@ -29,14 +30,30 @@ for symbol, data in symbols.items():
     symbols_bins["bins"].append(data['pc_end_real'])
     symbols_bins["labels"].append(symbol)
 
-df = pd.read_csv(args.log, sep=':', header=None, names=['pc', 'instr'])
+with open(args.log, 'r') as f:
+    lines = f.readlines()
+
+pattern = re.compile(r'^[0-9a-fA-F]+:')
+lines_pc = [l for l in lines if pattern.match(l)]
+
+df = pd.DataFrame([x.split(':', 1) for x in lines_pc], columns=['pc', 'instr'])
 df['pc_int'] = df['pc'].apply(get_base_int_pc)
 df['bin'] = pd.cut(df['pc_int'], bins=symbols_bins["bins"],
                    labels=symbols_bins["labels"], include_lowest=True)
 df = symbol_change(df)
 
+symbols = [f"<{row['bin_s']}> at {row['pc']}:\n" if pd.notna(row['bin_s'])
+           else "" for index, row in df.iterrows()]
+
+indent = "    "
+out_lines = []
+for pc_l in lines_pc:
+    l = lines.pop(0)
+    while l != pc_l:
+        out_lines.append(indent + l)
+        l = lines.pop(0)
+    out_lines.append(symbols.pop(0))
+    out_lines.append(indent + l)
+
 with open(args.log.replace('.log', '_annotated.log'), 'w') as f:
-    for index, row in df.iterrows():
-        if pd.notna(row['bin_s']):
-            f.write(f"<{row['bin_s']}> at {row['pc']}:\n")
-        f.write(f"    {row['pc']}:{row['instr']}\n")
+    f.writelines(out_lines)
