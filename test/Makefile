@@ -33,6 +33,9 @@ build_sim:
 	make -C ../src --no-print-directory -j $(SIM_FLAGS)
 
 clean:
-	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log
+	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log $(COVDIR) *.gc*
+
+cleanall: clean
+	make -C ../src --no-print-directory clean
 
 .PHONY: all clean prepare

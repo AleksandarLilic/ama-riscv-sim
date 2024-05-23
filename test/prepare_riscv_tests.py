@@ -42,18 +42,23 @@ with open(args.testlist, 'r') as f:
     tests = json.load(f)
 
 print(f"Tests directories in json input config: {len(tests)}")
-
 out_txt = []
 for directory, test_list in tests.items():
     test_dir = os.path.join(TEST_DIR, directory)
     os.chdir(test_dir)
     subprocess.run(["make", "clean"], stdout=subprocess.PIPE)
-    for test in test_list:
-        make_status = subprocess.run(["make", f"{test}.elf"],
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
-        check_make_status(make_status, f"compile {test}.elf")
-        out_txt.append(os.path.join(test_dir, f"{test}.bin"))
+    make_all = test_list == ["all"]
+    all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
+    make_cmd = ["make"] + all_targets
+    make_status = subprocess.run(make_cmd,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+    check_make_status(make_status, f"compile {all_targets}")
+    if make_all:
+        all_bin_files = glob.glob(f"{test_dir}/*.bin")
+    else:
+        all_bin_files = [os.path.join(test_dir, f"{t}.bin") for t in test_list]
+    out_txt.extend(all_bin_files)
 
 isa_out_txt = []
 if args.isa_tests:
