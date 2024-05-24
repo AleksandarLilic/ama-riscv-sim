@@ -4,7 +4,8 @@ import glob
 import json
 import argparse
 
-GIT_ROOT = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).strip().decode('utf-8')
+GIT_ROOT = (subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
+            .strip().decode('utf-8'))
 TEST_DIR = os.path.join(GIT_ROOT, 'sw/baremetal')
 ISA_TEST_DIR = os.path.join(GIT_ROOT, 'sw/riscv-isa-tests')
 WORK_DIR = os.getcwd()
@@ -16,9 +17,15 @@ def file_exists(filename):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Prepare RISC-V tests for Google Test")
-    parser.add_argument("--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
+    parser.add_argument("-t", "--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
     parser.add_argument("--isa_tests", default=False, action='store_true', help="Also prepare ISA tests")
     return parser.parse_args()
+
+def run_make(make_cmd):
+    make_status = subprocess.run(make_cmd,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+    check_make_status(make_status, f"compile {make_cmd}")
 
 def check_make_status(make_status, msg: str):
     if make_status.returncode != 0:
@@ -42,18 +49,20 @@ with open(args.testlist, 'r') as f:
     tests = json.load(f)
 
 print(f"Tests directories in json input config: {len(tests)}")
+# get first test directory to make common object files
+test_dir = os.path.join(TEST_DIR, list(tests.keys())[0])
+os.chdir(test_dir)
+run_make(["make", "clean", "common"])
+run_make(["make", "common"])
 out_txt = []
 for directory, test_list in tests.items():
     test_dir = os.path.join(TEST_DIR, directory)
     os.chdir(test_dir)
-    subprocess.run(["make", "clean"], stdout=subprocess.PIPE)
+    run_make(["make", "clean"])
     make_all = test_list == ["all"]
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make"] + all_targets
-    make_status = subprocess.run(make_cmd,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-    check_make_status(make_status, f"compile {all_targets}")
+    make_cmd = ["make", "-j"] + all_targets
+    run_make(make_cmd)
     if make_all:
         all_bin_files = glob.glob(f"{test_dir}/*.bin")
     else:
@@ -64,10 +73,9 @@ isa_out_txt = []
 if args.isa_tests:
     print("Preparing ISA tests also")
     os.chdir(ISA_TEST_DIR)
-    subprocess.run(["make", "clean"], stdout=subprocess.PIPE)
-    subprocess.run(["make", "-j"], stdout=subprocess.PIPE)
-    subprocess.run(["make", "DIR=modified_riscv-tests/isa/rv32mi/"],
-                   stdout=subprocess.PIPE)
+    run_make(["make", "clean"])
+    run_make(["make", "-j"])
+    run_make(["make", "DIR=modified_riscv-tests/isa/rv32mi/"])
     isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
 
 os.chdir(WORK_DIR)
