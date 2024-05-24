@@ -5,6 +5,8 @@ src/*.s
 src/*.o
 src/*.so
 src/*.out
+src/*.gcno
+src/*.gcda
 ama-riscv-sim
 
 # checkers/logs
@@ -20,6 +22,7 @@ sw/**/*.o
 sw/**/*.d
 sw/**/*.i
 sw/**/*.s
+sw/**/*_symbols.json
 sw/**/local/
 sw/baremetal/vector_basic/test_arrays_*h
 
@@ -27,6 +30,9 @@ sw/baremetal/vector_basic/test_arrays_*h
 test/*_dump.log
 test/gtest_testlist.txt
 test/ama-riscv-sim_test
+test/*.gcno
+test/*.gcda
+test/coverage
 
 # manuals/helps/profiling
 *.help
