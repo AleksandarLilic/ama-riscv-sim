@@ -38,7 +38,7 @@ class core{
         void system();
         void misc_mem();
         void unsupported();
-        void reset();
+        // void reset();
 
         // instruction parsing
         uint32_t get_opcode();
@@ -46,7 +46,7 @@ class core{
         uint32_t get_funct3();
         uint32_t get_rs1();
         uint32_t get_rs2();
-        uint32_t get_funct7();
+        //uint32_t get_funct7();
         uint32_t get_funct7_b5();
         uint32_t get_imm_i();
         uint32_t get_imm_i_shamt();

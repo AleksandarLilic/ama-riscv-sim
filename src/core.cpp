@@ -68,9 +68,9 @@ void core::exec_inst() {
     inst_cnt++;
 }
 
-void core::reset() {
-    // TODO
-}
+// void core::reset() {
+//     // TODO
+// }
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
@@ -358,7 +358,7 @@ std::string core::dump_state() {
  * Instruction parsing
  */
 uint32_t core::get_opcode() { return (inst & M_OPC7); }
-uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
+//uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
 uint32_t core::get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
 uint32_t core::get_funct3() { return (inst & M_FUNCT3) >> 12; }
 uint32_t core::get_rd() { return (inst & M_RD) >> 7; }
