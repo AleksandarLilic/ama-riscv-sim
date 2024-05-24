@@ -6,14 +6,15 @@ SHELL  := /bin/bash
 OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 MEM_WIDTH := 32
 
-COMMON = ../common
-COMMON_SRC = $(COMMON)/common.c
-CRT0 ?= $(COMMON)/crt0.S
+COMMON_OBJ_NAMES += common.o crt0.o
+COMMON_PATH := ../common
+COMMON_OBJS = $(addprefix $(COMMON_PATH)/, $(COMMON_OBJ_NAMES))
+
 C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.S)
-LD_SRC := $(COMMON)/link.ld
-SRCS := $(C_SRCS) $(S_SRCS) $(CRT0) $(COMMON_SRC) $(LIB_SRCS)
-INC := $(COMMON)
+LD_SRC := $(COMMON_PATH)/link.ld
+SRCS := $(C_SRCS) $(S_SRCS)
+INC += $(COMMON_PATH)
 LIBS += -lgcc
 USER_DEFINES =
 
@@ -24,8 +25,8 @@ GCC_OPTS += -Wl,--no-warn-rwx-segments
 #GCC_OPTS += g
 
 # run with RTL_SIM=1 to generate hex file for RTL simulation
-$(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) -o $@ $(USER_DEFINES) $(LIBS)
+$(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(TARGET).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(TARGET).bin
 	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" == "1" ]; then \
@@ -33,7 +34,18 @@ $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC)
 	fi
 	@echo "Generated $@"
 
+common:
+	@make -C $(COMMON_PATH) all -j
+
+$(COMMON_OBJS):
+	@make -C $(COMMON_PATH) $@
+
 clean:
 	rm -f *.elf *.dump *.hex *.bin *.o *.d *.i *.s
+
+clean_common:
+	@make -C $(COMMON_PATH) clean
+
+cleanall: clean clean_common
 
 .PHONY: all clean

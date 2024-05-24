@@ -11,16 +11,13 @@ CODEGEN_PY := codegen.py
 OPT := -O2
 CFLAGS :=
 export CFLAGS
-TARGET := 
+TARGET :=
 export TARGET
 
-# Default target
 all: $(TARGETS)
 
 headers: $(HEADERS)
 
-# Generic pattern rule for all variants
-# FIXME: doesn't work with -j since main makefile generates main.o and crt0.o for all targets
 %.elf: $(HEADERS)
 	$(eval TARGET := $(basename $@))
 	$(eval OP := $(word 1, $(subst _, ,$(basename $@))))
