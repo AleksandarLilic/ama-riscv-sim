@@ -7,6 +7,7 @@
     "vector_accumulate": ["va_uint8"],
     "vector_mac": ["vm_uint8"],
     "vector_basic": ["all"],
+    "sorting": ["all"],
     "uart_direct_send": ["hello_world"],
     "uart_printf": ["hello_world"]
 }
