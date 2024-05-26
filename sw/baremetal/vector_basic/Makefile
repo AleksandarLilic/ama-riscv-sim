@@ -1,8 +1,10 @@
 TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
-OPS := add sub mul div
-# Combine operations with types
-FLAVORS := $(foreach op,$(OPS),$(addprefix $(op)_,$(TYPES)))
-TARGETS := $(addsuffix .elf, $(FLAVORS))
+
+TARGETS_ADD := $(addsuffix .elf, $(addprefix add_, $(TYPES)))
+TARGETS_SUB := $(addsuffix .elf, $(addprefix sub_, $(TYPES)))
+TARGETS_MUL := $(addsuffix .elf, $(addprefix mul_, $(TYPES)))
+TARGETS_DIV := $(addsuffix .elf, $(addprefix div_, $(TYPES)))
+
 HEADER_PREFIX := test_arrays_
 HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(OPS)))
 PYVER := python3
@@ -14,11 +16,16 @@ export CFLAGS
 TARGET :=
 export TARGET
 
-all: $(TARGETS)
+all: add sub mul div
+
+add: $(TARGETS_ADD)
+sub: $(TARGETS_SUB)
+mul: $(TARGETS_MUL)
+div: $(TARGETS_DIV)
 
 headers: $(HEADERS)
 
-%.elf: $(HEADERS)
+%.elf: $(HEADERS) *.c *.h
 	$(eval TARGET := $(basename $@))
 	$(eval OP := $(word 1, $(subst _, ,$(basename $@))))
 	$(eval NF := $(word 2, $(subst _, ,$(basename $@))))
@@ -27,7 +34,7 @@ headers: $(HEADERS)
 	@$(MAKE) -f ../Makefile.inc --no-print-directory
 
 $(HEADERS): $(CODEGEN_PY)
-	$(PYVER) $(CODEGEN_PY) --op $(word 3, $(subst _, ,$*))
+	$(PYVER) $(CODEGEN_PY) $(word 3, $(subst _, ,$*))
 
 clean_headers:
 	rm -f $(HEADERS)
