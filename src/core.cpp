@@ -32,7 +32,7 @@ void core::exec_inst() {
     inst = mem->get_inst(pc);
     #ifdef ENABLE_PROF
     prof.new_inst(inst);
-    prof.log_pc((pc - BASE_ADDR)>>2);
+    prof.log((pc - BASE_ADDR)>>2, rf[2]);
     #endif
     switch (get_opcode()) {
         CASE_DECODER(al_reg)
@@ -74,9 +74,6 @@ void core::exec_inst() {
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
-    #ifdef ENABLE_PROF
-    prof.log_to_file();
-    #endif
 }
 
 /*

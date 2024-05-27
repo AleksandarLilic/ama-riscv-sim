@@ -41,7 +41,7 @@ profiler::profiler(std::string log_name) {
 
     prof_sys_arr[static_cast<uint32_t>(opc_sys::i_ecall)] = {"ecall", 0};
     prof_sys_arr[static_cast<uint32_t>(opc_sys::i_ebreak)] = {"ebreak", 0};
-    
+
     prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrw)] = {"csrrw", 0};
     prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrs)] = {"csrrs", 0};
     prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrc)] = {"csrrc", 0};
@@ -128,7 +128,7 @@ void profiler::log_to_file() {
         out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
         profiled_inst_cnt += i.count;
     }
-    
+
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
         inst_prof_j& e = prof_j_arr[i];
         out_stream << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
@@ -141,20 +141,30 @@ void profiler::log_to_file() {
     out_stream << "\n}\n";
     out_stream.close();
 
-    // TODO: add instruction dasm to the profiler as a second entry?
-    out_stream.open(log_name + "_pc_trace.bin", std::ios::binary);
-    out_stream.write(reinterpret_cast<char*>(pc_exec.data()), 
-                     pc_exec.size() * sizeof(uint32_t));
+    out_stream.open(log_name + "_trace.bin", std::ios::binary);
+    out_stream.write(reinterpret_cast<char*>(trace.data()),
+                     trace.size() * sizeof(trace_entry));
     out_stream.close();
 
+    uint32_t min_sp = BASE_ADDR + MEM_SIZE;
+    for (const auto& t : trace) {
+        if (t.sp != 0 && t.sp < min_sp)
+            min_sp = t.sp;
+    }
+    min_sp = BASE_ADDR + MEM_SIZE - min_sp;
+
     #ifndef DPI
-    info(inst_cnt, profiled_inst_cnt);
+    info(inst_cnt, profiled_inst_cnt, min_sp);
     #endif
 }
 
-void profiler::info(uint32_t inst_cnt, uint32_t profiled_inst_cnt){
-    std::cout << "Profiler: instructions captured: " 
+void profiler::info(uint32_t inst_cnt,
+                    uint32_t profiled_inst_cnt,
+                    uint32_t max_sp){
+    std::cout << "Profiler: instructions captured: "
               << inst_cnt << std::endl;
     std::cout << "Profiler: instructions profiled: "
               << profiled_inst_cnt << std::endl;
+    std::cout << "Profiler: max SP usage: "
+              << max_sp << std::endl;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include "defines.h"
 
 #define JSON_ENTRY(name, count) \
@@ -65,12 +66,18 @@ struct inst_prof_j {
     uint32_t count_not_taken_fwd;
 };
 
+// TODO: add instruction dasm to the profiler as another entry?
+struct trace_entry {
+    uint32_t pc;
+    uint32_t sp;
+};
+
 class profiler{
     private:
         std::ofstream out_stream;
         uint32_t inst_cnt;
         uint32_t inst;
-        std::vector<uint32_t> pc_exec;
+        std::vector<trace_entry> trace;
         al_type_t al_type;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
             prof_alr_arr;
@@ -88,12 +95,13 @@ class profiler{
             prof_j_arr;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
             *prof_al_arr_ptrs[2] = {&prof_alr_arr, &prof_ali_arr};
-        
+
         std::string log_name;
 
     public:
         profiler() = delete;
         profiler(std::string log_name);
+        ~profiler() { log_to_file(); }
         void set_al_type(al_type_t type) { al_type = type; }
         void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
         void log_inst(opc_al opc);
@@ -102,9 +110,11 @@ class profiler{
         void log_inst(opc_sys opc);
         void log_inst(opc_csr opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void log_pc(uint32_t pc) { pc_exec.push_back(pc); }
-        void log_to_file();
-    
+        void log(uint32_t pc, uint32_t sp) { trace.push_back({pc, sp}); }
+
     private:
-        void info(uint32_t inst_cnt, uint32_t profiled_inst_cnt);
+        void log_to_file();
+        void info(uint32_t inst_cnt,
+                  uint32_t profiled_inst_cnt,
+                  uint32_t max_sp);
 };
