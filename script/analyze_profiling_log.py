@@ -26,6 +26,7 @@ MEM_L = "MEM_L"
 INST_BYTES = 4
 CACHE_LINE_INSTS = 64//INST_BYTES
 BASE_ADDR = 0x80000000
+MEM_SIZE = 0x40000
 # offset is requred to move bars/dots up by half a unit
 # in order not to be centered around the PC but start from it
 # compressed ISA whill change this, when supported
@@ -115,6 +116,13 @@ def get_count(parts, df) -> Tuple[int, int]:
 def num_to_hex(val, pos) -> str:
     return f"0x{int(val*INST_BYTES):04X}"
 
+def to_k(val, pos) -> str:
+    if val == 0:
+        return "0"
+    if val/1000 == val//1000:
+        return f"{val//1000:.0f}k"
+    return f"{val/1000:.3f}k"
+
 def inst_exists(inst) -> str:
     if inst not in all_inst:
         raise ValueError(f"Invalid instruction '{inst}'. " + \
@@ -145,8 +153,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction count log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
     parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
     # or
-    parser.add_argument('-p', '--pc_trace', type=str, nargs='+', help="Binary PC trace of the execution. Multiple traces can be provided at once without repeating the option. Can be combined with --pc_dir")
-    parser.add_argument('--pc_dir', type=str, help="Directory with Binary PC traces of the execution")
+    parser.add_argument('-t', '--trace', type=str, nargs='+', help="Binary executin trace. Multiple traces can be provided at once without repeating the option. Can be combined with --trace_dir")
+    parser.add_argument('--trace_dir', type=str, help="Directory with Binary traces of the execution")
 
     # instruction count log only options
     parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
@@ -402,8 +410,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
         ax.text(symbol_pos, pc_start,
                 f" ^ {v['func_text']}", color='k',
                 fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1)
-                )
+                bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1))
 
     # add line for the last symbol, if any
     if symbols:
@@ -478,49 +485,68 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     return fig
 
 def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
-    gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92}
-    fig, ax = plt.subplots(figsize=(24,12), gridspec_kw=gs)
+    gs = {
+        'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92, 'hspace': 0.03
+    }
+
+    fig, [ax_pc, ax_sp] = plt.subplots(ncols=1, nrows=2, figsize=(24,12),
+                                       sharex=True, height_ratios=[9, 1],
+                                       gridspec_kw=gs)
 
     # plot the PC trace and don't interpolate linearly between points
     # but step from one to the next
-    ax.step(df.index, df['pc']+PC_OFFSET, where='post', linewidth=2,
+    ax_pc.step(df.index, df['pc']+PC_OFFSET, where='post', linewidth=2,
             color=(0,.3,.6,0.2), marker='.', markersize=5,
             markerfacecolor='#649ac9', markeredgecolor='#649ac9')
+    ax_pc.grid(axis='x', linestyle='-', alpha=1, which='major')
 
     # scatter plot points from df where inst matches inst_mnm
     hc = 0
     for hl_g in hl_groups:
         for inst in hl_g:
             df_hl = df[df['inst_mnm'] == inst]
-            ax.scatter(df_hl.index, df_hl['pc']+PC_OFFSET,
+            ax_pc.scatter(df_hl.index, df_hl['pc']+PC_OFFSET,
                        color=highlight_colors[hc], s=10, zorder=10)
         # add a dummy scatter plot for the legend
-        ax.scatter([], [], color=highlight_colors[hc], label=', '.join(hl_g))
+        ax_pc.scatter([], [], color=highlight_colors[hc], label=', '.join(hl_g))
         hc += 1
 
     if len(hl_groups) > 0:
-        add_legend_for_hl_groups(ax, "trace")
+        add_legend_for_hl_groups(ax_pc, "trace")
 
     # update axis
-    current_nbins = len(ax.get_xticks())
-    locator = MaxNLocator(nbins=current_nbins*2, integer=True)
-    ax.xaxis.set_major_locator(locator)
-    ax.set_yticks(range(0, df['pc'].max(), CACHE_LINE_INSTS))
-    ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
-    ax.margins(y=0.03, x=0.01)
+    current_nbins = len(ax_pc.get_xticks())
+    locator = MaxNLocator(nbins=current_nbins*4, integer=True)
+    ax_pc.xaxis.set_major_locator(locator)
+    ax_pc.xaxis.set_major_formatter(FuncFormatter(to_k))
+    ax_pc.set_yticks(range(0, df['pc'].max(), CACHE_LINE_INSTS))
+    ax_pc.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
+    ax_pc.margins(y=0.03, x=0.01)
 
     # add a second x-axis
-    ax_top = ax.twiny()
-    ax_top.set_xlim(ax.get_xlim())
+    ax_top = ax_pc.twiny()
+    ax_top.set_xlim(ax_pc.get_xlim())
     ax_top.xaxis.set_major_locator(locator)
     ax_top.xaxis.set_ticks_position('top')
+    ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
+
+    # add SP trace
+    ax_sp.step(df.index, df['sp_real'], where='post', linewidth=1,
+               color=(0,.3,.6,1))
+    ax_sp.grid(axis='both', linestyle='-', alpha=1, which='major')
 
     # label
-    ax.set_xlabel('Instruction Count')
-    ax.set_ylabel('Program Counter')
-    ax.set_title(f"PC execution profile for {title}")
+    ax_sp.set_xlabel('Instruction Count')
+    ax_pc.set_ylabel('Program Counter')
+    ax_sp.set_ylabel('Stack Pointer')
+    ax_pc.set_title(f"Execution profile for {title}")
 
-    ax = annotate_pc_chart(df, symbols, ax)
+    # annotate both
+    ax_pc = annotate_pc_chart(df, symbols, ax_pc)
+    ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
+               f"  SP max : {df['sp_real'].max()} bytes", color='k',
+               fontsize=9, ha='left', va='center',
+               bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1))
 
     # handle display
     if not args.silent:
@@ -529,11 +555,20 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     plt.close()
     return fig
 
-def run_pc_log(bin_log, hl_groups, title, args) -> \
+def run_pc_trace(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    data = np.fromfile(bin_log, dtype=np.uint32)
-    df_og = pd.DataFrame(data, columns=['pc'])
+    h = ['pc', 'sp']
+    dtype = np.dtype([
+        (h[0], np.uint32),
+        (h[1], np.uint32),
+    ])
+    data = np.fromfile(bin_log, dtype=dtype)
+    df_og = pd.DataFrame(data, columns=h)
+    df_og['sp_real'] = BASE_ADDR + MEM_SIZE - df_og['sp']
+    df_og['sp_real'] = df_og['sp_real'].apply(
+        lambda x: 0 if x == BASE_ADDR + MEM_SIZE else x)
+
     df = df_og.groupby('pc').size().reset_index(name='count')
     df = df.sort_values(by='pc', ascending=True)
     df['pc'] = df['pc'].astype(int)
@@ -570,15 +605,16 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
 def run_main(args) -> None:
     inst_args = [args.inst_log, args.inst_dir]
-    pc_args = [args.pc_trace, args.pc_dir]
+    trace_args = [args.trace, args.trace_dir]
     run_inst = any(inst_args)
-    run_pc = any(pc_args)
+    run_trace = any(trace_args)
 
-    if run_inst and run_pc:
-        raise ValueError("Inst and pc options cannot be mixed")
+    if run_inst and run_trace:
+        raise ValueError("Inst and trace options cannot be mixed")
 
-    if not run_inst and not run_pc:
-        raise ValueError("No JSON instruction count log or PC trace provided")
+    if not run_inst and not run_trace:
+        raise ValueError(
+            "No JSON instruction count log or execution trace provided")
 
     if not os.path.exists(args.output):
         raise FileNotFoundError(f"Output directory {args.output} not found")
@@ -590,17 +626,18 @@ def run_main(args) -> None:
         raise ValueError("--symbols_only requires --dasm")
 
     if (args.pc_begin or args.pc_end):
-        if not args.pc_trace:
-            raise ValueError("--pc_begin and --pc_end require single PC trace")
+        if not args.trace:
+            raise ValueError(
+                "--pc_begin and --pc_end require single execution trace")
         if not args.dasm:
             raise ValueError("--pc_begin and --pc_end require --dasm")
         if int(args.pc_begin, 16) >= int(args.pc_end, 16):
             raise ValueError("--pc_begin must be less than --pc_end")
 
-    if run_pc:
-        args_log = args.pc_trace
-        args_dir = args.pc_dir
-        profiler_str = "_pc_trace.bin"
+    if run_trace:
+        args_log = args.trace
+        args_dir = args.trace_dir
+        profiler_str = "_trace.bin"
     else:
         args_log = args.inst_log
         args_dir = args.inst_dir
@@ -623,9 +660,10 @@ def run_main(args) -> None:
         all_logs.extend(all_in_dir)
 
     if len(all_logs) > 1 and args.dasm:
-        raise ValueError("Cannot backannotate multiple PC logs at once. " + \
-                         "Provide a single PC trace file to backannotate " + \
-                         "or remove the --dasm option")
+        raise ValueError(
+            "Cannot backannotate multiple execution traces at once. " + \
+            "Provide a single execution trace file to backannotate " + \
+            "or remove the --dasm option")
 
     hl_groups = []
     if not (args.highlight == None):
@@ -647,8 +685,8 @@ def run_main(args) -> None:
     ext = os.path.splitext(all_logs[0])[1]
     for log in all_logs:
         title = os.path.basename(log.replace(profiler_str, ""))
-        if run_pc:
-            df, fig, fig2 = run_pc_log(log, hl_groups, title, args)
+        if run_trace:
+            df, fig, fig2 = run_pc_trace(log, hl_groups, title, args)
         else:
             df, fig = run_inst_log(log, hl_groups, title, args)
 
@@ -656,7 +694,7 @@ def run_main(args) -> None:
         if not args.combined_only:
             log_path = os.path.realpath(log)
             fig_arr.append([log_path, fig])
-            if run_pc:
+            if run_trace:
                 fig_arr2.append([log_path.replace(ext, f"_exec{ext}"), fig2])
 
     # combine all the data
@@ -683,7 +721,7 @@ def run_main(args) -> None:
             df_combined.to_csv(combined_out_path.replace(".json", ".csv"),
                                index=False)
 
-    if args.symbols_only and run_pc:
+    if args.symbols_only and run_trace:
         return
 
     if combined_fig:
@@ -713,8 +751,8 @@ def run_main(args) -> None:
         with PdfPages(pdf_path) as pdf:
             save_pdf(fig_arr, pdf)
 
-        if run_pc: # also save the second set of charts, if any
-            pdf_path2 = pdf_path.replace(".pdf", "_exec.pdf")
+        if run_trace: # also save the second set of charts, if any
+            pdf_path2 = pdf_path.replace(".pdf", "_pc.pdf")
             with PdfPages(pdf_path2) as pdf:
                 save_pdf(fig_arr2, pdf)
 
