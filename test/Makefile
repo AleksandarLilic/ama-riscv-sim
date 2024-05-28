@@ -15,7 +15,7 @@ all: build_sim prepare coverage
 run_gtest: $(TEST)
 	./$(TEST)
 
-coverage: run_gtest
+coverage:
 	@mkdir -p $(COVDIR)
 	lcov --capture --directory ../src --output-file $(COVDIR)/coverage.info > $(COVLOG) 2>&1
 	genhtml $(COVDIR)/coverage.info --output-directory $(COVDIR) >> $(COVLOG) 2>&1
@@ -34,7 +34,10 @@ build_sim:
 	make -C ../src --no-print-directory clean
 	make -C ../src --no-print-directory -j $(SIM_FLAGS)
 
-clean:
+cleanlogs:
+	rm -f *.log *_profiler.* *trace* *_perf_est.csv
+
+clean: cleanlogs
 	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log $(COVDIR) *.gc* \
 	gtest_testlist.txt
 
