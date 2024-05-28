@@ -13,8 +13,9 @@ std::string gen_log_name(const std::string& path) {
 
 int main(int argc, char* argv[]) {
     if(argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_bin_file>\n";
-        return 1;
+        throw std::invalid_argument("Missing arguments. Usage: " +
+                                    std::string(argv[0]) + " <path_to_bin_file>"
+                                    );
     }
     std::string test_bin = argv[1];
     memory mem(BASE_ADDR, test_bin);

@@ -1,7 +1,7 @@
 #include "main_memory.h"
 
-main_memory::main_memory(size_t size, std::string test_bin) : 
-    dev(size) 
+main_memory::main_memory(size_t size, std::string test_bin) :
+    dev(size)
 {
     burn(test_bin);
 }
@@ -9,8 +9,7 @@ main_memory::main_memory(size_t size, std::string test_bin) :
 void main_memory::burn(std::string test_bin) {
     std::ifstream bin_file(test_bin, std::ios::binary | std::ios::ate);
     if (!bin_file.is_open()) {
-        std::cerr << "BIN failed to open" << std::endl;
-        return;
+        throw std::runtime_error("BIN failed to open.");
     }
 
     size_t file_size = bin_file.tellg();
@@ -26,8 +25,9 @@ void main_memory::burn(std::string test_bin) {
     bin_file.read(reinterpret_cast<char*>(mem.data()), file_size);
     size_t bytesRead = bin_file.gcount();
     if (bytesRead != file_size) {
-        std::cerr << "Error reading the file. Expected " << file_size 
+        std::cerr << "Error reading the file. Expected " << file_size
                   << " bytes, read " << bytesRead << " bytes." << std::endl;
+        throw std::runtime_error("Error reading the file.");
     }
     bin_file.close();
 }
