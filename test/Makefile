@@ -1,8 +1,8 @@
 CXX := g++
-CXXFLAGS := -g
+CXXFLAGS := -g -std=gnu++17
 GTEST_LIBS := -lgtest -lgtest_main -pthread
 LDFLAGS := -lgcov
-SIM_FLAGS := DEFINES=-DUART_ENABLE USER_DEFINES=--coverage LDFLAGS=-lgcov
+SIM_FLAGS := DEFINES="-DUART_ENABLE -DTEST_BUILD" USER_DEFINES=--coverage LDFLAGS=-lgcov
 TEST := ama-riscv-sim_test
 SOURCES := test.cpp
 PYVER := python3
@@ -15,7 +15,7 @@ all: build_sim prepare coverage
 run_gtest: $(TEST)
 	./$(TEST)
 
-coverage:
+coverage: run_gtest
 	@mkdir -p $(COVDIR)
 	lcov --capture --directory ../src --output-file $(COVDIR)/coverage.info > $(COVLOG) 2>&1
 	genhtml $(COVDIR)/coverage.info --output-directory $(COVDIR) >> $(COVLOG) 2>&1
