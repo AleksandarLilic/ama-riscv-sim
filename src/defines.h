@@ -118,7 +118,7 @@ struct dasm_str {
 // Instructions
 #define INST_ECALL 0x73
 #define INST_EBREAK 0x100073
-#define INST_FENCE 0x100F
+#define INST_FENCE_I 0x100F
 #define INST_NOP 0x13
 
 // CSRs
@@ -210,9 +210,11 @@ struct mem_entry {
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr
 
+#define INST_FORMAT(inst) \
+    std::setw(8) << std::setfill('0') << std::hex << inst << std::dec
+
 #define FORMAT_INST(inst) \
-    MEM_ADDR_FORMAT(pc) << ": " << std::setw(8) \
-    << std::setfill('0') << std::hex << inst << std::dec
+    MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT(inst)
 
 // Format Register File print
 #define FRF(addr, val) \

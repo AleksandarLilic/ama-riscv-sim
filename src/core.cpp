@@ -46,7 +46,7 @@ void core::exec_inst() {
         CASE_DECODER(auipc)
         CASE_DECODER(system)
         CASE_DECODER(misc_mem)
-        default: unsupported();
+        default: unsupported("opcode");
     }
 
     #ifdef ENABLE_DASM
@@ -93,7 +93,7 @@ void core::al_reg() {
         CASE_ALU_OP(xor)
         CASE_ALU_OP(or)
         CASE_ALU_OP(and)
-        default: unsupported();
+        default: unsupported("al_reg");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -118,7 +118,7 @@ void core::al_imm() {
         CASE_ALU_OP_IMM(xor)
         CASE_ALU_OP_IMM(or)
         CASE_ALU_OP_IMM(and)
-        default: unsupported();
+        default: unsupported("al_imm");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -142,7 +142,7 @@ void core::load() {
         CASE_LOAD(word)
         CASE_LOAD(byte_u)
         CASE_LOAD(half_u)
-        default: unsupported();
+        default: unsupported("load");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -163,6 +163,7 @@ void core::store() {
         CASE_STORE(byte)
         CASE_STORE(half)
         CASE_STORE(word)
+        default: unsupported("store");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -186,7 +187,7 @@ void core::branch() {
         CASE_BRANCH(ge)
         CASE_BRANCH(ltu)
         CASE_BRANCH(geu)
-        default: unsupported();
+        default: unsupported("branch");
     }
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rs1()][RF_NAMES] << ","
@@ -196,6 +197,7 @@ void core::branch() {
 }
 
 void core::jalr() {
+    if (get_funct3() != 0) unsupported("jalr");
     DASM_OP("jalr")
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
     PROF_J(jalr)
@@ -263,21 +265,23 @@ void core::system() {
 }
 
 void core::misc_mem() {
-    if (inst == INST_FENCE) {
+    if (inst == INST_FENCE_I) {
         // nop
         next_pc = pc + 4;
         #ifdef ENABLE_DASM
         DASM_OP("fence.i")
         dasm.asm_ss << dasm.op;
         #endif
+    } else if (get_funct3() == 0) {
+        // nop
+        next_pc = pc + 4;
+        #ifdef ENABLE_DASM
+        DASM_OP("fence")
+        dasm.asm_ss << dasm.op;
+        #endif
     } else {
-        unsupported();
+        unsupported("misc_mem");
     }
-}
-
-void core::unsupported() {
-    std::cerr << "Unsupported instruction: " << FORMAT_INST(inst) << std::endl;
-    throw std::runtime_error("Unsupported instruction");
 }
 
 /*
@@ -287,7 +291,7 @@ void core::csr_access() {
     uint32_t csr_address = get_csr_addr();
     auto it = csr.find(csr_address);
     if (it == csr.end()) {
-        std::cerr << "Unsupported CSR. Address: " << std::hex << csr_address
+        std::cerr << "Unsupported CSR. Address: 0x" << std::hex << csr_address
                   << std::dec <<std::endl;
         throw std::runtime_error("Unsupported CSR");
     } else {
@@ -301,12 +305,18 @@ void core::csr_access() {
             case (uint8_t)csr_op_t::op_rwi: csr_rwi(); break;
             case (uint8_t)csr_op_t::op_rsi: csr_rsi(); break;
             case (uint8_t)csr_op_t::op_rci: csr_rci(); break;
-            default: unsupported();
+            default: unsupported("sys");
         }
         #ifdef ENABLE_DASM
         CSR_REG_DASM;
         #endif
     }
+}
+
+void core::unsupported(const std::string &msg) {
+    std::cerr << "Unsupported instruction: <" << msg << "> "
+              << FORMAT_INST(inst) << std::endl;
+    throw std::runtime_error("Unsupported instruction");
 }
 
 /*

@@ -37,7 +37,7 @@ class core{
         void auipc();
         void system();
         void misc_mem();
-        void unsupported();
+        void unsupported(const std::string &msg);
         // void reset();
 
         // instruction parsing
@@ -108,12 +108,6 @@ class core{
             DASM_OP("and");
             PROF_AL(and);
             return a & b;
-        };
-        uint32_t al_unsupported(uint32_t a, uint32_t b) {
-            DASM_OP("unsupported");
-            std::cout << "ERROR: ALU unsupported function with arguments: A: "
-                      << a << " and B: " << b << std::endl;
-            return 1u;
         };
 
         // load operations

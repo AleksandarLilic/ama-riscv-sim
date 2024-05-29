@@ -23,11 +23,5 @@ void main_memory::burn(std::string test_bin) {
 
     bin_file.seekg(0, std::ios::beg);
     bin_file.read(reinterpret_cast<char*>(mem.data()), file_size);
-    size_t bytesRead = bin_file.gcount();
-    if (bytesRead != file_size) {
-        std::cerr << "Error reading the file. Expected " << file_size
-                  << " bytes, read " << bytesRead << " bytes." << std::endl;
-        throw std::runtime_error("Error reading the file.");
-    }
     bin_file.close();
 }
