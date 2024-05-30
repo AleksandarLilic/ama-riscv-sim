@@ -148,7 +148,7 @@ def add_legend_for_hl_groups(ax, chart_type:str) -> None:
 
 def parse_args() -> argparse.Namespace:
     TIME_SERIES_LIMIT = 50000
-    parser = argparse.ArgumentParser(description="Analyze instruction count and PC trace log")
+    parser = argparse.ArgumentParser(description="Analyze instruction count and Trace log")
     # either
     parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction count log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
     parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
@@ -163,13 +163,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
     parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided. Instruction count log only option")
 
-    # pc trace only options
-    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the PC trace. New file is generated at the same path with *.prof.<original ext> suffix. PC trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. PC trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. PC trace only option")
-    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. PC trace only option")
-    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. PC trace only option")
-    parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. PC trace only option")
+    # trace only options
+    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the Trace. New file is generated at the same path with *.prof.<original ext> suffix. Trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Trace only option")
+    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
+    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
+    parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
@@ -292,14 +292,14 @@ Tuple[pd.DataFrame, plt.Figure]:
 
     return df, fig
 
-def backannotate_dasm(log, df) -> \
+def backannotate_dasm(args, df) -> \
 Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 
     symbols = {}
     pc_inst_map_arr = []
-    dasm_ext = os.path.splitext(log)[1]
-    with open(log, 'r') as infile, \
-    open(log.replace(dasm_ext, '.prof' + dasm_ext), 'w') as outfile:
+    dasm_ext = os.path.splitext(args.dasm)[1]
+    with open(args.dasm, 'r') as infile, \
+    open(args.dasm.replace(dasm_ext, '.prof' + dasm_ext), 'w') as outfile:
         current_sym = None
         append = False
         NUM_DIGITS = len(str(df['count'].max())) + 1
@@ -372,7 +372,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                        f"{num_to_hex(v['pc_end_real']//4, None)}: " + \
                        f"{v['func_text']}")
 
-    print(f"Symbols found in {log}:")
+    print(f"Symbols found in {args.dasm}:")
     if filter_str:
         print(f"Filtered by: {' and '.join(filter_str)}")
     for sym in sym_log[::-1]:
@@ -387,7 +387,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     v[k2] = int(v2)
             symbols_py[k] = dict(v)
 
-        with open(log.replace(dasm_ext, '_symbols.json'), 'w') as sym_file:
+        with open(args.dasm.replace(dasm_ext, '_symbols.json'), 'w') as sym_file:
             json.dump(symbols_py, sym_file, indent=4)
 
     df_out = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
@@ -583,7 +583,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     m_hl_groups = []
     if args.dasm:
         m_hl_groups = hl_groups
-        symbols, df_map = backannotate_dasm(args.dasm, df)
+        symbols, df_map = backannotate_dasm(args, df)
         # merge df_map into df by keeping only records in the df
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
