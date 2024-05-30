@@ -10,7 +10,7 @@ DEPS := $(SOURCES:.cpp=.d)
 USER_DEFINES =
 DEFINES =
 DEFINES += -DLOG_EXEC -DENABLE_DASM
-DEFINES += -DLOG_EXEC_ALL
+#DEFINES += -DLOG_EXEC_ALL
 DEFINES += -DUSE_ABI_NAMES
 DEFINES += -DENABLE_PROF
 #DEFINES += -DCHECK_LOG
@@ -28,7 +28,7 @@ $(TARGET): $(OBJECTS)
 -include $(DEPS)
 
 cleanlogs:
-	rm -f *.log *_profiler.* *pc_trace* *_perf_est.csv
+	rm -f *.log *_profiler.* *_trace* *_perf_est.csv
 
 clean: cleanlogs
 	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii *.gc*
