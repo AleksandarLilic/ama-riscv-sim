@@ -24,7 +24,7 @@ sw/**/*.i
 sw/**/*.s
 sw/**/*_symbols.json
 sw/**/local/
-sw/baremetal/vector_basic/test_arrays_*h
+sw/baremetal/*/test_array*h
 
 # test files
 test/*_dump.log
@@ -33,6 +33,7 @@ test/ama-riscv-sim_test
 test/*.gcno
 test/*.gcda
 test/coverage
+test/*.bin
 
 # manuals/helps/profiling
 *.help
