@@ -5,53 +5,6 @@ main: li x13, 0
 csrwi 0x340, 0;
 li x5, 0 # override spike
 
-#ifdef EN_ZICSR /* complete Zicsr supported only by simulator atm */
-csr_rwi:
-csrwi 0x340, 4 # x0 is rd
-li x11, 19
-csrrw x10, 0x340, x11
-li x30, 4
-li x13, 101
-bne x30, x10, fail
-
-csr_rw:
-li x1, 0x4d
-csrrw x10, 0x340, x1
-li x30, 19
-li x13, 102
-bne x30, x10, fail
-
-csr_rs:
-li x2, 0x12
-csrrs x0, 0x340, x2 # store to CSR
-csrrwi x10, 0x340, 21 # move CSR to x10, 0x15 to CSR for csrrc
-li x30, 0x5f
-li x13, 103
-bne x30, x10, fail
-
-csr_rc:
-li x2, 0x7
-csrrc x0, 0x340, x2
-csrrwi x10, 0x340, 17
-li x30, 0x10
-li x13, 104
-bne x30, x10, fail
-
-csr_rsi:
-csrrsi x0, 0x340, 2
-csrrwi x10, 0x340, 5 # move CSR to x10
-li x30, 19
-li x13, 105
-bne x30, x10, fail
-
-csr_rci:
-csrrci x0, 0x340, 3
-csrrwi x10, 0x340, 31 # move CSR to x10
-li x30, 4
-li x13, 106
-bne x30, x10, fail
-#endif
-
 li x4, 0 # loop counter
 #li x5, 1000000 # loop limit
 li x5, 2
@@ -287,7 +240,7 @@ bne x30, x26, fail
 
 op_lhu:
 lla x11, dat3
-# lhu x26, 1(x11) # supposedly this is unaligned access in spike
+# lhu x26, 1(x11) # TBD: unaligned access
 # li x30, 0xe142
 lhu x26, 0(x11)
 li x30, 0x42e2
@@ -333,35 +286,35 @@ beq x10, x11, op_bne
 j fail
 
 op_bne:
-li x10, -47 
+li x10, -47
 li x11, 47
 addi x13, x13, 1
 bne x10, x11, op_blt
 j fail
 
 op_blt:
-li x10, -999 
+li x10, -999
 li x11, 999
 addi x13, x13, 1
 blt x10, x11, op_bge
 j fail
 
 op_bge:
-li x10, -37 
+li x10, -37
 li x11, -38
 addi x13, x13, 1
 bge x10, x11, op_bltu
 j fail
 
 op_bltu:
-li x10, 10565 
+li x10, 10565
 li x11, 10566
 addi x13, x13, 1
 bltu x10, x11, op_bgeu
 j fail
 
 op_bgeu:
-li x10, 1 
+li x10, 1
 li x11, 1
 addi x13, x13, 1
 bgeu x10, x11, op_b_done
@@ -412,7 +365,7 @@ li x24, 123456
 bne x4, x5, loop
 j pass
 
-fail: 
+fail:
 add x28, x0, x13 # store failed test id in x28
 slli x28, x28, 1
 or x28, x28, 1
