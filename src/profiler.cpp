@@ -137,6 +137,14 @@ void profiler::log_to_file() {
         profiled_inst_cnt += e.count_taken + e.count_not_taken;
     }
 
+    uint32_t min_sp = BASE_ADDR + MEM_SIZE;
+    for (const auto& t : trace) {
+        if (t.sp != 0 && t.sp < min_sp)
+            min_sp = t.sp;
+    }
+    min_sp = BASE_ADDR + MEM_SIZE - min_sp;
+
+    out_stream << "\"_max_sp_usage\": " << min_sp << ",\n";
     out_stream << "\"_profiled_instructions\": " << profiled_inst_cnt;
     out_stream << "\n}\n";
     out_stream.close();
@@ -146,12 +154,6 @@ void profiler::log_to_file() {
                      trace.size() * sizeof(trace_entry));
     out_stream.close();
 
-    uint32_t min_sp = BASE_ADDR + MEM_SIZE;
-    for (const auto& t : trace) {
-        if (t.sp != 0 && t.sp < min_sp)
-            min_sp = t.sp;
-    }
-    min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
     #ifndef DPI
     info(inst_cnt, profiled_inst_cnt, min_sp);
