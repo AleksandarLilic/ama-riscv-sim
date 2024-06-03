@@ -6,12 +6,24 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from codegen_common import *
 
-ARR_LEN = 64
-OUT = f"test_arrays.h"
+LEN_MAP = {"tiny": 10, "small": 30, "medium": 100, "large": 400}
+LEN_NAMES = list(LEN_MAP.keys())
+
+if len(sys.argv) != 2:
+    print("Usage: python3 codegen.py <" + "|".join(LEN_NAMES) + ">")
+    sys.exit(1)
+
+len_name = sys.argv[1]
+if len_name not in LEN_NAMES:
+    print(f"ARR_LEN {len_name} is not in {LEN_NAMES}")
+    sys.exit(1)
+
+arr_len = LEN_MAP[len_name]
+OUT = f"test_arrays_{len_name}.h"
 
 code = []
 code.append("#include <stdint.h>\n")
-code.append(f"#define ARR_LEN {ARR_LEN}\n")
+code.append(f"#define ARR_LEN {arr_len}\n")
 
 random.seed(0)
 for key,value in NUM.items():
@@ -30,7 +42,7 @@ for key,value in NUM.items():
 
     code.append("#define NF_IN " + ctypes)
 
-    value['a'] = rnd_gen(typ_min, typ_max, ARR_LEN, value["nf_in"])
+    value['a'] = rnd_gen(typ_min, typ_max, arr_len, value["nf_in"])
     value['ref'] = np.sort(value['a'])
 
     suffix = "ULL" if key == "uint64_t" else ""

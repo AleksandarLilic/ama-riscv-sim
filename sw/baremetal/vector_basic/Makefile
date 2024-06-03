@@ -1,9 +1,10 @@
 TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
+OPS := add sub mul div
 
-TARGETS_ADD := $(addsuffix .elf, $(addprefix add_, $(TYPES)))
-TARGETS_SUB := $(addsuffix .elf, $(addprefix sub_, $(TYPES)))
-TARGETS_MUL := $(addsuffix .elf, $(addprefix mul_, $(TYPES)))
-TARGETS_DIV := $(addsuffix .elf, $(addprefix div_, $(TYPES)))
+TARGETS_ADD := $(addsuffix .elf, $(addprefix $(word 1, $(OPS))_, $(TYPES)))
+TARGETS_SUB := $(addsuffix .elf, $(addprefix $(word 2, $(OPS))_, $(TYPES)))
+TARGETS_MUL := $(addsuffix .elf, $(addprefix $(word 3, $(OPS))_, $(TYPES)))
+TARGETS_DIV := $(addsuffix .elf, $(addprefix $(word 4, $(OPS))_, $(TYPES)))
 
 HEADER_PREFIX := test_arrays_
 HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(OPS)))

@@ -1,5 +1,16 @@
 #include "common.h"
-#include "test_arrays.h"
+
+#if defined(LEN_TINY)
+#include "test_arrays_tiny.h"
+#elif defined(LEN_SMALL)
+#include "test_arrays_small.h"
+#elif defined(LEN_MEDIUM)
+#include "test_arrays_medium.h"
+#elif defined(LEN_LARGE)
+#include "test_arrays_large.h"
+#else
+_Static_assert(0, "No array length defined or unsupported length specified");
+#endif
 
 #define LOOP_COUNT 1u
 
@@ -197,7 +208,7 @@ void main(void) {
 
         asm(".global check");
         asm("check:");
-        for (uint8_t j = 0; j < ARR_LEN; j++) {
+        for (uint32_t j = 0; j < ARR_LEN; j++) {
             if (a[j] != ref[j]) {
                 write_mismatch(a[j], ref[j], j+1); // +1 to avoid writing 0
                 fail();

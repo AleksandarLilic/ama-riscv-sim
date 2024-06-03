@@ -16,6 +16,10 @@ OPS = [add, sub, mul, div]
 OPS_N = [op.__name__ for op in OPS]
 OPS_SIGN = ["+", "-", "*", "/"]
 
+if len(sys.argv) != 2:
+    print(f"Usage: python3 codegen.py <{'|'.join(OPS_N)}>")
+    sys.exit(1)
+
 op = sys.argv[1]
 if op not in OPS_N:
     print(f"Operation {op} not found in {OPS_N}")
