@@ -154,17 +154,15 @@ void profiler::log_to_file() {
                      trace.size() * sizeof(trace_entry));
     out_stream.close();
 
-
     #ifndef DPI
-    info(inst_cnt, profiled_inst_cnt, min_sp);
+    info(profiled_inst_cnt, min_sp);
     #endif
+
+    assert(inst_cnt == profiled_inst_cnt &&
+           "Profiler: instruction count mismatch");
 }
 
-void profiler::info(uint32_t inst_cnt,
-                    uint32_t profiled_inst_cnt,
-                    uint32_t max_sp){
-    std::cout << "Profiler: instructions captured: "
-              << inst_cnt << std::endl;
+void profiler::info(uint32_t profiled_inst_cnt, uint32_t max_sp){
     std::cout << "Profiler: instructions profiled: "
               << profiled_inst_cnt << std::endl;
     std::cout << "Profiler: max SP usage: "

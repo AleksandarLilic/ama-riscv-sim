@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include "defines.h"
 
 #define JSON_ENTRY(name, count) \
@@ -114,7 +115,5 @@ class profiler{
 
     private:
         void log_to_file();
-        void info(uint32_t inst_cnt,
-                  uint32_t profiled_inst_cnt,
-                  uint32_t max_sp);
+        void info(uint32_t profiled_inst_cnt, uint32_t max_sp);
 };
