@@ -2,12 +2,11 @@
 .global     main
 
 main: li x13, 0
-csrwi 0x340, 0;
+csrwi 0x340, 0
 li x5, 0 # override spike
 
-li x4, 0 # loop counter
-#li x5, 1000000 # loop limit
-li x5, 2
+li x4, 0 # loop var
+li x5, LOOP_COUNT # loop end
 
 loop: li x24, 0
 addi x4, x4, 1
