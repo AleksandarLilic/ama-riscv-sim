@@ -16,7 +16,11 @@ class perf:
     def __init__(self, inst_profiler_path, hw_perf_metrics_path):
         self.inst_profiler_path = inst_profiler_path
         self.name = os.path.basename(inst_profiler_path)
-        df = json_prof_to_df(inst_profiler_path)
+        df = json_prof_to_df(inst_profiler_path, allow_internal=True)
+        # get internal keys into dfi and remove from df
+        dfi = df.loc[df['name'].str.startswith('_')]
+        df = df.loc[df['name'].str.startswith('_') == False]
+        self.sp_usage = dfi[dfi['name'] == "_max_sp_usage"]['count'].tolist()[0]
 
         self.b = {"taken": 0, "taken_fwd": 0, "taken_bwd": 0,
                   "not_taken": 0, "not_taken_fwd": 0, "not_taken_bwd": 0}

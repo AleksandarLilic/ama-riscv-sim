@@ -77,7 +77,6 @@ colors = {
 }
 
 highlight_colors = [
-    #"#2a9d8f", # teal
     #"#33C1B1", # keppel
     "#3ECCBB", # turquoise
     #"#e9c46a", # yellow
@@ -85,6 +84,7 @@ highlight_colors = [
     "#EED595", # peach yellow
     "#f4a261", # orange
     "#e76f51", # red
+    "#2a9d8f", # teal
 ]
 
 # memory instructions breakdown store vs load
@@ -268,12 +268,14 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     plt.close()
     return fig
 
-def json_prof_to_df(log) -> pd.DataFrame:
+def json_prof_to_df(log, allow_internal=False) -> pd.DataFrame:
     ar = []
     with open(log, 'r') as file:
         data = json.load(file)
         for key in data:
-            if key.startswith('_'): # skip internal keys
+            if key.startswith('_'):
+                if allow_internal:
+                    ar.append([key, data[key]])
                 continue
             ar.append([key, data[key]['count']])
 
@@ -400,7 +402,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
     # add cache line coloring
     for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
         color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
-        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08)
+        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08, zorder=0)
 
     # add lines for symbols, if any
     for k,v in symbols.items():
