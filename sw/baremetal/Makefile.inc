@@ -3,8 +3,6 @@
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. export RV_GNU_LATEST=riscv64-unknown-elf
 SHELL  := /bin/bash
-OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
-MEM_WIDTH := 32
 
 COMMON_OBJ_NAMES += common.o crt0.o
 COMMON_PATH := ../common
@@ -19,10 +17,14 @@ LIBS += -lgcc
 USER_DEFINES =
 
 GCC_OPTS += -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic
-GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles
-GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none -save-temps
+GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
+GCC_OPTS += -save-temps
+GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--no-warn-rwx-segments
-#GCC_OPTS += g
+
+OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
+#OBJDUMP_OPTS := -S # add C source code in disassembly
+MEM_WIDTH := 32
 
 # run with RTL_SIM=1 to generate hex file for RTL simulation
 $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
