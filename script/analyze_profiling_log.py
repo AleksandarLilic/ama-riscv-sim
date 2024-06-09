@@ -93,17 +93,6 @@ inst_mem_bd = {
     MEM_S : ["Store", colors["blue_light2"]],
 }
 
-def find_gs(x) -> Dict[str, Any]:
-    prec = 4
-    m1 = -0.0058
-    b1 = 0.3986
-    m2 = 0.0024
-    b2 = 0.8092
-    return {
-        'hspace': round(m1 * x + b1, prec),
-        'top': round(m2 * x + b2, prec)
-    }
-
 def get_base_int_pc(pc) -> int:
     return int(pc,16) - int(BASE_ADDR)
 
@@ -215,7 +204,7 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     fig, ax = plt.subplots(ROWS, COLS,
                            figsize=(COLS*10, ROWS*(len(df)+len(df_g))/6),
                            height_ratios=(len(df)*.95, len(df_g)),
-                           gridspec_kw=find_gs(len(df)+len(df_g)))
+                           constrained_layout=True)
     suptitle_str = f"Execution profile for {title}"
     suptitle_str += f"\nInstructions profiled: {inst_profiled}"
     if args.exclude or args.exclude_type:
@@ -429,8 +418,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
 def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     # TODO: should probably limit the number of PC entries to display or
     # auto enlarge the figure size (but up to a point, then limit anyways)
-    gs = {'top': 0.93, 'bottom': 0.07, 'left': 0.1, 'right': 0.95}
-    fig, ax = plt.subplots(figsize=(12,15), gridspec_kw=gs)
+    fig, ax = plt.subplots(figsize=(12,15), constrained_layout=True)
     box = ax.barh(df['pc']+PC_OFFSET, df['count'], height=.9, alpha=0.8)
     #       , edgecolor=(0, 0, 0, 0.1))
     ax.set_xscale('log')
@@ -487,14 +475,9 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     return fig
 
 def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
-    gs = {
-        'top': 0.93, 'bottom': 0.07, 'left': 0.05, 'right': 0.92, 'hspace': 0.03
-    }
-
     fig, [ax_pc, ax_sp] = plt.subplots(ncols=1, nrows=2, figsize=(24,12),
                                        sharex=True, height_ratios=[9, 1],
-                                       gridspec_kw=gs)
-
+                                       constrained_layout=True)
     # plot the PC trace and don't interpolate linearly between points
     # but step from one to the next
     ax_pc.step(df.index, df['pc']+PC_OFFSET, where='post', linewidth=2,
@@ -696,7 +679,7 @@ def run_main(args) -> None:
         if not args.combined_only:
             log_path = os.path.realpath(log)
             fig_arr.append([log_path, fig])
-            if run_trace:
+            if run_trace and fig2 is not None:
                 fig_arr2.append([log_path.replace(ext, f"_exec{ext}"), fig2])
 
     # combine all the data
