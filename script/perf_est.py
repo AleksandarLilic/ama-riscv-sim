@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import pandas as pd
-from analyze_profiling_log import json_prof_to_df
+from run_analysis import json_prof_to_df
 
 class perf:
     b_inst = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
