@@ -1,17 +1,13 @@
 import os
-import sys
-import glob
 import json
 import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, Any, Tuple, List
-from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation, MaxNLocator
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-PROFILER_ENDS = "_profiler.json"
 ARITH = "ARITH"
 MEM = "MEM"
 BRANCH = "BRANCH"
@@ -139,18 +135,15 @@ def parse_args() -> argparse.Namespace:
     TIME_SERIES_LIMIT = 50000
     parser = argparse.ArgumentParser(description="Analyze instruction count and Trace log")
     # either
-    parser.add_argument('-i', '--inst_log', type=str, nargs='+', help="JSON instruction count log with profiling data. Multiple logs can be provided at once without repeating the option. Can be combined with --inst_dir")
-    parser.add_argument('--inst_dir', type=str, help="Directory with JSON instruction logs with profiling data")
+    parser.add_argument('-i', '--inst_log', type=str, help="JSON instruction count log with profiling data")
     # or
-    parser.add_argument('-t', '--trace', type=str, nargs='+', help="Binary executin trace. Multiple traces can be provided at once without repeating the option. Can be combined with --trace_dir")
-    parser.add_argument('--trace_dir', type=str, help="Directory with Binary traces of the execution")
+    parser.add_argument('-t', '--trace', type=str, help="Binary execution trace")
 
     # instruction count log only options
     parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
     parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction count log only option")
     parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction count log only option")
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
-    parser.add_argument('--combined_only', action='store_true', help="Only save combined charts/data. Ignored if single JSON log is provided. Instruction count log only option")
 
     # trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the Trace. New file is generated at the same path with *.prof.<original ext> suffix. Trace only option")
@@ -166,9 +159,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
-    parser.add_argument('--save_pdf', type=str, nargs='?', const=os.getcwd(), default=None, help="Save charts as PDF. Saved as a single PDF file if multiple charts are generated. Requires path to save the PDF file. Default is current directory.")
-    parser.add_argument('--save_csv', action='store_true', help="Save source data as CSV")
-    parser.add_argument('-o', '--output', type=str, default=os.getcwd(), help="Output directory for the combined PNG and CSV. Ignored if single json file is provided. Default is current directory. Standalone PNGs and CSVs will be saved in the same directory as the source json file irrespective of this option.")
+    parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
 
     return parser.parse_args()
 
@@ -277,9 +268,7 @@ def run_inst_log(log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
 
     df = json_prof_to_df(log)
-    fig = None
-    if not args.combined_only:
-        fig = draw_inst_log(df, hl_groups, title, args)
+    fig = draw_inst_log(df, hl_groups, title, args)
 
     return df, fig
 
@@ -589,10 +578,8 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     return df, fig, fig2
 
 def run_main(args) -> None:
-    inst_args = [args.inst_log, args.inst_dir]
-    trace_args = [args.trace, args.trace_dir]
-    run_inst = any(inst_args)
-    run_trace = any(trace_args)
+    run_inst = args.inst_log is not None
+    run_trace = args.trace is not None
 
     if run_inst and run_trace:
         raise ValueError("Inst and trace options cannot be mixed")
@@ -600,9 +587,6 @@ def run_main(args) -> None:
     if not run_inst and not run_trace:
         raise ValueError(
             "No JSON instruction count log or execution trace provided")
-
-    if not os.path.exists(args.output):
-        raise FileNotFoundError(f"Output directory {args.output} not found")
 
     if (args.symbols_only or args.save_symbols) and run_inst:
         raise ValueError("--symbols_only cannot be used with instruction logs")
@@ -621,34 +605,13 @@ def run_main(args) -> None:
 
     if run_trace:
         args_log = args.trace
-        args_dir = args.trace_dir
         profiler_str = "_trace.bin"
     else:
         args_log = args.inst_log
-        args_dir = args.inst_dir
         profiler_str = "_inst_profiler.json"
 
-    all_logs = []
-    if args_log:
-        for l in args_log:
-            if not os.path.exists(l):
-                raise FileNotFoundError(f"File {l} not found")
-            all_logs.append(l)
-
-    if args_dir:
-        if not os.path.isdir(args_dir):
-            raise FileNotFoundError(f"Directory {args_dir} not found")
-        all_in_dir = glob.glob(os.path.join(args_dir, "*" + profiler_str))
-        if not all_in_dir:
-            raise FileNotFoundError(f"No JSON files found in directory " + \
-                                    f"{args_dir}")
-        all_logs.extend(all_in_dir)
-
-    if len(all_logs) > 1 and args.dasm:
-        raise ValueError(
-            "Cannot backannotate multiple execution traces at once. " + \
-            "Provide a single execution trace file to backannotate " + \
-            "or remove the --dasm option")
+    if not os.path.exists(args_log):
+        raise FileNotFoundError(f"File {args_log} not found")
 
     hl_groups = []
     if not (args.highlight == None):
@@ -663,91 +626,32 @@ def run_main(args) -> None:
                 hl_groups = args.highlight
             hl_groups = [ah.split(",") for ah in hl_groups]
 
-
-    df_arr = []
     fig_arr = []
-    fig_arr2 = []
-    ext = os.path.splitext(all_logs[0])[1]
-    for log in all_logs:
-        title = os.path.basename(log.replace(profiler_str, ""))
-        if run_trace:
-            df, fig, fig2 = run_pc_trace(log, hl_groups, title, args)
-        else:
-            df, fig = run_inst_log(log, hl_groups, title, args)
+    ext = os.path.splitext(args_log)[1]
+    title = os.path.basename(args_log.replace(profiler_str, ""))
+    if run_trace:
+        df, fig, fig2 = run_pc_trace(args_log, hl_groups, title, args)
+    else:
+        df, fig = run_inst_log(args_log, hl_groups, title, args)
 
-        df_arr.append(df)
-        if not args.combined_only:
-            log_path = os.path.realpath(log)
-            fig_arr.append([log_path, fig])
-            if run_trace and fig2 is not None:
-                fig_arr2.append([log_path.replace(ext, f"_exec{ext}"), fig2])
+    log_path = os.path.realpath(args_log)
+    fig_arr.append([log_path, fig])
+    if run_trace and fig2 is not None:
+        fig_arr.append([log_path.replace(ext, f"_exec{ext}"), fig2])
 
-    # combine all the data
-    combined_fig = None
-    if len(all_logs) > 1 and run_inst:
-        title_combined = "all_workloads"
-        df_combined = pd.concat(df_arr)
-        if 'i_type' in df_combined.columns:
-            df_combined = df_combined.drop(columns=['i_type'])
-        if 'i_mem_type' in df_combined.columns:
-            df_combined = df_combined.drop(columns=['i_mem_type'])
-        df_combined = df_combined.groupby('name', as_index=False).sum()
-        df_combined = df_combined.sort_values(by='count', ascending=True)
-        combined_fig = [
-            f"{title_combined}{profiler_str}",
-            draw_inst_log(df_combined, hl_groups, title_combined, args)
-        ]
-
-    if args.save_csv: # each log is saved as a separate CSV file
-        for log, df in zip(all_logs, df_arr):
-            df.to_csv(log.replace(ext, "_df.csv"), index=False)
-
-        if len(all_logs) > 1 and run_inst: # and also saved as a combined CSV
-            df_combined.to_csv(combined_out_path.replace(".json", ".csv"),
-                               index=False)
+    if args.save_csv:
+        df.to_csv(args_log.replace(ext, "_df.csv"), index=False)
 
     if args.symbols_only and run_trace:
         return
 
-    if combined_fig:
-        combined_out_path = os.path.join(
-            args.output, f"{title_combined}{profiler_str}".replace(" ", "_")
-        )
-
     if args.save_png: # each chart is saved as a separate PNG file
-        for name, fig in (fig_arr + fig_arr2):
+        for name, fig in (fig_arr):
             fig.savefig(name.replace(" ", "_").replace(ext, ".png"))
-            if combined_fig:
-                combined_fig[1].savefig(combined_out_path.replace(ext, ".png"))
 
     if args.save_svg: # each chart is saved as a separate SVG file
-        for name, fig in (fig_arr + fig_arr2):
+        for name, fig in (fig_arr):
             fig.savefig(name.replace(" ", "_").replace(ext, ".svg"))
-            if combined_fig:
-                combined_fig[1].savefig(combined_out_path.replace(ext, ".svg"))
-
-    if combined_fig: # add combined chart as the first one in the list (ie pdf)
-        fig_arr.insert(0, combined_fig)
-
-    if args.save_pdf: # all charts are saved in a single PDF file
-        pdf_name = f"{profiler_str[1:].split('.')[0]}.pdf"
-        pdf_path =  os.path.join(args.save_pdf, pdf_name)
-
-        with PdfPages(pdf_path) as pdf:
-            save_pdf(fig_arr, pdf)
-
-        if run_trace: # also save the second set of charts, if any
-            pdf_path2 = pdf_path.replace(".pdf", "_pc.pdf")
-            with PdfPages(pdf_path2) as pdf:
-                save_pdf(fig_arr2, pdf)
-
-def save_pdf(fig_arr, pdf) -> None:
-    total_pages = len(fig_arr)
-    page = 1
-    for name, fig in fig_arr:
-        fig.supxlabel(f"Page {page} of {total_pages}", x=0.93, fontsize=10)
-        page += 1
-        pdf.savefig(fig)
 
 if __name__ == "__main__":
     args = parse_args()
