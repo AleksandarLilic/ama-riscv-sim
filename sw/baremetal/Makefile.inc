@@ -21,9 +21,10 @@ GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--no-warn-rwx-segments
+GCC_OPTS += -Wl,-Map=$(TARGET).map
 
 OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
-#OBJDUMP_OPTS := -S # add C source code in disassembly
+#OBJDUMP_OPTS := -S # inline C source code in disassembly
 MEM_WIDTH := 32
 
 # run with RTL_SIM=1 to generate hex file for RTL simulation
@@ -43,7 +44,7 @@ $(COMMON_OBJS):
 	@make -C $(COMMON_PATH) $@
 
 clean:
-	rm -f *.elf *.dump *.hex *.bin *.o *.d *.i *.s
+	rm -f *.elf *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json
 
 clean_common:
 	@make -C $(COMMON_PATH) clean
