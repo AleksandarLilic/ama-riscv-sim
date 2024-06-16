@@ -3,9 +3,9 @@
 
 #define ARR_LEN 16
 
-uint8_t a[ARR_LEN] = {
+volatile uint8_t a[ARR_LEN] = {
     99, 228, 216, 184, 167, 203, 173, 107, 177, 205, 12, 128, 51, 95, 222, 212};
-uint8_t b[ARR_LEN] = {
+volatile uint8_t b[ARR_LEN] = {
     152, 237, 93, 250, 200, 154, 185, 76, 1, 93, 58, 80, 88, 124, 125, 251};
 uint32_t c[ARR_LEN] = {0};
 

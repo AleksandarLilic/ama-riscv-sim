@@ -10,7 +10,7 @@ OBJECTS_S := $(S_SRCS:.S=.o)
 
 GCC_OPTS += -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -save-temps
-GCC_OPTS += -O2 -flto # -ffunction-sections -fdata-sections
+GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
 #GCC_OPTS += g
 
 # set all target to make all objects
