@@ -7,7 +7,7 @@ src/*.so
 src/*.out
 src/*.gcno
 src/*.gcda
-ama-riscv-sim
+src/ama-riscv-sim*
 
 # checkers/logs
 *.check
@@ -16,7 +16,8 @@ ama-riscv-sim
 # RISC-V program files
 sw/**/*.bin
 sw/**/*.dump
-sw/**/*.elf
+sw/**/*.map
+sw/**/*.elf*
 sw/**/*.hex
 sw/**/*.o
 sw/**/*.d
@@ -43,7 +44,9 @@ analysis.gprof.ipynb
 *_profiler*
 *_trace.*
 *_exec.*
+*_trace_df.csv
 *.nm
+*.grep
 
 # python files
 __pycache__/
