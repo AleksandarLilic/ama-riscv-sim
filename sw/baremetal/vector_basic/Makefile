@@ -11,7 +11,7 @@ HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(OPS)))
 PYVER := python3
 CODEGEN_PY := codegen.py
 
-OPT := -O2
+OPT := -O3 -flto
 CFLAGS :=
 export CFLAGS
 TARGET :=
