@@ -96,6 +96,7 @@ class perf:
         return out
 
     def __str__(self):
+        out1 = f"Peak Stack usage: {self.sp_usage} bytes"
         out = []
         out.append(f"Branches total: {self.b_inst} out of " + \
                    f"{self.inst_total} total instructions " + \
@@ -114,7 +115,7 @@ class perf:
                    f"({self.saved_cycles} cycles saved)")
         out2 = f"Potential app speedup: {self.speedup:.1f}%"
         delim = "\n    "
-        branch_stats = f"{self.name}\n{delim.join(out)}\n{out2}"
+        branch_stats = f"{self.name}\n{out1}\n{delim.join(out)}\n{out2}"
 
         return f"{branch_stats}\n{self.og_perf_str}\n{self.new_perf_str}"
 

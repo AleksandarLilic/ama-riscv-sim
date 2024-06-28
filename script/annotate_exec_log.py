@@ -3,7 +3,7 @@ import re
 import json
 import argparse
 import pandas as pd
-from analyze_profiling_log import get_base_int_pc
+from run_analysis import get_base_int_pc
 
 def symbol_change(df):
     # e.g. jump or branch to a function

@@ -377,11 +377,7 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
     if symbol_pos is None:
         symbol_pos = ax.get_xlim()[1]
 
-    # add cache line coloring
-    for i in range(df.pc.min(), df.pc.max(), CACHE_LINE_INSTS):
-        color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
-        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08, zorder=0)
-
+    pc_start, pc_end = 0, 0
     # add lines for symbols, if any
     for k,v in symbols.items():
         pc_start = v['pc_start_real']//INST_BYTES
@@ -401,6 +397,11 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
         ax.set_ylim(bottom=get_base_int_pc(args.pc_begin)//4)
     if args.pc_end:
         ax.set_ylim(top=get_base_int_pc(args.pc_end)//4)
+
+    # add cache line coloring
+    for i in range(df.pc.min(), max(df.pc.max(), pc_end), CACHE_LINE_INSTS):
+        color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
+        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08, zorder=0)
 
     return ax
 
@@ -493,7 +494,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     locator = MaxNLocator(nbins=current_nbins*4, integer=True)
     ax_pc.xaxis.set_major_locator(locator)
     ax_pc.xaxis.set_major_formatter(FuncFormatter(to_k))
-    ax_pc.set_yticks(range(0, df['pc'].max(), CACHE_LINE_INSTS))
+    ax_pc.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_INSTS))
     ax_pc.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax_pc.margins(y=0.03, x=0.01)
 
