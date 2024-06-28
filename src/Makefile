@@ -1,6 +1,6 @@
 CXX := g++
 CXXFLAGS := -Wall -Wextra -Werror -pedantic -std=gnu++17 -save-temps
-CXXFLAGS += -O3 -s
+CXXFLAGS += -Ofast -s -flto -march=native -mtune=native
 #CXXFLAGS += -pg
 LDFLAGS :=
 TARGET := ama-riscv-sim
@@ -28,9 +28,9 @@ $(TARGET): $(OBJECTS)
 -include $(DEPS)
 
 cleanlogs:
-	rm -f *.log *_profiler.* *_trace* *_perf_est.csv
+	rm -f *.log *_profiler* *_trace* *_perf_est.csv
 
 clean: cleanlogs
-	rm -f $(TARGET) $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii *.gc*
+	rm -f $(TARGET)* $(OBJECTS) $(DEPS)  *.i *.s *.d *.ii *.gc*
 
 .PHONY: all clean
