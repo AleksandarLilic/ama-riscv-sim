@@ -27,9 +27,14 @@ enum class al_type_t {
     reg, imm
 };
 
-enum class opc_al {
-    i_nop, i_add, i_sub, i_sll, i_srl, i_sra,
+enum class opc_al_r {
+    i_add, i_sub, i_sll, i_srl, i_sra,
     i_slt, i_sltu, i_xor, i_or, i_and, _count
+};
+
+enum class opc_al_i {
+    i_nop, i_addi, i_slli, i_srli, i_srai,
+    i_slti, i_sltiu, i_xori, i_ori, i_andi, _count
 };
 
 enum class opc_mem {
@@ -80,9 +85,9 @@ class profiler{
         uint32_t inst;
         std::vector<trace_entry> trace;
         al_type_t al_type;
-        std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
+        std::array<inst_prof_g, static_cast<uint32_t>(opc_al_r::_count)>
             prof_alr_arr;
-        std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
+        std::array<inst_prof_g, static_cast<uint32_t>(opc_al_i::_count)>
             prof_ali_arr;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_mem::_count)>
             prof_mem_arr;
@@ -94,8 +99,6 @@ class profiler{
             prof_csr_arr;
         std::array<inst_prof_j, static_cast<uint32_t>(opc_j::_count)>
             prof_j_arr;
-        std::array<inst_prof_g, static_cast<uint32_t>(opc_al::_count)>
-            *prof_al_arr_ptrs[2] = {&prof_alr_arr, &prof_ali_arr};
 
         std::string log_name;
 
@@ -103,9 +106,9 @@ class profiler{
         profiler() = delete;
         profiler(std::string log_name);
         ~profiler() { log_to_file(); }
-        void set_al_type(al_type_t type) { al_type = type; }
         void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
-        void log_inst(opc_al opc);
+        void log_inst(opc_al_r opc);
+        void log_inst(opc_al_i opc);
         void log_inst(opc_mem opc);
         void log_inst(opc_upp opc);
         void log_inst(opc_sys opc);

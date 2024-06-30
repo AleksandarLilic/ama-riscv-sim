@@ -44,7 +44,7 @@ enum class opcode {
     misc_mem = 0b000'1111 // I type
 };
 
-enum class alu_op_t {
+enum class alu_r_op_t {
     op_add = 0b0000,
     op_sub = 0b1000,
     op_sll = 0b0001,
@@ -55,6 +55,18 @@ enum class alu_op_t {
     op_xor = 0b0100,
     op_or = 0b0110,
     op_and = 0b0111
+};
+
+enum class alu_i_op_t {
+    op_addi = 0b0000,
+    op_slli = 0b0001,
+    op_srli = 0b0101,
+    op_srai = 0b1101,
+    op_slti = 0b0010,
+    op_sltiu = 0b0011,
+    op_xori = 0b0100,
+    op_ori = 0b0110,
+    op_andi = 0b0111
 };
 
 enum class load_op_t {
@@ -140,12 +152,12 @@ struct CSR_entry {
         op(); \
         break;
 
-#define CASE_ALU_OP(op) \
-    case (uint8_t)alu_op_t::op_##op: \
+#define CASE_ALU_REG_OP(op) \
+    case (uint8_t)alu_r_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
 
-#define CASE_ALU_OP_IMM(op) \
-    case (uint8_t)alu_op_t::op_##op: \
+#define CASE_ALU_IMM_OP(op) \
+    case (uint8_t)alu_i_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); break;
 
 #define CASE_LOAD(op) \
@@ -247,11 +259,11 @@ struct mem_entry {
 #endif
 
 #ifdef ENABLE_PROF
-#define PROF_AL_TYPE(op) \
-    prof.set_al_type(al_type_t::op);
+#define PROF_ALR(op) \
+    prof.log_inst(opc_al_r::i_##op);
 
-#define PROF_AL(op) \
-    prof.log_inst(opc_al::i_##op);
+#define PROF_ALI(op) \
+    prof.log_inst(opc_al_i::i_##op);
 
 #define PROF_MEM(op) \
     prof.log_inst(opc_mem::i_##op);
@@ -275,8 +287,8 @@ struct mem_entry {
     prof.log_inst(opc_j::i_b##op, false, b_dir_t((pc + get_imm_b()) > pc));
 
 #else
-#define PROF_AL_TYPE(op)
-#define PROF_AL(op)
+#define PROF_ALR(op)
+#define PROF_ALI(op)
 #define PROF_MEM(op)
 #define PROF_UPP(op)
 #define PROF_SYS(op)

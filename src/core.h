@@ -60,53 +60,101 @@ class core{
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
             DASM_OP("add");
-            PROF_AL(add);
+            PROF_ALR(add);
             return int32_t(a) + int32_t(b);
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
             DASM_OP("sub");
-            PROF_AL(sub);
+            PROF_ALR(sub);
             return int32_t(a) - int32_t(b);
         };
         uint32_t al_sll(uint32_t a, uint32_t b) {
             DASM_OP("sll");
-            PROF_AL(sll);
+            PROF_ALR(sll);
             return a << b;
         };
         uint32_t al_srl(uint32_t a, uint32_t b) {
             DASM_OP("srl");
-            PROF_AL(srl);
+            PROF_ALR(srl);
             return a >> b;
         };
         uint32_t al_sra(uint32_t a, uint32_t b) {
             DASM_OP("sra");
-            PROF_AL(sra);
+            PROF_ALR(sra);
             b &= 0x1f;
             return int32_t(a) >> b;
         };
         uint32_t al_slt(uint32_t a, uint32_t b) {
             DASM_OP("slt");
-            PROF_AL(slt);
+            PROF_ALR(slt);
             return int32_t(a) < int32_t(b);
         };
         uint32_t al_sltu(uint32_t a, uint32_t b) {
             DASM_OP("sltu");
-            PROF_AL(sltu);
+            PROF_ALR(sltu);
             return a < b;
         };
         uint32_t al_xor(uint32_t a, uint32_t b) {
             DASM_OP("xor");
-            PROF_AL(xor);
+            PROF_ALR(xor);
             return a ^ b;
         };
         uint32_t al_or(uint32_t a, uint32_t b) {
             DASM_OP("or");
-            PROF_AL(or);
+            PROF_ALR(or);
             return a | b;
         };
         uint32_t al_and(uint32_t a, uint32_t b) {
             DASM_OP("and");
-            PROF_AL(and);
+            PROF_ALR(and);
+            return a & b;
+        };
+
+        // arithmetic and logic immediate operations
+        uint32_t al_addi(uint32_t a, uint32_t b) {
+            DASM_OP("addi");
+            PROF_ALI(addi);
+            return int32_t(a) + int32_t(b);
+        };
+        uint32_t al_slli(uint32_t a, uint32_t b) {
+            DASM_OP("slli");
+            PROF_ALI(slli);
+            return a << b;
+        };
+        uint32_t al_srli(uint32_t a, uint32_t b) {
+            DASM_OP("srli");
+            PROF_ALI(srli);
+            return a >> b;
+        };
+        uint32_t al_srai(uint32_t a, uint32_t b) {
+            DASM_OP("srai");
+            PROF_ALI(srai);
+            b &= 0x1f;
+            return int32_t(a) >> b;
+        };
+        uint32_t al_slti(uint32_t a, uint32_t b) {
+            DASM_OP("slti");
+            PROF_ALI(slti);
+            return int32_t(a) < int32_t(b);
+        };
+        uint32_t al_sltiu(uint32_t a, uint32_t b) {
+            DASM_OP("sltiu");
+            PROF_ALI(sltiu);
+            return a < b;
+        };
+        uint32_t al_xori(uint32_t a, uint32_t b) {
+            DASM_OP("xori");
+            PROF_ALI(xori);
+            return a ^ b;
+        };
+        uint32_t al_ori(uint32_t a, uint32_t b) {
+            DASM_OP("ori");
+            PROF_ALI(ori);
+            return a | b;
+        };
+        uint32_t al_andi(uint32_t a, uint32_t b) {
+            DASM_OP("andi");
+            PROF_ALI(andi);
             return a & b;
         };
 

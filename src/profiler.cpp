@@ -4,27 +4,27 @@ profiler::profiler(std::string log_name) {
     inst_cnt = 0;
     this->log_name = log_name;
 
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_add)] = {"add", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_sub)] = {"sub", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_sll)] = {"sll", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_srl)] = {"srl", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_sra)] = {"sra", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_slt)] = {"slt", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_sltu)] = {"sltu", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_xor)] = {"xor", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_or)] = {"or", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al::i_and)] = {"and", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_add)] = {"add", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sub)] = {"sub", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sll)] = {"sll", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_srl)] = {"srl", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sra)] = {"sra", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_slt)] = {"slt", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sltu)] = {"sltu", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_xor)] = {"xor", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_or)] = {"or", 0};
+    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_and)] = {"and", 0};
 
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_nop)] = {"nop", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_add)] = {"addi", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_sll)] = {"slli", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_srl)] = {"srli", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_sra)] = {"srai", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_slt)] = {"slti", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_sltu)] = {"sltiu", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_xor)] = {"xori", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_or)] = {"ori", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al::i_and)] = {"andi", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_nop)] = {"nop", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_addi)] = {"addi", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_slli)] = {"slli", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_srli)] = {"srli", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_srai)] = {"srai", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_slti)] = {"slti", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_sltiu)] = {"sltiu", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_xori)] = {"xori", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_ori)] = {"ori", 0};
+    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_andi)] = {"andi", 0};
 
     prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lb)] = {"lb", 0};
     prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lh)] = {"lh", 0};
@@ -59,12 +59,15 @@ profiler::profiler(std::string log_name) {
     prof_j_arr[static_cast<uint32_t>(opc_j::i_jal)] = {"jal", 0, 0, 0, 0};
 }
 
-void profiler::log_inst(opc_al opc) {
+void profiler::log_inst(opc_al_r opc) {
+    prof_alr_arr[static_cast<uint32_t>(opc)].count++;
+}
+
+void profiler::log_inst(opc_al_i opc) {
     if (inst == INST_NOP) {
-        prof_ali_arr[static_cast<uint32_t>(opc_al::i_nop)].count++;
+        prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_nop)].count++;
     } else {
-        auto index = static_cast<uint32_t>(al_type);
-        (*prof_al_arr_ptrs[index])[static_cast<uint32_t>(opc)].count++;
+        prof_ali_arr[static_cast<uint32_t>(opc)].count++;
     }
 }
 

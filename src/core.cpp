@@ -81,18 +81,17 @@ void core::finish(bool dump_regs) {
  */
 void core::al_reg() {
     uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
-    PROF_AL_TYPE(reg)
     switch (alu_op_sel) {
-        CASE_ALU_OP(add)
-        CASE_ALU_OP(sub)
-        CASE_ALU_OP(sll)
-        CASE_ALU_OP(srl)
-        CASE_ALU_OP(sra)
-        CASE_ALU_OP(slt)
-        CASE_ALU_OP(sltu)
-        CASE_ALU_OP(xor)
-        CASE_ALU_OP(or)
-        CASE_ALU_OP(and)
+        CASE_ALU_REG_OP(add)
+        CASE_ALU_REG_OP(sub)
+        CASE_ALU_REG_OP(sll)
+        CASE_ALU_REG_OP(srl)
+        CASE_ALU_REG_OP(sra)
+        CASE_ALU_REG_OP(slt)
+        CASE_ALU_REG_OP(sltu)
+        CASE_ALU_REG_OP(xor)
+        CASE_ALU_REG_OP(or)
+        CASE_ALU_REG_OP(and)
         default: unsupported("al_reg");
     }
     next_pc = pc + 4;
@@ -107,26 +106,21 @@ void core::al_imm() {
     uint32_t alu_op_sel_shift = ((get_funct7_b5()) << 3) | get_funct3();
     bool is_shift = (get_funct3() & 0x3) == 1;
     uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : get_funct3();
-    PROF_AL_TYPE(imm)
     switch (alu_op_sel) {
-        CASE_ALU_OP_IMM(add)
-        CASE_ALU_OP_IMM(sll)
-        CASE_ALU_OP_IMM(srl)
-        CASE_ALU_OP_IMM(sra)
-        CASE_ALU_OP_IMM(slt)
-        CASE_ALU_OP_IMM(sltu)
-        CASE_ALU_OP_IMM(xor)
-        CASE_ALU_OP_IMM(or)
-        CASE_ALU_OP_IMM(and)
+        CASE_ALU_IMM_OP(addi)
+        CASE_ALU_IMM_OP(slli)
+        CASE_ALU_IMM_OP(srli)
+        CASE_ALU_IMM_OP(srai)
+        CASE_ALU_IMM_OP(slti)
+        CASE_ALU_IMM_OP(sltiu)
+        CASE_ALU_IMM_OP(xori)
+        CASE_ALU_IMM_OP(ori)
+        CASE_ALU_IMM_OP(andi)
         default: unsupported("al_imm");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    if (dasm.op == "sltu")
-        dasm.op = "sltiu ";
-    else
-        dasm.op += "i ";
-    dasm.asm_ss << dasm.op << rf_names[get_rd()][RF_NAMES] << ","
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << rf_names[get_rs1()][RF_NAMES] << ",";
     if (is_shift)
         dasm.asm_ss << std::hex << "0x" << get_imm_i_shamt() << std::dec;
