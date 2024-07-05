@@ -304,6 +304,8 @@ void core::csr_access() {
         #ifdef ENABLE_DASM
         CSR_REG_DASM;
         #endif
+        // TODO: change to 'tohost' CSR
+        if (csr.at(0x340).value & 0x1) running = false;
     }
 }
 
