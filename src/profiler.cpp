@@ -15,6 +15,15 @@ profiler::profiler(std::string log_name) {
     prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_or)] = {"or", 0};
     prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_and)] = {"and", 0};
 
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mul)] = {"mul", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulh)] = {"mulh", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulhsu)] = {"mulsu", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulhu)] = {"mulu", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_div)] = {"div", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_divu)] = {"divu", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_rem)] = {"rem", 0};
+    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_remu)] = {"remu", 0};
+
     prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_nop)] = {"nop", 0};
     prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_addi)] = {"addi", 0};
     prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_slli)] = {"slli", 0};
@@ -71,6 +80,10 @@ void profiler::log_inst(opc_al_i opc) {
     }
 }
 
+void profiler::log_inst(opc_al_r_mul opc) {
+    prof_alr_mul_arr[static_cast<uint32_t>(opc)].count++;
+}
+
 void profiler::log_inst(opc_mem opc) {
     prof_mem_arr[static_cast<uint32_t>(opc)].count++;
 }
@@ -104,6 +117,12 @@ void profiler::log_to_file() {
     out_stream.open(log_name + "_inst_profiler.json");
     out_stream << "{\n";
     for (auto &i : prof_alr_arr) {
+        if (i.name != "") {
+            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            profiled_inst_cnt += i.count;
+        }
+    }
+    for (auto &i : prof_alr_mul_arr) {
         if (i.name != "") {
             out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;

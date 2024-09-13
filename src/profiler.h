@@ -32,6 +32,10 @@ enum class opc_al_r {
     i_slt, i_sltu, i_xor, i_or, i_and, _count
 };
 
+enum class opc_al_r_mul {
+    i_mul, i_mulh, i_mulhsu, i_mulhu, i_div, i_divu, i_rem, i_remu, _count
+};
+
 enum class opc_al_i {
     i_nop, i_addi, i_slli, i_srli, i_srai,
     i_slti, i_sltiu, i_xori, i_ori, i_andi, _count
@@ -87,6 +91,8 @@ class profiler{
         al_type_t al_type;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al_r::_count)>
             prof_alr_arr;
+        std::array<inst_prof_g, static_cast<uint32_t>(opc_al_r_mul::_count)>
+            prof_alr_mul_arr;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_al_i::_count)>
             prof_ali_arr;
         std::array<inst_prof_g, static_cast<uint32_t>(opc_mem::_count)>
@@ -108,6 +114,7 @@ class profiler{
         ~profiler() { log_to_file(); }
         void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
         void log_inst(opc_al_r opc);
+        void log_inst(opc_al_r_mul opc);
         void log_inst(opc_al_i opc);
         void log_inst(opc_mem opc);
         void log_inst(opc_upp opc);

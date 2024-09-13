@@ -80,19 +80,35 @@ void core::finish(bool dump_regs) {
  * Integer extension
  */
 void core::al_reg() {
-    uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | get_funct3();
-    switch (alu_op_sel) {
-        CASE_ALU_REG_OP(add)
-        CASE_ALU_REG_OP(sub)
-        CASE_ALU_REG_OP(sll)
-        CASE_ALU_REG_OP(srl)
-        CASE_ALU_REG_OP(sra)
-        CASE_ALU_REG_OP(slt)
-        CASE_ALU_REG_OP(sltu)
-        CASE_ALU_REG_OP(xor)
-        CASE_ALU_REG_OP(or)
-        CASE_ALU_REG_OP(and)
-        default: unsupported("al_reg");
+    bool is_mul = get_funct7_b1() == 1;
+    uint32_t funct3 = get_funct3();
+    uint32_t alu_op_sel = ((get_funct7_b5()) << 3) | funct3;
+    if (!is_mul) {
+        switch (alu_op_sel) {
+            CASE_ALU_REG_OP(add)
+            CASE_ALU_REG_OP(sub)
+            CASE_ALU_REG_OP(sll)
+            CASE_ALU_REG_OP(srl)
+            CASE_ALU_REG_OP(sra)
+            CASE_ALU_REG_OP(slt)
+            CASE_ALU_REG_OP(sltu)
+            CASE_ALU_REG_OP(xor)
+            CASE_ALU_REG_OP(or)
+            CASE_ALU_REG_OP(and)
+            default: unsupported("al_reg");
+        }
+    } else {
+        switch (funct3) {
+            CASE_ALU_REG_MUL_OP(mul)
+            CASE_ALU_REG_MUL_OP(mulh)
+            CASE_ALU_REG_MUL_OP(mulhsu)
+            CASE_ALU_REG_MUL_OP(mulhu)
+            CASE_ALU_REG_MUL_OP(div)
+            CASE_ALU_REG_MUL_OP(divu)
+            CASE_ALU_REG_MUL_OP(rem)
+            CASE_ALU_REG_MUL_OP(remu)
+            default: unsupported("al_reg_mul");
+        }
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -363,6 +379,7 @@ std::string core::dump_state() {
 uint32_t core::get_opcode() { return (inst & M_OPC7); }
 //uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
 uint32_t core::get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
+uint32_t core::get_funct7_b1() { return (inst & M_FUNCT7_B1) >> 25; }
 uint32_t core::get_funct3() { return (inst & M_FUNCT3) >> 12; }
 uint32_t core::get_rd() { return (inst & M_RD) >> 7; }
 uint32_t core::get_rs1() { return (inst & M_RS1) >> 15; }

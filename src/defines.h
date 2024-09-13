@@ -22,10 +22,10 @@
 
 #define BASE_ADDR 0x80000000
 #define MEM_ADDR_BITWIDTH 8
-//#define MEM_SIZE 16384 // 0x4000
+#define MEM_SIZE 16384 // 0x4000
 //#define MEM_SIZE 131072 // 0x20000
 //#define MEM_SIZE 196608 // 0x30000
-#define MEM_SIZE 262144 // 0x40000
+//#define MEM_SIZE 262144 // 0x40000
 //#define MEM_SIZE 524288 // 0x80000
 #define UART0_SIZE 12 // 3 32-bit registers
 
@@ -55,6 +55,17 @@ enum class alu_r_op_t {
     op_xor = 0b0100,
     op_or = 0b0110,
     op_and = 0b0111
+};
+
+enum class alu_r_mul_op_t {
+    op_mul = 0b0000,
+    op_mulh = 0b0001,
+    op_mulhsu = 0b0010,
+    op_mulhu = 0b0011,
+    op_div = 0b0100,
+    op_divu = 0b0101,
+    op_rem = 0b0110,
+    op_remu = 0b0111
 };
 
 enum class alu_i_op_t {
@@ -111,6 +122,7 @@ struct dasm_str {
 #define M_OPC7 uint32_t(0x7F)
 #define M_FUNCT7 uint32_t((0x7F)<<25)
 #define M_FUNCT7_B5 uint32_t((0x1)<<30)
+#define M_FUNCT7_B1 uint32_t((0x1)<<25)
 #define M_FUNCT3 uint32_t((0x7)<<12)
 #define M_RD uint32_t((0x1F)<<7)
 #define M_RS1 uint32_t((0x1F)<<15)
@@ -154,6 +166,10 @@ struct CSR_entry {
 
 #define CASE_ALU_REG_OP(op) \
     case (uint8_t)alu_r_op_t::op_##op: \
+        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
+
+#define CASE_ALU_REG_MUL_OP(op) \
+    case (uint8_t)alu_r_mul_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
 
 #define CASE_ALU_IMM_OP(op) \
@@ -262,6 +278,9 @@ struct mem_entry {
 #define PROF_ALR(op) \
     prof.log_inst(opc_al_r::i_##op);
 
+#define PROF_ALR_MUL(op) \
+    prof.log_inst(opc_al_r_mul::i_##op);
+
 #define PROF_ALI(op) \
     prof.log_inst(opc_al_i::i_##op);
 
@@ -288,6 +307,7 @@ struct mem_entry {
 
 #else
 #define PROF_ALR(op)
+#define PROF_ALR_MUL(op)
 #define PROF_ALI(op)
 #define PROF_MEM(op)
 #define PROF_UPP(op)

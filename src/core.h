@@ -48,6 +48,7 @@ class core{
         uint32_t get_rs2();
         //uint32_t get_funct7();
         uint32_t get_funct7_b5();
+        uint32_t get_funct7_b1();
         uint32_t get_imm_i();
         uint32_t get_imm_i_shamt();
         uint32_t get_csr_addr();
@@ -108,6 +109,59 @@ class core{
             DASM_OP("and");
             PROF_ALR(and);
             return a & b;
+        };
+
+        // arithmetic and logic operations - M extension
+        uint32_t al_mul(uint32_t a, uint32_t b) {
+            DASM_OP("mul");
+            PROF_ALR_MUL(mul);
+            return int32_t(a) * int32_t(b);
+        };
+        uint32_t al_mulh(uint32_t a, uint32_t b) {
+            DASM_OP("mulh");
+            PROF_ALR_MUL(mulh);
+            int64_t res = int64_t(int32_t(a)) * int64_t(int32_t(b));
+            return res >> 32;
+        };
+        uint32_t al_mulhsu(uint32_t a, uint32_t b) {
+            DASM_OP("mulhsu");
+            PROF_ALR_MUL(mulhsu);
+            int64_t res = int64_t(int32_t(a)) * int64_t(b);
+            return res >> 32;
+        };
+        uint32_t al_mulhu(uint32_t a, uint32_t b) {
+            DASM_OP("mulhu");
+            PROF_ALR_MUL(mulhu);
+            uint64_t res = uint64_t(a) * uint64_t(b);
+            return res >> 32;
+        };
+        uint32_t al_div(uint32_t a, uint32_t b) {
+            DASM_OP("div");
+            PROF_ALR_MUL(div);
+            // division by zero
+            if (b == 0) return -1;
+            // overflow (most negative int divided by -1)
+            if (a == 0x80000000 && b == 0xffffffff) return a;
+            return int32_t(a) / int32_t(b);
+        };
+        uint32_t al_divu(uint32_t a, uint32_t b) {
+            DASM_OP("divu");
+            PROF_ALR_MUL(divu);
+            if (b == 0) return 0xffffffff;
+            return a / b;
+        };
+        uint32_t al_rem(uint32_t a, uint32_t b) {
+            DASM_OP("rem");
+            PROF_ALR_MUL(rem);
+            if (b == 0) return a;
+            if (a == 0x80000000 && b == 0xffffffff) return 0;
+            return int32_t(a) % int32_t(b);
+        };
+        uint32_t al_remu(uint32_t a, uint32_t b) {
+            DASM_OP("remu");
+            PROF_ALR_MUL(remu);
+            if (b == 0) return a;
+            return a % b;
         };
 
         // arithmetic and logic immediate operations
