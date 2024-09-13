@@ -37,7 +37,10 @@ build_sim:
 cleanlogs:
 	rm -f *.log *_profiler.* *trace* *_perf_est.csv
 
-clean: cleanlogs
+cleanbins:
+	rm -f unsupported*.bin
+
+clean: cleanlogs cleanbins
 	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log $(COVDIR) *.gc* \
 	gtest_testlist.txt
 

@@ -66,8 +66,9 @@ if args.isa_tests:
     print("Preparing ISA tests also")
     os.chdir(ISA_TEST_DIR)
     run_make(["make", "clean"])
-    run_make(["make", "-j"])
-    run_make(["make", "DIR=modified_riscv-tests/isa/rv32mi/"])
+    run_make(["make", "-j", "DIR=riscv-tests/isa/rv32ui"]) # RV32I
+    run_make(["make", "-j", "DIR=modified_riscv-tests/isa/rv32mi/"]) # memory
+    run_make(["make", "-j", "DIR=riscv-tests/isa/rv32um/"]) # RV32M
     isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
 
 os.chdir(WORK_DIR)

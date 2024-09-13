@@ -3,14 +3,14 @@ import os
 import re
 import subprocess
 
-SPIKE_ISA = "RV32I_zicsr"
+SPIKE_ISA = "RV32IM_zicsr"
 
 def update_run_cycles(exec_log_file, target_file):
     # get cycle count from exec log
     spike_cycles_offset = 4
     with open(exec_log_file, 'r') as f:
         cycles = int(f.readline().strip()) + spike_cycles_offset
-    
+
     # replace first occurrence of run parameter for spike
     with open(target_file, 'r') as f:
         lines = f.readlines()
@@ -32,7 +32,7 @@ def compare_hex_values(exec_log_file, spike_out_file):
     # extract hex values from both files
     exec_log_hex_values = extract_hex_values(exec_log_file)
     spike_out_hex_values = extract_hex_values(spike_out_file)
-    
+
     # check if both files have the same number of hex values (34 expected)
     if len(exec_log_hex_values) < 34:
         print(f"Execution log file has {len(exec_log_hex_values)} hex values, expected 34")
@@ -53,12 +53,12 @@ def compare_hex_values(exec_log_file, spike_out_file):
                 print(f"Register x{i} does not match:", end=" ")
             print(f"{exec_log_hex_values[i]} != {spike_out_hex_values[i]}")
             status = False
-    
+
     return status
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
-        print("Usage: python checker.py <execution_log_file> <target_file> <spike_elf>")
+        print("Usage: python checker.py <sim.check> <spike.dbg> <app_elf>")
         sys.exit(1)
 
     exec_log_file = sys.argv[1]
