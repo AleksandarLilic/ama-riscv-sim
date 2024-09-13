@@ -1,6 +1,6 @@
 RV_GNU := riscv64-linux-gnu
 LD_SRC := link.ld
-GCC_OPTS := -march=rv32i -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -T $(LD_SRC) -Wl,--build-id=none
+GCC_OPTS := -march=rv32im -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -T $(LD_SRC) -Wl,--build-id=none
 
 # override from cli if needed
 DIR ?= riscv-tests/isa/rv32ui

@@ -16,7 +16,8 @@ INC += $(COMMON_PATH)
 LIBS += -lgcc
 USER_DEFINES =
 
-GCC_OPTS += -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic
+GCC_OPTS += -march=rv32im_zicsr_zifencei -mabi=ilp32 -mcmodel=medany
+GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
@@ -27,9 +28,13 @@ OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 #OBJDUMP_OPTS := -S # inline C source code in disassembly
 MEM_WIDTH := 32
 
+#ISA = ../../riscv-isa-tests
+#ISA_INC = -I$(ISA)/defines -I$(ISA)/riscv-tests/env
+
 # run with RTL_SIM=1 to generate hex file for RTL simulation
 $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) \
+	-o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(TARGET).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(TARGET).bin
 	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" == "1" ]; then \
@@ -44,7 +49,7 @@ $(COMMON_OBJS):
 	@make -C $(COMMON_PATH) $@
 
 clean:
-	rm -f *.elf *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json
+	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map
 
 clean_common:
 	@make -C $(COMMON_PATH) clean
