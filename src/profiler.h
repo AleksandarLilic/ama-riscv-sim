@@ -42,7 +42,7 @@ enum class opc_al_i {
 };
 
 enum class opc_mem {
-    i_lb, i_lh, i_lw, i_lbu, i_lhu, i_sb, i_sh, i_sw, i_fence_i, _count
+    i_lb, i_lh, i_lw, i_lbu, i_lhu, i_sb, i_sh, i_sw, i_fence_i, i_fence, _count
 };
 
 enum class opc_upp {

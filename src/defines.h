@@ -10,6 +10,7 @@
 #include <string>
 #include <cmath>
 #include <unordered_map>
+
 #include "dev.h"
 
 #ifdef USE_ABI_NAMES
@@ -81,26 +82,26 @@ enum class alu_i_op_t {
 };
 
 enum class load_op_t {
-    op_byte = 0b000,
-    op_half = 0b001,
-    op_word = 0b010,
-    op_byte_u = 0b100,
-    op_half_u = 0b101,
+    op_lb = 0b000,
+    op_lh = 0b001,
+    op_lw = 0b010,
+    op_lbu = 0b100,
+    op_lhu = 0b101,
 };
 
 enum class store_op_t {
-    op_byte = 0b000,
-    op_half = 0b001,
-    op_word = 0b010
+    op_sb = 0b000,
+    op_sh = 0b001,
+    op_sw = 0b010
 };
 
 enum class branch_op_t {
-    op_eq = 0b000,
-    op_ne = 0b001,
-    op_lt = 0b100,
-    op_ge = 0b101,
-    op_ltu = 0b110,
-    op_geu = 0b111
+    op_beq = 0b000,
+    op_bne = 0b001,
+    op_blt = 0b100,
+    op_bge = 0b101,
+    op_bltu = 0b110,
+    op_bgeu = 0b111
 };
 
 enum class csr_op_t {
@@ -166,37 +167,64 @@ struct CSR_entry {
 
 #define CASE_ALU_REG_OP(op) \
     case (uint8_t)alu_r_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
+        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
+        DASM_OP(op); \
+        PROF_ALR(op); \
+        break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
     case (uint8_t)alu_r_mul_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); break;
+        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
+        DASM_OP(op); \
+        PROF_ALR_MUL(op); \
+        break;
 
 #define CASE_ALU_IMM_OP(op) \
     case (uint8_t)alu_i_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); break;
+        write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); \
+        DASM_OP(op); \
+        PROF_ALI(op); \
+        break;
 
 #define CASE_LOAD(op) \
     case (uint8_t)load_op_t::op_##op: \
-        write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); break;
+        write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); \
+        DASM_OP(op); \
+        PROF_MEM(op); \
+        break;
 
 #define CASE_STORE(op) \
     case (uint8_t)store_op_t::op_##op: \
-        store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); break;
+        store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); \
+        DASM_OP(op); \
+        PROF_MEM(op); \
+        break;
 
 #define CASE_BRANCH(op) \
     case (uint8_t)branch_op_t::op_##op: \
         if(branch_##op()) { \
             next_pc = pc + get_imm_b(); \
+            DASM_OP(op); \
             PROF_B_T(op); \
         } else { \
+            DASM_OP(op); \
             PROF_B_NT(op); \
         } \
         break;
 
-#define CASE_CSR(op) \
+#define CASE_CSR(op, val) \
     case (uint8_t)csr_op_t::op_##op: \
-        csr_##op(); break;
+        csr_##op(val); \
+        DASM_OP(csr##op); \
+        PROF_CSR(csr##op); \
+        break;
+
+#define CASE_CSR_I(op) \
+    case (uint8_t)csr_op_t::op_##op: \
+        csr_##op(); \
+        DASM_OP(csr##op); \
+        PROF_CSR(csr##op); \
+        break;
 
 #define W_CSR(expr) \
     write_csr(get_csr_addr(), expr)
@@ -269,9 +297,9 @@ struct mem_entry {
 
 #ifdef ENABLE_DASM
 #define DASM_OP(o) \
-    dasm.op = o;
+    dasm.op = #o;
 #else
-#define DASM_OP(op)
+#define DASM_OP(o)
 #endif
 
 #ifdef ENABLE_PROF
@@ -300,10 +328,10 @@ struct mem_entry {
     prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
 
 #define PROF_B_T(op) \
-    prof.log_inst(opc_j::i_b##op, true, b_dir_t(next_pc > pc));
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
 
 #define PROF_B_NT(op) \
-    prof.log_inst(opc_j::i_b##op, false, b_dir_t((pc + get_imm_b()) > pc));
+    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + get_imm_b()) > pc));
 
 #else
 #define PROF_ALR(op)

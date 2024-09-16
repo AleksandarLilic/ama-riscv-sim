@@ -147,11 +147,11 @@ void core::al_imm() {
 
 void core::load() {
     switch (get_funct3()) {
-        CASE_LOAD(byte)
-        CASE_LOAD(half)
-        CASE_LOAD(word)
-        CASE_LOAD(byte_u)
-        CASE_LOAD(half_u)
+        CASE_LOAD(lb)
+        CASE_LOAD(lh)
+        CASE_LOAD(lw)
+        CASE_LOAD(lbu)
+        CASE_LOAD(lhu)
         default: unsupported("load");
     }
     next_pc = pc + 4;
@@ -170,9 +170,9 @@ void core::load() {
 
 void core::store() {
     switch (get_funct3()) {
-        CASE_STORE(byte)
-        CASE_STORE(half)
-        CASE_STORE(word)
+        CASE_STORE(sb)
+        CASE_STORE(sh)
+        CASE_STORE(sw)
         default: unsupported("store");
     }
     next_pc = pc + 4;
@@ -182,21 +182,22 @@ void core::store() {
                 << "(" << rf_names[get_rs1()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[get_rs2()][RF_NAMES] << " (0x" << rf[get_rs2()]
-             << ") -> mem[" << MEM_ADDR_FORMAT((int)get_imm_s() + rf[get_rs1()])
-             << "]" << std::endl;
+    mem_ostr << INDENT << rf_names[get_rs2()][RF_NAMES]
+             << " (0x" << rf[get_rs2()] << ") -> mem["
+             << MEM_ADDR_FORMAT((int)get_imm_s() + rf[get_rs1()]) << "]"
+             << std::endl;
     #endif
 }
 
 void core::branch() {
     next_pc = pc + 4;
     switch (get_funct3()) {
-        CASE_BRANCH(eq)
-        CASE_BRANCH(ne)
-        CASE_BRANCH(lt)
-        CASE_BRANCH(ge)
-        CASE_BRANCH(ltu)
-        CASE_BRANCH(geu)
+        CASE_BRANCH(beq)
+        CASE_BRANCH(bne)
+        CASE_BRANCH(blt)
+        CASE_BRANCH(bge)
+        CASE_BRANCH(bltu)
+        CASE_BRANCH(bgeu)
         default: unsupported("branch");
     }
     #ifdef ENABLE_DASM
@@ -208,8 +209,8 @@ void core::branch() {
 
 void core::jalr() {
     if (get_funct3() != 0) unsupported("jalr");
-    DASM_OP("jalr")
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
+    DASM_OP(jalr)
     PROF_J(jalr)
     write_rf(get_rd(), pc + 4);
     #ifdef ENABLE_DASM
@@ -220,9 +221,9 @@ void core::jalr() {
 }
 
 void core::jal() {
-    DASM_OP("jal")
     write_rf(get_rd(), pc + 4);
     next_pc = pc + get_imm_j();
+    DASM_OP(jal)
     PROF_J(jal)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
@@ -231,10 +232,10 @@ void core::jal() {
 }
 
 void core::lui() {
-    DASM_OP("lui")
-    PROF_UPP(lui);
     write_rf(get_rd(), get_imm_u());
     next_pc = pc + 4;
+    DASM_OP(lui)
+    PROF_UPP(lui);
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
@@ -242,10 +243,10 @@ void core::lui() {
 }
 
 void core::auipc() {
-    DASM_OP("auipc")
-    PROF_UPP(auipc);
     write_rf(get_rd(), get_imm_u() + pc);
     next_pc = pc + 4;
+    DASM_OP(auipc)
+    PROF_UPP(auipc);
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
@@ -255,17 +256,17 @@ void core::auipc() {
 void core::system() {
     if (inst == INST_ECALL) {
         running = false;
+        DASM_OP(ecall)
         PROF_SYS(ecall)
         #ifdef ENABLE_DASM
-        DASM_OP("ecall")
         dasm.asm_ss << dasm.op;
         #endif
     }
     else if (inst == INST_EBREAK) {
         running = false;
+        DASM_OP(ebreak)
         PROF_SYS(ebreak)
         #ifdef ENABLE_DASM
-        DASM_OP("ebreak")
         dasm.asm_ss << dasm.op;
         #endif
     } else {
@@ -278,15 +279,17 @@ void core::misc_mem() {
     if (inst == INST_FENCE_I) {
         // nop
         next_pc = pc + 4;
+        DASM_OP(fence.i)
+        PROF_MEM(fence_i)
         #ifdef ENABLE_DASM
-        DASM_OP("fence.i")
         dasm.asm_ss << dasm.op;
         #endif
     } else if (get_funct3() == 0) {
         // nop
         next_pc = pc + 4;
+        DASM_OP(fence)
+        PROF_MEM(fence)
         #ifdef ENABLE_DASM
-        DASM_OP("fence")
         dasm.asm_ss << dasm.op;
         #endif
     } else {
@@ -309,12 +312,12 @@ void core::csr_access() {
         uint32_t init_val_rs1 = rf[get_rs1()];
         write_rf(get_rd(), it->second.value);
         switch (get_funct3()) {
-            case (uint8_t)csr_op_t::op_rw: csr_rw(init_val_rs1); break;
-            case (uint8_t)csr_op_t::op_rs: csr_rs(init_val_rs1); break;
-            case (uint8_t)csr_op_t::op_rc: csr_rc(init_val_rs1); break;
-            case (uint8_t)csr_op_t::op_rwi: csr_rwi(); break;
-            case (uint8_t)csr_op_t::op_rsi: csr_rsi(); break;
-            case (uint8_t)csr_op_t::op_rci: csr_rci(); break;
+            CASE_CSR(rw, init_val_rs1)
+            CASE_CSR(rs, init_val_rs1)
+            CASE_CSR(rc, init_val_rs1)
+            CASE_CSR_I(rwi)
+            CASE_CSR_I(rsi)
+            CASE_CSR_I(rci)
             default: unsupported("sys");
         }
         #ifdef ENABLE_DASM
@@ -371,45 +374,4 @@ std::string core::dump_state() {
         state << INDENT << CSRF(it) << std::endl;
 
     return state.str();
-}
-
-/*
- * Instruction parsing
- */
-uint32_t core::get_opcode() { return (inst & M_OPC7); }
-//uint32_t core::get_funct7() { return (inst & M_FUNCT7) >> 25; }
-uint32_t core::get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
-uint32_t core::get_funct7_b1() { return (inst & M_FUNCT7_B1) >> 25; }
-uint32_t core::get_funct3() { return (inst & M_FUNCT3) >> 12; }
-uint32_t core::get_rd() { return (inst & M_RD) >> 7; }
-uint32_t core::get_rs1() { return (inst & M_RS1) >> 15; }
-uint32_t core::get_rs2() { return (inst & M_RS2) >> 20; }
-uint32_t core::get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
-uint32_t core::get_imm_i_shamt() { return (inst & M_IMM_24_20) >> 20; }
-uint32_t core::get_csr_addr() { return (inst & M_IMM_31_20) >> 20; }
-uint32_t core::get_uimm_csr() { return get_rs1(); }
-uint32_t core::get_imm_s() {
-    return ((int32_t(inst) & M_IMM_31_25) >> 20) |
-        ((inst & M_IMM_11_8) >> 7) |
-        ((inst & M_IMM_7) >> 7);
-}
-
-uint32_t core::get_imm_b() {
-    return ((int32_t(inst) & M_IMM_31) >> 19) |
-        ((inst & M_IMM_7) << 4) |
-        ((inst & M_IMM_30_25) >> 20) |
-        ((inst & M_IMM_11_8) >> 7);
-}
-
-uint32_t core::get_imm_j() {
-    return ((int32_t(inst) & M_IMM_31) >> 11) |
-        ((inst & M_IMM_19_12)) |
-        ((inst & M_IMM_20) >> 9) |
-        ((inst & M_IMM_30_25) >> 20) |
-        ((inst & M_IMM_24_21) >> 20);
-}
-
-uint32_t core::get_imm_u() {
-    return ((int32_t(inst) & M_IMM_31_20)) |
-        ((inst & M_IMM_19_12));
 }

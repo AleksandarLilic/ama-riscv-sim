@@ -44,6 +44,7 @@ profiler::profiler(std::string log_name) {
     prof_mem_arr[static_cast<uint32_t>(opc_mem::i_sh)] = {"sh", 0};
     prof_mem_arr[static_cast<uint32_t>(opc_mem::i_sw)] = {"sw", 0};
     prof_mem_arr[static_cast<uint32_t>(opc_mem::i_fence_i)] = {"fence.i", 0};
+    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_fence)] = {"fence", 0};
 
     prof_upp_arr[static_cast<uint32_t>(opc_upp::i_lui)] = {"lui", 0};
     prof_upp_arr[static_cast<uint32_t>(opc_upp::i_auipc)] = {"auipc", 0};

@@ -41,103 +41,94 @@ class core{
         // void reset();
 
         // instruction parsing
-        uint32_t get_opcode();
-        uint32_t get_rd();
-        uint32_t get_funct3();
-        uint32_t get_rs1();
-        uint32_t get_rs2();
-        //uint32_t get_funct7();
-        uint32_t get_funct7_b5();
-        uint32_t get_funct7_b1();
-        uint32_t get_imm_i();
-        uint32_t get_imm_i_shamt();
-        uint32_t get_csr_addr();
-        uint32_t get_uimm_csr();
-        uint32_t get_imm_s();
-        uint32_t get_imm_b();
-        uint32_t get_imm_u();
-        uint32_t get_imm_j();
+        uint32_t get_opcode() { return (inst & M_OPC7); }
+        //uint32_t get_funct7() { return (inst & M_FUNCT7) >> 25; }
+        uint32_t get_funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
+        uint32_t get_funct7_b1() { return (inst & M_FUNCT7_B1) >> 25; }
+        uint32_t get_funct3() { return (inst & M_FUNCT3) >> 12; }
+        uint32_t get_rd() { return (inst & M_RD) >> 7; }
+        uint32_t get_rs1() { return (inst & M_RS1) >> 15; }
+        uint32_t get_rs2() { return (inst & M_RS2) >> 20; }
+        uint32_t get_imm_i() { return int32_t(inst & M_IMM_31_20) >> 20; }
+        uint32_t get_imm_i_shamt() { return (inst & M_IMM_24_20) >> 20; }
+        uint32_t get_csr_addr() { return (inst & M_IMM_31_20) >> 20; }
+        uint32_t get_uimm_csr() { return get_rs1(); }
+        uint32_t get_imm_s() {
+            return ((int32_t(inst) & M_IMM_31_25) >> 20) |
+                ((inst & M_IMM_11_8) >> 7) |
+                ((inst & M_IMM_7) >> 7);
+        }
+
+        uint32_t get_imm_b() {
+            return ((int32_t(inst) & M_IMM_31) >> 19) |
+                ((inst & M_IMM_7) << 4) |
+                ((inst & M_IMM_30_25) >> 20) |
+                ((inst & M_IMM_11_8) >> 7);
+        }
+
+        uint32_t get_imm_j() {
+            return ((int32_t(inst) & M_IMM_31) >> 11) |
+                ((inst & M_IMM_19_12)) |
+                ((inst & M_IMM_20) >> 9) |
+                ((inst & M_IMM_30_25) >> 20) |
+                ((inst & M_IMM_24_21) >> 20);
+        }
+
+        uint32_t get_imm_u() {
+            return ((int32_t(inst) & M_IMM_31_20)) |
+                ((inst & M_IMM_19_12));
+        }
 
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
-            DASM_OP("add");
-            PROF_ALR(add);
             return int32_t(a) + int32_t(b);
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
-            DASM_OP("sub");
-            PROF_ALR(sub);
             return int32_t(a) - int32_t(b);
         };
         uint32_t al_sll(uint32_t a, uint32_t b) {
-            DASM_OP("sll");
-            PROF_ALR(sll);
             return a << b;
         };
         uint32_t al_srl(uint32_t a, uint32_t b) {
-            DASM_OP("srl");
-            PROF_ALR(srl);
             return a >> b;
         };
         uint32_t al_sra(uint32_t a, uint32_t b) {
-            DASM_OP("sra");
-            PROF_ALR(sra);
             b &= 0x1f;
             return int32_t(a) >> b;
         };
         uint32_t al_slt(uint32_t a, uint32_t b) {
-            DASM_OP("slt");
-            PROF_ALR(slt);
             return int32_t(a) < int32_t(b);
         };
         uint32_t al_sltu(uint32_t a, uint32_t b) {
-            DASM_OP("sltu");
-            PROF_ALR(sltu);
             return a < b;
         };
         uint32_t al_xor(uint32_t a, uint32_t b) {
-            DASM_OP("xor");
-            PROF_ALR(xor);
             return a ^ b;
         };
         uint32_t al_or(uint32_t a, uint32_t b) {
-            DASM_OP("or");
-            PROF_ALR(or);
             return a | b;
         };
         uint32_t al_and(uint32_t a, uint32_t b) {
-            DASM_OP("and");
-            PROF_ALR(and);
             return a & b;
         };
 
         // arithmetic and logic operations - M extension
         uint32_t al_mul(uint32_t a, uint32_t b) {
-            DASM_OP("mul");
-            PROF_ALR_MUL(mul);
             return int32_t(a) * int32_t(b);
         };
         uint32_t al_mulh(uint32_t a, uint32_t b) {
-            DASM_OP("mulh");
-            PROF_ALR_MUL(mulh);
             int64_t res = int64_t(int32_t(a)) * int64_t(int32_t(b));
             return res >> 32;
         };
         uint32_t al_mulhsu(uint32_t a, uint32_t b) {
-            DASM_OP("mulhsu");
-            PROF_ALR_MUL(mulhsu);
             int64_t res = int64_t(int32_t(a)) * int64_t(b);
             return res >> 32;
         };
         uint32_t al_mulhu(uint32_t a, uint32_t b) {
-            DASM_OP("mulhu");
-            PROF_ALR_MUL(mulhu);
             uint64_t res = uint64_t(a) * uint64_t(b);
             return res >> 32;
         };
         uint32_t al_div(uint32_t a, uint32_t b) {
-            DASM_OP("div");
-            PROF_ALR_MUL(div);
             // division by zero
             if (b == 0) return -1;
             // overflow (most negative int divided by -1)
@@ -145,175 +136,117 @@ class core{
             return int32_t(a) / int32_t(b);
         };
         uint32_t al_divu(uint32_t a, uint32_t b) {
-            DASM_OP("divu");
-            PROF_ALR_MUL(divu);
             if (b == 0) return 0xffffffff;
             return a / b;
         };
         uint32_t al_rem(uint32_t a, uint32_t b) {
-            DASM_OP("rem");
-            PROF_ALR_MUL(rem);
             if (b == 0) return a;
             if (a == 0x80000000 && b == 0xffffffff) return 0;
             return int32_t(a) % int32_t(b);
         };
         uint32_t al_remu(uint32_t a, uint32_t b) {
-            DASM_OP("remu");
-            PROF_ALR_MUL(remu);
             if (b == 0) return a;
             return a % b;
         };
 
         // arithmetic and logic immediate operations
         uint32_t al_addi(uint32_t a, uint32_t b) {
-            DASM_OP("addi");
-            PROF_ALI(addi);
             return int32_t(a) + int32_t(b);
         };
         uint32_t al_slli(uint32_t a, uint32_t b) {
-            DASM_OP("slli");
-            PROF_ALI(slli);
             return a << b;
         };
         uint32_t al_srli(uint32_t a, uint32_t b) {
-            DASM_OP("srli");
-            PROF_ALI(srli);
             return a >> b;
         };
         uint32_t al_srai(uint32_t a, uint32_t b) {
-            DASM_OP("srai");
-            PROF_ALI(srai);
             b &= 0x1f;
             return int32_t(a) >> b;
         };
         uint32_t al_slti(uint32_t a, uint32_t b) {
-            DASM_OP("slti");
-            PROF_ALI(slti);
             return int32_t(a) < int32_t(b);
         };
         uint32_t al_sltiu(uint32_t a, uint32_t b) {
-            DASM_OP("sltiu");
-            PROF_ALI(sltiu);
             return a < b;
         };
         uint32_t al_xori(uint32_t a, uint32_t b) {
-            DASM_OP("xori");
-            PROF_ALI(xori);
             return a ^ b;
         };
         uint32_t al_ori(uint32_t a, uint32_t b) {
-            DASM_OP("ori");
-            PROF_ALI(ori);
             return a | b;
         };
         uint32_t al_andi(uint32_t a, uint32_t b) {
-            DASM_OP("andi");
-            PROF_ALI(andi);
             return a & b;
         };
 
         // load operations
-        uint32_t load_byte(uint32_t address) {
-            DASM_OP("lb");
-            PROF_MEM(lb);
+        uint32_t load_lb(uint32_t address) {
             return static_cast<uint32_t>(
                 static_cast<int8_t>(mem->rd8(address)));
         }
-        uint32_t load_half(uint32_t address) {
-            DASM_OP("lh");
-            PROF_MEM(lh);
+        uint32_t load_lh(uint32_t address) {
             return static_cast<uint32_t>(
                 static_cast<int16_t>(mem->rd16(address)));
         }
-        uint32_t load_word(uint32_t address) {
-            DASM_OP("lw");
-            PROF_MEM(lw);
+        uint32_t load_lw(uint32_t address) {
             return mem->rd32(address);
         };
-        uint32_t load_byte_u(uint32_t address) {
-            DASM_OP("lbu");
-            PROF_MEM(lbu);
+        uint32_t load_lbu(uint32_t address) {
             return mem->rd8(address);
         };
-        uint32_t load_half_u(uint32_t address) {
-            DASM_OP("lhu");
-            PROF_MEM(lhu);
+        uint32_t load_lhu(uint32_t address) {
             return mem->rd16(address);
         };
 
         // store operations
-        void store_byte(uint32_t address, uint32_t data) {
-            DASM_OP("sb");
-            PROF_MEM(sb);
+        void store_sb(uint32_t address, uint32_t data) {
             mem->wr8(address, data);
         }
-        void store_half(uint32_t address, uint32_t data) {
-            DASM_OP("sh");
-            PROF_MEM(sh);
+        void store_sh(uint32_t address, uint32_t data) {
             mem->wr16(address, data);
         }
-        void store_word(uint32_t address, uint32_t data) {
-            DASM_OP("sw");
-            PROF_MEM(sw);
+        void store_sw(uint32_t address, uint32_t data) {
             mem->wr32(address, data);
         }
 
         // branch operations
-        bool branch_eq() {
-            DASM_OP("beq");
+        bool branch_beq() {
             return rf[get_rs1()] == rf[get_rs2()];
         };
-        bool branch_ne() {
-            DASM_OP("bne");
+        bool branch_bne() {
             return rf[get_rs1()] != rf[get_rs2()];
         };
-        bool branch_lt() {
-            DASM_OP("blt");
+        bool branch_blt() {
             return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]);
         };
-        bool branch_ge() {
-            DASM_OP("bge");
+        bool branch_bge() {
             return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]);
         };
-        bool branch_ltu() {
-            DASM_OP("bltu");
+        bool branch_bltu() {
             return (uint32_t)rf[get_rs1()] < (uint32_t)rf[get_rs2()];
         }
-        bool branch_geu() {
-            DASM_OP("bgeu");
+        bool branch_bgeu() {
             return (uint32_t)rf[get_rs1()] >= (uint32_t)rf[get_rs2()];
         }
 
         // csr operations
         void csr_access();
         void csr_rw(uint32_t init_val_rs1) {
-            DASM_OP("csrrw");
-            PROF_CSR(csrrw);
             W_CSR(init_val_rs1);
         }
         void csr_rs(uint32_t init_val_rs1) {
-            DASM_OP("csrrs");
-            PROF_CSR(csrrs);
             W_CSR(csr.at(get_csr_addr()).value | init_val_rs1);
         }
         void csr_rc(uint32_t init_val_rs1) {
-            DASM_OP("csrrc");
-            PROF_CSR(csrrc);
             W_CSR(csr.at(get_csr_addr()).value & ~init_val_rs1);
         }
         void csr_rwi() {
-            DASM_OP("csrrwi");
-            PROF_CSR(csrrwi);
             W_CSR(get_uimm_csr());
         }
         void csr_rsi() {
-            DASM_OP("csrrsi");
-            PROF_CSR(csrrsi);
             W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());
         }
         void csr_rci() {
-            DASM_OP("csrrci");
-            PROF_CSR(csrrci);
             W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());
         }
 
