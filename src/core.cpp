@@ -210,9 +210,10 @@ void core::branch() {
 void core::jalr() {
     if (get_funct3() != 0) unsupported("jalr");
     next_pc = (rf[get_rs1()] + get_imm_i()) & 0xFFFFFFFE;
+    write_rf(get_rd(), pc + 4);
     DASM_OP(jalr)
     PROF_J(jalr)
-    write_rf(get_rd(), pc + 4);
+    PROF_RD_RS1;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << (int)get_imm_i()
@@ -225,6 +226,7 @@ void core::jal() {
     next_pc = pc + get_imm_j();
     DASM_OP(jal)
     PROF_J(jal)
+    PROF_RD;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << std::hex << pc + (int)get_imm_j() << std::dec;
@@ -236,6 +238,7 @@ void core::lui() {
     next_pc = pc + 4;
     DASM_OP(lui)
     PROF_UPP(lui);
+    PROF_RD;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
@@ -247,6 +250,7 @@ void core::auipc() {
     next_pc = pc + 4;
     DASM_OP(auipc)
     PROF_UPP(auipc);
+    PROF_RD;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << ","
                 << "0x" << std::hex << (get_imm_u() >> 12) << std::dec;
@@ -320,9 +324,6 @@ void core::csr_access() {
             CASE_CSR_I(rci)
             default: unsupported("sys");
         }
-        #ifdef ENABLE_DASM
-        CSR_REG_DASM;
-        #endif
         // TODO: change to 'tohost' CSR
         if (csr.at(0x340).value & 0x1) running = false;
     }

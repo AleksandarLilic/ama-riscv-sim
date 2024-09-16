@@ -170,6 +170,7 @@ struct CSR_entry {
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
         DASM_OP(op); \
         PROF_ALR(op); \
+        PROF_RD_RS1_RS2; \
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
@@ -177,6 +178,7 @@ struct CSR_entry {
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
         DASM_OP(op); \
         PROF_ALR_MUL(op); \
+        PROF_RD_RS1_RS2; \
         break;
 
 #define CASE_ALU_IMM_OP(op) \
@@ -184,6 +186,7 @@ struct CSR_entry {
         write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); \
         DASM_OP(op); \
         PROF_ALI(op); \
+        PROF_RD_RS1; \
         break;
 
 #define CASE_LOAD(op) \
@@ -191,6 +194,7 @@ struct CSR_entry {
         write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); \
         DASM_OP(op); \
         PROF_MEM(op); \
+        PROF_RD_RS1; \
         break;
 
 #define CASE_STORE(op) \
@@ -198,6 +202,7 @@ struct CSR_entry {
         store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); \
         DASM_OP(op); \
         PROF_MEM(op); \
+        PROF_RS1_RS2; \
         break;
 
 #define CASE_BRANCH(op) \
@@ -210,6 +215,7 @@ struct CSR_entry {
             DASM_OP(op); \
             PROF_B_NT(op); \
         } \
+        PROF_RS1_RS2; \
         break;
 
 #define CASE_CSR(op, val) \
@@ -217,6 +223,8 @@ struct CSR_entry {
         csr_##op(val); \
         DASM_OP(csr##op); \
         PROF_CSR(csr##op); \
+        PROF_RD_RS1; \
+        CSR_REG_DASM; \
         break;
 
 #define CASE_CSR_I(op) \
@@ -224,6 +232,8 @@ struct CSR_entry {
         csr_##op(); \
         DASM_OP(csr##op); \
         PROF_CSR(csr##op); \
+        PROF_RD; \
+        CSR_IMM_DASM; \
         break;
 
 #define W_CSR(expr) \
@@ -285,6 +295,7 @@ struct mem_entry {
              << ": 0x" << std::left << std::setw(8) << std::setfill(' ') \
              << it->second.value << std::dec
 
+#ifdef ENABLE_DASM
 #define CSR_REG_DASM \
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
                 << csr.at(get_csr_addr()).name << "," \
@@ -292,8 +303,12 @@ struct mem_entry {
 
 #define CSR_IMM_DASM \
     dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
-            << csr.at(get_csr_addr()).name << "," \
-            << get_uimm_csr()
+                << csr.at(get_csr_addr()).name << "," \
+                << get_uimm_csr()
+#else
+#define CSR_REG_DASM
+#define CSR_IMM_DASM
+#endif
 
 #ifdef ENABLE_DASM
 #define DASM_OP(o) \
@@ -333,6 +348,28 @@ struct mem_entry {
 #define PROF_B_NT(op) \
     prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + get_imm_b()) > pc));
 
+#define PROF_RD \
+    prof.log_reg_use(reg_use_t::rd, get_rd()); \
+
+#define PROF_RS1 \
+    prof.log_reg_use(reg_use_t::rs1, get_rs1());
+
+#define PROF_RS2 \
+    prof.log_reg_use(reg_use_t::rs2, get_rs2());
+
+#define PROF_RD_RS1_RS2 \
+    PROF_RD \
+    PROF_RS1 \
+    PROF_RS2
+
+#define PROF_RD_RS1 \
+    PROF_RD \
+    PROF_RS1
+
+#define PROF_RS1_RS2 \
+    PROF_RS1 \
+    PROF_RS2
+
 #else
 #define PROF_ALR(op)
 #define PROF_ALR_MUL(op)
@@ -344,4 +381,10 @@ struct mem_entry {
 #define PROF_J(op)
 #define PROF_B_T(op)
 #define PROF_B_NT(op)
+#define PROF_RD
+#define PROF_RS1
+#define PROF_RS2
+#define PROF_RD_RS1_RS2
+#define PROF_RD_RS1
+#define PROF_RS1_RS2
 #endif

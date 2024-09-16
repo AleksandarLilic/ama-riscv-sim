@@ -113,50 +113,54 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
     }
 }
 
+void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
+    prof_reg_hist[reg][static_cast<uint8_t>(reg_use)]++;
+}
+
 void profiler::log_to_file() {
     uint32_t profiled_inst_cnt = 0;
-    out_stream.open(log_name + "_inst_profiler.json");
-    out_stream << "{\n";
+    ofs.open(log_name + "_inst_profiler.json");
+    ofs << "{\n";
     for (auto &i : prof_alr_arr) {
         if (i.name != "") {
-            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;
         }
     }
     for (auto &i : prof_alr_mul_arr) {
         if (i.name != "") {
-            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;
         }
     }
     for (auto &i : prof_ali_arr) {
         if (i.name != "") {
-            out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;
         }
     }
     for (auto &i : prof_mem_arr) {
-        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
         profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_upp_arr) {
-        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
         profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_sys_arr) {
-        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
         profiled_inst_cnt += i.count;
     }
     for (auto &i : prof_csr_arr) {
-        out_stream << JSON_ENTRY(i.name, i.count) << std::endl;
+        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
         profiled_inst_cnt += i.count;
     }
 
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
         inst_prof_j& e = prof_j_arr[i];
-        out_stream << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
+        ofs << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
                                    e.count_not_taken, e.count_not_taken_fwd);
-        out_stream << std::endl;
+        ofs << std::endl;
         profiled_inst_cnt += e.count_taken + e.count_not_taken;
     }
 
@@ -167,19 +171,24 @@ void profiler::log_to_file() {
     }
     min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
-    out_stream << "\"_max_sp_usage\": " << min_sp << ",\n";
-    out_stream << "\"_profiled_instructions\": " << profiled_inst_cnt;
-    out_stream << "\n}\n";
-    out_stream.close();
+    ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
+    ofs << "\"_profiled_instructions\": " << profiled_inst_cnt;
+    ofs << "\n}\n";
+    ofs.close();
 
-    out_stream.open(log_name + "_trace.bin", std::ios::binary);
-    out_stream.write(reinterpret_cast<char*>(trace.data()),
-                     trace.size() * sizeof(trace_entry));
-    out_stream.close();
+    ofs.open(log_name + "_trace.bin", std::ios::binary);
+    ofs.write(reinterpret_cast<char*>(trace.data()),
+              trace.size() * sizeof(trace_entry));
+    ofs.close();
 
     #ifndef DPI
     info(profiled_inst_cnt, min_sp);
     #endif
+
+    ofs.open(log_name + "_reg_hist.bin", std::ios::binary);
+    ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),
+             prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
+    ofs.close();
 
     assert(inst_cnt == profiled_inst_cnt &&
            "Profiler: instruction count mismatch");

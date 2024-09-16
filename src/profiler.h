@@ -62,6 +62,7 @@ enum class opc_j {
     i_beq, i_bne, i_blt, i_bge, i_bltu, i_bgeu, i_jalr, i_jal, _count
 };
 
+enum class reg_use_t { rd, rs1, rs2 };
 
 struct inst_prof_g {
     std::string name;
@@ -84,7 +85,7 @@ struct trace_entry {
 
 class profiler{
     private:
-        std::ofstream out_stream;
+        std::ofstream ofs;
         uint32_t inst_cnt;
         uint32_t inst;
         std::vector<trace_entry> trace;
@@ -105,6 +106,7 @@ class profiler{
             prof_csr_arr;
         std::array<inst_prof_j, static_cast<uint32_t>(opc_j::_count)>
             prof_j_arr;
+        std::array<std::array<uint32_t, 3>, 32> prof_reg_hist = {0};
 
         std::string log_name;
 
@@ -122,6 +124,7 @@ class profiler{
         void log_inst(opc_csr opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
         void log(uint32_t pc, uint32_t sp) { trace.push_back({pc, sp}); }
+        void log_reg_use(reg_use_t reg_use, uint8_t reg);
 
     private:
         void log_to_file();
