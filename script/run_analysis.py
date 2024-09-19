@@ -1,9 +1,11 @@
 import os
 import json
 import argparse
+import textwrap
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from typing import Dict, Any, Tuple, List
 from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation, MaxNLocator
 
@@ -19,14 +21,9 @@ FENCE = "FENCE"
 MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
-INST_BYTES = 4
-CACHE_LINE_INSTS = 64//INST_BYTES
+CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x80000000
 MEM_SIZE = 0x40000
-# offset is requred to move bars/dots up by half a unit
-# in order not to be centered around the PC but start from it
-# compressed ISA whill change this, when supported
-PC_OFFSET = 0.5
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw"],
@@ -72,7 +69,7 @@ colors = {
     "blue_light2": "#90e0ef",
 }
 
-highlight_colors = [
+hl_colors = [
     #"#33C1B1", # keppel
     "#3ECCBB", # turquoise
     #"#e9c46a", # yellow
@@ -94,12 +91,12 @@ def get_base_int_pc(pc) -> int:
 
 def get_count(parts, df) -> Tuple[int, int]:
     pc = get_base_int_pc(parts[0].strip())
-    count_series  = df.loc[df["pc_real"] == pc, "count"]
+    count_series  = df.loc[df["pc"] == pc, "count"]
     count = count_series.squeeze() if not count_series.empty else 0
     return count, pc
 
 def num_to_hex(val, pos) -> str:
-    return f"0x{int(val*INST_BYTES):04X}"
+    return f"0x{int(val):04X}"
 
 def to_k(val, pos) -> str:
     if val == 0:
@@ -119,6 +116,11 @@ def inst_type_exists(inst_type) -> str:
         raise ValueError(f"Invalid instruction type '{inst_type}'. " + \
                          f"Available types are: {', '.join(all_inst_types)}")
     return inst_type
+
+def wrap_label(arr:List[str], max_len:int) -> str:
+    label = ', '.join(arr)
+    wrapped = '\n'.join(textwrap.wrap(label, max_len))
+    return wrapped
 
 def add_legend_for_hl_groups(ax, chart_type:str) -> None:
     title = "Highlighted\nInstructions"
@@ -220,8 +222,8 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     for hl_g in hl_groups:
         for i, r in enumerate(box[0]):
             if df.iloc[i]['name'] in hl_g:
-                r.set_color(highlight_colors[hc])
-        ax[0].barh(0, 0, color=highlight_colors[hc], label=', '.join(hl_g))
+                r.set_color(hl_colors[hc])
+        ax[0].barh(0, 0, color=hl_colors[hc], label=', '.join(hl_g))
         hc += 1
 
     if len(hl_groups) > 0:
@@ -241,11 +243,6 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
 
         ax[1].legend(loc='lower right')
 
-    # handle display
-    if not args.silent:
-        plt.show()
-
-    plt.close()
     return fig
 
 def json_prof_to_df(log, allow_internal=False) -> pd.DataFrame:
@@ -301,10 +298,10 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     pc_start = get_base_int_pc(parts[0].strip())
                     symbol_name = parts[1][1:-1] # remove <> from symbol name
                     if current_sym:
-                        symbols[current_sym]['pc_end_real'] = prev_pc
+                        symbols[current_sym]['pc_end'] = prev_pc
                     current_sym = symbol_name
                     symbols[current_sym] = {
-                        'pc_start_real': pc_start,
+                        'pc_start': pc_start,
                         "acc_count": 0
                     }
                     prev_pc = pc_start
@@ -318,7 +315,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     im = line.split('\t')
                     im = [x.strip() for x in im]
                     pc_inst_map_arr.append(
-                        [get_base_int_pc(im[0].replace(':', ''))//4, # pc
+                        [get_base_int_pc(im[0].replace(':', '')), # pc
                          im[2], # instruction mnemonic
                          ' '.join(im[2:]) # full instruction
                          ])
@@ -330,26 +327,26 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 outfile.write(line)
 
         # write the last symbol
-        symbols[current_sym]['pc_end_real'] = prev_pc
+        symbols[current_sym]['pc_end'] = prev_pc
 
     filter_str = []
     if args.pc_begin:
         filter_str.append(f"PC >= {args.pc_begin}")
         pc_begin = get_base_int_pc(args.pc_begin)
         symbols = {k: v for k, v in symbols.items()
-                   if v['pc_start_real'] >= pc_begin}
+                   if v['pc_start'] >= pc_begin}
 
     if args.pc_end:
         filter_str.append(f"PC <= {args.pc_end}")
         pc_end = get_base_int_pc(args.pc_end)
         symbols = {k: v for k, v in symbols.items()
-                   if v['pc_end_real'] <= pc_end}
+                   if v['pc_end'] <= pc_end}
 
     sym_log = []
     for k,v in symbols.items():
         v['func_text'] = f"{k} ({v['acc_count']})"
-        sym_log.append(f"{num_to_hex(v['pc_start_real']//4, None)} - " + \
-                       f"{num_to_hex(v['pc_end_real']//4, None)}: " + \
+        sym_log.append(f"{num_to_hex(v['pc_start'], None)} - " + \
+                       f"{num_to_hex(v['pc_end'], None)}: " + \
                        f"{v['func_text']}")
 
     print(f"Symbols found in {args.dasm}:")
@@ -376,22 +373,24 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
     if symbol_pos is None:
         symbol_pos = ax.get_xlim()[1]
+        #symbol_pos = 1. # for transform=ax.get_yaxis_transform()
 
     pc_start, pc_end = 0, 0
     # add lines for symbols, if any
     for k,v in symbols.items():
-        pc_start = v['pc_start_real']//INST_BYTES
-        pc_end = v['pc_end_real']//INST_BYTES
+        pc_start = v['pc_start']
+        pc_end = v['pc_end']
         ax.axhline(y=pc_start, color='k', linestyle='-', alpha=0.5)
         ax.text(symbol_pos, pc_start,
                 f" ^ {v['func_text']}", color='k',
                 fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1))
+                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
+                #transform=ax.get_yaxis_transform())
 
     # add line for the last symbol, if any
     if symbols:
-        # ends after last PC entry
-        ax.axhline(y=pc_end+1, color='k', linestyle='-', alpha=0.5)
+        # ends after last PC entry, FIXME: should be the size of last inst
+        ax.axhline(y=pc_end+4, color='k', linestyle='-', alpha=0.5)
 
     if args.pc_begin:
         ax.set_ylim(bottom=get_base_int_pc(args.pc_begin)//4)
@@ -399,32 +398,38 @@ def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
         ax.set_ylim(top=get_base_int_pc(args.pc_end)//4)
 
     # add cache line coloring
-    for i in range(df.pc.min(), max(df.pc.max(), pc_end), CACHE_LINE_INSTS):
-        color = 'k' if (i//CACHE_LINE_INSTS) % 2 == 0 else 'w'
-        ax.axhspan(i, i+CACHE_LINE_INSTS, color=color, alpha=0.08, zorder=0)
+    for i in range(df.pc.min(), max(df.pc.max(), pc_end), CACHE_LINE_BYTES):
+        color = 'k' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'w'
+        ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.08, zorder=0)
 
     return ax
 
 def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     # TODO: should probably limit the number of PC entries to display or
     # auto enlarge the figure size (but up to a point, then limit anyways)
-    fig, ax = plt.subplots(figsize=(12,15), constrained_layout=True)
-    box = ax.barh(df['pc']+PC_OFFSET, df['count'], height=.9, alpha=0.8)
-    #       , edgecolor=(0, 0, 0, 0.1))
+    fig, ax = plt.subplots(figsize=(16,13), constrained_layout=True)
+    rect_arr = []
+    off = .75
+    for y, width, height in zip(df['pc'], df['count'], df['isz']):
+        rect = patches.Rectangle((0, y+off), width, height-off, color='#649ac9')
+        ax.add_patch(rect)
+        rect_arr.append(rect)
     ax.set_xscale('log')
 
     # highlight specific instructions, if any
     hc = 0
     for hl_g in hl_groups:
-        for i, r in enumerate(box):
+        for i in range(len(df)):
             if df.iloc[i]['inst_mnm'] in hl_g:
-                # has to be removed as set_color doesn't respect original height
-                r.remove()
-                # add a new bar with the highlight color
-                ax.barh(df.iloc[i]['pc']+PC_OFFSET, df.iloc[i]['count'],
-                        height=.9, color=highlight_colors[hc], alpha=0.8)
+                rect_arr[i].set_color(hl_colors[hc])
+                #y = df.iloc[i]['pc']
+                #width = df.iloc[i]['count']
+                #height = df.iloc[i]['isz']
+                #hl_rect = patches.Rectangle((0, y+off), width, height-off,
+                #                            color=hl_colors[hc])
+                #ax.add_patch(hl_rect)
         # add a dummy bar for the legend
-        ax.barh(0, 0, color=highlight_colors[hc], label=', '.join(hl_g))
+        ax.barh(0, 0, color=hl_colors[hc], label=wrap_label(hl_g, 24))
         hc += 1
 
     if len(hl_groups) > 0:
@@ -434,7 +439,7 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
     formatter = LogFormatterSciNotation(base=10)
     ax.xaxis.set_major_formatter(formatter)
-    ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_INSTS))
+    ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES))
     ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax.set_xlim(left=0.5)
     ax.margins(y=0.01, x=0.1)
@@ -457,11 +462,6 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     # annotate the chart
     ax = annotate_pc_chart(df, symbols, ax)
 
-    # handle display
-    if not args.silent:
-        plt.show()
-
-    plt.close()
     return fig
 
 def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
@@ -470,20 +470,30 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
                                        constrained_layout=True)
     # plot the PC trace and don't interpolate linearly between points
     # but step from one to the next
-    ax_pc.step(df.index, df['pc']+PC_OFFSET, where='post', linewidth=2,
-            color=(0,.3,.6,0.2), marker='.', markersize=5,
-            markerfacecolor='#649ac9', markeredgecolor='#649ac9')
-    ax_pc.grid(axis='x', linestyle='-', alpha=1, which='major')
+    ax_pc.step(df.index, df['pc'], where='pre', lw=1.5, color=(0,.3,.6,.15))
+    ax_pc.grid(axis='x', linestyle='-', alpha=.6, which='major')
 
-    # scatter plot points from df where inst matches inst_mnm
+    x_val = []
+    y_val = []
+    for x, y, s in zip(df.index, df['pc'], df['isz']):
+        x_val.extend([x, x, None]) # 'None' used to break the line
+        y_val.extend([y, y + s, None])
+    ax_pc.plot(x_val, y_val, color='#649ac9', lw=1.2)
+
     hc = 0
+    hl_off = .15
     for hl_g in hl_groups:
+        x_val_hl = []
+        y_val_hl = []
         for inst in hl_g:
             df_hl = df[df['inst_mnm'] == inst]
-            ax_pc.scatter(df_hl.index, df_hl['pc']+PC_OFFSET,
-                       color=highlight_colors[hc], s=10, zorder=10)
-        # add a dummy scatter plot for the legend
-        ax_pc.scatter([], [], color=highlight_colors[hc], label=', '.join(hl_g))
+            for x, y, s in zip(df_hl.index, df_hl['pc'], df_hl['isz']):
+                x_val_hl.extend([x, x, None])
+                y_val_hl.extend([y+hl_off, y+s-hl_off, None])
+        ax_pc.plot(x_val_hl, y_val_hl, color=hl_colors[hc], alpha=1, lw=1.5)
+
+        # add dummy scatter plot for the legend
+        ax_pc.scatter([], [], color=hl_colors[hc], label=wrap_label(hl_g, 24))
         hc += 1
 
     if len(hl_groups) > 0:
@@ -494,7 +504,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     locator = MaxNLocator(nbins=current_nbins*4, integer=True)
     ax_pc.xaxis.set_major_locator(locator)
     ax_pc.xaxis.set_major_formatter(FuncFormatter(to_k))
-    ax_pc.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_INSTS))
+    ax_pc.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES))
     ax_pc.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax_pc.margins(y=0.03, x=0.01)
 
@@ -506,9 +516,8 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
 
     # add SP trace
-    ax_sp.step(df.index, df['sp_real'], where='post', linewidth=1,
-               color=(0,.3,.6,1))
-    ax_sp.grid(axis='both', linestyle='-', alpha=1, which='major')
+    ax_sp.step(df.index, df['sp_real'], where='post', lw=1, color=(0,.3,.6,1))
+    ax_sp.grid(axis='both', linestyle='-', alpha=.6, which='major')
 
     # label
     ax_sp.set_xlabel('Instruction Count')
@@ -521,22 +530,19 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
                f"  SP max : {df['sp_real'].max()} bytes", color='k',
                fontsize=9, ha='left', va='center',
-               bbox=dict(facecolor='w', alpha=0.6, linewidth=0, pad=1))
+               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
+               #transform=ax_sp.get_yaxis_transform())
 
-    # handle display
-    if not args.silent:
-        plt.show()
-
-    plt.close()
     return fig
 
 def run_pc_trace(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    h = ['pc', 'sp']
+    h = ['pc', 'isz', 'sp']
     dtype = np.dtype([
         (h[0], np.uint32),
         (h[1], np.uint32),
+        (h[2], np.uint32),
     ])
     data = np.fromfile(bin_log, dtype=dtype)
     df_og = pd.DataFrame(data, columns=h)
@@ -544,12 +550,13 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df_og['sp_real'] = df_og['sp_real'].apply(
         lambda x: 0 if x == BASE_ADDR + MEM_SIZE else x)
 
-    df = df_og.groupby('pc').size().reset_index(name='count')
+    df = df_og.groupby('pc').agg(
+        isz=('isz', 'first'), # get only the first value
+        count=('pc', 'size') # count them all (size of the group)
+    ).reset_index()
     df = df.sort_values(by='pc', ascending=True)
     df['pc'] = df['pc'].astype(int)
     df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
-    df['pc_real'] = df['pc'] * INST_BYTES
-    df['pc_real_hex'] = df['pc_real'].apply(lambda x: f'{x:08x}')
 
     # TODO: consider option to reverse the PC log so it grows down from the top
     # like .dump does
@@ -616,10 +623,10 @@ def run_main(args) -> None:
 
     hl_groups = []
     if not (args.highlight == None):
-        if len(args.highlight) > len(highlight_colors):
+        if len(args.highlight) > len(hl_colors):
             raise ValueError(f"Too many instructions to highlight " + \
-                            f"max is {len(highlight_colors)}, " + \
-                            f"got {len(args.highlight)}")
+                             f"max is {len(hl_colors)}, " + \
+                             f"got {len(args.highlight)}")
         else:
             if len(args.highlight) == 1: # multiple arguments but 1 element
                 hl_groups = args.highlight[0].split()
@@ -634,6 +641,10 @@ def run_main(args) -> None:
         df, fig, fig2 = run_pc_trace(args_log, hl_groups, title, args)
     else:
         df, fig = run_inst_log(args_log, hl_groups, title, args)
+
+    if not args.silent:
+        plt.show()
+    plt.close()
 
     log_path = os.path.realpath(args_log)
     fig_arr.append([log_path, fig])
