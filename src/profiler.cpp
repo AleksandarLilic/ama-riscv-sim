@@ -2,158 +2,140 @@
 
 profiler::profiler(std::string log_name) {
     inst_cnt = 0;
+    te = {0, 0, 0};
     this->log_name = log_name;
 
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_add)] = {"add", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sub)] = {"sub", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sll)] = {"sll", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_srl)] = {"srl", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sra)] = {"sra", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_slt)] = {"slt", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_sltu)] = {"sltu", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_xor)] = {"xor", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_or)] = {"or", 0};
-    prof_alr_arr[static_cast<uint32_t>(opc_al_r::i_and)] = {"and", 0};
+    prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
+    prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
+    prof_g_arr[TO_U32(opc_g::i_sll)] = {"sll", 0};
+    prof_g_arr[TO_U32(opc_g::i_srl)] = {"srl", 0};
+    prof_g_arr[TO_U32(opc_g::i_sra)] = {"sra", 0};
+    prof_g_arr[TO_U32(opc_g::i_slt)] = {"slt", 0};
+    prof_g_arr[TO_U32(opc_g::i_sltu)] = {"sltu", 0};
+    prof_g_arr[TO_U32(opc_g::i_xor)] = {"xor", 0};
+    prof_g_arr[TO_U32(opc_g::i_or)] = {"or", 0};
+    prof_g_arr[TO_U32(opc_g::i_and)] = {"and", 0};
 
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mul)] = {"mul", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulh)] = {"mulh", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulhsu)] = {"mulsu", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_mulhu)] = {"mulu", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_div)] = {"div", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_divu)] = {"divu", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_rem)] = {"rem", 0};
-    prof_alr_mul_arr[static_cast<uint32_t>(opc_al_r_mul::i_remu)] = {"remu", 0};
+    prof_g_arr[TO_U32(opc_g::i_nop)] = {"nop", 0};
+    prof_g_arr[TO_U32(opc_g::i_addi)] = {"addi", 0};
+    prof_g_arr[TO_U32(opc_g::i_slli)] = {"slli", 0};
+    prof_g_arr[TO_U32(opc_g::i_srli)] = {"srli", 0};
+    prof_g_arr[TO_U32(opc_g::i_srai)] = {"srai", 0};
+    prof_g_arr[TO_U32(opc_g::i_slti)] = {"slti", 0};
+    prof_g_arr[TO_U32(opc_g::i_sltiu)] = {"sltiu", 0};
+    prof_g_arr[TO_U32(opc_g::i_xori)] = {"xori", 0};
+    prof_g_arr[TO_U32(opc_g::i_ori)] = {"ori", 0};
+    prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
 
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_nop)] = {"nop", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_addi)] = {"addi", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_slli)] = {"slli", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_srli)] = {"srli", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_srai)] = {"srai", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_slti)] = {"slti", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_sltiu)] = {"sltiu", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_xori)] = {"xori", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_ori)] = {"ori", 0};
-    prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_andi)] = {"andi", 0};
+    prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
+    prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
+    prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};
+    prof_g_arr[TO_U32(opc_g::i_lbu)] = {"lbu", 0};
+    prof_g_arr[TO_U32(opc_g::i_lhu)] = {"lhu", 0};
+    prof_g_arr[TO_U32(opc_g::i_sb)] = {"sb", 0};
+    prof_g_arr[TO_U32(opc_g::i_sh)] = {"sh", 0};
+    prof_g_arr[TO_U32(opc_g::i_sw)] = {"sw", 0};
+    prof_g_arr[TO_U32(opc_g::i_fence_i)] = {"fence.i", 0};
+    prof_g_arr[TO_U32(opc_g::i_fence)] = {"fence", 0};
 
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lb)] = {"lb", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lh)] = {"lh", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lw)] = {"lw", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lbu)] = {"lbu", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_lhu)] = {"lhu", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_sb)] = {"sb", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_sh)] = {"sh", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_sw)] = {"sw", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_fence_i)] = {"fence.i", 0};
-    prof_mem_arr[static_cast<uint32_t>(opc_mem::i_fence)] = {"fence", 0};
+    prof_g_arr[TO_U32(opc_g::i_lui)] = {"lui", 0};
+    prof_g_arr[TO_U32(opc_g::i_auipc)] = {"auipc", 0};
 
-    prof_upp_arr[static_cast<uint32_t>(opc_upp::i_lui)] = {"lui", 0};
-    prof_upp_arr[static_cast<uint32_t>(opc_upp::i_auipc)] = {"auipc", 0};
+    prof_g_arr[TO_U32(opc_g::i_ecall)] = {"ecall", 0};
+    prof_g_arr[TO_U32(opc_g::i_ebreak)] = {"ebreak", 0};
 
-    prof_sys_arr[static_cast<uint32_t>(opc_sys::i_ecall)] = {"ecall", 0};
-    prof_sys_arr[static_cast<uint32_t>(opc_sys::i_ebreak)] = {"ebreak", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrw)] = {"csrrw", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrs)] = {"csrrs", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrc)] = {"csrrc", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrwi)] = {"csrrwi", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrsi)] = {"csrrsi", 0};
+    prof_g_arr[TO_U32(opc_g::i_csrrci)] = {"csrrci", 0};
 
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrw)] = {"csrrw", 0};
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrs)] = {"csrrs", 0};
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrc)] = {"csrrc", 0};
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrwi)] = {"csrrwi", 0};
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrsi)] = {"csrrsi", 0};
-    prof_csr_arr[static_cast<uint32_t>(opc_csr::i_csrrci)] = {"csrrci", 0};
+    // M extension
+    prof_g_arr[TO_U32(opc_g::i_mul)] = {"mul", 0};
+    prof_g_arr[TO_U32(opc_g::i_mulh)] = {"mulh", 0};
+    prof_g_arr[TO_U32(opc_g::i_mulhsu)] = {"mulsu", 0};
+    prof_g_arr[TO_U32(opc_g::i_mulhu)] = {"mulu", 0};
+    prof_g_arr[TO_U32(opc_g::i_div)] = {"div", 0};
+    prof_g_arr[TO_U32(opc_g::i_divu)] = {"divu", 0};
+    prof_g_arr[TO_U32(opc_g::i_rem)] = {"rem", 0};
+    prof_g_arr[TO_U32(opc_g::i_remu)] = {"remu", 0};
 
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_beq)] = {"beq", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_bne)] = {"bne", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_blt)] = {"blt", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_bge)] = {"bge", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_bltu)] = {"bltu", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_jalr)] = {"jalr", 0, 0, 0, 0};
-    prof_j_arr[static_cast<uint32_t>(opc_j::i_jal)] = {"jal", 0, 0, 0, 0};
+    // C extension
+    prof_g_arr[TO_U32(opc_g::i_c_add)] = {"c.add", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_mv)] = {"c.mv", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_and)] = {"c.and", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_or)] = {"c.or", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_xor)] = {"c.xor", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_sub)] = {"c.sub", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_addi)] = {"c.addi", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_addi16sp)] = {"c.addi16sp", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_addi4spn)] = {"c.addi4spn", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_andi)] = {"c.andi", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_srli)] = {"c.srli", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_slli)] = {"c.slli", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_srai)] = {"c.srai", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_nop)] = {"c.nop", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_lwsp)] = {"c.lwsp", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_swsp)] = {"c.swsp", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_lw)] = {"c.lw", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_sw)] = {"c.sw", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_li)] = {"c.li", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_lui)] = {"c.lui", 0};
+    prof_g_arr[TO_U32(opc_g::i_c_ebreak)] = {"c.ebreak", 0};
+
+    // Control transfer
+    prof_j_arr[TO_U32(opc_j::i_beq)] = {"beq", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_bne)] = {"bne", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_blt)] = {"blt", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_bge)] = {"bge", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_bltu)] = {"bltu", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_jalr)] = {"jalr", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_jal)] = {"jal", 0, 0, 0, 0};
+    // C extension
+    prof_j_arr[TO_U32(opc_j::i_c_j)] = {"c.j", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_c_jal)] = {"c.jal", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_c_jr)] = {"c.jr", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_c_jalr)] = {"c.jalr", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_c_beqz)] = {"c.beqz", 0, 0, 0, 0};
+    prof_j_arr[TO_U32(opc_j::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
 }
 
-void profiler::log_inst(opc_al_r opc) {
-    prof_alr_arr[static_cast<uint32_t>(opc)].count++;
-}
-
-void profiler::log_inst(opc_al_i opc) {
-    if (inst == INST_NOP) {
-        prof_ali_arr[static_cast<uint32_t>(opc_al_i::i_nop)].count++;
-    } else {
-        prof_ali_arr[static_cast<uint32_t>(opc)].count++;
-    }
-}
-
-void profiler::log_inst(opc_al_r_mul opc) {
-    prof_alr_mul_arr[static_cast<uint32_t>(opc)].count++;
-}
-
-void profiler::log_inst(opc_mem opc) {
-    prof_mem_arr[static_cast<uint32_t>(opc)].count++;
-}
-
-void profiler::log_inst(opc_upp opc) {
-    prof_upp_arr[static_cast<uint32_t>(opc)].count++;
-}
-
-void profiler::log_inst(opc_sys opc) {
-    prof_sys_arr[static_cast<uint32_t>(opc)].count++;
-}
-
-void profiler::log_inst(opc_csr opc) {
-    prof_csr_arr[static_cast<uint32_t>(opc)].count++;
+void profiler::log_inst(opc_g opc) {
+    if (inst == INST_NOP)
+        prof_g_arr[TO_U32(opc_g::i_nop)].count++;
+    else if ((inst & 0xFFFF) == INST_C_NOP) // 16-bit inst
+        prof_g_arr[TO_U32(opc_g::i_c_nop)].count++;
+    else
+        prof_g_arr[TO_U32(opc)].count++;
 }
 
 void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
     if (taken) {
-        prof_j_arr[static_cast<uint32_t>(opc)].count_taken++;
+        prof_j_arr[TO_U32(opc)].count_taken++;
         if (direction == b_dir_t::forward)
-            prof_j_arr[static_cast<uint32_t>(opc)].count_taken_fwd++;
+            prof_j_arr[TO_U32(opc)].count_taken_fwd++;
     } else {
-        prof_j_arr[static_cast<uint32_t>(opc)].count_not_taken++;
+        prof_j_arr[TO_U32(opc)].count_not_taken++;
         if (direction == b_dir_t::forward)
-            prof_j_arr[static_cast<uint32_t>(opc)].count_not_taken_fwd++;
+            prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
     }
 }
 
 void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
-    prof_reg_hist[reg][static_cast<uint8_t>(reg_use)]++;
+    prof_reg_hist[reg][TO_U8(reg_use)]++;
 }
 
 void profiler::log_to_file() {
     uint32_t profiled_inst_cnt = 0;
     ofs.open(log_name + "_inst_profiler.json");
     ofs << "{\n";
-    for (auto &i : prof_alr_arr) {
+    for (auto &i : prof_g_arr) {
         if (i.name != "") {
             ofs << JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;
         }
-    }
-    for (auto &i : prof_alr_mul_arr) {
-        if (i.name != "") {
-            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-            profiled_inst_cnt += i.count;
-        }
-    }
-    for (auto &i : prof_ali_arr) {
-        if (i.name != "") {
-            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-            profiled_inst_cnt += i.count;
-        }
-    }
-    for (auto &i : prof_mem_arr) {
-        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-        profiled_inst_cnt += i.count;
-    }
-    for (auto &i : prof_upp_arr) {
-        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-        profiled_inst_cnt += i.count;
-    }
-    for (auto &i : prof_sys_arr) {
-        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-        profiled_inst_cnt += i.count;
-    }
-    for (auto &i : prof_csr_arr) {
-        ofs << JSON_ENTRY(i.name, i.count) << std::endl;
-        profiled_inst_cnt += i.count;
     }
 
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {

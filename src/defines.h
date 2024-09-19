@@ -13,6 +13,13 @@
 
 #include "dev.h"
 
+#define TO_U32(x) static_cast<uint32_t>(x)
+#define TO_I32(x) static_cast<int32_t>(x)
+#define TO_U16(x) static_cast<uint16_t>(x)
+#define TO_I16(x) static_cast<int16_t>(x)
+#define TO_U8(x) static_cast<uint8_t>(x)
+#define TO_I8(x) static_cast<int8_t>(x)
+
 #ifdef USE_ABI_NAMES
 #define RF_NAMES 1u
 #define FRF_W 4
@@ -121,30 +128,63 @@ struct dasm_str {
 
 // Instruction field masks
 #define M_OPC7 uint32_t(0x7F)
+#define M_OPC2 uint32_t(0x3)
+
 #define M_FUNCT7 uint32_t((0x7F)<<25)
 #define M_FUNCT7_B5 uint32_t((0x1)<<30)
 #define M_FUNCT7_B1 uint32_t((0x1)<<25)
 #define M_FUNCT3 uint32_t((0x7)<<12)
+#define M_CFUNCT2H uint32_t((0x3)<<10)
+#define M_CFUNCT2L uint32_t((0x3)<<5)
+#define M_CFUNCT3 uint32_t((0x7)<<13)
+#define M_CFUNCT4 uint32_t((0xF)<<12)
+#define M_CFUNCT6 uint32_t((0x3F)<<10)
+
 #define M_RD uint32_t((0x1F)<<7)
 #define M_RS1 uint32_t((0x1F)<<15)
 #define M_RS2 uint32_t((0x1F)<<20)
+#define M_CRS2 uint32_t((0x1F)<<2)
+#define M_CREGH uint32_t((0x7)<<7)
+#define M_CREGL uint32_t((0x7)<<2)
 #define M_IMM_SHAMT uint32_t(0x1F)
-#define M_IMM_31 int32_t((0x1)<<31)
-#define M_IMM_31_20 int32_t((0xFFF)<<20)
-#define M_IMM_30_25 int32_t((0x3F)<<25)
+
 #define M_IMM_31_25 int32_t((0x7F)<<25)
-#define M_IMM_20 uint32_t((0x1)<<20)
-#define M_IMM_19_12 int32_t((0xFF)<<12)
-#define M_IMM_24_21 int32_t((0xF)<<21)
-#define M_IMM_24_20 int32_t((0x1F)<<20)
+#define M_IMM_31_20 int32_t((0xFFF)<<20)
+#define M_IMM_30_25 uint32_t((0x3F)<<25)
+#define M_IMM_24_21 uint32_t((0xF)<<21)
+#define M_IMM_24_20 uint32_t((0x1F)<<20)
+#define M_IMM_19_12 uint32_t((0xFF)<<12)
+#define M_IMM_12_11 uint32_t((0x3)<<11)
+#define M_IMM_12_10 uint32_t((0x7)<<10)
+#define M_IMM_12_9 uint32_t((0xF)<<9)
+#define M_IMM_11_10 uint32_t((0x3)<<10)
 #define M_IMM_11_8 uint32_t((0xF)<<8)
+#define M_IMM_10_9 uint32_t((0x3)<<9)
+#define M_IMM_10_7 uint32_t((0xF)<<7)
+#define M_IMM_8_7 uint32_t((0x3)<<7)
+#define M_IMM_6_5 uint32_t((0x3)<<5)
+#define M_IMM_6_4 uint32_t((0x7)<<4)
+#define M_IMM_6_2 uint32_t((0x1F)<<2)
+#define M_IMM_5_3 uint32_t((0x7)<<3)
+#define M_IMM_4_3 uint32_t((0x3)<<3)
+#define M_IMM_3_2 uint32_t((0x3)<<2)
+
+#define M_IMM_31 int32_t((0x1)<<31)
+#define M_IMM_20 uint32_t((0x1)<<20)
+#define M_IMM_12 uint32_t((0x1)<<12)
+#define M_IMM_11 uint32_t((0x1)<<11)
+#define M_IMM_8 uint32_t((0x1)<<8)
 #define M_IMM_7 uint32_t((0x1)<<7)
+#define M_IMM_6 uint32_t((0x1)<<6)
+#define M_IMM_5 uint32_t((0x1)<<5)
+#define M_IMM_2 uint32_t((0x1)<<2)
 
 // Instructions
 #define INST_ECALL 0x73
 #define INST_EBREAK 0x100073
 #define INST_FENCE_I 0x100F
 #define INST_NOP 0x13
+#define INST_C_NOP 0x1
 
 // CSRs
 struct CSR {
@@ -168,72 +208,71 @@ struct CSR_entry {
 #define CASE_ALU_REG_OP(op) \
     case (uint8_t)alu_r_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
-        DASM_OP(op); \
-        PROF_ALR(op); \
-        PROF_RD_RS1_RS2; \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
     case (uint8_t)alu_r_mul_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
-        DASM_OP(op); \
-        PROF_ALR_MUL(op); \
-        PROF_RD_RS1_RS2; \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
         break;
 
 #define CASE_ALU_IMM_OP(op) \
     case (uint8_t)alu_i_op_t::op_##op: \
         write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); \
-        DASM_OP(op); \
-        PROF_ALI(op); \
-        PROF_RD_RS1; \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1 \
         break;
 
 #define CASE_LOAD(op) \
     case (uint8_t)load_op_t::op_##op: \
         write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); \
-        DASM_OP(op); \
-        PROF_MEM(op); \
-        PROF_RD_RS1; \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1 \
         break;
 
 #define CASE_STORE(op) \
     case (uint8_t)store_op_t::op_##op: \
         store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); \
-        DASM_OP(op); \
-        PROF_MEM(op); \
-        PROF_RS1_RS2; \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RS1_RS2 \
         break;
 
 #define CASE_BRANCH(op) \
     case (uint8_t)branch_op_t::op_##op: \
         if(branch_##op()) { \
             next_pc = pc + get_imm_b(); \
-            DASM_OP(op); \
-            PROF_B_T(op); \
+            PROF_B_T(op) \
         } else { \
-            DASM_OP(op); \
-            PROF_B_NT(op); \
+            PROF_B_NT(op, _b) \
         } \
-        PROF_RS1_RS2; \
+        DASM_OP(op) \
+        PROF_RS1_RS2 \
         break;
 
 #define CASE_CSR(op, val) \
     case (uint8_t)csr_op_t::op_##op: \
         csr_##op(val); \
-        DASM_OP(csr##op); \
-        PROF_CSR(csr##op); \
-        PROF_RD_RS1; \
-        CSR_REG_DASM; \
+        DASM_OP(csr##op) \
+        PROF_G(csr##op) \
+        PROF_RD_RS1 \
+        DASM_CSR_REG \
         break;
 
 #define CASE_CSR_I(op) \
     case (uint8_t)csr_op_t::op_##op: \
         csr_##op(); \
-        DASM_OP(csr##op); \
-        PROF_CSR(csr##op); \
-        PROF_RD; \
-        CSR_IMM_DASM; \
+        DASM_OP(csr##op) \
+        PROF_G(csr##op) \
+        PROF_RD \
+        DASM_CSR_IMM \
         break;
 
 #define W_CSR(expr) \
@@ -263,12 +302,13 @@ struct mem_entry {
         if (address_out_of_range || address_unaligned) { \
             if (address_out_of_range) { \
                 std::cerr << "ERROR: Address out of range: 0x" \
-                        << std::hex << address << std::dec << std::endl; \
+                          << std::hex << address << std::dec << std::endl; \
             } \
             else { \
                 std::cerr << "ERROR: Unaligned access at address: 0x" \
-                        << std::hex << address \
-                        << std::dec << "; for: " << align << " bytes" << std::endl; \
+                          << std::hex << address \
+                          << std::dec << "; for: " << align << " bytes" \
+                          << std::endl; \
             } \
         } \
     } while(0);
@@ -276,11 +316,11 @@ struct mem_entry {
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr
 
-#define INST_FORMAT(inst) \
-    std::setw(8) << std::setfill('0') << std::hex << inst << std::dec
+#define INST_FORMAT(inst, n) \
+    std::setw(n) << std::setfill('0') << std::hex << inst << std::dec
 
-#define FORMAT_INST(inst) \
-    MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT(inst)
+#define FORMAT_INST(inst, n) \
+    MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT(inst, n)
 
 // Format Register File print
 #define FRF(addr, val) \
@@ -296,48 +336,46 @@ struct mem_entry {
              << it->second.value << std::dec
 
 #ifdef ENABLE_DASM
-#define CSR_REG_DASM \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
-                << csr.at(get_csr_addr()).name << "," \
-                << rf_names[get_rs1()][RF_NAMES]
-
-#define CSR_IMM_DASM \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
-                << csr.at(get_csr_addr()).name << "," \
-                << get_uimm_csr()
-#else
-#define CSR_REG_DASM
-#define CSR_IMM_DASM
-#endif
-
-#ifdef ENABLE_DASM
 #define DASM_OP(o) \
     dasm.op = #o;
+
+#define DASM_CSR_REG \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
+                << csr.at(get_csr_addr()).name << "," \
+                << rf_names[get_rs1()][RF_NAMES];
+
+#define DASM_CSR_IMM \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
+                << csr.at(get_csr_addr()).name << "," \
+                << get_uimm_csr();
+
+#define DASM_OP_RD \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES]
+
+#define DASM_OP_CREGH \
+    dasm.asm_ss << dasm.op << " " << rf_names[get_cregh()][RF_NAMES]
+
+#define DASM_CREGL \
+    rf_names[get_cregl()][RF_NAMES]
+
 #else
 #define DASM_OP(o)
+#define DASM_CSR_REG
+#define DASM_CSR_IMM
+#define DASM_OP_RD
+#define DASM_OP_CREGH
+#endif
+
+#if defined(ENABLE_DASM) || defined(ENABLE_PROF)
+#define INST_W(x) \
+    inst_w = x;
+#else
+#define INST_W(x)
 #endif
 
 #ifdef ENABLE_PROF
-#define PROF_ALR(op) \
-    prof.log_inst(opc_al_r::i_##op);
-
-#define PROF_ALR_MUL(op) \
-    prof.log_inst(opc_al_r_mul::i_##op);
-
-#define PROF_ALI(op) \
-    prof.log_inst(opc_al_i::i_##op);
-
-#define PROF_MEM(op) \
-    prof.log_inst(opc_mem::i_##op);
-
-#define PROF_UPP(op) \
-    prof.log_inst(opc_upp::i_##op);
-
-#define PROF_SYS(op) \
-    prof.log_inst(opc_sys::i_##op);
-
-#define PROF_CSR(op) \
-    prof.log_inst(opc_csr::i_##op);
+#define PROF_G(op) \
+    prof.log_inst(opc_g::i_##op);
 
 #define PROF_J(op) \
     prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
@@ -345,8 +383,8 @@ struct mem_entry {
 #define PROF_B_T(op) \
     prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
 
-#define PROF_B_NT(op) \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + get_imm_b()) > pc));
+#define PROF_B_NT(op, b) \
+    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + get_imm##b()) > pc));
 
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, get_rd()); \
@@ -371,16 +409,10 @@ struct mem_entry {
     PROF_RS2
 
 #else
-#define PROF_ALR(op)
-#define PROF_ALR_MUL(op)
-#define PROF_ALI(op)
-#define PROF_MEM(op)
-#define PROF_UPP(op)
-#define PROF_SYS(op)
-#define PROF_CSR(op)
+#define PROF_G(op)
 #define PROF_J(op)
 #define PROF_B_T(op)
-#define PROF_B_NT(op)
+#define PROF_B_NT(op, b)
 #define PROF_RD
 #define PROF_RS1
 #define PROF_RS2
