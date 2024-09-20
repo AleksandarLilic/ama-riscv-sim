@@ -240,33 +240,49 @@ class core{
 
         // load operations
         uint32_t load_lb(uint32_t addr) {
+            PROF_DMEM(1)
             return TO_U32(TO_I8(mem->rd8(addr)));
         }
         uint32_t load_lh(uint32_t addr) {
+            PROF_DMEM(2)
             return TO_U32(TO_I16(mem->rd16(addr)));
         }
-        uint32_t load_lw(uint32_t addr) { return mem->rd32(addr); };
-        uint32_t load_lbu(uint32_t addr) { return mem->rd8(addr); };
-        uint32_t load_lhu(uint32_t addr) { return mem->rd16(addr); };
+        uint32_t load_lw(uint32_t addr) {
+            PROF_DMEM(4)
+            return mem->rd32(addr);
+        }
+        uint32_t load_lbu(uint32_t addr) {
+            PROF_DMEM(1)
+            return mem->rd8(addr);
+        }
+        uint32_t load_lhu(uint32_t addr) {
+            PROF_DMEM(2)
+            return mem->rd16(addr);
+        }
 
         // store operations
-        void store_sb(uint32_t addr, uint32_t data) { mem->wr8(addr, data); }
-        void store_sh(uint32_t addr, uint32_t data) { mem->wr16(addr, data); }
-        void store_sw(uint32_t addr, uint32_t data) { mem->wr32(addr, data); }
+        void store_sb(uint32_t addr, uint32_t data) {
+            PROF_DMEM((1 | 0x8))
+            mem->wr8(addr, data);
+        }
+        void store_sh(uint32_t addr, uint32_t data) {
+            PROF_DMEM((2 | 0x8))
+            mem->wr16(addr, data);
+        }
+        void store_sw(uint32_t addr, uint32_t data) {
+            PROF_DMEM((4 | 0x8))
+            mem->wr32(addr, data);
+        }
 
         // branch operations
-        bool branch_beq() {
-            return rf[get_rs1()] == rf[get_rs2()];
-        };
-        bool branch_bne() {
-            return rf[get_rs1()] != rf[get_rs2()];
-        };
+        bool branch_beq() { return rf[get_rs1()] == rf[get_rs2()]; }
+        bool branch_bne() { return rf[get_rs1()] != rf[get_rs2()]; }
         bool branch_blt() {
             return int32_t(rf[get_rs1()]) < int32_t(rf[get_rs2()]);
-        };
+        }
         bool branch_bge() {
             return int32_t(rf[get_rs1()]) >= int32_t(rf[get_rs2()]);
-        };
+        }
         bool branch_bltu() {
             return (uint32_t)rf[get_rs1()] < (uint32_t)rf[get_rs2()];
         }
@@ -276,24 +292,16 @@ class core{
 
         // csr operations
         void csr_access();
-        void csr_rw(uint32_t init_val_rs1) {
-            W_CSR(init_val_rs1);
-        }
+        void csr_rw(uint32_t init_val_rs1) { W_CSR(init_val_rs1); }
         void csr_rs(uint32_t init_val_rs1) {
             W_CSR(csr.at(get_csr_addr()).value | init_val_rs1);
         }
         void csr_rc(uint32_t init_val_rs1) {
             W_CSR(csr.at(get_csr_addr()).value & ~init_val_rs1);
         }
-        void csr_rwi() {
-            W_CSR(get_uimm_csr());
-        }
-        void csr_rsi() {
-            W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());
-        }
-        void csr_rci() {
-            W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());
-        }
+        void csr_rwi() { W_CSR(get_uimm_csr()); }
+        void csr_rsi() { W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());}
+        void csr_rci() { W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());}
 
         // C extension
         void c0();

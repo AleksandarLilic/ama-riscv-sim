@@ -408,6 +408,10 @@ struct mem_entry {
     PROF_RS1 \
     PROF_RS2
 
+#define PROF_DMEM(size) \
+    prof.te.dmem_size = size; \
+    prof.te.dmem = addr - BASE_ADDR;
+
 #else
 #define PROF_G(op)
 #define PROF_J(op)
@@ -419,4 +423,5 @@ struct mem_entry {
 #define PROF_RD_RS1_RS2
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
+#define PROF_DMEM(addr)
 #endif

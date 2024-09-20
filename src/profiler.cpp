@@ -2,7 +2,7 @@
 
 profiler::profiler(std::string log_name) {
     inst_cnt = 0;
-    te = {0, 0, 0};
+    rst_te();
     this->log_name = log_name;
 
     prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};

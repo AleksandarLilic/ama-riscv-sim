@@ -88,6 +88,8 @@ struct inst_prof_j {
 struct trace_entry {
     uint32_t pc;
     uint32_t inst_size;
+    uint32_t dmem;
+    uint32_t dmem_size;
     uint32_t sp;
 };
 
@@ -112,10 +114,11 @@ class profiler{
         void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void log() { trace.push_back(te); te = {0, 0, 0}; }
+        void log() { trace.push_back(te); rst_te(); }
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
 
     private:
         void log_to_file();
         void info(uint32_t profiled_inst_cnt, uint32_t max_sp);
+        void rst_te() { te = {0, 0, 0, 0, 0}; }
 };
