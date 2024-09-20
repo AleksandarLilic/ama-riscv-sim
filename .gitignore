@@ -42,9 +42,9 @@ test/*.bin
 *.gprof
 analysis.gprof.ipynb
 *_profiler*
-*_trace.*
+*_trace*
 *_exec.*
-*_trace_df.csv
+*_reg_hist.bin
 *.nm
 *.grep
 
