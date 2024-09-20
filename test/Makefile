@@ -10,7 +10,7 @@ COVDIR := coverage
 COVLOG := coverage.log
 VALGRIND := valgrind --leak-check=full
 
-all: build_sim prepare coverage
+all: build_sim prepare_tests coverage
 
 run_gtest: $(TEST)
 	./$(TEST)
@@ -27,8 +27,11 @@ run_valgrind: $(TEST)
 $(TEST): $(SOURCES)
 	$(CXX) -o $@ $^ $(GTEST_LIBS) $(CXXFLAGS)
 
-prepare:
+prepare_tests:
 	$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests
+
+clean_tests:
+	$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
 
 build_sim:
 	make -C ../src --no-print-directory clean

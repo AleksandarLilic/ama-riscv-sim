@@ -19,6 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Prepare RISC-V tests for Google Test")
     parser.add_argument("-t", "--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
     parser.add_argument("--isa_tests", default=False, action='store_true', help="Also prepare ISA tests")
+    parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
     return parser.parse_args()
 
 def run_make(make_cmd):
@@ -44,13 +45,17 @@ print(f"Tests directories in json input config: {len(tests)}")
 # get first test directory to make common object files
 test_dir = os.path.join(TEST_DIR, list(tests.keys())[0])
 os.chdir(test_dir)
-run_make(["make", "clean", "common"])
-run_make(["make", "common"])
+run_make(["make", "clean_common"])
+if not args.clean_only:
+    run_make(["make", "common"])
+
 out_txt = []
 for directory, test_list in tests.items():
     test_dir = os.path.join(TEST_DIR, directory)
     os.chdir(test_dir)
     run_make(["make", "clean"])
+    if args.clean_only:
+        continue
     make_all = test_list == ["all"]
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j"] + all_targets
@@ -66,10 +71,18 @@ if args.isa_tests:
     print("Preparing ISA tests also")
     os.chdir(ISA_TEST_DIR)
     run_make(["make", "clean"])
-    run_make(["make", "-j", "DIR=riscv-tests/isa/rv32ui"]) # RV32I
-    run_make(["make", "-j", "DIR=modified_riscv-tests/isa/rv32mi/"]) # memory
-    run_make(["make", "-j", "DIR=riscv-tests/isa/rv32um/"]) # RV32M
-    isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
+    if not args.clean_only:
+        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32ui"]) # RV32I
+        run_make(["make", "-j", "DIR=modified_riscv-tests/isa/rv32mi/"]) # memory
+        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32um/",
+                                "MARCH=rv32im_zicsr_zifencei"]) # RV32M
+        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32uc/",
+                                "MARCH=rv32ic_zicsr_zifencei"]) # RV32C
+        isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
+
+if args.clean_only:
+    print("Cleaning done. Exiting.")
+    exit(0)
 
 os.chdir(WORK_DIR)
 all_out_txt = isa_out_txt + out_txt

@@ -1,6 +1,8 @@
 {
     "asm_rv32i": ["basic"],
     "asm_rv32i_zicsr": ["basic"],
+    "asm_rv32im": ["basic"],
+    "asm_rv32ic": ["basic"],
     "factorial": ["n_20"],
     "fibonacci": ["n_18"],
     "gcd_lcm": ["n_large"],
