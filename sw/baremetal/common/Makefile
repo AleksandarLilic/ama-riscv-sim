@@ -8,7 +8,9 @@ S_SRCS := $(wildcard *.S)
 OBJECTS_C := $(C_SRCS:.c=.o)
 OBJECTS_S := $(S_SRCS:.S=.o)
 
-GCC_OPTS += -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic
+MARCH ?= rv32imc_zicsr_zifencei
+GCC_OPTS += -march=$(MARCH) -mabi=ilp32 -mcmodel=medany
+GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -save-temps
 GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
 #GCC_OPTS += g

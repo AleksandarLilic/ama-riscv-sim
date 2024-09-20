@@ -1,6 +1,8 @@
 .section    .text
 .global     main
 
+#include "../common/asm_test.S"
+
 main: li x13, 0
 csrwi 0x340, 0;
 li x5, 0 # override spike
@@ -8,47 +10,35 @@ li x5, 0 # override spike
 csr_rwi:
 csrwi 0x340, 4 # x0 is rd
 li x11, 19
-csrrw x10, 0x340, x11
-li x30, 4
-li x13, 101
-bne x30, x10, fail
+csrrw x26, 0x340, x11
+OP_END(4)
 
 csr_rw:
 li x1, 0x4d
-csrrw x10, 0x340, x1
-li x30, 19
-li x13, 102
-bne x30, x10, fail
+csrrw x26, 0x340, x1
+OP_END(19)
 
 csr_rs:
 li x6, 0x12
 csrrs x0, 0x340, x6 # store to CSR
-csrrwi x10, 0x340, 21 # move CSR to x10, 0x15 to CSR for csrrc
-li x30, 0x5f
-li x13, 103
-bne x30, x10, fail
+csrrwi x26, 0x340, 21 # move CSR to x26, 0x15 to CSR for csrrc
+OP_END(0x5f)
 
 csr_rc:
 li x6, 0x7
 csrrc x0, 0x340, x6
-csrrwi x10, 0x340, 17
-li x30, 0x10
-li x13, 104
-bne x30, x10, fail
+csrrwi x26, 0x340, 17
+OP_END(0x10)
 
 csr_rsi:
 csrrsi x0, 0x340, 2
-csrrwi x10, 0x340, 5 # move CSR to x10
-li x30, 19
-li x13, 105
-bne x30, x10, fail
+csrrwi x26, 0x340, 5 # move CSR to x26
+OP_END(19)
 
 csr_rci:
 csrrci x0, 0x340, 3
-csrrwi x10, 0x340, 31 # move CSR to x10
-li x30, 4
-li x13, 106
-bne x30, x10, fail
+csrrwi x26, 0x340, 31 # move CSR to x26
+OP_END(4)
 
 j pass
 

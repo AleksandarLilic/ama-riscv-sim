@@ -1,10 +1,7 @@
 .section    .text
 .global     main
 
-#define OP_END(x)     \
-    li x30, x;        \
-    addi x13, x13, 1; \
-    bne x30, x26, fail
+#include "../common/asm_test.S"
 
 main: li x13, 0
 csrwi 0x340, 0
@@ -98,7 +95,7 @@ li x12, 9500
 remu x26, x11, x12
 OP_END(8500)
 
-li x24, 123456
+li x24, 0x123456
 bne x4, x5, loop
 j pass
 

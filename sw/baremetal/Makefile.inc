@@ -1,7 +1,7 @@
 
 # set up for "gcc version 13.2.0 (gc891d8dc23e)"
 RV_GNU := $(RV_GNU_LATEST)
-# e.g. export RV_GNU_LATEST=riscv64-unknown-elf
+# e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
 COMMON_OBJ_NAMES += common.o crt0.o
@@ -16,7 +16,9 @@ INC += $(COMMON_PATH)
 LIBS += -lgcc
 USER_DEFINES =
 
-GCC_OPTS += -march=rv32im_zicsr_zifencei -mabi=ilp32 -mcmodel=medany
+# if not set in test's Makefile, default to all supported ISA extensions
+export MARCH ?= rv32imc_zicsr_zifencei
+GCC_OPTS += -march=$(MARCH) -mabi=ilp32 -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 GCC_OPTS += -save-temps
@@ -28,16 +30,13 @@ OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 #OBJDUMP_OPTS := -S # inline C source code in disassembly
 MEM_WIDTH := 32
 
-#ISA = ../../riscv-isa-tests
-#ISA_INC = -I$(ISA)/defines -I$(ISA)/riscv-tests/env
-
 # run with RTL_SIM=1 to generate hex file for RTL simulation
 $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
 	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) \
 	-o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(TARGET).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(TARGET).bin
-	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" == "1" ]; then \
+	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" = "1" ]; then \
 		$(RV_GNU)-bin2hex -w $(MEM_WIDTH) $(TARGET).bin $(TARGET).hex; \
 	fi
 	@echo "Generated $@"
