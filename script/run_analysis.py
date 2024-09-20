@@ -154,6 +154,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
+    parser.add_argument('--save_converted_bin', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
@@ -538,17 +539,21 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
 def run_pc_trace(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    h = ['pc', 'isz', 'sp']
+    h = ['pc', 'isz', 'dmem', 'dsz', 'sp']
     dtype = np.dtype([
         (h[0], np.uint32),
         (h[1], np.uint32),
         (h[2], np.uint32),
+        (h[3], np.uint32),
+        (h[4], np.uint32),
     ])
     data = np.fromfile(bin_log, dtype=dtype)
     df_og = pd.DataFrame(data, columns=h)
     df_og['sp_real'] = BASE_ADDR + MEM_SIZE - df_og['sp']
     df_og['sp_real'] = df_og['sp_real'].apply(
         lambda x: 0 if x == BASE_ADDR + MEM_SIZE else x)
+    if args.save_converted_bin:
+        df_og.to_csv(bin_log.replace('.bin', '.csv'), index=False)
 
     df = df_og.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
@@ -652,7 +657,7 @@ def run_main(args) -> None:
         fig_arr.append([log_path.replace(ext, f"_exec{ext}"), fig2])
 
     if args.save_csv:
-        df.to_csv(args_log.replace(ext, "_df.csv"), index=False)
+        df.to_csv(args_log.replace(ext, "_out.csv"), index=False)
 
     if args.symbols_only and run_trace:
         return
