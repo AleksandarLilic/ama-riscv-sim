@@ -40,3 +40,7 @@ int write_uart0(int file, char *ptr, int len) {
     }
     return len;
 }
+
+// tiny printf implementation
+// write character to stdout
+void _putchar(char character) {  write_uart0(0, &character, 1); }

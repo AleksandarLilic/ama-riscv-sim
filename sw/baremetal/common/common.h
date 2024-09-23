@@ -15,4 +15,7 @@ void pass();
 void fail();
 int write_uart0(int file, char *ptr, int len);
 
+// tiny printf implementation
+void _putchar(char character);
+
 #endif
