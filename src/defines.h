@@ -30,7 +30,9 @@
 
 #define BASE_ADDR 0x80000000
 #define MEM_ADDR_BITWIDTH 8
-#define MEM_SIZE 16384 // 0x4000
+//#define MEM_SIZE 16384 // 0x4000
+//#define MEM_SIZE 32768 // 0x8000
+#define MEM_SIZE 65536 // 0x10000
 //#define MEM_SIZE 131072 // 0x20000
 //#define MEM_SIZE 196608 // 0x30000
 //#define MEM_SIZE 262144 // 0x40000
@@ -290,7 +292,7 @@ struct mem_entry {
         ss << MEM_ADDR_FORMAT(address); \
         std::string hex_addr = ss.str(); \
         throw std::runtime_error("Address " + hex_addr + \
-                                " out of range: " + reson); \
+                                 " out of range: " + reson); \
     } while(0);
 
 //#define CHECK_ADDRESS(address, align)
@@ -302,7 +304,8 @@ struct mem_entry {
         if (address_out_of_range || address_unaligned) { \
             if (address_out_of_range) { \
                 std::cerr << "ERROR: Address out of range: 0x" \
-                          << std::hex << address << std::dec << std::endl; \
+                          << std::hex << address << std::dec << " (" \
+                          << align << "B)" << std::endl; \
             } \
             else { \
                 std::cerr << "ERROR: Unaligned access at address: 0x" \
