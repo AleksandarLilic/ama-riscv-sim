@@ -17,9 +17,11 @@ class core{
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
+        #if defined(ENABLE_DASM) || defined(ENABLE_PROF)
+        uint8_t inst_w = 8;
+        #endif
         #ifdef ENABLE_DASM
         std::string get_inst_asm() { return dasm.asm_str; }
-        uint8_t inst_w = 8;
         #endif
 
     private:
