@@ -8,14 +8,15 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name)
     #endif
 {
     inst_cnt = 0;
-    pc = base_addr;
+    inst_elapsed = 0;
+    pc = base_addr; // reset vector
     next_pc = 0;
     this->mem = mem;
     this->log_name = log_name;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
     for (const auto &c : supported_csrs)
-        csr.insert({c.csr_addr, CSR(c.csr_name, 0x0)});
+        csr.insert({c.csr_addr, CSR(c.csr_name, 0x0, c.perm)});
 }
 
 void core::exec() {
@@ -23,6 +24,8 @@ void core::exec() {
     log_ofstream.open(log_name + "_exec.log");
     #endif
     running = true;
+    start_time = std::chrono::high_resolution_clock::now();
+    run_time = start_time;
     while (running) exec_inst();
     finish(true);
     return;
@@ -318,28 +321,53 @@ void core::misc_mem() {
  * Zicsr extension
  */
 void core::csr_access() {
+    cntr_update();
     uint32_t csr_addr = get_csr_addr();
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
-        std::cerr << "Unsupported CSR. Address: 0x" << std::hex << csr_addr
-                  << std::dec <<std::endl;
+        std::cerr << "Unsupported CSR. Address: 0x"
+                  << std::hex << csr_addr << std::dec <<std::endl;
         throw std::runtime_error("Unsupported CSR");
     } else {
         // using temp in case rd and rs1 are the same register
         uint32_t init_val_rs1 = rf[get_rs1()];
+        // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
         write_rf(get_rd(), it->second.value);
         switch (get_funct3()) {
-            CASE_CSR(rw, init_val_rs1)
-            CASE_CSR(rs, init_val_rs1)
-            CASE_CSR(rc, init_val_rs1)
+            CASE_CSR(rw)
+            CASE_CSR(rs)
+            CASE_CSR(rc)
             CASE_CSR_I(rwi)
             CASE_CSR_I(rsi)
             CASE_CSR_I(rci)
             default: unsupported("sys");
         }
-        // TODO: change to 'tohost' CSR
-        if (csr.at(0x340).value & 0x1) running = false;
+        if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
+}
+
+/*
+ * Zicntr extension
+ */
+void core::cntr_update() {
+    // TODO: for DPI environment, these have to either be revisited or ignored
+    inst_elapsed = inst_cnt - inst_elapsed;
+    csr.at(CSR_MCYCLE).value += inst_elapsed & 0xFFFFFFFF;
+    csr.at(CSR_MCYCLEH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
+    csr.at(CSR_MINSTRET).value += inst_elapsed & 0xFFFFFFFF;
+    csr.at(CSR_MINSTRETH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
+    run_time = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>
+                   (run_time - start_time);
+    mtime = TO_U64(elapsed.count());
+
+    // user mode shadows
+    csr.at(CSR_CYCLE).value = csr.at(CSR_MCYCLE).value;
+    csr.at(CSR_CYCLEH).value = csr.at(CSR_MCYCLEH).value;
+    csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
+    csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
+    csr.at(CSR_TIME).value = TO_U32(mtime);
+    csr.at(CSR_TIMEH).value = TO_U32(mtime >> 32);
 }
 
 /*
@@ -770,7 +798,7 @@ void core::dump() {
     }
     file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
     file << "0x" << std::setw(8) << std::setfill('0')
-         << std::hex << csr.at(0x340).value << std::endl;
+         << std::hex << csr.at(CSR_TOHOST).value << std::endl;
     file.close();
     #endif
 }

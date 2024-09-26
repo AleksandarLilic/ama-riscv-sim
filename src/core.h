@@ -27,8 +27,12 @@ class core{
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) {
+            if (csr.at(addr).perm == perm_t::ro) {
+                illegal("CSR write attempt to RO CSR", 4);
+            }
             csr.at(addr).value = data;
         }
+        void cntr_update();
 
         // instruction decoders
         void al_reg();
@@ -296,14 +300,22 @@ class core{
         void csr_access();
         void csr_rw(uint32_t init_val_rs1) { W_CSR(init_val_rs1); }
         void csr_rs(uint32_t init_val_rs1) {
+            if (get_rs1() == 0) return;
             W_CSR(csr.at(get_csr_addr()).value | init_val_rs1);
         }
         void csr_rc(uint32_t init_val_rs1) {
+            if (get_rs1() == 0) return;
             W_CSR(csr.at(get_csr_addr()).value & ~init_val_rs1);
         }
         void csr_rwi() { W_CSR(get_uimm_csr()); }
-        void csr_rsi() { W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());}
-        void csr_rci() { W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());}
+        void csr_rsi() {
+            if (get_rs1() == 0) return;
+            W_CSR(csr.at(get_csr_addr()).value | get_uimm_csr());
+        }
+        void csr_rci() {
+            if (get_rs1() == 0) return;
+            W_CSR(csr.at(get_csr_addr()).value & ~get_uimm_csr());
+        }
 
         // C extension
         void c0();
@@ -349,6 +361,11 @@ class core{
         uint32_t next_pc;
         uint32_t inst;
         uint64_t inst_cnt;
+        uint64_t inst_elapsed;
+        std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+        std::chrono::time_point<std::chrono::high_resolution_clock> run_time;
+        // FIXME: mtime should be an actual MMIO put somewhere in the memory map
+        uint64_t mtime;
         std::string log_name;
         #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
         std::ofstream log_ofstream;
@@ -360,16 +377,27 @@ class core{
         dasm_str dasm;
         #endif
         memory *mem;
-        static constexpr std::array<CSR_entry, 2> supported_csrs = {{
-            {0x51e, "tohost"},
-            {0x340, "mscratch"}
+        static constexpr std::array<CSR_entry, 12> supported_csrs = {{
+            {CSR_TOHOST, "tohost", perm_t::rw},
+            {CSR_MSCRATCH, "mscratch", perm_t::rw},
+            {CSR_MCYCLE, "mcycle", perm_t::rw},
+            {CSR_MINSTRET, "minstret", perm_t::rw},
+            {CSR_MCYCLEH, "mcycleh", perm_t::rw},
+            {CSR_MINSTRETH, "minstreth", perm_t::rw},
+            // read only CSRs
+            {CSR_CYCLE, "cycle", perm_t::ro},
+            {CSR_TIME, "time", perm_t::ro},
+            {CSR_INSTRET, "instret", perm_t::ro},
+            {CSR_CYCLEH, "cycleh", perm_t::ro},
+            {CSR_TIMEH, "timeh", perm_t::ro},
+            {CSR_INSTRETH, "instreth", perm_t::ro},
         }};
         #ifdef ENABLE_PROF
         profiler prof;
         #endif
 
         // csr map
-        std::unordered_map<uint16_t, CSR> csr;
+        std::map<uint16_t, CSR> csr;
 
         // register names
         static constexpr std::array<std::array<const char*, 2>, 32>

@@ -9,10 +9,13 @@
 #include <fstream>
 #include <string>
 #include <cmath>
-#include <unordered_map>
+#include <map>
+#include <chrono>
 
 #include "dev.h"
 
+#define TO_U64(x) static_cast<uint64_t>(x)
+#define TO_I64(x) static_cast<int64_t>(x)
 #define TO_U32(x) static_cast<uint32_t>(x)
 #define TO_I32(x) static_cast<int32_t>(x)
 #define TO_U16(x) static_cast<uint16_t>(x)
@@ -122,6 +125,11 @@ enum class csr_op_t {
     op_rci = 0b111
 };
 
+enum class perm_t {
+    ro = 0b00,
+    rw = 0b01
+};
+
 struct dasm_str {
     std::ostringstream asm_ss;
     std::string asm_str;
@@ -191,15 +199,33 @@ struct dasm_str {
 // CSRs
 struct CSR {
     const char* name;
-    int value;
-    CSR() : name(""), value(0) {} // FIXME
-    CSR(const char* name, int value) : name(name), value(value) {}
+    uint32_t value;
+    const perm_t perm;
+    CSR() : name(""), value(0), perm(perm_t::ro) {} // FIXME
+    CSR(const char* name, int value, const perm_t perm) :
+        name(name), value(value), perm(perm) {}
 };
 
 struct CSR_entry {
     const uint16_t csr_addr;
     const char* csr_name;
+    const perm_t perm;
 };
+
+// CSR addresses
+#define CSR_TOHOST 0x51e
+#define CSR_MSCRATCH 0x340
+#define CSR_MCYCLE 0xb00
+#define CSR_MINSTRET 0xb02
+#define CSR_MCYCLEH 0xb80
+#define CSR_MINSTRETH 0xb82
+// read-only CSRs
+#define CSR_CYCLE 0xC00
+#define CSR_TIME 0xC01
+#define CSR_INSTRET 0xC02
+#define CSR_CYCLEH 0xC80
+#define CSR_TIMEH 0xC81
+#define CSR_INSTRETH 0xC82
 
 // Macros
 #define CASE_DECODER(op) \
@@ -259,9 +285,9 @@ struct CSR_entry {
         PROF_RS1_RS2 \
         break;
 
-#define CASE_CSR(op, val) \
+#define CASE_CSR(op) \
     case (uint8_t)csr_op_t::op_##op: \
-        csr_##op(val); \
+        csr_##op(init_val_rs1); \
         DASM_OP(csr##op) \
         PROF_G(csr##op) \
         PROF_RD_RS1 \
