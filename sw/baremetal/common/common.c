@@ -15,7 +15,7 @@ void write_mismatch(uint32_t res, uint32_t ref, uint8_t idx) {
 }
 
 void write_csr_status() {
-    asm volatile("csrw 0x340, " TOSTR(TESTNUM_REG));
+    asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG));
 }
 
 void pass() {

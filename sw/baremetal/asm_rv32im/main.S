@@ -4,7 +4,7 @@
 #include "../common/asm_test.S"
 
 main: li x13, 0
-csrwi 0x340, 0
+csrwi CSR_TOHOST, 0
 li x5, 0 # override spike
 
 li x4, 0 # loop var
@@ -103,7 +103,7 @@ fail:
 add x28, x0, x13 # store failed test id in x28
 slli x28, x28, 1
 or x28, x28, 1
-csrw 0x340, x28; # write failed test id
+csrw CSR_TOHOST, x28; # write failed test id
 nop
 nop
 nop
@@ -112,7 +112,7 @@ ecall
 
 pass:
 li x28, 0x1
-csrw 0x340, x28;
+csrw CSR_TOHOST, x28;
 nop
 nop
 nop

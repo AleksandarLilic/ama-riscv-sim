@@ -84,7 +84,7 @@ _start:                                                                 \
         .align 2;                                                       \
 reset_vector:                                                           \
         INIT_XREG;                                                      \
-        csrwi 0x340, 0;                                                 \
+        csrwi 0x51e, 0;                                                 \
         li TESTNUM, 0;                                                  \
         init                                                            \
 
@@ -110,7 +110,7 @@ reset_vector:                                                           \
         TEST_END
 
 #define TEST_END                                                        \
-        csrw 0x340, TESTNUM;                                            \
+        csrw 0x51e, TESTNUM;                                            \
         nop;                                                            \
         nop;                                                            \
         nop;                                                            \

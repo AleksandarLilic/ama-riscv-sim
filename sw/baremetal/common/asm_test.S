@@ -1,4 +1,6 @@
 
+#define CSR_TOHOST 0x51E
+
 #define TEST_INC      \
     addi x13, x13, 1
 

@@ -17,7 +17,7 @@ LIBS += -lgcc
 USER_DEFINES =
 
 # if not set in test's Makefile, default to all supported ISA extensions
-export MARCH ?= rv32imc_zicsr_zifencei
+export MARCH ?= rv32imc_zicsr_zifencei_zicntr
 GCC_OPTS += -march=$(MARCH) -mabi=ilp32 -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
