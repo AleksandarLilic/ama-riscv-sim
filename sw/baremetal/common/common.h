@@ -14,8 +14,8 @@ void write_csr_status();
 void pass();
 void fail();
 int write_uart0(int file, char *ptr, int len);
-
-// tiny printf implementation
-void _putchar(char character);
+uint32_t time_us();
+uint32_t clock_ticks();
+void _putchar(char character); // tiny printf implementation
 
 #endif

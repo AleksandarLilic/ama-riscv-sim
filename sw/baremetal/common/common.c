@@ -44,3 +44,15 @@ int write_uart0(int file, char *ptr, int len) {
 // tiny printf implementation
 // write character to stdout
 void _putchar(char character) {  write_uart0(0, &character, 1); }
+
+uint32_t time_us() {
+    uint32_t time_us;
+    asm volatile("csrr %0, time" : "=r"(time_us));
+    return time_us;
+}
+
+uint32_t clock_ticks() {
+    uint32_t clock_ticks;
+    asm volatile("csrr %0, cycle" : "=r"(clock_ticks));
+    return clock_ticks;
+}

@@ -1,6 +1,7 @@
 #ifndef NEWLIB_DEFS_H
 #define NEWLIB_DEFS_H
 
+#include <sys/times.h>
 #include <sys/stat.h>
 #include <errno.h>
 #undef errno
@@ -83,9 +84,16 @@ int _stat(char *file, struct stat *st) {
     return 0;
 }
 
-//int times(struct tms *buf) {
-int times() {
-    return -1;
+clock_t times(struct tms *buf) {
+    if (!buf) {
+        errno = EINVAL;
+        return -1;
+    }
+    buf->tms_utime = clock_ticks(); // user time
+    buf->tms_stime = 0; // system time
+    buf->tms_cutime = 0; // child user time
+    buf->tms_cstime = 0; // child system time
+    return buf->tms_utime;
 }
 
 int _unlink(char *name) {
