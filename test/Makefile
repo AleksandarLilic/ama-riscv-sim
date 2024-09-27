@@ -41,7 +41,7 @@ cleanlogs:
 	rm -f *.log *_profiler.* *trace* *_perf_est.csv
 
 cleanbins:
-	rm -f unsupported*.bin
+	rm -f unsupported*.bin oversized.bin
 
 clean: cleanlogs cleanbins
 	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log $(COVDIR) *.gc* \
