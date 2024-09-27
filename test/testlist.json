@@ -12,5 +12,6 @@
     "vector_basic": ["all"],
     "sorting": ["all"],
     "uart_direct_send": ["hello_world"],
-    "uart_printf": ["hello_world"]
+    "uart_printf_tiny": ["hello_world"],
+    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]]
 }

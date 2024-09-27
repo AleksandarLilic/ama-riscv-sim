@@ -50,7 +50,8 @@ if not args.clean_only:
     run_make(["make", "common"])
 
 out_txt = []
-for directory, test_list in tests.items():
+for directory, entry in tests.items():
+    test_list, test_opts = entry if len(entry) == 2 else (entry, [])
     test_dir = os.path.join(TEST_DIR, directory)
     os.chdir(test_dir)
     run_make(["make", "clean"])
@@ -58,7 +59,7 @@ for directory, test_list in tests.items():
         continue
     make_all = test_list == ["all"]
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make", "-j"] + all_targets
+    make_cmd = ["make", "-j"] + all_targets + test_opts
     run_make(make_cmd)
     if make_all:
         all_bin_files = glob.glob(f"{test_dir}/*.bin")
