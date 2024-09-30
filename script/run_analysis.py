@@ -23,7 +23,7 @@ MEM_L = "MEM_L"
 
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x80000000
-MEM_SIZE = 0x40000
+MEM_SIZE = 0x10000
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw"],
@@ -149,8 +149,9 @@ def parse_args() -> argparse.Namespace:
 
     # trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the Trace. New file is generated at the same path with *.prof.<original ext> suffix. Trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Trace only option")
+    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--pc_time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of PC entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
@@ -371,35 +372,50 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     df_out = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
     return symbols, df_out
 
-def annotate_pc_chart(df, symbols, ax, symbol_pos=None) -> plt.Axes:
+def annotate_pc_chart(df, symbols, ax, args, symbol_pos=None) -> \
+plt.Axes:
     if symbol_pos is None:
-        symbol_pos = ax.get_xlim()[1]
-        #symbol_pos = 1. # for transform=ax.get_yaxis_transform()
+        #symbol_pos = ax.get_xlim()[1]
+        symbol_pos = 1. # for transform=ax.get_yaxis_transform()
 
     pc_start, pc_end = 0, 0
     # add lines for symbols, if any
     for k,v in symbols.items():
         pc_start = v['pc_start']
         pc_end = v['pc_end']
+        # if the symbol is not in the PC range, skip it
+        if not args.no_pc_limit and \
+        (pc_start < df.pc.min() or pc_start > df.pc.max()):
+            continue
         ax.axhline(y=pc_start, color='k', linestyle='-', alpha=0.5)
         ax.text(symbol_pos, pc_start,
                 f" ^ {v['func_text']}", color='k',
                 fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
-                #transform=ax.get_yaxis_transform())
+                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+                transform=ax.get_yaxis_transform())
 
     # add line for the last symbol, if any
     if symbols:
         # ends after last PC entry, FIXME: should be the size of last inst
         ax.axhline(y=pc_end+4, color='k', linestyle='-', alpha=0.5)
 
+    # first apply execution limits
+    if not args.no_pc_limit:
+        ax.set_ylim(top=(df['pc'].max() & ~0x3F) + CACHE_LINE_BYTES)
+        ax.set_ylim(bottom=df['pc'].min() & ~0x3F)
+    else: # args.no_pc_limit:
+        ax.set_ylim(bottom=0.0)
+
+    ## then apply user limits
     if args.pc_begin:
-        ax.set_ylim(bottom=get_base_int_pc(args.pc_begin)//4)
+        ax.set_ylim(bottom=get_base_int_pc(args.pc_begin))
     if args.pc_end:
-        ax.set_ylim(top=get_base_int_pc(args.pc_end)//4)
+        ax.set_ylim(top=get_base_int_pc(args.pc_end))
 
     # add cache line coloring
-    for i in range(df.pc.min(), max(df.pc.max(), pc_end), CACHE_LINE_BYTES):
+    top = (int(ax.get_ylim()[1]) & ~0x3F) + CACHE_LINE_BYTES
+    bottom = int(ax.get_ylim()[0]) & ~0x3F
+    for i in range(bottom, top, CACHE_LINE_BYTES):
         color = 'k' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'w'
         ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.08, zorder=0)
 
@@ -409,6 +425,7 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     # TODO: should probably limit the number of PC entries to display or
     # auto enlarge the figure size (but up to a point, then limit anyways)
     fig, ax = plt.subplots(figsize=(16,13), constrained_layout=True)
+
     rect_arr = []
     off = .75
     for y, width, height in zip(df['pc'], df['count'], df['isz']):
@@ -461,7 +478,7 @@ def draw_pc_freq(df, hl_groups, title, symbols, args) -> plt.Figure:
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
     # annotate the chart
-    ax = annotate_pc_chart(df, symbols, ax)
+    ax = annotate_pc_chart(df, symbols, ax, args)
 
     return fig
 
@@ -469,6 +486,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     fig, [ax_pc, ax_sp] = plt.subplots(ncols=1, nrows=2, figsize=(24,12),
                                        sharex=True, height_ratios=[9, 1],
                                        constrained_layout=True)
+
     # plot the PC trace and don't interpolate linearly between points
     # but step from one to the next
     ax_pc.step(df.index, df['pc'], where='pre', lw=1.5, color=(0,.3,.6,.15))
@@ -479,7 +497,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     for x, y, s in zip(df.index, df['pc'], df['isz']):
         x_val.extend([x, x, None]) # 'None' used to break the line
         y_val.extend([y, y + s, None])
-    ax_pc.plot(x_val, y_val, color='#649ac9', lw=1.2)
+    ax_pc.plot(x_val, y_val, color='#649ac9', lw=2.)
 
     hc = 0
     hl_off = .15
@@ -491,7 +509,7 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
             for x, y, s in zip(df_hl.index, df_hl['pc'], df_hl['isz']):
                 x_val_hl.extend([x, x, None])
                 y_val_hl.extend([y+hl_off, y+s-hl_off, None])
-        ax_pc.plot(x_val_hl, y_val_hl, color=hl_colors[hc], alpha=1, lw=1.5)
+        ax_pc.plot(x_val_hl, y_val_hl, color=hl_colors[hc], alpha=1, lw=3)
 
         # add dummy scatter plot for the legend
         ax_pc.scatter([], [], color=hl_colors[hc], label=wrap_label(hl_g, 24))
@@ -527,12 +545,11 @@ def draw_pc_exec(df, hl_groups, title, symbols, args) -> plt.Figure:
     ax_pc.set_title(f"Execution profile for {title}")
 
     # annotate both
-    ax_pc = annotate_pc_chart(df, symbols, ax_pc)
+    ax_pc = annotate_pc_chart(df, symbols, ax_pc, args)
     ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
                f"  SP max : {df['sp_real'].max()} bytes", color='k',
                fontsize=9, ha='left', va='center',
                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
-               #transform=ax_sp.get_yaxis_transform())
 
     return fig
 
@@ -613,6 +630,7 @@ def run_main(args) -> None:
                 "--pc_begin and --pc_end require single execution trace")
         if not args.dasm:
             raise ValueError("--pc_begin and --pc_end require --dasm")
+    if (args.pc_begin and args.pc_end):
         if int(args.pc_begin, 16) >= int(args.pc_end, 16):
             raise ValueError("--pc_begin must be less than --pc_end")
 
