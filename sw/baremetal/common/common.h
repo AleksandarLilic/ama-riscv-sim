@@ -18,4 +18,8 @@ uint32_t time_us();
 uint32_t clock_ticks();
 void _putchar(char character); // tiny printf implementation
 
+// logging features
+typedef enum log_action { start, stop } log_action_t;
+void log_trigger(log_action_t action);
+
 #endif

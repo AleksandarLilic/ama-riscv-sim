@@ -56,3 +56,9 @@ uint32_t clock_ticks() {
     asm volatile("csrr %0, cycle" : "=r"(clock_ticks));
     return clock_ticks;
 }
+
+// logging features
+void log_trigger(log_action_t action) {
+    if (action == start) asm ("slti x0, x0, 0x10");
+    else if (action == stop) asm ("slti x0, x0, 0x11");
+}
