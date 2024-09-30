@@ -195,6 +195,8 @@ struct dasm_str {
 #define INST_FENCE_I 0x100F
 #define INST_NOP 0x13
 #define INST_C_NOP 0x1
+#define INST_HINT_LOG_START 0x01002013 // slti x0, x0, 0x10
+#define INST_HINT_LOG_END 0x01102013 // slti x0, x0, 0x11
 
 // CSRs
 struct CSR {

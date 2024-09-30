@@ -34,6 +34,8 @@ enum class opc_g {
     i_lui, i_auipc,
     // system
     i_ecall, i_ebreak,
+    // hints
+    i_hint,
 
     // Zicsr extension
     i_csrrw, i_csrrs, i_csrrc, i_csrrwi, i_csrrsi, i_csrrci,
@@ -96,11 +98,12 @@ struct trace_entry {
 class profiler{
     public:
         trace_entry te;
+        bool active;
 
     private:
         std::string log_name;
         std::ofstream ofs;
-        uint32_t inst_cnt;
+        uint64_t inst_cnt;
         uint32_t inst;
         std::vector<trace_entry> trace;
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
@@ -111,10 +114,10 @@ class profiler{
         profiler() = delete;
         profiler(std::string log_name);
         ~profiler() { log_to_file(); }
-        void new_inst(uint32_t inst) { this->inst = inst; inst_cnt++; }
+        void new_inst(uint32_t inst);
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void log() { trace.push_back(te); rst_te(); }
+        void log();
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
 
     private:

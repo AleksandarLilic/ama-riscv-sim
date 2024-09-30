@@ -22,7 +22,13 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name)
 void core::exec() {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
     log_ofstream.open(log_name + "_exec.log");
+    logging = false;
     #endif
+
+    #ifdef ENABLE_PROF
+    prof.active = false;
+    #endif
+
     running = true;
     start_time = std::chrono::high_resolution_clock::now();
     run_time = start_time;
@@ -33,10 +39,6 @@ void core::exec() {
 
 void core::exec_inst() {
     inst = mem->get_inst(pc);
-    #ifdef ENABLE_PROF
-    prof.te.pc = pc - BASE_ADDR;
-    prof.te.sp = rf[2];
-    #endif
     uint32_t op_c = get_copcode();
     if (op_c != 0x3) {
         INST_W(4);
@@ -66,25 +68,37 @@ void core::exec_inst() {
     }
 
     #ifdef ENABLE_PROF
-    prof.te.inst_size = TO_U32(inst_w>>1);
-    prof.new_inst(inst);
-    prof.log();
+    if (prof.active) {
+        prof.te.pc = pc - BASE_ADDR;
+        prof.te.sp = rf[2];
+        prof.te.inst_size = TO_U32(inst_w>>1);
+        prof.new_inst(inst);
+        prof.log();
+    }
     #endif
 
     #ifdef ENABLE_DASM
-    dasm.asm_str = dasm.asm_ss.str();
-    dasm.asm_ss.str("");
+    if (logging) {
+        dasm.asm_str = dasm.asm_ss.str();
+        dasm.asm_ss.str("");
 
-    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-    log_ofstream << FORMAT_INST(inst, inst_w) << " "
-                 << dasm.asm_str << std::endl;
-    #endif
+        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+        log_ofstream << FORMAT_INST(inst, inst_w) << " "
+                     << dasm.asm_str << std::endl;
+        #endif
 
-    #ifdef LOG_EXEC_ALL
-    log_ofstream << mem_ostr.str();
-    mem_ostr.str("");
-    log_ofstream << dump_state() << std::endl;
-    #endif
+        #ifdef LOG_EXEC_ALL
+        log_ofstream << mem_ostr.str();
+        mem_ostr.str("");
+        log_ofstream << dump_state() << std::endl;
+        #endif
+
+    } else {
+        dasm.asm_ss.str("");
+        #ifdef LOG_EXEC_ALL
+        mem_ostr.str("");
+        #endif
+    }
 
     #endif
     pc = next_pc;

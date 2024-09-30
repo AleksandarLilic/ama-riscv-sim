@@ -238,7 +238,27 @@ class core{
         uint32_t al_slli(uint32_t a, uint32_t b) { return al_sll(a, b); };
         uint32_t al_srli(uint32_t a, uint32_t b) { return al_srl(a, b); };
         uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
-        uint32_t al_slti(uint32_t a, uint32_t b) { return al_slt(a, b); };
+        uint32_t al_slti(uint32_t a, uint32_t b) {
+            if (inst == INST_HINT_LOG_START) {
+                #ifdef ENABLE_DASM
+                logging = true;
+                #endif
+                #ifdef ENABLE_PROF
+                prof.active = true;
+                #endif
+                return 0;
+            } else if (inst == INST_HINT_LOG_END) {
+                #ifdef ENABLE_DASM
+                logging = false;
+                #endif
+                #ifdef ENABLE_PROF
+                prof.active = false;
+                #endif
+                return 0;
+            }
+
+            return al_slt(a, b);
+        };
         uint32_t al_sltiu(uint32_t a, uint32_t b) { return al_sltu(a, b); };
         uint32_t al_xori(uint32_t a, uint32_t b) { return al_xor(a, b); };
         uint32_t al_ori(uint32_t a, uint32_t b) { return al_or(a, b); };
@@ -356,6 +376,7 @@ class core{
 
     private:
         bool running;
+        bool logging;
         std::array<int32_t, 32> rf;
         uint32_t pc;
         uint32_t next_pc;

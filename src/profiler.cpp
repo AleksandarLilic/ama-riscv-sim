@@ -26,6 +26,7 @@ profiler::profiler(std::string log_name) {
     prof_g_arr[TO_U32(opc_g::i_xori)] = {"xori", 0};
     prof_g_arr[TO_U32(opc_g::i_ori)] = {"ori", 0};
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
+    prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
 
     prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
     prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
@@ -102,24 +103,44 @@ profiler::profiler(std::string log_name) {
     prof_j_arr[TO_U32(opc_j::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
 }
 
+void profiler::new_inst(uint32_t inst) {
+    if (active) {
+        this->inst = inst;
+        inst_cnt++;
+    }
+}
+
 void profiler::log_inst(opc_g opc) {
-    if (inst == INST_NOP)
-        prof_g_arr[TO_U32(opc_g::i_nop)].count++;
-    else if ((inst & 0xFFFF) == INST_C_NOP) // 16-bit inst
-        prof_g_arr[TO_U32(opc_g::i_c_nop)].count++;
-    else
-        prof_g_arr[TO_U32(opc)].count++;
+    if (active) {
+        if (inst == INST_NOP)
+            prof_g_arr[TO_U32(opc_g::i_nop)].count++;
+        else if ((inst & 0xFFFF) == INST_C_NOP) // 16-bit inst
+            prof_g_arr[TO_U32(opc_g::i_c_nop)].count++;
+        else if (inst == INST_HINT_LOG_START || inst == INST_HINT_LOG_END)
+            prof_g_arr[TO_U32(opc_g::i_hint)].count++;
+        else
+            prof_g_arr[TO_U32(opc)].count++;
+    }
 }
 
 void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
-    if (taken) {
-        prof_j_arr[TO_U32(opc)].count_taken++;
-        if (direction == b_dir_t::forward)
-            prof_j_arr[TO_U32(opc)].count_taken_fwd++;
-    } else {
-        prof_j_arr[TO_U32(opc)].count_not_taken++;
-        if (direction == b_dir_t::forward)
-            prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
+    if (active) {
+        if (taken) {
+            prof_j_arr[TO_U32(opc)].count_taken++;
+            if (direction == b_dir_t::forward)
+                prof_j_arr[TO_U32(opc)].count_taken_fwd++;
+        } else {
+            prof_j_arr[TO_U32(opc)].count_not_taken++;
+            if (direction == b_dir_t::forward)
+                prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
+        }
+    }
+}
+
+void profiler::log() {
+    if (active) {
+        trace.push_back(te);
+        rst_te();
     }
 }
 
