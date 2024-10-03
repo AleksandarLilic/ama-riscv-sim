@@ -3,7 +3,7 @@ import re
 import json
 import argparse
 import pandas as pd
-from run_analysis import get_base_int_pc
+from run_analysis import get_base_int_addr
 
 def symbol_change(df):
     # e.g. jump or branch to a function
@@ -37,7 +37,7 @@ pattern = re.compile(r'^[0-9a-fA-F]+:')
 lines_pc = [l for l in lines if pattern.match(l)]
 
 df = pd.DataFrame([x.split(':', 1) for x in lines_pc], columns=['pc', 'instr'])
-df['pc_int'] = df['pc'].apply(get_base_int_pc)
+df['pc_int'] = df['pc'].apply(get_base_int_addr)
 df['bin'] = pd.cut(df['pc_int'], bins=symbols_bins["bins"],
                    labels=symbols_bins["labels"], include_lowest=True)
 df = symbol_change(df)

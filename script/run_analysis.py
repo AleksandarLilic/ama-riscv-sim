@@ -117,6 +117,19 @@ def inst_type_exists(inst_type) -> str:
                          f"Available types are: {', '.join(all_inst_types)}")
     return inst_type
 
+def find_loc_range(ax) -> int:
+    ymin, ymax = ax.get_ylim()
+    yrange = ymax - ymin
+    inc = 1
+    if yrange > 1000:
+        inc = 4
+    if yrange > 10_000:
+        inc = 16
+    if yrange > 100_000:
+        inc = 32
+    print(f"yrange: {yrange}, inc: {inc}")
+    return inc
+
 def wrap_label(arr:List[str], max_len:int) -> str:
     label = ', '.join(arr)
     wrapped = '\n'.join(textwrap.wrap(label, max_len))
@@ -482,11 +495,19 @@ def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
         if len(hl_groups) > 0:
             add_legend_for_hl_groups(ax, "trace")
 
+    # annotate the charts
+    if ctype == 'pc':
+        ax = annotate_pc_chart(df, symbols, ax, args)
+    elif ctype == 'dmem':
+        ax = annotate_dmem_chart(df, symbols, ax, args) # empty symbols for now
+    ax = add_cache_line_spans(ax)
+
     # update axis
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
     formatter = LogFormatterSciNotation(base=10)
     ax.xaxis.set_major_formatter(formatter)
-    ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES))
+    inc = find_loc_range(ax)
+    ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
     ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax.set_xlim(left=0.5)
     ax.margins(y=0.01, x=0.1)
@@ -506,12 +527,6 @@ def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax.grid(axis='x', linestyle='-', alpha=1, which='major')
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
-    # annotate the charts
-    if ctype == 'pc':
-        ax = annotate_pc_chart(df, symbols, ax, args)
-    elif ctype == 'dmem':
-        ax = annotate_dmem_chart(df, symbols, ax, args) # empty symbols for now
-    ax = add_cache_line_spans(ax)
     return fig
 
 def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
@@ -523,8 +538,8 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
         return None
 
     fig, [ax_t, ax_sp] = plt.subplots(ncols=1, nrows=2, figsize=(24,12),
-                                       sharex=True, height_ratios=[9, 1],
-                                       constrained_layout=True)
+                                      sharex=True, height_ratios=[9, 1],
+                                      constrained_layout=True)
 
     # add SP trace
     ax_sp.step(df.index, df['sp_real'], where='post', lw=1, color=(0,.3,.6,1))
@@ -534,8 +549,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_t.step(df.index, df[cols[0]], where='pre', lw=1.5, color=(0,.3,.6,.15))
     ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
 
-    x_val = []
-    y_val = []
+    x_val, y_val = [], []
     for x, y, s in zip(df.index, df[cols[0]], df[cols[1]]):
         x_val.extend([x, x, None]) # 'None' used to break the line
         y_val.extend([y, y + s, None])
@@ -575,15 +589,27 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
             # add dummy scatter plot for the legend
             ax_t.scatter([], [], color=hl_colors[hc], label=hl_g)
             hc += 2 # skip yellow for visibility
-
             add_legend_for_hl_groups(ax_t, "trace")
+
+    # annotate both
+    if ctype == 'pc':
+        ax_t = annotate_pc_chart(df, symbols, ax_t, args)
+    elif ctype == 'dmem':
+        ax_t = annotate_dmem_chart(df, symbols, ax_t, args)
+    ax_t = add_cache_line_spans(ax_t)
+
+    ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
+               f"  SP max : {df['sp_real'].max()} bytes", color='k',
+               fontsize=9, ha='left', va='center',
+               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
 
     # update axis
     current_nbins = len(ax_t.get_xticks())
     locator = MaxNLocator(nbins=current_nbins*4, integer=True)
     ax_t.xaxis.set_major_locator(locator)
     ax_t.xaxis.set_major_formatter(FuncFormatter(to_k))
-    ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES))
+    inc = find_loc_range(ax_t)
+    ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
     ax_t.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax_t.margins(y=0.03, x=0.01)
 
@@ -600,18 +626,6 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_sp.set_ylabel('Stack Pointer')
     ax_t.set_title(f"Execution profile for {title}")
 
-    # annotate both
-    if ctype == 'pc':
-        ax_t = annotate_pc_chart(df, symbols, ax_t, args)
-    elif ctype == 'dmem':
-        ax_t = annotate_dmem_chart(df, symbols, ax_t, args)
-    ax_t = add_cache_line_spans(ax_t)
-
-    ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
-               f"  SP max : {df['sp_real'].max()} bytes", color='k',
-               fontsize=9, ha='left', va='center',
-               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
-
     return fig
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
@@ -627,7 +641,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df = pd.DataFrame(data, columns=h)
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
-        lambda x: 0 if x == BASE_ADDR + MEM_SIZE else x)
+        lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
     if args.save_converted_bin:
         df.to_csv(bin_log.replace('.bin', '.csv'), index=False)
 
@@ -637,7 +651,7 @@ def run_bin_trace(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df_og = load_bin_trace(bin_log, args)
     df, fig_pc, fig2_pc = run_bin_trace_pc(df_og, hl_groups, title, args)
-    df, fig_dmem, fig2_dmem = run_bin_trace_dmem(df_og, hl_groups, title, args)
+    _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df_og, hl_groups, title, args)
     return df, [fig_pc, fig2_pc, fig_dmem, fig2_dmem]
 
 def run_bin_trace_pc(df_og, hl_groups, title, args) -> \
@@ -672,8 +686,20 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     df_og['dtyp'] = df_og['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
     df_og['dsz'] = df_og['dsz'].apply(lambda x: x-8 if x >= 8 else x)
-    # FIXME: split words and half-words into bytes
-    df = df_og.groupby('dmem').agg(
+    df_og['dmem'] = df_og['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
+
+    # isa is byte addressable, expand each access to a single byte
+    exp_rows = []
+    for i, row in df_og.iterrows():
+        addr, sz = row['dmem'], row['dsz']
+        if sz > 1:
+            for i in range(sz):
+                exp_rows.append({'dmem': addr+i, 'dsz': 1, 'dtyp': row['dtyp']})
+        else:
+            exp_rows.append({'dmem': addr, 'dsz': sz, 'dtyp': row['dtyp']})
+
+    df_exp = pd.DataFrame(exp_rows)
+    df = df_exp.groupby('dmem').agg(
         dsz=('dsz', 'first'), # get only the first value
         count=('dmem', 'size') # count them all (size of the group)
     ).reset_index()
@@ -682,7 +708,6 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df['dmem_hex'] = df['dmem'].apply(lambda x: f'{x:08x}')
     if df.iloc[0]['dmem'] == 0:
         df = df.drop(0)
-    df_og['dmem'] = df_og['dmem'].replace(0, np.nan)
 
     # TBD: annotate the variables in DMEM (analogous to backannotate_dasm)
 
