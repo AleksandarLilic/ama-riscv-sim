@@ -1,0 +1,22 @@
+# C++ files
+*.d
+*.ii
+*.s
+*.o
+*.so
+*.out
+*.gcno
+*.gcda
+ama-riscv-sim*
+
+# profiler stuff
+*inst_profiler.json
+*_trace.bin
+*_trace.csv
+*_trace_out.csv
+*_exec.log
+*_reg_hist.bin
+*_reg_hist.csv
+*_perf_est.csv
+*.png
+*.svg

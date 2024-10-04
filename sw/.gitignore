@@ -1,0 +1,13 @@
+# RISC-V program files
+*.bin
+*.dump
+*.map
+*.elf*
+*.hex
+*.o
+*.d
+*.i
+*.s
+*_symbols.json
+local/
+baremetal/*/test_array*h

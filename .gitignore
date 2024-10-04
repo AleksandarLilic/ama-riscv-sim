@@ -1,31 +1,6 @@
-# C++ files
-src/*.d
-src/*.ii
-src/*.s
-src/*.o
-src/*.so
-src/*.out
-src/*.gcno
-src/*.gcda
-src/ama-riscv-sim*
-
 # checkers/logs
 *.check
 *.log
-
-# RISC-V program files
-sw/**/*.bin
-sw/**/*.dump
-sw/**/*.map
-sw/**/*.elf*
-sw/**/*.hex
-sw/**/*.o
-sw/**/*.d
-sw/**/*.i
-sw/**/*.s
-sw/**/*_symbols.json
-sw/**/local/
-sw/baremetal/*/test_array*h
 
 # test files
 test/*_dump.log
@@ -41,10 +16,6 @@ test/*.bin
 *.man
 *.gprof
 analysis.gprof.ipynb
-*_profiler*
-*_trace*
-*_exec.*
-*_reg_hist.bin
 *.nm
 *.grep
 
