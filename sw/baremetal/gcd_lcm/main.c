@@ -2,13 +2,20 @@
 #include "common.h"
 #include "func.h"
 
+#ifndef LOOPS
+#define LOOPS 1
+#endif
+
+#ifndef N_LARGE
+#define N_LARGE
+#endif
+
+// TODO: Add more test cases
 #ifdef N_LARGE
 #define SET_A volatile uint32_t a = 10440125;
 #define SET_B volatile uint32_t b = 157216;
 //#define EXPECTED_GCD 4913
 #define SET_EXP uint32_t expected = 334084000;
-#else
-_Static_assert(0, "Input is not supported");
 #endif
 
 void main() {

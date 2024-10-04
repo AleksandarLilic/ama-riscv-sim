@@ -8,6 +8,10 @@
 #define TOSTR(x) STRINGIFY(x)
 #define TESTNUM_REG x28
 
+// logging features
+#define LOG_START asm volatile ("slti x0, x0, 0x10")
+#define LOG_STOP asm volatile ("slti x0, x0, 0x11")
+
 void test_end();
 void write_mismatch(uint32_t res, uint32_t ref, uint8_t idx);
 void write_csr_status();
@@ -17,9 +21,5 @@ int write_uart0(int file, char *ptr, int len);
 uint32_t time_us();
 uint32_t clock_ticks();
 void _putchar(char character); // tiny printf implementation
-
-// logging features
-typedef enum log_action { start, stop } log_action_t;
-void log_trigger(log_action_t action);
 
 #endif

@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include "common.h"
 
+#ifndef LOOPS
+#define LOOPS 1
+#endif
+
 #define ARR_LEN 16
 
 volatile uint8_t a[ARR_LEN] = {
@@ -29,13 +33,13 @@ void set_c() {
 void main(void) {
     for (uint32_t i = 0; i < LOOPS; i++) {
         set_c();
-        log_trigger(start);
+        LOG_START;
         for (uint8_t j = 0; j < 64; j++) {
             for (uint8_t k = 0; k < ARR_LEN; k++) {
                 c[k] = asm_add(c[k], a[k] * b[k]);
             }
         }
-        log_trigger(stop);
+        LOG_STOP;
 
         for (uint8_t j = 0; j < ARR_LEN; j++) {
             if (c[j] != ref[j]) {

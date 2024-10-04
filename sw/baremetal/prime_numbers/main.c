@@ -2,6 +2,14 @@
 #include <stdbool.h>
 #include "common.h"
 
+#ifndef LOOPS
+#define LOOPS 1
+#endif
+
+#ifndef N_IN
+#define N_IN 100
+#endif
+
 #if (N_IN == 3000)
 #define SET_N volatile uint32_t n = 3000;
 #define SET_EXP uint32_t expected = 430;

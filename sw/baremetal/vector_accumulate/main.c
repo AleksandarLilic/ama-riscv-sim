@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include "common.h"
 
+#ifndef LOOPS
+#define LOOPS 1
+#endif
+
 #define ARR_LEN 16
 
 volatile uint8_t a[ARR_LEN] = {
