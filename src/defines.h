@@ -33,13 +33,13 @@
 
 #define BASE_ADDR 0x80000000
 #define MEM_ADDR_BITWIDTH 8
-//#define MEM_SIZE 16384 // 0x4000
-//#define MEM_SIZE 32768 // 0x8000
-#define MEM_SIZE 65536 // 0x10000
-//#define MEM_SIZE 131072 // 0x20000
-//#define MEM_SIZE 196608 // 0x30000
-//#define MEM_SIZE 262144 // 0x40000
-//#define MEM_SIZE 524288 // 0x80000
+//#define MEM_SIZE 16384
+#define MEM_SIZE 32768
+//#define MEM_SIZE 65536
+//#define MEM_SIZE 131072
+//#define MEM_SIZE 196608
+//#define MEM_SIZE 262144
+//#define MEM_SIZE 524288
 #define UART0_SIZE 12 // 3 32-bit registers
 
 // Decoder types

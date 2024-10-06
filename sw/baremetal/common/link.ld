@@ -3,8 +3,8 @@ ENTRY( _start )
 
 MEMORY
 {
-    ram (rwx) : ORIGIN = 0x80000000, LENGTH = 0x10000
-    peripherals (rw) : ORIGIN = 0x80010000, LENGTH = 12
+    ram (rwx) : ORIGIN = 0x80000000, LENGTH = 32K
+    peripherals (rw) : ORIGIN = ORIGIN(ram) + LENGTH(ram), LENGTH = 12
 }
 
 SECTIONS
