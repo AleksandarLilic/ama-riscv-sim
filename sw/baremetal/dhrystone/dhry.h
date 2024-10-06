@@ -347,7 +347,6 @@
 /* Compiler and system dependent definitions: */
 
 #include "common.h"
-#include "printf.h"
 
 #ifndef TIME
 #undef TIMES

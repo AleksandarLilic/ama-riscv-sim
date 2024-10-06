@@ -106,8 +106,6 @@ int _wait(int *status) {
     return -1;
 }
 
-int _write(int file, char *ptr, int len) {
-    return write_uart0(file, ptr, len);
-}
+// int _write(int file, char *ptr, int len) defined in common.c
 
 #endif

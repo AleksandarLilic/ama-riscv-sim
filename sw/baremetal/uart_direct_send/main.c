@@ -4,7 +4,6 @@
 
 void main(void) {
     const char msg[] = "Hello, world!\n";
-    for (int j = 0; j < 2; j++)
-        write_uart0(0, (char *)msg, sizeof(msg));
+    for (int j = 0; j < 2; j++) _write(0, (char *)msg, sizeof(msg));
     pass();
 }

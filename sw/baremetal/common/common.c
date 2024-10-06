@@ -31,19 +31,32 @@ void fail() {
     test_end();
 }
 
-int write_uart0(int file, char *ptr, int len) {
+void send_byte_uart0(char byte) {
+    while (!UART0_TX_READY);
+    UART0->tx_data = byte;
+}
+
+int _write(int fd, char *ptr, int len) {
     int count = len;
     while (count-- > 0) {
-        while (!UART0_TX_READY);
-        UART0->tx_data = *ptr;
+        send_byte_uart0(*ptr);
         ptr++;
     }
     return len;
 }
 
-// tiny printf implementation
-// write character to stdout
-void _putchar(char character) {  write_uart0(0, &character, 1); }
+int __puts_uart(char *s, int len, void *buf) {
+	_write( 0, s, len );
+	return len;
+}
+
+int mini_printf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    int count = mini_vpprintf(__puts_uart, NULL, format, args);
+    va_end(args);
+    return count;
+}
 
 uint32_t time_us() {
     uint32_t time_us;
