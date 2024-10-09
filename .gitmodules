@@ -1,3 +1,6 @@
 [submodule "sw/riscv-isa-tests/riscv-tests"]
 	path = sw/riscv-isa-tests/riscv-tests
 	url = git@github.com:riscv-software-src/riscv-tests.git
+[submodule "sw/BitNetMCU"]
+	path = sw/BitNetMCU
+	url = git@github.com:AleksandarLilic/BitNetMCU.git
