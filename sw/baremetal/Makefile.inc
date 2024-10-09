@@ -18,7 +18,8 @@ USER_DEFINES =
 
 # if not set in test's Makefile, default to all supported ISA extensions
 export MARCH ?= rv32imc_zicsr_zifencei_zicntr
-GCC_OPTS += -march=$(MARCH) -mabi=ilp32 -mcmodel=medany
+export MABI ?= ilp32
+GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 GCC_OPTS += -save-temps
@@ -40,12 +41,13 @@ $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
 		$(RV_GNU)-bin2hex -w $(MEM_WIDTH) $(TARGET).bin $(TARGET).hex; \
 	fi
 	@echo "Generated $@"
+	@$(RV_GNU)-size $@
 
 common:
-	@make -C $(COMMON_PATH) all -j
+	@make -C $(COMMON_PATH) --no-print-directory all -j
 
 $(COMMON_OBJS):
-	@make -C $(COMMON_PATH) $@
+	@make -C $(COMMON_PATH) --no-print-directory $@
 
 clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map

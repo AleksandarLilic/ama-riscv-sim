@@ -9,7 +9,8 @@ OBJECTS_C := $(C_SRCS:.c=.o)
 OBJECTS_S := $(S_SRCS:.S=.o)
 
 MARCH ?= rv32imc_zicsr_zifencei
-GCC_OPTS += -march=$(MARCH) -mabi=ilp32 -mcmodel=medany
+MABI ?= ilp32
+GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -save-temps
 GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
