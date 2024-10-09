@@ -1,0 +1,1 @@
+../../BitNetMCU/mcu/BitNetMCU_model_12k.h
