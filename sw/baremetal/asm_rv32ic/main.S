@@ -2,6 +2,7 @@
 .global     main
 
 #include "../common/asm_test.S"
+#include "../common/csr.h"
 
 # only section testing compressed isa has rvc enabled, through macro TEST_C
 .option norvc

@@ -2,6 +2,7 @@
 .global     main
 
 #include "../common/asm_test.S"
+#include "../common/csr.h"
 
 main: li x13, 0
 csrwi CSR_TOHOST, 0

@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#include "csr.h"
 #include "mem_map.h"
 #include "mini-printf.h"
 
