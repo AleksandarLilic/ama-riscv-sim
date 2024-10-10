@@ -27,9 +27,10 @@ class core{
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) {
-            if (csr.at(addr).perm == perm_t::ro) {
+            if (csr.at(addr).perm == perm_t::ro)
                 illegal("CSR write attempt to RO CSR", 4);
-            }
+            if (csr.at(addr).perm == perm_t::warl_unimp)
+                return;
             csr.at(addr).value = data;
         }
         void cntr_update();
@@ -382,7 +383,7 @@ class core{
         uint32_t next_pc;
         uint32_t inst;
         uint64_t inst_cnt;
-        uint64_t inst_elapsed;
+        uint64_t inst_cnt_csr;
         std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
         std::chrono::time_point<std::chrono::high_resolution_clock> run_time;
         // FIXME: mtime should be an actual MMIO put somewhere in the memory map
@@ -398,20 +399,23 @@ class core{
         dasm_str dasm;
         #endif
         memory *mem;
-        static constexpr std::array<CSR_entry, 12> supported_csrs = {{
-            {CSR_TOHOST, "tohost", perm_t::rw},
-            {CSR_MSCRATCH, "mscratch", perm_t::rw},
-            {CSR_MCYCLE, "mcycle", perm_t::rw},
-            {CSR_MINSTRET, "minstret", perm_t::rw},
-            {CSR_MCYCLEH, "mcycleh", perm_t::rw},
-            {CSR_MINSTRETH, "minstreth", perm_t::rw},
+        static constexpr std::array<CSR_entry, 14> supported_csrs = {{
+            {CSR_TOHOST, "tohost", perm_t::rw, 0u},
+            {CSR_MSCRATCH, "mscratch", perm_t::rw, 0u},
+            {CSR_MCYCLE, "mcycle", perm_t::rw, 0u},
+            {CSR_MINSTRET, "minstret", perm_t::rw, 0u},
+            {CSR_MCYCLEH, "mcycleh", perm_t::rw, 0u},
+            {CSR_MINSTRETH, "minstreth", perm_t::rw, 0u},
             // read only CSRs
-            {CSR_CYCLE, "cycle", perm_t::ro},
-            {CSR_TIME, "time", perm_t::ro},
-            {CSR_INSTRET, "instret", perm_t::ro},
-            {CSR_CYCLEH, "cycleh", perm_t::ro},
-            {CSR_TIMEH, "timeh", perm_t::ro},
-            {CSR_INSTRETH, "instreth", perm_t::ro},
+            {CSR_MISA, "misa", perm_t::warl_unimp, 0u},
+            {CSR_MHARTID, "mhartid", perm_t::ro, 0u},
+            // read only user CSRs
+            {CSR_CYCLE, "cycle", perm_t::ro, 0u},
+            {CSR_TIME, "time", perm_t::ro, 0u},
+            {CSR_INSTRET, "instret", perm_t::ro, 0u},
+            {CSR_CYCLEH, "cycleh", perm_t::ro, 0u},
+            {CSR_TIMEH, "timeh", perm_t::ro, 0u},
+            {CSR_INSTRETH, "instreth", perm_t::ro, 0u},
         }};
         #ifdef ENABLE_PROF
         profiler prof;

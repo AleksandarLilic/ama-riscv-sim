@@ -127,7 +127,8 @@ enum class csr_op_t {
 
 enum class perm_t {
     ro = 0b00,
-    rw = 0b01
+    rw = 0b01,
+    warl_unimp = 0b10
 };
 
 struct dasm_str {
@@ -212,6 +213,7 @@ struct CSR_entry {
     const uint16_t csr_addr;
     const char* csr_name;
     const perm_t perm;
+    const uint32_t boot_val;
 };
 
 // CSR addresses
@@ -222,6 +224,9 @@ struct CSR_entry {
 #define CSR_MCYCLEH 0xb80
 #define CSR_MINSTRETH 0xb82
 // read-only CSRs
+#define CSR_MISA 0x301
+#define CSR_MHARTID 0xf14
+// read only user CSRs
 #define CSR_CYCLE 0xC00
 #define CSR_TIME 0xC01
 #define CSR_INSTRET 0xC02

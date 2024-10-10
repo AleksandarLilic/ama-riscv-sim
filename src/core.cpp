@@ -2,13 +2,17 @@
 
 #define INDENT "    "
 
+#ifndef LOG_ON_BOOT
+#define LOG_ON_BOOT false
+#endif
+
 core::core(uint32_t base_addr, memory *mem, std::string log_name)
     #ifdef ENABLE_PROF
     : prof(log_name)
     #endif
 {
     inst_cnt = 0;
-    inst_elapsed = 0;
+    inst_cnt_csr = 0;
     pc = base_addr; // reset vector
     next_pc = 0;
     this->mem = mem;
@@ -16,23 +20,24 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name)
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
     for (const auto &c : supported_csrs)
-        csr.insert({c.csr_addr, CSR(c.csr_name, 0x0, c.perm)});
+        csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
 }
 
 void core::exec() {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
     log_ofstream.open(log_name + "_exec.log");
-    logging = false;
+    logging = LOG_ON_BOOT;
     #endif
 
     #ifdef ENABLE_PROF
-    prof.active = false;
+    prof.active = LOG_ON_BOOT;
     #endif
 
     running = true;
     start_time = std::chrono::high_resolution_clock::now();
     run_time = start_time;
     while (running) exec_inst();
+    cntr_update(); // so that all instructions since last CSR access are counted
     finish(true);
     return;
 }
@@ -365,7 +370,7 @@ void core::csr_access() {
  */
 void core::cntr_update() {
     // TODO: for DPI environment, these have to either be revisited or ignored
-    inst_elapsed = inst_cnt - inst_elapsed;
+    uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
     csr.at(CSR_MCYCLE).value += inst_elapsed & 0xFFFFFFFF;
     csr.at(CSR_MCYCLEH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
     csr.at(CSR_MINSTRET).value += inst_elapsed & 0xFFFFFFFF;
@@ -374,6 +379,7 @@ void core::cntr_update() {
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>
                    (run_time - start_time);
     mtime = TO_U64(elapsed.count());
+    inst_cnt_csr = inst_cnt;
 
     // user mode shadows
     csr.at(CSR_CYCLE).value = csr.at(CSR_MCYCLE).value;
