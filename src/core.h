@@ -7,7 +7,8 @@
 class core{
     public:
         core() = delete;
-        core(uint32_t base_addr, memory *mem, std::string log_name);
+        core(uint32_t base_addr, memory *mem, std::string log_name,
+             logging_pc_t logging_pc);
         void exec();
         void exec_inst();
         void dump();
@@ -378,6 +379,7 @@ class core{
     private:
         bool running;
         bool logging;
+        logging_pc_t logging_pc;
         std::array<int32_t, 32> rf;
         uint32_t pc;
         uint32_t next_pc;

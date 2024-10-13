@@ -137,6 +137,11 @@ struct dasm_str {
     std::string op;
 };
 
+struct logging_pc_t {
+    uint32_t start;
+    uint32_t stop;
+};
+
 // Instruction field masks
 #define M_OPC7 uint32_t(0x7F)
 #define M_OPC2 uint32_t(0x3)

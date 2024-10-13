@@ -2,11 +2,8 @@
 
 #define INDENT "    "
 
-#ifndef LOG_ON_BOOT
-#define LOG_ON_BOOT false
-#endif
-
-core::core(uint32_t base_addr, memory *mem, std::string log_name)
+core::core(uint32_t base_addr, memory *mem, std::string log_name,
+           logging_pc_t logging_pc)
     #ifdef ENABLE_PROF
     : prof(log_name)
     #endif
@@ -17,6 +14,7 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name)
     next_pc = 0;
     this->mem = mem;
     this->log_name = log_name;
+    this->logging_pc = logging_pc;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
     for (const auto &c : supported_csrs)
@@ -26,11 +24,11 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name)
 void core::exec() {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
     log_ofstream.open(log_name + "_exec.log");
-    logging = LOG_ON_BOOT;
+    logging = false;
     #endif
 
     #ifdef ENABLE_PROF
-    prof.active = LOG_ON_BOOT;
+    prof.active = false;
     #endif
 
     running = true;
@@ -43,6 +41,22 @@ void core::exec() {
 }
 
 void core::exec_inst() {
+    if (pc == logging_pc.start) {
+        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+        logging = true;
+        #endif
+        #ifdef ENABLE_PROF
+        prof.active = true;
+        #endif
+    } else if (pc == logging_pc.stop) {
+        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+        logging = false;
+        #endif
+        #ifdef ENABLE_PROF
+        prof.active = false;
+        #endif
+    }
+
     inst = mem->get_inst(pc);
     uint32_t op_c = get_copcode();
     if (op_c != 0x3) {
