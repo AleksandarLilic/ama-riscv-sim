@@ -247,7 +247,7 @@ struct CSR_entry {
 
 #define CASE_ALU_REG_OP(op) \
     case (uint8_t)alu_r_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
+        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -255,7 +255,7 @@ struct CSR_entry {
 
 #define CASE_ALU_REG_MUL_OP(op) \
     case (uint8_t)alu_r_mul_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], rf[get_rs2()])); \
+        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -263,7 +263,7 @@ struct CSR_entry {
 
 #define CASE_ALU_IMM_OP(op) \
     case (uint8_t)alu_i_op_t::op_##op: \
-        write_rf(get_rd(), al_##op(rf[get_rs1()], get_imm_i())); \
+        write_rf(ip.rd(), al_##op(rf[ip.rs1()], ip.imm_i())); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
@@ -271,7 +271,7 @@ struct CSR_entry {
 
 #define CASE_LOAD(op) \
     case (uint8_t)load_op_t::op_##op: \
-        write_rf(get_rd(), load_##op((rf[get_rs1()]+get_imm_i()))); \
+        write_rf(ip.rd(), load_##op((rf[ip.rs1()]+ip.imm_i()))); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
@@ -279,7 +279,7 @@ struct CSR_entry {
 
 #define CASE_STORE(op) \
     case (uint8_t)store_op_t::op_##op: \
-        store_##op(rf[get_rs1()]+get_imm_s(), rf[get_rs2()]); \
+        store_##op(rf[ip.rs1()]+ip.imm_s(), rf[ip.rs2()]); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RS1_RS2 \
@@ -288,7 +288,7 @@ struct CSR_entry {
 #define CASE_BRANCH(op) \
     case (uint8_t)branch_op_t::op_##op: \
         if(branch_##op()) { \
-            next_pc = pc + get_imm_b(); \
+            next_pc = pc + ip.imm_b(); \
             PROF_B_T(op) \
         } else { \
             PROF_B_NT(op, _b) \
@@ -316,7 +316,7 @@ struct CSR_entry {
         break;
 
 #define W_CSR(expr) \
-    write_csr(get_csr_addr(), expr)
+    write_csr(ip.csr_addr(), expr)
 
 struct mem_entry {
     uint32_t base;
@@ -381,23 +381,23 @@ struct mem_entry {
     dasm.op = #o;
 
 #define DASM_CSR_REG \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
-                << csr.at(get_csr_addr()).name << "," \
-                << rf_names[get_rs1()][RF_NAMES];
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES] << "," \
+                << csr.at(ip.csr_addr()).name << "," \
+                << rf_names[ip.rs1()][RF_NAMES];
 
 #define DASM_CSR_IMM \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES] << "," \
-                << csr.at(get_csr_addr()).name << "," \
-                << get_uimm_csr();
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES] << "," \
+                << csr.at(ip.csr_addr()).name << "," \
+                << ip.uimm_csr();
 
 #define DASM_OP_RD \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_rd()][RF_NAMES]
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES]
 
 #define DASM_OP_CREGH \
-    dasm.asm_ss << dasm.op << " " << rf_names[get_cregh()][RF_NAMES]
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.cregh()][RF_NAMES]
 
 #define DASM_CREGL \
-    rf_names[get_cregl()][RF_NAMES]
+    rf_names[ip.cregl()][RF_NAMES]
 
 #else
 #define DASM_OP(o)
@@ -425,16 +425,16 @@ struct mem_entry {
     prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
 
 #define PROF_B_NT(op, b) \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + get_imm##b()) > pc));
+    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + ip.imm##b()) > pc));
 
 #define PROF_RD \
-    prof.log_reg_use(reg_use_t::rd, get_rd()); \
+    prof.log_reg_use(reg_use_t::rd, ip.rd()); \
 
 #define PROF_RS1 \
-    prof.log_reg_use(reg_use_t::rs1, get_rs1());
+    prof.log_reg_use(reg_use_t::rs1, ip.rs1());
 
 #define PROF_RS2 \
-    prof.log_reg_use(reg_use_t::rs2, get_rs2());
+    prof.log_reg_use(reg_use_t::rs2, ip.rs2());
 
 #define PROF_RD_RS1_RS2 \
     PROF_RD \
