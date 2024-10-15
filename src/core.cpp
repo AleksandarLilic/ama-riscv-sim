@@ -620,9 +620,12 @@ void core::c_addi4spn() {
 }
 
 void core::c_slli() {
-    write_rf(ip.rd(), al_slli(rf[ip.rd()], ip.imm_c_slli()));
+    write_rf(ip.rd(), al_sll(rf[ip.rd()], ip.imm_c_slli()));
     DASM_OP(c.slli)
     PROF_G(c_slli)
+    #ifdef ENABLE_PROF
+    prof_fusion.attack({trigger::slli_lea, inst, mem->get_inst(pc + 2), true});
+    #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << std::hex << "0x" <<  (int32_t)ip.imm_c_slli()
                << std::dec;

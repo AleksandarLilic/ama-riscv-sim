@@ -2,8 +2,9 @@
 
 #include "defines.h"
 #include "memory.h"
-#include "profiler.h"
 #include "inst_parser.h"
+#include "profiler.h"
+#include "profiler_fusion.h"
 
 class core{
     public:
@@ -120,7 +121,14 @@ class core{
 
         // arithmetic and logic immediate operations
         uint32_t al_addi(uint32_t a, uint32_t b) { return al_add(a, b); };
-        uint32_t al_slli(uint32_t a, uint32_t b) { return al_sll(a, b); };
+        uint32_t al_slli(uint32_t a, uint32_t b) {
+            #ifdef ENABLE_PROF
+            prof_fusion.attack(
+                {trigger::slli_lea, inst, mem->get_inst(pc + 4), false}
+            );
+            #endif
+            return al_sll(a, b);
+        };
         uint32_t al_srli(uint32_t a, uint32_t b) { return al_srl(a, b); };
         uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
         uint32_t al_slti(uint32_t a, uint32_t b) {
@@ -304,6 +312,7 @@ class core{
         }};
         #ifdef ENABLE_PROF
         profiler prof;
+        profiler_fusion prof_fusion;
         #endif
 
         // csr map
