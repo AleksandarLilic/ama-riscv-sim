@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Logging start pc: 0x" << std::hex << pc_start << " ";
     if (pc_stop != 0)
         std::cout << "Logging end pc: 0x" << std::hex << pc_stop;
-    std::cout << std::endl;
+    std::cout << std::dec << std::endl;
 
     TRY_CATCH({
         memory mem(BASE_ADDR, test_bin);

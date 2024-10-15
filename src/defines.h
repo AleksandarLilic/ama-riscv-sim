@@ -355,7 +355,8 @@ struct mem_entry {
     } while(0);
 
 #define MEM_ADDR_FORMAT(addr) \
-    std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr
+    std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr \
+                                 << std::dec
 
 #define INST_FORMAT(inst, n) \
     std::setw(n) << std::setfill('0') << std::hex << inst << std::dec
