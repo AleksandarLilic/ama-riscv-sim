@@ -2,15 +2,19 @@ import os
 import sys
 import json
 import pandas as pd
+import numpy as np
 from run_analysis import json_prof_to_df
 
 class perf:
-    b_inst = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
-    j_inst = ["jalr", "jal"]
-    m_inst = ["lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"]
+    b_inst_a = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
+    j_inst_a = ["jalr", "jal"]
+    dc_inst_a = ["lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw"]
+    mul_inst_a = ["mul", "mulh", "mulhsu", "mulhu"]
+    div_inst_a = ["div", "divu", "rem", "remu"]
     expected_hw_metrics = ["cpu_frequency_mhz", "pipeline_latency",
+                           "multiplier_latency", "divider_latency",
                            "branch_resolution", "jump_resolution",
-                           "memory_response",
+                           "icache_response", "dcache_response",
                            "mispredict_penalty", "prediction_resolution"]
 
     def __init__(self, inst_profiler_path, hw_perf_metrics_path):
@@ -30,7 +34,7 @@ class perf:
         with open(inst_profiler_path, 'r') as file:
             prof = json.load(file)
 
-        for b in self.b_inst:
+        for b in self.b_inst_a:
             self._log_branches(prof[b])
 
         with open(hw_perf_metrics_path, 'r') as file:
@@ -44,25 +48,44 @@ class perf:
 
         self.mispredict_penalty = hwpm["mispredict_penalty"]
         self.prediction_resolution = hwpm["prediction_resolution"]
+        self.branch_resolution = hwpm['branch_resolution']
+        self.jump_resolution = hwpm['jump_resolution']
+        self.ic_response = hwpm['icache_response']
+        self.dc_response = hwpm['dcache_response']
         self.pipeline_latency = hwpm['pipeline_latency']
+        self.multiplier_latency = hwpm['multiplier_latency']
+        self.divider_latency = hwpm['divider_latency']
+
         self.cpu_frequency_mhz = hwpm['cpu_frequency_mhz']
         self.cpu_period = 1 / self.cpu_frequency_mhz
 
         self.inst_total = df['count'].sum()
-        self.b_inst = df.loc[df['name'].isin(self.b_inst)]['count'].sum()
-        self.j_inst = df.loc[df['name'].isin(self.j_inst)]['count'].sum()
-        self.m_inst = df.loc[df['name'].isin(self.m_inst)]['count'].sum()
+        self.b_inst = df.loc[df['name'].isin(self.b_inst_a)]['count'].sum()
+        self.j_inst = df.loc[df['name'].isin(self.j_inst_a)]['count'].sum()
+        self.dc_inst = df.loc[df['name'].isin(self.dc_inst_a)]['count'].sum()
+        self.mul_inst = df.loc[df['name'].isin(self.mul_inst_a)]['count'].sum()
+        self.div_inst = df.loc[df['name'].isin(self.div_inst_a)]['count'].sum()
 
         self.other_inst = self.inst_total - \
-                          (self.b_inst + self.j_inst + self.m_inst)
-        self.other_cycles = hwpm["pipeline_latency"] + self.other_inst
-        self.j_cycles = self.j_inst * (1 + hwpm["jump_resolution"])
-        self.b_cycles = self.b_inst * (1 + hwpm["branch_resolution"])
-        self.m_cycles = self.m_inst * (1 + hwpm["memory_response"])
-        self.non_b_cycles = self.other_cycles + self.j_cycles + self.m_cycles
+                          (self.b_inst + self.j_inst + self.dc_inst + \
+                           self.mul_inst + self.div_inst)
+        # 1 instruction per cycle + pipeline latency
+        self.other_cycles = self.pipeline_latency + self.other_inst
+
+        self.j_cycles = self.j_inst * (1 + self.jump_resolution)
+        self.b_cycles = self.b_inst * (1 + self.branch_resolution)
+        self.dc_cycles = self.dc_inst * (1 + self.dc_response)
+        self.mul_cycles = self.mul_inst * (1 + self.multiplier_latency)
+        self.div_cycles = self.div_inst * (1 + self.divider_latency)
+        self.non_b_cycles = self.other_cycles + self.j_cycles + \
+                            self.dc_cycles + self.mul_cycles + self.div_cycles
+
         self.total_cycles = self.non_b_cycles + self.b_cycles
+        self.total_cycles *= self.ic_response # add average icache response clks
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 1)
         self._predictor_btfn()
+        self.total_cycles = int(np.ceil(self.total_cycles))
+        self.new_total_cycles = int(np.ceil(self.new_total_cycles))
         self.og_perf_str = self._estimated_perf(self.total_cycles, "original")
         self.new_perf_str = self._estimated_perf(self.new_total_cycles, "new")
 
@@ -79,11 +102,14 @@ class perf:
             self.p["pred"] * (1 + self.prediction_resolution) +\
             self.p["mispred"] * (1 + self.mispredict_penalty)
         self.new_total_cycles = self.non_b_cycles + self.new_branch_cycles
+        self.new_total_cycles *= self.ic_response
         self.saved_cycles = self.total_cycles - self.new_total_cycles
+        self.saved_cycles = int(np.ceil(self.saved_cycles))
         self.speedup = \
             round((self.saved_cycles / self.total_cycles) * 100,2)
 
     def _estimated_perf(self, cycles, tag):
+        cycles = int(np.ceil(cycles))
         cpi = cycles / self.inst_total
         exec_time_us = cycles * self.cpu_period
         mips = self.inst_total / exec_time_us
