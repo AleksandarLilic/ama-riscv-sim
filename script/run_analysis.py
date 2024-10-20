@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from typing import Dict, Any, Tuple, List
-from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, LogFormatterSciNotation, MaxNLocator
+from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
+                              LogFormatterSciNotation, MaxNLocator
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ARITH = "ARITH"
@@ -23,7 +24,7 @@ MEM_L = "MEM_L"
 
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x80000000
-MEM_SIZE = 0x10000
+MEM_SIZE = 32768
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw"],
@@ -127,7 +128,6 @@ def find_loc_range(ax) -> int:
         inc = 16
     if yrange > 100_000:
         inc = 32
-    print(f"yrange: {yrange}, inc: {inc}")
     return inc
 
 def wrap_label(arr:List[str], max_len:int) -> str:
@@ -300,20 +300,25 @@ Tuple[pd.DataFrame, plt.Figure]:
 
     return df, fig
 
-def backannotate_dasm(args, df) -> \
+def backannotate_dasm(args, df, section) -> \
 Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 
     symbols = {}
     pc_inst_map_arr = []
     dasm_ext = os.path.splitext(args.dasm)[1]
-    with open(args.dasm, 'r') as infile, \
-    open(args.dasm.replace(dasm_ext, '.prof' + dasm_ext), 'w') as outfile:
+    new_dasm_ext = ".prof" + dasm_ext
+    if section == "data":
+        # avoid writing to the inst annotated file, no annotations for data
+        new_dasm_ext = ".dummy" + dasm_ext
+
+    outfile_name = args.dasm.replace(dasm_ext, new_dasm_ext)
+    with open(args.dasm, 'r') as infile, open(outfile_name, 'w') as outfile:
         current_sym = None
         append = False
-        NUM_DIGITS = len(str(df['count'].max())) + 1
+        PADDING = len(str(df['count'].max())) + 1
 
         for line in infile:
-            if line.startswith('Disassembly of section .text'):
+            if line.startswith('Disassembly of section .') and section in line:
                 append = True
                 outfile.write(line)
                 continue
@@ -326,67 +331,76 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 if len(parts) == 2 and parts[1].startswith('\n'):
                     # detected symbol
                     parts = parts[0].split(" ")
-                    pc_start = get_base_int_addr(parts[0].strip())
+                    addr_start = get_base_int_addr(parts[0].strip())
                     symbol_name = parts[1][1:-1] # remove <> from symbol name
-                    if current_sym:
-                        symbols[current_sym]['pc_end'] = prev_pc
+                    if current_sym: # close previous section
+                        symbols[current_sym]['addr_end'] = prev_addr
                     current_sym = symbol_name
                     symbols[current_sym] = {
-                        'pc_start': pc_start,
-                        "acc_count": 0
+                        'addr_start': addr_start,
+                        "exec_count": 0
                     }
-                    prev_pc = pc_start
+                    prev_addr = addr_start
 
                 if len(parts) == 2 and parts[1].startswith('\t'):
-                    # detected instruction
-                    count, prev_pc = get_count(parts, df)
-                    outfile.write("{:{}} {}".format(count, NUM_DIGITS, line))
-                    symbols[current_sym]['acc_count'] += count
+                    if section == "text":
+                        # detected instruction
+                        count, prev_addr = get_count(parts, df)
+                        outfile.write("{:{}} {}".format(count, PADDING, line))
+                        symbols[current_sym]['exec_count'] += count
 
-                    im = line.split('\t')
-                    im = [x.strip() for x in im]
-                    pc_inst_map_arr.append(
-                        [get_base_int_addr(im[0].replace(':', '')), # pc
-                         im[2], # instruction mnemonic
-                         ' '.join(im[2:]) # full instruction
-                         ])
+                        inst_mn = line.split('\t')
+                        inst_mn = [x.strip() for x in inst_mn]
+                        pc_inst_map_arr.append(
+                            [get_base_int_addr(inst_mn[0].replace(':', '')), #pc
+                            inst_mn[2], # instruction mnemonic
+                            ' '.join(inst_mn[2:]) # full instruction
+                            ])
 
-                else: # not an instruction
+                    elif section == "data":
+                        # outfile.write(line) # not annotating data section
+                        prev_addr = get_base_int_addr(parts[0].strip())
+
+                else: # no instruction/data in line
                     outfile.write(line)
 
-            else: # not .text section
+            else: # not .text/.data section
                 outfile.write(line)
 
         # write the last symbol
-        symbols[current_sym]['pc_end'] = prev_pc
+        symbols[current_sym]['addr_end'] = prev_addr
 
     filter_str = []
-    if args.pc_begin:
-        filter_str.append(f"PC >= {args.pc_begin}")
-        pc_begin = get_base_int_addr(args.pc_begin)
-        symbols = {k: v for k, v in symbols.items()
-                   if v['pc_start'] >= pc_begin}
+    if section == "text":
+        if args.pc_begin:
+            filter_str.append(f"PC >= {args.pc_begin}")
+            pc_begin = get_base_int_addr(args.pc_begin)
+            symbols = {k: v for k, v in symbols.items()
+                    if v['addr_start'] >= pc_begin}
 
-    if args.pc_end:
-        filter_str.append(f"PC <= {args.pc_end}")
-        pc_end = get_base_int_addr(args.pc_end)
-        symbols = {k: v for k, v in symbols.items()
-                   if v['pc_end'] <= pc_end}
+        if args.pc_end:
+            filter_str.append(f"PC <= {args.pc_end}")
+            pc_end = get_base_int_addr(args.pc_end)
+            symbols = {k: v for k, v in symbols.items()
+                    if v['addr_end'] <= pc_end}
 
     sym_log = []
     for k,v in symbols.items():
-        v['func_text'] = f"{k} ({v['acc_count']})"
-        sym_log.append(f"{num_to_hex(v['pc_start'], None)} - " + \
-                       f"{num_to_hex(v['pc_end'], None)}: " + \
-                       f"{v['func_text']}")
+        v['symbol_text'] = f"{k}"
+        if section == "text":
+            v['symbol_text'] += f" ({v['exec_count']})"
 
-    print(f"Symbols found in {args.dasm}:")
+        sym_log.append(f"{num_to_hex(v['addr_start'], None)} - " + \
+                       f"{num_to_hex(v['addr_end'], None)}: " + \
+                       f"{v['symbol_text']}")
+
+    print(f"Symbols found in {args.dasm} in '{section}' section:")
     if filter_str:
         print(f"Filtered by: {' and '.join(filter_str)}")
     for sym in sym_log[::-1]:
         print(sym)
 
-    if args.save_symbols:
+    if args.save_symbols and section == "text":
         # convert to python types first
         symbols_py = {}
         for k,v in symbols.items():
@@ -395,8 +409,12 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     v[k2] = int(v2)
             symbols_py[k] = dict(v)
 
-        with open(args.dasm.replace(dasm_ext, '_symbols.json'), 'w') as sym_file:
-            json.dump(symbols_py, sym_file, indent=4)
+        with open(args.dasm.replace(dasm_ext, '_symbols.json'), 'w') as symfile:
+            json.dump(symbols_py, symfile, indent=4)
+
+    if section == "data":
+        os.remove(outfile_name) # remove the dummy file
+        return symbols, None # no df for data section
 
     df_out = pd.DataFrame(pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst'])
     return symbols, df_out
@@ -410,62 +428,56 @@ def add_cache_line_spans(ax) -> None:
 
     return ax
 
-def annotate_pc_chart(df, symbols, ax, args, symbol_pos=None) -> \
+def annotate_chart(df, symbols, ax, args, ctype) -> \
 plt.Axes:
-    if symbol_pos is None:
-        #symbol_pos = ax.get_xlim()[1]
-        symbol_pos = 1. # for transform=ax.get_yaxis_transform()
+    largs = {}
+    if ctype == 'pc':
+        largs = {'begin': args.pc_begin, 'end': args.pc_end,
+                 'no_limit': args.no_pc_limit}
+    elif ctype == 'dmem':
+        largs = {'begin': args.dmem_begin, 'end': args.dmem_end,
+                 'no_limit': args.no_dmem_limit}
+    else:
+        raise ValueError(f"Invalid chart type '{ctype}'. " + \
+                         f"Available types are: 'pc', 'dmem'")
 
-    pc_start, pc_end = 0, 0
+    #symbol_pos = ax.get_xlim()[1]
+    symbol_pos = 1. # for transform=ax.get_yaxis_transform()
+
+    start, end = 0, 0
     # add lines for symbols, if any
     for k,v in symbols.items():
-        pc_start = v['pc_start']
-        pc_end = v['pc_end']
-        # if the symbol is not in the PC range, skip it
-        if not args.no_pc_limit and \
-        (pc_start < df.pc.min() or pc_start > df.pc.max()):
+        start = v['addr_start']
+        end = v['addr_end']
+        # if the symbol is not in the range, skip it
+        if not largs['no_limit'] and \
+        (start < df[ctype].min() and end < df[ctype].min()) or \
+        (start > df[ctype].max() and end > df[ctype].max()):
             continue
-        ax.axhline(y=pc_start, color='k', linestyle='-', alpha=0.5)
-        ax.text(symbol_pos, pc_start,
-                f" ^ {v['func_text']}", color='k',
+        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5)
+        ax.text(symbol_pos, start,
+                f" ^ {v['symbol_text']}", color='k',
                 fontsize=9, ha='left', va='center',
                 bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
                 transform=ax.get_yaxis_transform())
 
     # add line for the last symbol, if any
     if symbols:
-        # ends after last PC entry, FIXME: should be the size of last inst
-        ax.axhline(y=pc_end+4, color='k', linestyle='-', alpha=0.5)
+        # ends after last dmem entry, FIXME: should be the size of last inst
+        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.5)
 
     # first apply execution limits
-    if not args.no_pc_limit:
-        ax.set_ylim(top=(df['pc'].max() & ~0x3F) + CACHE_LINE_BYTES)
-        ax.set_ylim(bottom=df['pc'].min() & ~0x3F)
-    else: # args.no_pc_limit:
+    if not largs['no_limit']:
+        ax.set_ylim(top=(int(df[ctype].max()) & ~0x3F) + CACHE_LINE_BYTES)
+        ax.set_ylim(bottom=int(df[ctype].min()) & ~0x3F)
+    else:
         ax.set_ylim(bottom=0.0)
 
     ## then apply user limits
-    if args.pc_begin:
-        ax.set_ylim(bottom=get_base_int_addr(args.pc_begin))
-    if args.pc_end:
-        ax.set_ylim(top=get_base_int_addr(args.pc_end))
-
-    return ax
-
-def annotate_dmem_chart(df, symbols, ax, args, symbol_pos=None) -> \
-plt.Axes:
-    # first apply execution limits
-    if not args.no_dmem_limit:
-        ax.set_ylim(top=(int(df['dmem'].max()) & ~0x3F) + CACHE_LINE_BYTES)
-        ax.set_ylim(bottom=int(df['dmem'].min()) & ~0x3F)
-    else: # args.no_dmem_limit:
-        ax.set_ylim(bottom=0.0)
-
-    ## then apply user limits
-    if args.dmem_begin:
-        ax.set_ylim(bottom=get_base_int_addr(args.dmem_begin))
-    if args.dmem_end:
-        ax.set_ylim(top=get_base_int_addr(args.dmem_end))
+    if largs['begin']:
+        ax.set_ylim(bottom=get_base_int_addr(largs['begin']))
+    if largs['end']:
+        ax.set_ylim(top=get_base_int_addr(largs['end']))
 
     return ax
 
@@ -495,11 +507,7 @@ def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
         if len(hl_groups) > 0:
             add_legend_for_hl_groups(ax, "trace")
 
-    # annotate the charts
-    if ctype == 'pc':
-        ax = annotate_pc_chart(df, symbols, ax, args)
-    elif ctype == 'dmem':
-        ax = annotate_dmem_chart(df, symbols, ax, args) # empty symbols for now
+    ax = annotate_chart(df, symbols, ax, args, ctype)
     ax = add_cache_line_spans(ax)
 
     # update axis
@@ -591,11 +599,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
             hc += 2 # skip yellow for visibility
             add_legend_for_hl_groups(ax_t, "trace")
 
-    # annotate both
-    if ctype == 'pc':
-        ax_t = annotate_pc_chart(df, symbols, ax_t, args)
-    elif ctype == 'dmem':
-        ax_t = annotate_dmem_chart(df, symbols, ax_t, args)
+    ax_t = annotate_chart(df, symbols, ax_t, args, ctype)
     ax_t = add_cache_line_spans(ax_t)
 
     ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
@@ -669,7 +673,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     m_hl_groups = []
     if args.dasm:
         m_hl_groups = hl_groups
-        symbols, df_map = backannotate_dasm(args, df)
+        symbols, df_map = backannotate_dasm(args, df, "text")
         # merge df_map into df by keeping only records in the df
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
@@ -709,10 +713,12 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if df.iloc[0]['dmem'] == 0:
         df = df.drop(0)
 
-    # TBD: annotate the variables in DMEM (analogous to backannotate_dasm)
+    symbols = {}
+    if args.dasm:
+        symbols, _ = backannotate_dasm(args, df, "data")
 
-    fig = draw_freq(df, hl_groups, title, None, args, ctype='dmem')
-    fig2 = draw_exec(df_og, [], title, [], args, 'dmem')
+    fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
+    fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
     return df, fig, fig2
 
 def run_main(args) -> None:
