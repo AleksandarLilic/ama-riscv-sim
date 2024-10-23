@@ -1,5 +1,5 @@
 LOOPS := 1
-TARGET := vm_uint8
+TARGET := basic
 
 CFLAGS += -DLOOPS=$(LOOPS)
 GCC_OPTS += -O3 -flto
