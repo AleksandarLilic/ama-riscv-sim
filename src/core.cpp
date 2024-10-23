@@ -83,6 +83,7 @@ void core::exec_inst() {
             CASE_DECODER(auipc)
             CASE_DECODER(system)
             CASE_DECODER(misc_mem)
+            CASE_DECODER(custom_ext)
             default: unsupported("opcode");
         }
     }
@@ -352,6 +353,62 @@ void core::misc_mem() {
 }
 
 /*
+ * Custom extension
+ */
+void core::custom_ext() {
+    uint8_t funct3 = ip.funct3();
+    uint8_t funct7 = ip.funct7();
+    if (funct3 == TO_U8(custom_ext_t::fma)) {
+        switch (funct7) {
+            CASE_ALU_CUSTOM_OP(fma16)
+            CASE_ALU_CUSTOM_OP(fma8)
+            CASE_ALU_CUSTOM_OP(fma4)
+            default : unsupported("fma");
+        }
+    } else {
+        unsupported("custom extension");
+    }
+    next_pc = pc + 4;
+    #ifdef ENABLE_DASM
+    DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
+               << "," << rf_names[ip.rs2()][RF_NAMES];
+    #endif
+}
+
+// multiply 2 halfword chunks and sum the results
+uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
+    int32_t res = 0;
+    for (int i = 0; i < 2; i++) {
+        res += TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
+        a >>= 16;
+        b >>= 16;
+    }
+    return res;
+}
+
+// multiply 4 byte chunks and sum the results
+uint32_t core::al_c_fma8(uint32_t a, uint32_t b) {
+    int32_t res = 0;
+    for (int i = 0; i < 4; i++) {
+        res += TO_I32(TO_I8(a & 0xff)) * TO_I32(TO_I8(b & 0xff));
+        a >>= 8;
+        b >>= 8;
+    }
+    return res;
+}
+
+// multiply 8 nibble chunks and sum the results
+uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
+    int32_t res = 0;
+    for (int i = 0; i < 8; i++) {
+        res += TO_I32(TO_I4(a & 0xf)) * TO_I32(TO_I4(b & 0xf));
+        a >>= 4;
+        b >>= 4;
+    }
+    return res;
+}
+
+/*
  * Zicsr extension
  */
 void core::csr_access() {
@@ -489,7 +546,7 @@ void core::c_addi() {
     DASM_OP(c.addi)
     PROF_G(c_addi)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int32_t)ip.imm_c_arith();
+    DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
     #endif
     next_pc = pc + 2;
 }
@@ -499,7 +556,7 @@ void core::c_li() {
     DASM_OP(c.li)
     PROF_G(c_li)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int32_t)ip.imm_c_arith();
+    DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
     #endif
     next_pc = pc + 2;
 }
@@ -531,7 +588,7 @@ void core::c_addi16sp() {
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int32_t)ip.imm_c_16sp();
+    DASM_OP_RD << "," << TO_I32(ip.imm_c_16sp());
     #endif
     next_pc = pc + 2;
 }
@@ -541,7 +598,7 @@ void core::c_srli() {
     DASM_OP(c.srli)
     PROF_G(c_srli)
     #ifdef ENABLE_DASM
-    DASM_OP_CREGH << "," << (int32_t)ip.imm_c_arith();
+    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     #endif
     next_pc = pc + 2;
 }
@@ -551,7 +608,7 @@ void core::c_srai() {
     DASM_OP(c.srai)
     PROF_G(c_srai)
     #ifdef ENABLE_DASM
-    DASM_OP_CREGH << "," << (int32_t)ip.imm_c_arith();
+    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     #endif
     next_pc = pc + 2;
 }
@@ -561,7 +618,7 @@ void core::c_andi() {
     DASM_OP(c.andi)
     PROF_G(c_andi)
     #ifdef ENABLE_DASM
-    DASM_OP_CREGH << "," << (int32_t)ip.imm_c_arith();
+    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     #endif
     next_pc = pc + 2;
 }
@@ -614,7 +671,7 @@ void core::c_addi4spn() {
     PROF_G(c_addi4spn)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
-                << (int32_t)ip.imm_c_4spn();
+                << TO_I32(ip.imm_c_4spn());
     #endif
     next_pc = pc + 2;
 }
@@ -627,7 +684,7 @@ void core::c_slli() {
     prof_fusion.attack({trigger::slli_lea, inst, mem->get_inst(pc + 2), true});
     #endif
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << std::hex << "0x" <<  (int32_t)ip.imm_c_slli()
+    DASM_OP_RD << "," << std::hex << "0x" <<  TO_I32(ip.imm_c_slli())
                << std::dec;
     #endif
     next_pc = pc + 2;

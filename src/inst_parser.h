@@ -6,7 +6,7 @@ class inst_parser {
     public:
         uint32_t copcode() { return (inst & M_OPC2); }
         uint32_t opcode() { return (inst & M_OPC7); }
-        //uint32_t funct7() { return (inst & M_FUNCT7) >> 25; }
+        uint32_t funct7() { return (inst & M_FUNCT7) >> 25; }
         uint32_t funct7_b5() { return (inst & M_FUNCT7_B5) >> 30; }
         uint32_t funct7_b1() { return (inst & M_FUNCT7_B1) >> 25; }
         uint32_t funct3() { return (inst & M_FUNCT3) >> 12; }

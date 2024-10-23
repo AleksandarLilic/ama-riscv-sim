@@ -28,6 +28,10 @@ profiler::profiler(std::string log_name) {
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
     prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
 
+    prof_g_arr[TO_U32(opc_g::i_fma16)] = {"fma16", 0};
+    prof_g_arr[TO_U32(opc_g::i_fma8)] = {"fma8", 0};
+    prof_g_arr[TO_U32(opc_g::i_fma4)] = {"fma4", 0};
+
     prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
     prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
     prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};

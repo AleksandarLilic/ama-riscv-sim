@@ -30,9 +30,9 @@ class core{
     private:
         void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
         void write_csr(uint16_t addr, uint32_t data) {
-            if (csr.at(addr).perm == perm_t::ro)
+            if (csr.at(addr).perm == csr_perm_t::ro)
                 illegal("CSR write attempt to RO CSR", 4);
-            if (csr.at(addr).perm == perm_t::warl_unimp)
+            if (csr.at(addr).perm == csr_perm_t::warl_unimp)
                 return;
             csr.at(addr).value = data;
         }
@@ -50,6 +50,7 @@ class core{
         void auipc();
         void system();
         void misc_mem();
+        void custom_ext();
         void unsupported(const std::string &msg);
         void illegal(const std::string &msg, uint32_t memw);
         // void reset();
@@ -63,19 +64,19 @@ class core{
 
         // arithmetic and logic operations
         uint32_t al_add(uint32_t a, uint32_t b) {
-            return int32_t(a) + int32_t(b);
+            return TO_I32(a) + TO_I32(b);
         };
         uint32_t al_sub(uint32_t a, uint32_t b) {
-            return int32_t(a) - int32_t(b);
+            return TO_I32(a) - TO_I32(b);
         };
         uint32_t al_sll(uint32_t a, uint32_t b) { return a << b; };
         uint32_t al_srl(uint32_t a, uint32_t b) { return a >> b; };
         uint32_t al_sra(uint32_t a, uint32_t b) {
             b &= 0x1f;
-            return int32_t(a) >> b;
+            return TO_I32(a) >> b;
         };
         uint32_t al_slt(uint32_t a, uint32_t b) {
-            return int32_t(a) < int32_t(b);
+            return TO_I32(a) < TO_I32(b);
         };
         uint32_t al_sltu(uint32_t a, uint32_t b) { return a < b; };
         uint32_t al_xor(uint32_t a, uint32_t b) { return a ^ b; };
@@ -84,18 +85,18 @@ class core{
 
         // arithmetic and logic operations - M extension
         uint32_t al_mul(uint32_t a, uint32_t b) {
-            return int32_t(a) * int32_t(b);
+            return TO_I32(a) * TO_I32(b);
         };
         uint32_t al_mulh(uint32_t a, uint32_t b) {
-            int64_t res = int64_t(int32_t(a)) * int64_t(int32_t(b));
+            int64_t res = TO_I64(TO_I32(a)) * TO_I64(TO_I32(b));
             return res >> 32;
         };
         uint32_t al_mulhsu(uint32_t a, uint32_t b) {
-            int64_t res = int64_t(int32_t(a)) * int64_t(b);
+            int64_t res = TO_I64(TO_I32(a)) * TO_I64(b);
             return res >> 32;
         };
         uint32_t al_mulhu(uint32_t a, uint32_t b) {
-            uint64_t res = uint64_t(a) * uint64_t(b);
+            uint64_t res = TO_U64(a) * TO_U64(b);
             return res >> 32;
         };
         uint32_t al_div(uint32_t a, uint32_t b) {
@@ -103,7 +104,7 @@ class core{
             if (b == 0) return -1;
             // overflow (most negative int divided by -1)
             if (a == 0x80000000 && b == 0xffffffff) return a;
-            return int32_t(a) / int32_t(b);
+            return TO_I32(a) / TO_I32(b);
         };
         uint32_t al_divu(uint32_t a, uint32_t b) {
             if (b == 0) return 0xffffffff;
@@ -112,7 +113,7 @@ class core{
         uint32_t al_rem(uint32_t a, uint32_t b) {
             if (b == 0) return a;
             if (a == 0x80000000 && b == 0xffffffff) return 0;
-            return int32_t(a) % int32_t(b);
+            return TO_I32(a) % TO_I32(b);
         };
         uint32_t al_remu(uint32_t a, uint32_t b) {
             if (b == 0) return a;
@@ -197,16 +198,16 @@ class core{
         bool branch_beq() { return rf[ip.rs1()] == rf[ip.rs2()]; }
         bool branch_bne() { return rf[ip.rs1()] != rf[ip.rs2()]; }
         bool branch_blt() {
-            return int32_t(rf[ip.rs1()]) < int32_t(rf[ip.rs2()]);
+            return TO_I32(rf[ip.rs1()]) < TO_I32(rf[ip.rs2()]);
         }
         bool branch_bge() {
-            return int32_t(rf[ip.rs1()]) >= int32_t(rf[ip.rs2()]);
+            return TO_I32(rf[ip.rs1()]) >= TO_I32(rf[ip.rs2()]);
         }
         bool branch_bltu() {
-            return (uint32_t)rf[ip.rs1()] < (uint32_t)rf[ip.rs2()];
+            return TO_U32(rf[ip.rs1()]) < TO_U32(rf[ip.rs2()]);
         }
         bool branch_bgeu() {
-            return (uint32_t)rf[ip.rs1()] >= (uint32_t)rf[ip.rs2()];
+            return TO_U32(rf[ip.rs1()]) >= TO_U32(rf[ip.rs2()]);
         }
 
         // csr operations
@@ -229,6 +230,11 @@ class core{
             if (ip.rs1() == 0) return;
             W_CSR(csr.at(ip.csr_addr()).value & ~ip.uimm_csr());
         }
+
+        // custom extension
+        uint32_t al_c_fma16(uint32_t a, uint32_t b);
+        uint32_t al_c_fma8(uint32_t a, uint32_t b);
+        uint32_t al_c_fma4(uint32_t a, uint32_t b);
 
         // C extension
         void c0();
@@ -293,22 +299,22 @@ class core{
         #endif
         memory *mem;
         static constexpr std::array<CSR_entry, 14> supported_csrs = {{
-            {CSR_TOHOST, "tohost", perm_t::rw, 0u},
-            {CSR_MSCRATCH, "mscratch", perm_t::rw, 0u},
-            {CSR_MCYCLE, "mcycle", perm_t::rw, 0u},
-            {CSR_MINSTRET, "minstret", perm_t::rw, 0u},
-            {CSR_MCYCLEH, "mcycleh", perm_t::rw, 0u},
-            {CSR_MINSTRETH, "minstreth", perm_t::rw, 0u},
+            {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
+            {CSR_MSCRATCH, "mscratch", csr_perm_t::rw, 0u},
+            {CSR_MCYCLE, "mcycle", csr_perm_t::rw, 0u},
+            {CSR_MINSTRET, "minstret", csr_perm_t::rw, 0u},
+            {CSR_MCYCLEH, "mcycleh", csr_perm_t::rw, 0u},
+            {CSR_MINSTRETH, "minstreth", csr_perm_t::rw, 0u},
             // read only CSRs
-            {CSR_MISA, "misa", perm_t::warl_unimp, 0u},
-            {CSR_MHARTID, "mhartid", perm_t::ro, 0u},
+            {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
+            {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
             // read only user CSRs
-            {CSR_CYCLE, "cycle", perm_t::ro, 0u},
-            {CSR_TIME, "time", perm_t::ro, 0u},
-            {CSR_INSTRET, "instret", perm_t::ro, 0u},
-            {CSR_CYCLEH, "cycleh", perm_t::ro, 0u},
-            {CSR_TIMEH, "timeh", perm_t::ro, 0u},
-            {CSR_INSTRETH, "instreth", perm_t::ro, 0u},
+            {CSR_CYCLE, "cycle", csr_perm_t::ro, 0u},
+            {CSR_TIME, "time", csr_perm_t::ro, 0u},
+            {CSR_INSTRET, "instret", csr_perm_t::ro, 0u},
+            {CSR_CYCLEH, "cycleh", csr_perm_t::ro, 0u},
+            {CSR_TIMEH, "timeh", csr_perm_t::ro, 0u},
+            {CSR_INSTRETH, "instreth", csr_perm_t::ro, 0u},
         }};
         #ifdef ENABLE_PROF
         profiler prof;

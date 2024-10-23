@@ -37,6 +37,9 @@ enum class opc_g {
     // hints
     i_hint,
 
+    // custom
+    i_fma16, i_fma8, i_fma4,
+
     // Zicsr extension
     i_csrrw, i_csrrs, i_csrrc, i_csrrwi, i_csrrsi, i_csrrci,
 

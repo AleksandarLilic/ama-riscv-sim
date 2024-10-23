@@ -22,6 +22,8 @@
 #define TO_I16(x) static_cast<int16_t>(x)
 #define TO_U8(x) static_cast<uint8_t>(x)
 #define TO_I8(x) static_cast<int8_t>(x)
+#define TO_U4(x) static_cast<uint8_t>(x & 0xF)
+#define TO_I4(x) static_cast<int8_t>((x & 0xF) | ((x & 0x8) ? 0xF0 : 0x00))
 
 #ifdef USE_ABI_NAMES
 #define RF_NAMES 1u
@@ -54,7 +56,8 @@ enum class opcode {
     lui = 0b011'0111, // U type
     auipc = 0b001'0111, // U type
     system = 0b111'0011, // I type
-    misc_mem = 0b000'1111 // I type
+    misc_mem = 0b000'1111, // I type
+    custom_ext = 0b0000'1011
 };
 
 enum class alu_r_op_t {
@@ -125,7 +128,17 @@ enum class csr_op_t {
     op_rci = 0b111
 };
 
-enum class perm_t {
+enum class custom_ext_t {
+    fma = 0b000,
+};
+
+enum class alu_custom_op_t {
+    op_fma16 = 0x0,
+    op_fma8 = 0x1,
+    op_fma4 = 0x2,
+};
+
+enum class csr_perm_t {
     ro = 0b00,
     rw = 0b01,
     warl_unimp = 0b10
@@ -208,16 +221,16 @@ struct logging_pc_t {
 struct CSR {
     const char* name;
     uint32_t value;
-    const perm_t perm;
-    CSR() : name(""), value(0), perm(perm_t::ro) {} // FIXME
-    CSR(const char* name, int value, const perm_t perm) :
+    const csr_perm_t perm;
+    CSR() : name(""), value(0), perm(csr_perm_t::ro) {} // FIXME
+    CSR(const char* name, int value, const csr_perm_t perm) :
         name(name), value(value), perm(perm) {}
 };
 
 struct CSR_entry {
     const uint16_t csr_addr;
     const char* csr_name;
-    const perm_t perm;
+    const csr_perm_t perm;
     const uint32_t boot_val;
 };
 
@@ -295,6 +308,14 @@ struct CSR_entry {
         } \
         DASM_OP(op) \
         PROF_RS1_RS2 \
+        break;
+
+#define CASE_ALU_CUSTOM_OP(op) \
+    case (uint8_t)alu_custom_op_t::op_##op: \
+        write_rf(ip.rd(), al_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
         break;
 
 #define CASE_CSR(op) \

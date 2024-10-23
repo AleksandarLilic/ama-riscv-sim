@@ -32,7 +32,7 @@ TRACES := *_trace*.csv *_trace*.bin *_trace*.png *_trace*.svg
 REG_HIST := *_reg_hist.csv *_reg_hist.bin
 
 cleanlogs:
-	rm -f *.log $(TRACES) $(REG_HIST) *_perf_est.csv
+	rm -f *.log $(TRACES) $(REG_HIST) $(INST_LOGS) *_perf_est.csv
 
 clean: cleanlogs
 	rm -f $(TARGET)* $(OBJECTS) $(DEPS) *.i *.s *.d *.ii *.gc*
