@@ -11,7 +11,7 @@
     "vector_al_uint8": ["basic"],
     "vector_mac_uint8": ["basic"],
     "vector_basic": ["all"],
-    "matmul_1d_int8": ["basic"],
+    "dot_product": ["all"],
     "sorting": ["all"],
     "uart_direct_send": ["hello_world"],
     "uart_printf_mini": ["hello_world"],

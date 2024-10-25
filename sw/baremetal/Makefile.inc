@@ -4,7 +4,7 @@ RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
-COMMON_OBJ_NAMES += common.o crt0.o
+COMMON_OBJ_NAMES += crt0.o common.o common_math.o mini-printf.o
 COMMON_PATH := ../common
 COMMON_OBJS = $(addprefix $(COMMON_PATH)/, $(COMMON_OBJ_NAMES))
 
@@ -19,6 +19,7 @@ USER_DEFINES =
 # if not set in test's Makefile, default to all supported ISA extensions
 export MARCH ?= rv32imc_zicsr_zifencei_zicntr
 export MABI ?= ilp32
+export CFLAGS
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
@@ -53,7 +54,7 @@ clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map
 
 clean_common:
-	@make -C $(COMMON_PATH) clean
+	@make -C $(COMMON_PATH) --no-print-directory clean
 
 cleanall: clean clean_common
 

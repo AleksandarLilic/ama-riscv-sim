@@ -20,10 +20,10 @@ GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
 all: $(OBJECTS_C) $(OBJECTS_S)
 
 %.o: %.c
-	@$(RV_GNU)-gcc $(GCC_OPTS) -c $< -o $@ $(USER_DEFINES)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
 
 %.o: %.S
-	@$(RV_GNU)-gcc $(GCC_OPTS) -c $< -o $@ $(USER_DEFINES)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
 
 clean:
 	rm -f *.o *.d *.i *.s
