@@ -11,3 +11,5 @@
 *_symbols.json
 local/
 baremetal/*/test_array*h
+
+NN/data/*

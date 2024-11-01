@@ -11,6 +11,7 @@ ama-riscv-sim*
 
 # profiler stuff
 *inst_profiler.json
+*hw_stats.json
 *_trace.bin
 *_trace.csv
 *_trace_out.csv
