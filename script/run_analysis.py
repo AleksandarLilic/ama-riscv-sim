@@ -71,14 +71,11 @@ colors = {
 }
 
 hl_colors = [
-    #"#33C1B1", # keppel
     "#3ECCBB", # turquoise
-    #"#e9c46a", # yellow
-    #"#ECCE83", # jasmine
     "#EED595", # peach yellow
     "#f4a261", # orange
     "#e76f51", # red
-    "#2a9d8f", # teal
+    "#538D85", # teal
 ]
 
 # memory instructions breakdown store vs load
@@ -444,28 +441,6 @@ plt.Axes:
     #symbol_pos = ax.get_xlim()[1]
     symbol_pos = 1. # for transform=ax.get_yaxis_transform()
 
-    start, end = 0, 0
-    # add lines for symbols, if any
-    for k,v in symbols.items():
-        start = v['addr_start']
-        end = v['addr_end']
-        # if the symbol is not in the range, skip it
-        if not largs['no_limit'] and \
-        (start < df[ctype].min() and end < df[ctype].min()) or \
-        (start > df[ctype].max() and end > df[ctype].max()):
-            continue
-        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5)
-        ax.text(symbol_pos, start,
-                f" ^ {v['symbol_text']}", color='k',
-                fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-                transform=ax.get_yaxis_transform())
-
-    # add line for the last symbol, if any
-    if symbols:
-        # ends after last dmem entry, FIXME: should be the size of last inst
-        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.5)
-
     # first apply execution limits
     if not largs['no_limit']:
         ax.set_ylim(top=(int(df[ctype].max()) & ~0x3F) + CACHE_LINE_BYTES)
@@ -478,6 +453,27 @@ plt.Axes:
         ax.set_ylim(bottom=get_base_int_addr(largs['begin']))
     if largs['end']:
         ax.set_ylim(top=get_base_int_addr(largs['end']))
+
+    start, end = 0, 0
+    ymin, ymax = ax.get_ylim()
+    # add lines for symbols, if any
+    for k,v in symbols.items():
+        start = v['addr_start']
+        end = v['addr_end']
+        # if the symbol is not in the range, skip it
+        if (start < ymin and end < ymin) or (start > ymax and end > ymax):
+            continue
+        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5)
+        ax.text(symbol_pos, start,
+                f" ^ {v['symbol_text']}", color='k',
+                fontsize=9, ha='left', va='center',
+                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+                transform=ax.get_yaxis_transform())
+
+    # add line for the last symbol, if any
+    if symbols:
+        # ends after last dmem entry, FIXME: should be the size of last inst
+        ax.axhline(y=end+2, color='k', linestyle='-', alpha=0.5)
 
     return ax
 
