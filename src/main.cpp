@@ -37,8 +37,8 @@ int main(int argc, char* argv[]) {
     std::string test_bin = argv[1];
 
     // Parse optional arguments
-    uint32_t pc_start = NULL;
-    uint32_t pc_stop = NULL;
+    uint32_t pc_start = 0;
+    uint32_t pc_stop = 0;
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
         i++;

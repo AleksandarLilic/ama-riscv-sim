@@ -131,12 +131,13 @@ void core::exec_inst() {
 // }
 
 void core::finish(bool dump_regs) {
+    #ifdef ENABLE_HW_PROF
+    log_hw_stats();
+    #endif
     if (dump_regs) dump();
 }
 
-/*
- * Integer extension
- */
+// Integer extension
 void core::al_reg() {
     bool is_mul = ip.funct7_b1() == 1;
     uint32_t funct3 = ip.funct3();
@@ -352,9 +353,7 @@ void core::misc_mem() {
     }
 }
 
-/*
- * Custom extension
- */
+// Custom extension
 void core::custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
@@ -375,8 +374,8 @@ void core::custom_ext() {
     #endif
 }
 
-// multiply 2 halfword chunks and sum the results
 uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
+    // multiply 2 halfword chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 2; i++) {
         res += TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
@@ -386,8 +385,8 @@ uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
     return res;
 }
 
-// multiply 4 byte chunks and sum the results
 uint32_t core::al_c_fma8(uint32_t a, uint32_t b) {
+    // multiply 4 byte chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 4; i++) {
         res += TO_I32(TO_I8(a & 0xff)) * TO_I32(TO_I8(b & 0xff));
@@ -397,8 +396,8 @@ uint32_t core::al_c_fma8(uint32_t a, uint32_t b) {
     return res;
 }
 
-// multiply 8 nibble chunks and sum the results
 uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
+    // multiply 8 nibble chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 8; i++) {
         res += TO_I32(TO_I4(a & 0xf)) * TO_I32(TO_I4(b & 0xf));
@@ -408,9 +407,7 @@ uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
     return res;
 }
 
-/*
- * Zicsr extension
- */
+// Zicsr extension
 void core::csr_access() {
     cntr_update();
     uint32_t csr_addr = ip.csr_addr();
@@ -437,9 +434,7 @@ void core::csr_access() {
     }
 }
 
-/*
- * Zicntr extension
- */
+// Zicntr extension
 void core::cntr_update() {
     // TODO: for DPI environment, these have to either be revisited or ignored
     uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
@@ -462,9 +457,7 @@ void core::cntr_update() {
     csr.at(CSR_TIMEH).value = TO_U32(mtime >> 32);
 }
 
-/*
- * C extension
- */
+// C extension - decoders
 void core::c0() {
     uint32_t funct3 = ip.cfunct3();
     switch (funct3) {
@@ -872,9 +865,21 @@ void core::illegal(const std::string &msg, uint32_t memw) {
     throw std::runtime_error("Illegal instruction");
 }
 
-/*
- * Utilities
- */
+// HW stats
+#ifdef ENABLE_HW_PROF
+void core::log_hw_stats() {
+    std::ofstream ofs;
+    ofs.open(log_name + "_hw_stats.json");
+    ofs << "{\n";
+    mem->log_cache_stats(ofs);
+    // TODO: branch predictor stats
+    ofs << "\"_done\": true"; // to avoid trailing comma
+    ofs << "\n}\n";
+    ofs.close();
+}
+#endif
+
+// Utilities
 void core::dump() {
     #ifdef UART_ENABLE
     std::cout << std::endl;

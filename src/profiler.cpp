@@ -158,15 +158,15 @@ void profiler::log_to_file() {
     ofs << "{\n";
     for (auto &i : prof_g_arr) {
         if (i.name != "") {
-            ofs << JSON_ENTRY(i.name, i.count) << std::endl;
+            ofs << PROF_JSON_ENTRY(i.name, i.count) << std::endl;
             profiled_inst_cnt += i.count;
         }
     }
 
     for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
         inst_prof_j& e = prof_j_arr[i];
-        ofs << JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
-                                   e.count_not_taken, e.count_not_taken_fwd);
+        ofs << PROF_JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
+                                 e.count_not_taken, e.count_not_taken_fwd);
         ofs << std::endl;
         profiled_inst_cnt += e.count_taken + e.count_not_taken;
     }

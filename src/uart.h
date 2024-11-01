@@ -11,13 +11,13 @@
 #include <chrono>
 
 enum class uart_baud_rate {
-    baud_9600 = 9600,
-    baud_19200 = 19200,
-    baud_38400 = 38400,
-    baud_57600 = 57600,
-    baud_115200 = 115200,
-    baud_230400 = 230400,
-    baud_460800 = 460800
+    _9600 = 9600,
+    _19200 = 19200,
+    _38400 = 38400,
+    _57600 = 57600,
+    _115200 = 115200,
+    _230400 = 230400,
+    _460800 = 460800
 };
 #endif
 
@@ -38,9 +38,9 @@ class uart : public dev {
     public:
         uart(size_t size);
         ~uart();
-        void wr(uint32_t address, uint8_t data);
+        void wr32(uint32_t address, uint32_t data) override;
     #ifdef UART_INPUT_ENABLE
-        uint8_t rd(uint32_t address);
+        uint32_t rd32(uint32_t address) override;
     private:
         void uart_stdin(uart_baud_rate baud_rate);
     #endif

@@ -3,13 +3,11 @@
 uart::uart(size_t size) :
     dev(size)
 {
-    std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
     #ifdef UART_INPUT_ENABLE
     uart_running = true;
     uart_in_ready = false;
-    uart_thread = std::thread(&uart::uart_stdin, this,
-                              uart_baud_rate::baud_115200);
+    uart_thread = std::thread(&uart::uart_stdin, this, uart_baud_rate::_115200);
     std::unique_lock<std::mutex> lock(mtx);
     cv.wait(lock, [this] () { return uart_in_ready.load(); });
     #endif
@@ -23,25 +21,25 @@ uart::~uart() {
     #endif
 }
 
-inline void uart::wr(uint32_t address, uint8_t data) {
+void uart::wr32(uint32_t address, uint32_t data) {
     // writes to status and rx_data registers are ignored
     if (address == UART_TX_DATA) {
-        mem[address] = data;
-        std::cout << data << std::flush;
+        // write to memory
+        dev::wr32(address, TO_U8(data));
+        // emulate the effect of writing to uart tx_data register
+        std::cout << TO_U8(data) << std::flush;
     }
 }
 
 #ifdef UART_INPUT_ENABLE
-inline uint8_t uart::rd(uint32_t address) {
+uint32_t uart::rd32(uint32_t address) {
     if (address < UART_RX_DATA) // reads from status register
-        return mem[address];
+        return dev::rd8(address);
 
     if (address == UART_RX_DATA) { // reads from rx_data register with lock
-        #ifdef UART_INPUT_ENABLE
         std::lock_guard<std::mutex> lock(mtx);
         mem[UART_STATUS] &= ~UART_RX_VALID;
-        #endif
-        return mem[UART_RX_DATA];
+        return dev::rd8(address);
     }
     return 0; // tx data not readable, return 0
 }

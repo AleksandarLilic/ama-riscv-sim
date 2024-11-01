@@ -273,6 +273,10 @@ class core{
         // C extension - system
         void c_ebreak();
 
+        #ifdef ENABLE_HW_PROF
+        void log_hw_stats();
+        #endif
+
     private:
         bool running;
         bool logging;

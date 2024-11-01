@@ -5,11 +5,11 @@
 
 #include "defines.h"
 
-#define JSON_ENTRY(name, count) \
+#define PROF_JSON_ENTRY(name, count) \
     "\"" << name << "\"" << ": {\"count\": " << count << "},"
 
-#define JSON_ENTRY_J(name, count_taken, count_taken_fwd, \
-                     count_not_taken, count_not_taken_fwd) \
+#define PROF_JSON_ENTRY_J(name, count_taken, count_taken_fwd, \
+                          count_not_taken, count_not_taken_fwd) \
     "\"" << name << "\"" << ": {\"count\": " << count_taken + count_not_taken \
     << ", \"breakdown\": {" \
     << "\"taken\": " << count_taken << ", " \

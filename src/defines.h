@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdio.h>
-#include <stdint.h>
+#include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include <array>
@@ -11,8 +10,6 @@
 #include <cmath>
 #include <map>
 #include <chrono>
-
-#include "dev.h"
 
 #define TO_U64(x) static_cast<uint64_t>(x)
 #define TO_I64(x) static_cast<int64_t>(x)
@@ -43,6 +40,18 @@
 //#define MEM_SIZE 262144
 //#define MEM_SIZE 524288
 #define UART0_SIZE 12 // 3 32-bit registers
+
+#define ENABLE_HW_PROF // enabled by default
+
+//#ifdef ENABLE_HW_PROF
+//#define CACHE_MODE_PERF 0 // just tags and stats
+//#define CACHE_MODE_FUNC 1 // adds data
+//
+//#ifndef CACHE_MODE
+//#define CACHE_MODE CACHE_MODE_PERF
+//#endif
+
+//#endif
 
 // Decoder types
 enum class opcode {
@@ -338,12 +347,6 @@ struct CSR_entry {
 
 #define W_CSR(expr) \
     write_csr(ip.csr_addr(), expr)
-
-struct mem_entry {
-    uint32_t base;
-    uint32_t size;
-    dev *ptr;
-};
 
 #define MEM_OUT_OF_RANGE(addr, reson) \
     do { \
