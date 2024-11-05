@@ -33,11 +33,11 @@ _start:
     li  x29,0
     li  x30,0
     li  x31,0
-    la      sp,__stack_top
 .option push
 .option norelax
     la		gp,__global_pointer$
 .option pop
+    la      sp,__stack_top
     la      a0,__bss_start
     la      a1,__BSS_END__
 clear_bss_w: # word at a time

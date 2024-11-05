@@ -3,7 +3,7 @@
 #define TO_U4(x) (uint8_t)(x & 0xF)
 #define TO_I4(x) (int8_t)((x & 0xF) | ((x & 0x8) ? 0xF0 : 0x00))
 
-int32_t dot_product_int16(int16_t* a, int16_t* b, size_t len) {
+int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
 
     #if defined(LOAD_OPT) || defined(CUSTOM_ISA)
@@ -44,7 +44,7 @@ int32_t dot_product_int16(int16_t* a, int16_t* b, size_t len) {
     return c;
 }
 
-int32_t dot_product_int8(int8_t* a, int8_t* b, size_t len) {
+int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
 
     #if defined(LOAD_OPT) || defined(CUSTOM_ISA)
@@ -85,7 +85,7 @@ int32_t dot_product_int8(int8_t* a, int8_t* b, size_t len) {
     return c;
 }
 
-int32_t dot_product_int4(int8_t* a, int8_t* b, size_t len) {
+int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
 
     #if defined(LOAD_OPT) || defined(CUSTOM_ISA)
