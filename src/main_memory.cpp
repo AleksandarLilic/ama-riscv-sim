@@ -1,7 +1,13 @@
 #include "main_memory.h"
 
-#define ICACHE_BLOCKS 8 // TODO: pass from cli
-#define DCACHE_BLOCKS 8 // TODO: pass from cli
+// TODO: pass from cli
+#define ICACHE_ENTRIES 8
+#define ICACHE_WAYS 8
+#define ICACHE_SETS ICACHE_ENTRIES/ICACHE_WAYS
+
+#define DCACHE_ENTRIES 8
+#define DCACHE_WAYS 8
+#define DCACHE_SETS DCACHE_ENTRIES/DCACHE_WAYS
 
 #ifdef ENABLE_HW_PROF
 #define CACHE_ACCESS(cache, width, address) \
@@ -14,8 +20,8 @@ main_memory::main_memory(size_t size, std::string test_bin) :
     dev(size)
     #ifdef ENABLE_HW_PROF
     ,
-    icache(ICACHE_BLOCKS, "Icache"),
-    dcache(DCACHE_BLOCKS, "Dcache")
+    icache(ICACHE_SETS, ICACHE_WAYS, "Icache"),
+    dcache(DCACHE_SETS, DCACHE_WAYS, "Dcache")
     #endif
 {
     burn(test_bin);
@@ -41,11 +47,11 @@ void main_memory::burn(std::string test_bin) {
     bin_file.close();
 }
 
-//std::array<uint8_t, CACHE_BLOCK_SIZE> dev::rd_block(uint32_t address) {
+//std::array<uint8_t, CACHE_LINE_SIZE> dev::rd_line(uint32_t address) {
 //    address = set_addr(address);
-//    CHECK_ADDRESS(address, CACHE_BLOCK_SIZE)
-//    std::array<uint8_t, CACHE_BLOCK_SIZE> data;
-//    for (uint32_t i = 0; i < CACHE_BLOCK_SIZE; i++)
+//    CHECK_ADDRESS(address, CACHE_LINE_SIZE)
+//    std::array<uint8_t, CACHE_LINE_SIZE> data;
+//    for (uint32_t i = 0; i < CACHE_LINE_SIZE; i++)
 //        data[i] = dev_ptr->rd(address + i);
 //    return data;
 //}

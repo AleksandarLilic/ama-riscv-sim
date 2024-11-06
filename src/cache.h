@@ -13,16 +13,18 @@
 struct metadata_t {
     bool valid;
     bool dirty;
-    metadata_t() : valid(false), dirty(false) {}
+    uint32_t lru_cnt;
+    metadata_t() : valid(false), dirty(false), lru_cnt(0) {}
 };
 
-struct cache_block_t {
+struct cache_line_t {
     metadata_t metadata;
     uint32_t tag;
     //#if CACHE_MODE == CACHE_MODE_FUNC
-    //std::array<uint8_t, CACHE_BLOCK_SIZE> data;
+    //std::array<uint8_t, CACHE_LINE_SIZE> data;
     //#endif
-    cache_block_t() : metadata(), tag(0) {}
+    uint32_t access_cnt; // as a utilization of the cache line
+    cache_line_t() : metadata(), tag(0), access_cnt(0) {}
 };
 
 struct cache_stats_t {
@@ -35,20 +37,28 @@ struct cache_stats_t {
 
 enum class access_type_t { read, write };
 
+struct evict_t {
+    uint32_t way;
+    uint32_t lru_cnt;
+    evict_t() : way(0), lru_cnt(0) {}
+};
+
 class cache {
     private:
         //memory* mem;
-        size_t block_num;
-        size_t index_bits;
-        size_t index_mask;
-        std::vector<cache_block_t> cache_data;
+        uint32_t sets;
+        uint32_t ways;
+        uint32_t index_bits_num;
+        uint32_t index_mask;
+        uint32_t tag_bits_num;
+        std::vector<std::vector<cache_line_t>> cache_entries;
         cache_stats_t stats;
         std::string cache_name;
 
     public:
         cache() = delete;
-        //cache(memory* mem, size_t block_num);
-        cache(size_t block_num, std::string cache_name);
+        //cache(uint32_t sets, uint32_t ways, std::string cache_name, memory* mem);
+        cache(uint32_t sets, uint32_t ways, std::string cache_name);
         uint8_t rd8(uint32_t addr);
         uint16_t rd16(uint32_t addr);
         uint32_t rd32(uint32_t addr);
@@ -60,5 +70,6 @@ class cache {
 
 private:
         void access(uint32_t addr, access_type_t atype);
+        void update_lru(uint32_t index, uint32_t way);
         bool is_pow_2(int n) const { return n > 0 && !(n & (n - 1)); }
 };

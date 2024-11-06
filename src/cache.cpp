@@ -1,60 +1,91 @@
 #include "cache.h"
 
-#define CACHE_BLOCK_SIZE 64 // bytes
-#define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_BLOCK_SIZE)) // 6
-#define CACHE_BYTE_ADDR_MASK (CACHE_BLOCK_SIZE - 1) // 0x3F, bottom 6 bits
+#define CACHE_LINE_SIZE 64 // bytes
+#define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
+#define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
 
-
-cache::cache(size_t block_num, std::string cache_name)
-    : block_num(block_num), cache_name(cache_name) {
-    if (!is_pow_2(block_num)) {
+cache::cache(uint32_t sets, uint32_t ways, std::string cache_name)
+    : sets(sets), ways(ways), cache_name(cache_name) {
+    if (!is_pow_2(sets) || !is_pow_2(ways)) {
         std::string err_msg =
-            "Number of blocks must be a power of 2. Specified: " +
-            std::to_string(block_num);
+            "Number of sets (in: " + std::to_string(sets) +
+            ") and ways (in: " + std::to_string(ways) +
+            ") must be a power of 2.";
         throw std::runtime_error(err_msg);
     }
 
-    cache_data.resize(block_num);
-    index_bits = 0;
+    // first dim is number of sets
+    cache_entries.resize(sets);
+    // second dim number of ways in a set
+    // go through all entires and initialize lru_cnt
+    for (uint32_t set = 0; set < sets; set++) {
+        cache_entries[set].resize(ways);
+        for (uint32_t way = 0; way < ways; way++)
+            cache_entries[set][way].metadata.lru_cnt = way;
+    }
+
+    index_bits_num = 0;
     index_mask = 0;
-    for (size_t i = block_num; i > 1; i >>= 1) {
-        index_bits++;
+    for (uint32_t i = sets; i > 1; i >>= 1) {
+        index_bits_num++;
         index_mask = (index_mask << 1) | 1;
     }
+    tag_bits_num = 32 - index_bits_num - CACHE_BYTE_ADDR_BITS;
+}
+
+void cache::update_lru(uint32_t index, uint32_t way) {
+    auto& active_set = cache_entries[index];
+    auto& active_lru_cnt = active_set[way].metadata.lru_cnt;
+    // increment all counters newer than the current way
+    for (uint32_t i = 0; i < ways; i++) {
+        auto& line = active_set[i];
+        if (line.metadata.lru_cnt < active_lru_cnt) line.metadata.lru_cnt++;
+    }
+    // reset the current way
+    active_lru_cnt = 0;
 }
 
 void cache::access(uint32_t addr, access_type_t atype) {
     stats.accesses++;
     //uint32_t byte_addr = address & CACHE_BYTE_ADDR_MASK;
     uint32_t index = (addr >> CACHE_BYTE_ADDR_BITS) & index_mask;
-    uint32_t tag = addr >> (CACHE_BYTE_ADDR_BITS + index_bits);
+    uint32_t tag = addr >> (CACHE_BYTE_ADDR_BITS + index_bits_num);
+    evict_t evict;
 
-    // TODO: current implementation is direct-mapped
-    // other policies have to implemented, and called based on cli args
-
-    cache_block_t& block = cache_data[index]; // TODO: can have multiple ways
-    if (block.metadata.valid && block.tag == tag) {
-        stats.hits++;
-        if (atype == access_type_t::write) {
-            // TODO: needs write policy (write-through, write-back)
-            block.metadata.dirty = true;
+    for (uint32_t way = 0; way < ways; way++) {
+        auto& line = cache_entries[index][way];
+        if (line.metadata.valid && line.tag == tag) {
+            line.access_cnt++;
+            stats.hits++;
+            // write-back policy, just mark the line as dirty
+            if (atype == access_type_t::write) line.metadata.dirty = true;
+            update_lru(index, way);
+            return;
+        } else {
+            if (line.metadata.lru_cnt > evict.lru_cnt) {
+                evict.lru_cnt = line.metadata.lru_cnt;
+                evict.way = way;
+            }
         }
-        return;
     }
 
     stats.misses++;
-    if (block.metadata.valid) {
-        // TODO: eviction policy
-        if (block.metadata.dirty) {
-            //mem->wr_block(address, block.data);
-            block.metadata.dirty = false;
+    auto& active_line = cache_entries[index][evict.way];
+    active_line.access_cnt++;
+    // evict the line
+    if (active_line.metadata.valid) {
+        if (active_line.metadata.dirty) {
+            //mem->wr_line(address, line.data);
+            active_line.metadata.dirty = false;
             stats.writebacks++;
         }
     }
 
-    //block.data = mem->rd_block(address);
-    block.tag = tag;
-    block.metadata.valid = true;
+    // bring in the new line
+    //line.data = mem->rd_line(address);
+    active_line.tag = tag;
+    active_line.metadata.valid = true;
+    update_lru(index, evict.way);
 
     // TODO: prefetcher
 
@@ -99,6 +130,29 @@ void cache::show_stats() {
     // hit rate, rounded to 2 decimal places
     std::cout << ", hit rate: " << std::fixed << std::setprecision(2)
               << (float)stats.hits / stats.accesses * 100 << "%" << std::endl;
+
+    // find n as a largest number of digits before printing
+    uint32_t n = 0;
+    for (uint32_t set = 0; set < sets; set++) {
+        for (uint32_t way = 0; way < ways; way++) {
+            uint32_t cnt = cache_entries[set][way].access_cnt;
+            uint32_t s = 0;
+            while (cnt) {
+                cnt /= 10;
+                s++;
+            }
+            if (s > n) n = s;
+        }
+    }
+
+    for (uint32_t set = 0; set < sets; set++) {
+        std::cout << "  s" << set << ": ";
+        for (uint32_t way = 0; way < ways; way++) {
+            std::cout << " w" << way << " [" << std::setw(n)
+                      << cache_entries[set][way].access_cnt << "] ";
+        }
+        std::cout << std::endl;
+    }
 }
 
 void cache::log_stats(std::ofstream& log_file) {
