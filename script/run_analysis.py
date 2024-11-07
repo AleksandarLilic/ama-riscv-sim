@@ -175,9 +175,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
     parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
     parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_only', action='store_true', help="Only backannotate and display the PC trace. Trace only option")
     parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace. Same as --no_pc_limit but for DMEM. Trace only option")
     parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address. Input is a hex string. E.g. '0x80000200'. Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_only', action='store_true', help="Only backannotate and display the DMEM trace. Trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
@@ -461,7 +463,8 @@ plt.Axes:
         start = v['addr_start']
         end = v['addr_end']
         # if the symbol is not in the range, skip it
-        if (start < ymin and end < ymin) or (start > ymax and end > ymax):
+        #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
+        if (start < ymin) or (start > ymax and end > ymax):
             continue
         ax.axhline(y=start, color='k', linestyle='-', alpha=0.5)
         ax.text(symbol_pos, start,
@@ -649,10 +652,19 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
 
 def run_bin_trace(bin_log, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
-    df_og = load_bin_trace(bin_log, args)
-    df, fig_pc, fig2_pc = run_bin_trace_pc(df_og, hl_groups, title, args)
-    _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df_og, hl_groups, title, args)
-    return df, [fig_pc, fig2_pc, fig_dmem, fig2_dmem]
+    df = load_bin_trace(bin_log, args)
+    df_out = None
+    dict_out = {}
+    if not args.dmem_only:
+        df_out, fig_pc, fig2_pc = run_bin_trace_pc(df, hl_groups, title, args)
+        dict_out['pc'] = fig_pc
+        dict_out['pc_exec'] = fig2_pc
+    if not args.pc_only:
+        _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df, hl_groups, title, args)
+        dict_out['dmem'] = fig_dmem
+        dict_out['dmem_exec'] = fig2_dmem
+
+    return df_out, dict_out
 
 def run_bin_trace_pc(df_og, hl_groups, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
@@ -734,6 +746,9 @@ def run_main(args) -> None:
     if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
+    if (args.pc_only and args.dmem_only and not args.symbols_only):
+        raise ValueError("--pc_only and --dmem_only cannot be used together")
+
     # check PC args
     if (args.pc_begin or args.pc_end):
         if not args.trace:
@@ -785,18 +800,17 @@ def run_main(args) -> None:
     log_path = os.path.realpath(args_log)
 
     if run_trace:
-        df, figs = run_bin_trace(args_log, hl_groups, title, args)
-        figs_names = ["pc", "pc_exec", "dmem", "dmem_exec"]
-        for fig, name in zip(figs, figs_names):
+        df, figs_dict = run_bin_trace(args_log, hl_groups, title, args)
+        for name, fig in figs_dict.items():
             fig_arr.append([log_path.replace(ext, f"_{name}{ext}"), fig])
     else:
         df, fig = run_inst_log(args_log, hl_groups, title, args)
         fig_arr.append([log_path, fig])
-        figs = [fig]
+        figs_dict = {"inst": fig}
 
     if not args.silent:
         plt.show()
-    for fig in figs:
+    for name, fig in fig_arr:
         plt.close(fig)
 
     if args.save_csv:
