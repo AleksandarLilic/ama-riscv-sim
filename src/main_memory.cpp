@@ -1,13 +1,11 @@
 #include "main_memory.h"
 
 // TODO: pass from cli
-#define ICACHE_ENTRIES 8
+#define ICACHE_SETS 1
 #define ICACHE_WAYS 8
-#define ICACHE_SETS ICACHE_ENTRIES/ICACHE_WAYS
 
-#define DCACHE_ENTRIES 8
+#define DCACHE_SETS 1
 #define DCACHE_WAYS 8
-#define DCACHE_SETS DCACHE_ENTRIES/DCACHE_WAYS
 
 #ifdef ENABLE_HW_PROF
 #define CACHE_ACCESS(cache, width, address) \
@@ -25,6 +23,9 @@ main_memory::main_memory(size_t size, std::string test_bin) :
     #endif
 {
     burn(test_bin);
+    #ifdef ENABLE_HW_PROF
+    dcache.set_roi(0x00007100, 0x000071FF); // TODO: pass from cli as well
+    #endif
 }
 
 void main_memory::burn(std::string test_bin) {
