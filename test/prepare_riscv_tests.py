@@ -42,12 +42,11 @@ with open(args.testlist, 'r') as f:
     tests = json.load(f)
 
 print(f"Tests directories in json input config: {len(tests)}")
-# get first test directory to make common object files
-test_dir = os.path.join(TEST_DIR, list(tests.keys())[0])
+test_dir = os.path.join(TEST_DIR, "common")
 os.chdir(test_dir)
-run_make(["make", "clean_common"])
-if not args.clean_only:
-    run_make(["make", "common"])
+run_make(["make", "clean"])
+#if not args.clean_only:
+#    run_make(["make", "-j"])
 
 out_txt = []
 for directory, entry in tests.items():
@@ -59,7 +58,9 @@ for directory, entry in tests.items():
         continue
     make_all = test_list == ["all"]
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make", "-j"] + all_targets + test_opts
+    make_cmd = ["make", "-j", "-B", "common"] # rebuild common with test's flags
+    run_make(make_cmd)
+    make_cmd = ["make", "-j"] + all_targets + test_opts # build all targets
     run_make(make_cmd)
     if make_all:
         all_bin_files = glob.glob(f"{test_dir}/*.bin")

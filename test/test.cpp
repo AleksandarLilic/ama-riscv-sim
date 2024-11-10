@@ -117,7 +117,7 @@ TEST_F(sim_test, bin_file_oversized) {
 }
 
 #define UI_MSG(x) \
-    "Unsupported instruction: <" x "> 8000000c: " + gen_hex_str(arr[3])
+    "Unsupported instruction: <" x "> 1000c: " + gen_hex_str(arr[3])
 
 uint32_t arr[4] = {
     0x00004117, //auipc  x2,0x4

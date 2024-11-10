@@ -9,6 +9,7 @@ PYVER := python3
 COVDIR := coverage
 COVLOG := coverage.log
 VALGRIND := valgrind --leak-check=full
+NO_PREP ?= 0
 
 all: build_sim prepare_tests coverage
 
@@ -28,7 +29,9 @@ $(TEST): $(SOURCES)
 	$(CXX) -o $@ $^ $(GTEST_LIBS) $(CXXFLAGS)
 
 prepare_tests:
-	$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests
+	@if [ "$(NO_PREP)" = "0" ]; then \
+		$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests; \
+	fi
 
 clean_tests:
 	$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
@@ -43,9 +46,9 @@ cleanlogs:
 cleanbins:
 	rm -f unsupported*.bin oversized.bin
 
+LOGS = *_dump.log *_hw_stats.json
 clean: cleanlogs cleanbins
-	rm -rf $(TEST) *.o *.d *.i *.s *.ii *_dump.log $(COVDIR) *.gc* \
-	gtest_testlist.txt
+	rm -rf $(TEST) *.o *.d *.i *.s *.ii  $(LOGS) $(COVDIR) *.gc* gtest_testlist.txt
 
 cleanall: clean
 	make -C ../src --no-print-directory clean

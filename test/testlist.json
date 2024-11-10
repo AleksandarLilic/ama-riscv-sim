@@ -15,5 +15,7 @@
     "sorting": ["all"],
     "uart_direct_send": ["hello_world"],
     "uart_printf_mini": ["hello_world"],
-    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]]
+    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],
+    "dcache_set_thrashing": ["basic"],
+    "mlp": ["basic"]
 }
