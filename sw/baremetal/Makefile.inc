@@ -17,7 +17,8 @@ LIBS += -lgcc
 USER_DEFINES =
 
 # if not set in test's Makefile, default to all supported ISA extensions
-export MARCH ?= rv32imc_zicsr_zifencei_zicntr
+#export MARCH ?= rv32imc_zicsr_zifencei_zicntr
+export MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
 export MABI ?= ilp32
 export CFLAGS
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
