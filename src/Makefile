@@ -1,8 +1,8 @@
 CXX := g++
 CXXFLAGS := -Wall -Wextra -Werror -pedantic -std=gnu++17
+CXXFLAGS += -Ofast -s -flto -march=native -mtune=native # release build
+#CXXFLAGS += -O0 -g # gdb build
 #CXXFLAGS := -save-temps
-CXXFLAGS += -Ofast -s -flto -march=native -mtune=native
-#CXXFLAGS += -pg
 LDFLAGS :=
 TARGET := ama-riscv-sim
 SOURCES := $(wildcard *.cpp)

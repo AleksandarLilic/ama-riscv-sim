@@ -674,7 +674,7 @@ void core::c_slli() {
     DASM_OP(c.slli)
     PROF_G(c_slli)
     #ifdef ENABLE_PROF
-    prof_fusion.attack({trigger::slli_lea, inst, mem->get_inst(pc + 2), true});
+    prof_fusion.attack({trigger::slli_lea, inst, mem->rd_inst(pc + 2), true});
     #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << std::hex << "0x" <<  TO_I32(ip.imm_c_slli())
@@ -705,7 +705,7 @@ void core::c_add() {
 
 // C extension - memory operations
 void core::c_lw() {
-    write_rf(ip.cregl(), mem->rd32(rf[ip.cregh()] + ip.imm_c_mem()));
+    write_rf(ip.cregl(), mem->rd(rf[ip.cregh()] + ip.imm_c_mem(), 4u));
     DASM_OP(c.lw)
     PROF_G(c_lw)
     #ifdef ENABLE_DASM
@@ -721,7 +721,7 @@ void core::c_lw() {
 }
 
 void core::c_lwsp() {
-    write_rf(ip.rd(), mem->rd32(rf[2] + ip.imm_c_lwsp()));
+    write_rf(ip.rd(), mem->rd(rf[2] + ip.imm_c_lwsp(), 4u));
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
     #ifdef ENABLE_DASM
@@ -738,7 +738,7 @@ void core::c_lwsp() {
 }
 
 void core::c_sw() {
-    mem->wr32(rf[ip.cregh()] + ip.imm_c_mem(), rf[ip.cregl()]);
+    mem->wr(rf[ip.cregh()] + ip.imm_c_mem(), rf[ip.cregl()], 4u);
     DASM_OP(c.sw)
     PROF_G(c_sw)
     #ifdef ENABLE_DASM
@@ -754,7 +754,7 @@ void core::c_sw() {
 }
 
 void core::c_swsp() {
-    mem->wr32(rf[2] + ip.imm_c_swsp(), rf[ip.crs2()]);
+    mem->wr(rf[2] + ip.imm_c_swsp(), rf[ip.crs2()], 4u);
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
     #ifdef ENABLE_DASM
@@ -882,7 +882,7 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_ENABLE
-    std::cout << std::endl;
+    std::cout << "=== UART END ===\n" << std::endl;
     #endif
     std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
     std::cout << dump_state() << std::endl;

@@ -41,47 +41,23 @@ uint32_t memory::set_addr(uint32_t address) {
     return address;
 }
 
-uint8_t memory::rd8(uint32_t address) {
-    address = set_addr(address);
-    CHECK_ADDRESS(address, 1u)
-    return dev_ptr->rd8(address);
-}
-
-uint16_t memory::rd16(uint32_t address) {
-    address = set_addr(address);
-    CHECK_ADDRESS(address, 2u)
-    return dev_ptr->rd16(address);
-}
-
-uint32_t memory::rd32(uint32_t address) {
-    address = set_addr(address);
-    CHECK_ADDRESS(address, 4u)
-    return dev_ptr->rd32(address);
-}
-
-uint32_t memory::get_inst(uint32_t address) {
+uint32_t memory::rd_inst(uint32_t address) {
     address = address - mem_map[0].base;
     dev_ptr = mem_map[0].ptr;
     main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
     return TO_U32(mm_ptr->rd_inst(address));
 }
 
-void memory::wr8(uint32_t address, uint32_t data) {
+uint32_t memory::rd(uint32_t address, uint32_t size) {
     address = set_addr(address);
-    CHECK_ADDRESS(address, 1u)
-    dev_ptr->wr8(address, TO_U8(data));
+    CHECK_ADDRESS(address, size)
+    return dev_ptr->rd(address, size);
 }
 
-void memory::wr16(uint32_t address, uint32_t data) {
+void memory::wr(uint32_t address, uint32_t data, uint32_t size) {
     address = set_addr(address);
-    CHECK_ADDRESS(address, 2u)
-    dev_ptr->wr16(address, TO_U16(data));
-}
-
-void memory::wr32(uint32_t address, uint32_t data) {
-    address = set_addr(address);
-    CHECK_ADDRESS(address, 4u)
-    dev_ptr->wr32(address, data);
+    CHECK_ADDRESS(address, size)
+    dev_ptr->wr(address, data, size);
 }
 
 // Dump (private)
@@ -98,7 +74,7 @@ void memory::mem_dump(uint32_t start, uint32_t size) {
             std::cout << std::endl << MEM_ADDR_FORMAT(i) << ": ";
         addr = set_addr(i);
         std::cout << std::right << std::setw(2) << std::setfill('0')
-                  << dev_ptr->rd8(addr) << " ";
+                  << dev_ptr->rd(addr, 1u) << " ";
         if (i % word_boundary == 3)
             std::cout << "  ";
     }

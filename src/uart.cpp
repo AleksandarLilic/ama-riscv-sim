@@ -21,25 +21,25 @@ uart::~uart() {
     #endif
 }
 
-void uart::wr32(uint32_t address, uint32_t data) {
+void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
     // writes to status and rx_data registers are ignored
     if (address == UART_TX_DATA) {
         // write to memory
-        dev::wr32(address, TO_U8(data));
+        dev::wr(address, TO_U8(data), size);
         // emulate the effect of writing to uart tx_data register
         std::cout << TO_U8(data) << std::flush;
     }
 }
 
 #ifdef UART_INPUT_ENABLE
-uint32_t uart::rd32(uint32_t address) {
+uint32_t uart::rd(uint32_t address, uint32_t size) {
     if (address < UART_RX_DATA) // reads from status register
-        return dev::rd8(address);
+        return dev::rd(address, size);
 
     if (address == UART_RX_DATA) { // reads from rx_data register with lock
         std::lock_guard<std::mutex> lock(mtx);
         mem[UART_STATUS] &= ~UART_RX_VALID;
-        return dev::rd8(address);
+        return dev::rd(address, size);
     }
     return 0; // tx data not readable, return 0
 }

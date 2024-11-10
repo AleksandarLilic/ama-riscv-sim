@@ -30,28 +30,23 @@
 #define FRF_W 3
 #endif
 
-#define BASE_ADDR 0x80000000
-#define MEM_ADDR_BITWIDTH 8
+#define BASE_ADDR 0x10000
+#define MEM_ADDR_BITWIDTH 5
 //#define MEM_SIZE 16384
 #define MEM_SIZE 32768
 //#define MEM_SIZE 65536
-//#define MEM_SIZE 131072
-//#define MEM_SIZE 196608
-//#define MEM_SIZE 262144
-//#define MEM_SIZE 524288
 #define UART0_SIZE 12 // 3 32-bit registers
 
 #define ENABLE_HW_PROF // enabled by default
+//#define CACHE_VERIFY // only for CACHE_MODE_FUNC
 
-//#ifdef ENABLE_HW_PROF
-//#define CACHE_MODE_PERF 0 // just tags and stats
-//#define CACHE_MODE_FUNC 1 // adds data
-//
-//#ifndef CACHE_MODE
-//#define CACHE_MODE CACHE_MODE_PERF
-//#endif
+#define CACHE_MODE_PERF 0 // tags and stats
+#define CACHE_MODE_FUNC 1 // adds data
 
-//#endif
+#ifndef CACHE_MODE
+#define CACHE_MODE CACHE_MODE_PERF
+#endif
+
 
 // Decoder types
 enum class opcode {

@@ -3,7 +3,7 @@ ENTRY( _start )
 
 MEMORY
 {
-    ram (rwx) : ORIGIN = 0x80000000, LENGTH = 32K
+    ram (rwx) : ORIGIN = 0x10000, LENGTH = 32K
     peripherals (rw) : ORIGIN = ORIGIN(ram) + LENGTH(ram), LENGTH = 12
 }
 

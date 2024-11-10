@@ -1,33 +1,13 @@
 #include "dev.h"
 
-uint8_t dev::rd8(uint32_t address) {
-    return mem[address];
+uint32_t dev::rd(uint32_t address, uint32_t size) {
+    uint32_t data = 0;
+    for (uint32_t i = 0; i < size; i++)
+        data |= (mem[address + i] << (i * 8));
+    return data;
 }
 
-uint16_t dev::rd16(uint32_t address) {
-    return TO_U16(mem[address]) |
-           (TO_U16(mem[address + 1]) << 8);
-}
-
-uint32_t dev::rd32(uint32_t address) {
-    return TO_U32(mem[address]) |
-           (TO_U32(mem[address + 1]) << 8) |
-           (TO_U32(mem[address + 2]) << 16) |
-           (TO_U32(mem[address + 3]) << 24);
-}
-
-void dev::wr8(uint32_t address, uint32_t data) {
-    mem[address] = TO_U8(data);
-}
-
-void dev::wr16(uint32_t address, uint32_t data) {
-    mem[address] = TO_U8(data & 0xFF);
-    mem[address + 1] = TO_U8((data >> 8) & 0xFF);
-}
-
-void dev::wr32(uint32_t address, uint32_t data) {
-    mem[address] = TO_U8(data & 0xFF);
-    mem[address + 1] = TO_U8((data >> 8) & 0xFF);
-    mem[address + 2] = TO_U8((data >> 16) & 0xFF);
-    mem[address + 3] = TO_U8((data >> 24) & 0xFF);
+void dev::wr(uint32_t address, uint32_t data, uint32_t size) {
+    for (uint32_t i = 0; i < size; i++)
+        mem[address + i] = TO_U8(data >> (i * 8));
 }

@@ -29,13 +29,9 @@ class memory {
     public:
         memory() = delete;
         memory(uint32_t base_address, std::string test_bin);
-        uint8_t rd8(uint32_t address);
-        uint16_t rd16(uint32_t address);
-        uint32_t rd32(uint32_t address);
-        uint32_t get_inst(uint32_t address);
-        void wr8(uint32_t address, uint32_t data);
-        void wr16(uint32_t address, uint32_t data);
-        void wr32(uint32_t address, uint32_t data);
+        uint32_t rd_inst(uint32_t address);
+        uint32_t rd(uint32_t address, uint32_t size);
+        void wr(uint32_t address, uint32_t data, uint32_t size);
         void dump();
         void dump(uint32_t start, uint32_t size);
         #ifdef ENABLE_HW_PROF
