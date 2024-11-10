@@ -23,26 +23,32 @@ MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
 CACHE_LINE_BYTES = 64
-BASE_ADDR = 0x80000000
+BASE_ADDR = 0x10000
 MEM_SIZE = 32768
 
 inst_t_mem = {
-    MEM_S: ["sb", "sh", "sw"],
-    MEM_L: ["lb", "lh", "lw", "lbu", "lhu"],
+    MEM_S: ["sb", "sh", "sw", "c.swsp", "c.sw"],
+    MEM_L: ["lb", "lh", "lw", "lbu", "lhu", "c.lwsp", "c.lw", "c.li"],
 }
 
 inst_t = {
     ARITH: [
         "add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or", "and",
         "addi", "slli", "srli", "srai", "slti", "sltiu", "xori", "ori", "andi",
-        "lui", "auipc"
+        "lui", "auipc",
+        "mul", "mulh", "mulhsu", "mulhu", "div", "divu", "rem", "remu",
+        "c.add", "c.addi", "c.addi16sp", "c.addi4spn", "c.sub",
+        "c.andi", "c.srli", "c.slli", "c.srai", "c.and", "c.xor", "c.or",
+        "c.mv",
+        "c.lui",
+        "fma4", "fma8", "fma16",
     ],
     MEM: inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
-    BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu"],
-    JUMP: ["jalr", "jal"],
+    BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu", "c.beqz", "c.bnez"],
+    JUMP: ["jalr", "jal","c.j" ,"c.jal" ,"c.jr" ,"c.jalr"],
     CSR: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
-    ENV: ["ecall", "ebreak"],
-    NOP: ["nop"],
+    ENV: ["ecall", "ebreak", "c.ebreak"],
+    NOP: ["nop", "c.nop"],
     FENCE: ["fence.i"],
 }
 
