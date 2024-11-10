@@ -154,11 +154,11 @@ void cache::show_stats() {
     std::cout << std::endl;
 
     // find n as a largest number of digits - for alignment in stdout
-    uint32_t n = 0;
+    int32_t n = 0;
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
             uint32_t cnt = cache_entries[set][way].access_cnt;
-            uint32_t s = 0;
+            int32_t s = 0;
             while (cnt) {
                 cnt /= 10;
                 s++;

@@ -11,6 +11,8 @@
 #include <map>
 #include <chrono>
 
+#define TO_F64(x) static_cast<double_t>(x)
+#define TO_F32(x) static_cast<float_t>(x)
 #define TO_U64(x) static_cast<uint64_t>(x)
 #define TO_I64(x) static_cast<int64_t>(x)
 #define TO_U32(x) static_cast<uint32_t>(x)
@@ -160,57 +162,57 @@ struct logging_pc_t {
 };
 
 // Instruction field masks
-#define M_OPC7 uint32_t(0x7F)
-#define M_OPC2 uint32_t(0x3)
+#define M_OPC7 TO_U32(0x7F)
+#define M_OPC2 TO_U32(0x3)
 
-#define M_FUNCT7 uint32_t((0x7F)<<25)
-#define M_FUNCT7_B5 uint32_t((0x1)<<30)
-#define M_FUNCT7_B1 uint32_t((0x1)<<25)
-#define M_FUNCT3 uint32_t((0x7)<<12)
-#define M_CFUNCT2H uint32_t((0x3)<<10)
-#define M_CFUNCT2L uint32_t((0x3)<<5)
-#define M_CFUNCT3 uint32_t((0x7)<<13)
-#define M_CFUNCT4 uint32_t((0xF)<<12)
-#define M_CFUNCT6 uint32_t((0x3F)<<10)
+#define M_FUNCT7 TO_U32((0x7F)<<25)
+#define M_FUNCT7_B5 TO_U32((0x1)<<30)
+#define M_FUNCT7_B1 TO_U32((0x1)<<25)
+#define M_FUNCT3 TO_U32((0x7)<<12)
+#define M_CFUNCT2H TO_U32((0x3)<<10)
+#define M_CFUNCT2L TO_U32((0x3)<<5)
+#define M_CFUNCT3 TO_U32((0x7)<<13)
+#define M_CFUNCT4 TO_U32((0xF)<<12)
+#define M_CFUNCT6 TO_U32((0x3F)<<10)
 
-#define M_RD uint32_t((0x1F)<<7)
-#define M_RS1 uint32_t((0x1F)<<15)
-#define M_RS2 uint32_t((0x1F)<<20)
-#define M_CRS2 uint32_t((0x1F)<<2)
-#define M_CREGH uint32_t((0x7)<<7)
-#define M_CREGL uint32_t((0x7)<<2)
-#define M_IMM_SHAMT uint32_t(0x1F)
+#define M_RD TO_U32((0x1F)<<7)
+#define M_RS1 TO_U32((0x1F)<<15)
+#define M_RS2 TO_U32((0x1F)<<20)
+#define M_CRS2 TO_U32((0x1F)<<2)
+#define M_CREGH TO_U32((0x7)<<7)
+#define M_CREGL TO_U32((0x7)<<2)
+#define M_IMM_SHAMT TO_U32(0x1F)
 
-#define M_IMM_31_25 int32_t((0x7F)<<25)
-#define M_IMM_31_20 int32_t((0xFFF)<<20)
-#define M_IMM_30_25 uint32_t((0x3F)<<25)
-#define M_IMM_24_21 uint32_t((0xF)<<21)
-#define M_IMM_24_20 uint32_t((0x1F)<<20)
-#define M_IMM_19_12 uint32_t((0xFF)<<12)
-#define M_IMM_12_11 uint32_t((0x3)<<11)
-#define M_IMM_12_10 uint32_t((0x7)<<10)
-#define M_IMM_12_9 uint32_t((0xF)<<9)
-#define M_IMM_11_10 uint32_t((0x3)<<10)
-#define M_IMM_11_8 uint32_t((0xF)<<8)
-#define M_IMM_10_9 uint32_t((0x3)<<9)
-#define M_IMM_10_7 uint32_t((0xF)<<7)
-#define M_IMM_8_7 uint32_t((0x3)<<7)
-#define M_IMM_6_5 uint32_t((0x3)<<5)
-#define M_IMM_6_4 uint32_t((0x7)<<4)
-#define M_IMM_6_2 uint32_t((0x1F)<<2)
-#define M_IMM_5_3 uint32_t((0x7)<<3)
-#define M_IMM_4_3 uint32_t((0x3)<<3)
-#define M_IMM_3_2 uint32_t((0x3)<<2)
+#define M_IMM_31_25 TO_I32((0x7F)<<25)
+#define M_IMM_31_20 TO_I32((0xFFF)<<20)
+#define M_IMM_30_25 TO_U32((0x3F)<<25)
+#define M_IMM_24_21 TO_U32((0xF)<<21)
+#define M_IMM_24_20 TO_U32((0x1F)<<20)
+#define M_IMM_19_12 TO_U32((0xFF)<<12)
+#define M_IMM_12_11 TO_U32((0x3)<<11)
+#define M_IMM_12_10 TO_U32((0x7)<<10)
+#define M_IMM_12_9 TO_U32((0xF)<<9)
+#define M_IMM_11_10 TO_U32((0x3)<<10)
+#define M_IMM_11_8 TO_U32((0xF)<<8)
+#define M_IMM_10_9 TO_U32((0x3)<<9)
+#define M_IMM_10_7 TO_U32((0xF)<<7)
+#define M_IMM_8_7 TO_U32((0x3)<<7)
+#define M_IMM_6_5 TO_U32((0x3)<<5)
+#define M_IMM_6_4 TO_U32((0x7)<<4)
+#define M_IMM_6_2 TO_U32((0x1F)<<2)
+#define M_IMM_5_3 TO_U32((0x7)<<3)
+#define M_IMM_4_3 TO_U32((0x3)<<3)
+#define M_IMM_3_2 TO_U32((0x3)<<2)
 
-#define M_IMM_31 int32_t((0x1)<<31)
-#define M_IMM_20 uint32_t((0x1)<<20)
-#define M_IMM_12 uint32_t((0x1)<<12)
-#define M_IMM_11 uint32_t((0x1)<<11)
-#define M_IMM_8 uint32_t((0x1)<<8)
-#define M_IMM_7 uint32_t((0x1)<<7)
-#define M_IMM_6 uint32_t((0x1)<<6)
-#define M_IMM_5 uint32_t((0x1)<<5)
-#define M_IMM_2 uint32_t((0x1)<<2)
+#define M_IMM_31 TO_I32((0x1)<<31)
+#define M_IMM_20 TO_U32((0x1)<<20)
+#define M_IMM_12 TO_U32((0x1)<<12)
+#define M_IMM_11 TO_U32((0x1)<<11)
+#define M_IMM_8 TO_U32((0x1)<<8)
+#define M_IMM_7 TO_U32((0x1)<<7)
+#define M_IMM_6 TO_U32((0x1)<<6)
+#define M_IMM_5 TO_U32((0x1)<<5)
+#define M_IMM_2 TO_U32((0x1)<<2)
 
 // Instructions
 #define INST_ECALL 0x73
@@ -227,7 +229,7 @@ struct CSR {
     uint32_t value;
     const csr_perm_t perm;
     CSR() : name(""), value(0), perm(csr_perm_t::ro) {} // FIXME
-    CSR(const char* name, int value, const csr_perm_t perm) :
+    CSR(const char* name, uint32_t value, const csr_perm_t perm) :
         name(name), value(value), perm(perm) {}
 };
 
@@ -258,12 +260,12 @@ struct CSR_entry {
 
 // Macros
 #define CASE_DECODER(op) \
-    case (uint8_t)opcode::op: \
+    case TO_U8(opcode::op): \
         op(); \
         break;
 
 #define CASE_ALU_REG_OP(op) \
-    case (uint8_t)alu_r_op_t::op_##op: \
+    case TO_U8(alu_r_op_t::op_##op): \
         write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -271,7 +273,7 @@ struct CSR_entry {
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
-    case (uint8_t)alu_r_mul_op_t::op_##op: \
+    case TO_U8(alu_r_mul_op_t::op_##op): \
         write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -279,7 +281,7 @@ struct CSR_entry {
         break;
 
 #define CASE_ALU_IMM_OP(op) \
-    case (uint8_t)alu_i_op_t::op_##op: \
+    case TO_U8(alu_i_op_t::op_##op): \
         write_rf(ip.rd(), al_##op(rf[ip.rs1()], ip.imm_i())); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -287,7 +289,7 @@ struct CSR_entry {
         break;
 
 #define CASE_LOAD(op) \
-    case (uint8_t)load_op_t::op_##op: \
+    case TO_U8(load_op_t::op_##op): \
         write_rf(ip.rd(), load_##op((rf[ip.rs1()]+ip.imm_i()))); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -295,7 +297,7 @@ struct CSR_entry {
         break;
 
 #define CASE_STORE(op) \
-    case (uint8_t)store_op_t::op_##op: \
+    case TO_U8(store_op_t::op_##op): \
         store_##op(rf[ip.rs1()]+ip.imm_s(), rf[ip.rs2()]); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -303,7 +305,7 @@ struct CSR_entry {
         break;
 
 #define CASE_BRANCH(op) \
-    case (uint8_t)branch_op_t::op_##op: \
+    case TO_U8(branch_op_t::op_##op): \
         if(branch_##op()) { \
             next_pc = pc + ip.imm_b(); \
             PROF_B_T(op) \
@@ -315,7 +317,7 @@ struct CSR_entry {
         break;
 
 #define CASE_ALU_CUSTOM_OP(op) \
-    case (uint8_t)alu_custom_op_t::op_##op: \
+    case TO_U8(alu_custom_op_t::op_##op): \
         write_rf(ip.rd(), al_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -323,7 +325,7 @@ struct CSR_entry {
         break;
 
 #define CASE_CSR(op) \
-    case (uint8_t)csr_op_t::op_##op: \
+    case TO_U8(csr_op_t::op_##op): \
         csr_##op(init_val_rs1); \
         DASM_OP(csr##op) \
         PROF_G(csr##op) \
@@ -332,7 +334,7 @@ struct CSR_entry {
         break;
 
 #define CASE_CSR_I(op) \
-    case (uint8_t)csr_op_t::op_##op: \
+    case TO_U8(csr_op_t::op_##op): \
         csr_##op(); \
         DASM_OP(csr##op) \
         PROF_G(csr##op) \

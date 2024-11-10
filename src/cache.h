@@ -100,7 +100,7 @@ struct cache_stats_t {
                   << ", E: " << evicts
                   << ", WB: " << writebacks
                   << ", HR: " << std::fixed << std::setprecision(2)
-                  << (float)hits/accesses * 100 << "%"
+                  << TO_F32(hits)/TO_F32(accesses) * 100 << "%"
                   << "; BW (R/W): "
                   << "core " << bw_core.reads << "/"<< bw_core.writes << " B"
                   << ", mem " << bw_mem.reads << "/" << bw_mem.writes << " B";
@@ -161,7 +161,7 @@ class cache {
 private:
         void access(uint32_t addr, uint32_t size, access_t atype);
         void update_lru(uint32_t index, uint32_t way);
-        bool is_pow_2(int n) const { return n > 0 && !(n & (n - 1)); }
+        bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(uint32_t byte_addr, uint32_t size,
                              cache_line_t& act_line);

@@ -58,8 +58,8 @@ state profiler_fusion::lea_2() {
 
     // RV32I addi
     uint32_t alu_op_sel = ((ip.funct7_b5()) << 3) | ip.funct3();
-    if (ip.opcode() == (uint8_t)opcode::al_reg &&
-        alu_op_sel == (uint8_t)alu_r_op_t::op_add) {
+    if (ip.opcode() == TO_U8(opcode::al_reg) &&
+        alu_op_sel == TO_U8(alu_r_op_t::op_add)) {
         if (ip.rd() == ip.rs1() && ip.rs2() == rd) return state::LEA_MATCH;
     }
 

@@ -198,7 +198,7 @@ void core::al_imm() {
     if (is_shift)
         dasm.asm_ss << std::hex << "0x" << ip.imm_i_shamt() << std::dec;
     else
-        dasm.asm_ss << (int)ip.imm_i();
+        dasm.asm_ss << TO_I32(ip.imm_i());
     #endif
 }
 
@@ -213,12 +213,12 @@ void core::load() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int)ip.imm_i()
+    DASM_OP_RD << "," << TO_I32(ip.imm_i())
                << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_i() + rf[ip.rs1()])
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()])
              << "] (0x" << rf[ip.rd()]<< ") -> "
              << rf_names[ip.rd()][RF_NAMES] << std::endl;
     #endif
@@ -233,14 +233,14 @@ void core::store() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs2()][RF_NAMES] << ","
-                << (int)ip.imm_s()
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs2()][RF_NAMES] <<","
+                << TO_I32(ip.imm_s())
                 << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << rf_names[ip.rs2()][RF_NAMES]
              << " (0x" << rf[ip.rs2()] << ") -> mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_s() + rf[ip.rs1()]) << "]"
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_s()) + rf[ip.rs1()]) << "]"
              << std::endl;
     #endif
 }
@@ -259,7 +259,7 @@ void core::branch() {
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rs1()][RF_NAMES] << ","
                 << rf_names[ip.rs2()][RF_NAMES] << ","
-                << std::hex << pc + (int)ip.imm_b() << std::dec;
+                << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
     #endif
 }
 
@@ -271,7 +271,7 @@ void core::jalr() {
     PROF_J(jalr)
     PROF_RD_RS1
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int)ip.imm_i()
+    DASM_OP_RD << "," << TO_I32(ip.imm_i())
                << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
     #endif
 }
@@ -283,7 +283,7 @@ void core::jal() {
     PROF_J(jal)
     PROF_RD
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << std::hex << pc + (int)ip.imm_j() << std::dec;
+    DASM_OP_RD << "," << std::hex << pc + TO_I32(ip.imm_j()) << std::dec;
     #endif
 }
 
@@ -709,13 +709,13 @@ void core::c_lw() {
     DASM_OP(c.lw)
     PROF_G(c_lw)
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << (int)ip.imm_c_mem()
+    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_c_mem() + rf[ip.cregh()])
-             << "] (0x" << rf[ip.cregl()]<< ") -> " << DASM_CREGL << std::endl;
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()])
+             << "] (0x" << rf[ip.cregl()]<< ") -> " << DASM_CREGL     << std::endl;
     #endif
     next_pc = pc + 2;
 }
@@ -725,12 +725,12 @@ void core::c_lwsp() {
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << (int)ip.imm_c_lwsp()
+    DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
                << "(" << rf_names[2][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_c_lwsp() + rf[2])
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2])
              << "] (0x" << rf[ip.rd()]<< ") -> "
              << rf_names[ip.rd()][RF_NAMES] << std::endl;
     #endif
@@ -742,12 +742,12 @@ void core::c_sw() {
     DASM_OP(c.sw)
     PROF_G(c_sw)
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << (int)ip.imm_c_mem()
+    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << DASM_CREGL << " (0x" << rf[ip.cregl()] << ") -> mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_c_mem() + rf[ip.cregh()]) << "]"
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()]) << "]"
              << std::endl;
     #endif
     next_pc = pc + 2;
@@ -759,13 +759,13 @@ void core::c_swsp() {
     PROF_G(c_swsp)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][RF_NAMES] << ","
-                << (int)ip.imm_c_swsp()
+                << TO_I32(ip.imm_c_swsp())
                 << "(" << rf_names[2][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << rf_names[ip.crs2()][RF_NAMES]
              << " (0x" << rf[ip.crs2()] << ") -> mem["
-             << MEM_ADDR_FORMAT((int)ip.imm_c_swsp() + rf[2]) << "]"
+             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_swsp()) + rf[2]) << "]"
              << std::endl;
     #endif
     next_pc = pc + 2;
@@ -782,7 +782,7 @@ void core::c_beqz() {
     }
     DASM_OP(c.beqz)
     #ifdef ENABLE_DASM
-    DASM_OP_CREGH << "," << std::hex << pc + (int)ip.imm_c_b() << std::dec;
+    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
     #endif
 }
 
@@ -796,7 +796,7 @@ void core::c_bnez() {
     }
     DASM_OP(c.bnez)
     #ifdef ENABLE_DASM
-    DASM_OP_CREGH << "," << std::hex << pc + (int)ip.imm_c_b() << std::dec;
+    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
     #endif
 }
 
@@ -805,7 +805,7 @@ void core::c_j() {
     DASM_OP(c.j)
     PROF_J(c_j)
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << std::hex << pc + (int)ip.imm_c_j()
+    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
     #endif
 }
@@ -816,7 +816,7 @@ void core::c_jal() {
     DASM_OP(c.jal)
     PROF_J(c_jal)
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << std::hex << pc + (int)ip.imm_c_j()
+    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
     #endif
 }
