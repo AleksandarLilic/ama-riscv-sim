@@ -17,7 +17,10 @@ main_memory::main_memory(size_t size, std::string test_bin) :
 {
     burn(test_bin);
     #ifdef ENABLE_HW_PROF
-    dcache.set_roi(0x17200, 0x172FF); // TODO: pass from cli as well
+    // TODO: pass from cli as well
+    uint32_t roi_start = 0x17280; // bytes
+    uint32_t roi_size = 256; // bytes
+    dcache.set_roi(roi_start, roi_start + roi_size);
     #endif
 }
 
@@ -63,6 +66,15 @@ uint32_t main_memory::rd_inst(uint32_t addr) {
     #endif
     return inst;
 }
+
+#ifdef ENABLE_HW_PROF
+scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
+    addr += BASE_ADDR;
+    if (scp_mode == scp_mode_t::m_ld) return dcache.scp_ld(addr);
+    else if (scp_mode == scp_mode_t::m_rel) return dcache.scp_rel(addr);
+    else throw std::runtime_error("ERROR: Invalid cache hint mode");
+}
+#endif
 
 uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
     uint32_t data = dev::rd(addr, size);

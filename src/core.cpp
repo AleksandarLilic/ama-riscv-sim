@@ -357,21 +357,30 @@ void core::misc_mem() {
 void core::custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
-    if (funct3 == TO_U8(custom_ext_t::fma)) {
+    if (funct3 == TO_U8(custom_ext_t::arith)) {
         switch (funct7) {
             CASE_ALU_CUSTOM_OP(fma16)
             CASE_ALU_CUSTOM_OP(fma8)
             CASE_ALU_CUSTOM_OP(fma4)
             default : unsupported("fma");
         }
+        #ifdef ENABLE_DASM
+        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
+                   << "," << rf_names[ip.rs2()][RF_NAMES];
+        #endif
+    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
+        switch (funct7) {
+            CASE_SCP_CUSTOM(ld); DASM_OP(scp.ld); break;
+            CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
+            default : unsupported("custom memory extension");
+        }
+        #ifdef ENABLE_DASM
+        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
+        #endif
     } else {
         unsupported("custom extension");
     }
     next_pc = pc + 4;
-    #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
-               << "," << rf_names[ip.rs2()][RF_NAMES];
-    #endif
 }
 
 uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
@@ -410,7 +419,7 @@ uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
 // Zicsr extension
 void core::csr_access() {
     cntr_update();
-    uint32_t csr_addr = ip.csr_addr();
+    uint16_t csr_addr = TO_U16(ip.csr_addr());
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
         std::cerr << "Unsupported CSR. Address: 0x"
@@ -854,7 +863,7 @@ void core::c_ebreak() {
 }
 
 void core::unsupported(const std::string &msg) {
-    std::cerr << "Unsupported instruction: <" << msg << "> "
+    std::cerr << "Unsupported instruction: <" << msg << "> at "
               << FORMAT_INST(inst, 8) << std::endl;
     throw std::runtime_error("Unsupported instruction");
 }

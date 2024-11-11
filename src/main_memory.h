@@ -24,6 +24,7 @@ class main_memory : public dev {
         std::array<uint8_t, CACHE_LINE_SIZE> rd_line(uint32_t addr);
         void wr_line(uint32_t addr, std::array<uint8_t, CACHE_LINE_SIZE> data);
         #ifdef ENABLE_HW_PROF
+        scp_status_t scp(uint32_t addr, scp_mode_t scp_mode);
         void log_cache_stats(std::ofstream& log_file) {
            icache.log_stats(log_file);
            dcache.log_stats(log_file);

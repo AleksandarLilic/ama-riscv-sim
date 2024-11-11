@@ -43,6 +43,9 @@ profiler::profiler(std::string log_name) {
     prof_g_arr[TO_U32(opc_g::i_fence_i)] = {"fence.i", 0};
     prof_g_arr[TO_U32(opc_g::i_fence)] = {"fence", 0};
 
+    prof_g_arr[TO_U32(opc_g::i_scp_ld)] = {"scp.ld", 0};
+    prof_g_arr[TO_U32(opc_g::i_scp_rel)] = {"scp.rel", 0};
+
     prof_g_arr[TO_U32(opc_g::i_lui)] = {"lui", 0};
     prof_g_arr[TO_U32(opc_g::i_auipc)] = {"auipc", 0};
 

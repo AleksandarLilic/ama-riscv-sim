@@ -4,10 +4,9 @@
 cache::cache(uint32_t sets, uint32_t ways,
              std::string cache_name, main_memory* mem)
     : sets(sets), ways(ways), cache_name(cache_name), mem(mem) {
-    if (!is_pow_2(sets) || !is_pow_2(ways)) {
+    if (!is_pow_2(sets)) {
         std::string err_msg =
             "Number of sets (in: " + std::to_string(sets) +
-            ") and ways (in: " + std::to_string(ways) +
             ") must be a power of 2.";
         throw std::runtime_error(err_msg);
     }
@@ -35,24 +34,32 @@ cache::cache(uint32_t sets, uint32_t ways,
     }
     tag_bits_num = 32 - index_bits_num - CACHE_BYTE_ADDR_BITS;
     tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
+    max_scp = ways >> 1; // half of the ways in a set can be converted to scp
 }
 
-void cache::set_roi(uint32_t start, uint32_t end) { roi.set(start, end); }
+uint32_t cache::rd(uint32_t addr, uint32_t size) {
+    access(addr, size, access_t::read, scp_mode_t::m_none);
+    return rd_buf;
+}
 
-void cache::update_lru(uint32_t index, uint32_t way) {
-    auto& active_set = cache_entries[index];
-    auto& active_lru_cnt = active_set[way].metadata.lru_cnt;
-    // increment all counters newer than the current way
-    for (uint32_t i = 0; i < ways; i++) {
-        auto& line = active_set[i];
-        if (line.metadata.lru_cnt < active_lru_cnt) line.metadata.lru_cnt++;
-    }
-    // reset the current way
-    active_lru_cnt = 0;
+scp_status_t cache::scp_ld(uint32_t addr) {
+    access(addr, 0u, access_t::read, scp_mode_t::m_ld);
+    return scp_status;
+}
+
+scp_status_t cache::scp_rel(uint32_t addr) {
+    access(addr, 0u, access_t::read, scp_mode_t::m_rel);
+    return scp_status;
+}
+
+void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
+    wr_buf = data;
+    access(addr, size, access_t::write, scp_mode_t::m_none);
 }
 
 // uses the real address so that the tags are appropriately set
-void cache::access(uint32_t addr, uint32_t size, access_t atype) {
+void cache::access(uint32_t addr, uint32_t size,
+                   access_t atype, scp_mode_t scp_mode) {
     stats.access(atype, size);
     if (roi.has(addr)) roi.stats.access(atype, size);
     #if CACHE_MODE == CACHE_MODE_FUNC
@@ -67,6 +74,7 @@ void cache::access(uint32_t addr, uint32_t size, access_t atype) {
         if (line.metadata.valid && line.tag == tag) {
             // hit, doesn't go to main mem
             update_lru(index, way);
+            scp_status = update_scp(scp_mode, line, index);
             line.access();
             stats.hit();
             if (roi.has(addr)) roi.stats.hit();
@@ -79,11 +87,14 @@ void cache::access(uint32_t addr, uint32_t size, access_t atype) {
             return;
 
         } else {
-            if (line.metadata.lru_cnt > target.lru_cnt) {
+            if (line.metadata.lru_cnt > target.lru_cnt && !line.metadata.scp) {
                 target = {way, line.metadata.lru_cnt};
             }
         }
     }
+
+    // can't release on miss, assume to be an erroneous attempt from SW
+    if (scp_mode == scp_mode_t::m_rel) return;
 
     // miss, goes to main mem
     stats.miss();
@@ -109,6 +120,7 @@ void cache::access(uint32_t addr, uint32_t size, access_t atype) {
     act_line.tag = tag; // act_line now caching new data
     act_line.metadata.valid = true;
     update_lru(index, target.way_idx); // now the most recently used
+    scp_status = update_scp(scp_mode, act_line, index);
     #if CACHE_MODE == CACHE_MODE_FUNC
     act_line.data = mem->rd_line(addr - BASE_ADDR);
     if (atype == access_t::write) write_to_cache(byte_addr, size, act_line);
@@ -117,9 +129,82 @@ void cache::access(uint32_t addr, uint32_t size, access_t atype) {
     if (atype == access_t::write) act_line.metadata.dirty = true;
     #endif
 
+    #ifdef SCP_BACKDOOR
+    // useful for debugging, to convert a specific address to scratchpad
+    // NOTE: doesn't handle too many scp requests in this #ifdef
+    if (act_line.metadata.scp == false) {
+        if ((act_line.tag == TO_U32(0x17200>>CACHE_BYTE_ADDR_BITS)) ||
+            (act_line.tag == TO_U32((0x17200 + 64)>>CACHE_BYTE_ADDR_BITS)) ||
+            (act_line.tag == TO_U32((0x17200 + 128)>>CACHE_BYTE_ADDR_BITS)) ||
+            (act_line.tag == TO_U32((0x17200 + 192)>>CACHE_BYTE_ADDR_BITS)))
+            {
+            act_line.metadata.scp = true; // converted to scratchpad
+            std::cout << "Converted to scratchpad: " << std::hex << addr
+                      << std::endl;
+        }
+    }
+    // release all if the roi is done
+    if (roi.stats.accesses >= 4096) {
+        for (uint32_t set = 0; set < sets; set++) {
+            for (uint32_t way = 0; way < ways; way++) {
+                if (cache_entries[set][way].metadata.scp) {
+                    std::cout << "Releasing: " << std::hex
+                              << cache_entries[set][way].tag << std::endl;
+                    cache_entries[set][way].metadata.scp = false;
+                }
+            }
+        }
+    }
+    #endif
+
     // TODO: prefetcher
     return;
 }
+
+void cache::update_lru(uint32_t index, uint32_t way) {
+    auto& active_set = cache_entries[index];
+    auto& active_lru_cnt = active_set[way].metadata.lru_cnt;
+    // increment all counters newer than the current way
+    for (uint32_t i = 0; i < ways; i++) {
+        auto& line = active_set[i];
+        if (line.metadata.lru_cnt < active_lru_cnt) line.metadata.lru_cnt++;
+    }
+    // reset the current way
+    active_lru_cnt = 0;
+}
+
+scp_status_t cache::update_scp(scp_mode_t scp_mode, cache_line_t& line,
+                           uint32_t index){
+    if (scp_mode == scp_mode_t::m_none) return scp_status_t::success;
+    if (scp_mode == scp_mode_t::m_ld) return convert_to_scp(line, index);
+    else if (scp_mode == scp_mode_t::m_rel) return release_scp(line);
+    else throw std::runtime_error("Unknown SCP mode.");
+}
+
+scp_status_t cache::convert_to_scp(cache_line_t& line, uint32_t index) {
+    // first check if there are empty ways for conversion
+    uint32_t scp_cnt = 0;
+    for (uint32_t way = 0; way < ways; way++) {
+        if (cache_entries[index][way].metadata.scp) scp_cnt++;
+    }
+    if (scp_cnt < max_scp) {
+        line.metadata.scp = true;
+        return scp_status_t::success;
+    } else {
+        return scp_status_t::fail;
+    }
+}
+
+scp_status_t cache::release_scp(cache_line_t& line) {
+    if (line.metadata.scp) {
+        line.metadata.scp = false;
+        return scp_status_t::success;
+    } else {
+        return scp_status_t::fail;
+    }
+}
+
+// TODO: release all scp entries
 
 #if CACHE_MODE == CACHE_MODE_FUNC
 void cache::read_from_cache(uint32_t byte_addr, uint32_t size,
@@ -138,15 +223,8 @@ void cache::write_to_cache(uint32_t byte_addr, uint32_t size,
 }
 #endif
 
-uint32_t cache::rd(uint32_t addr, uint32_t size) {
-    access(addr, size, access_t::read);
-    return rd_buf;
-}
-
-void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
-    wr_buf = data;
-    access(addr, size, access_t::write);
-}
+// stats
+void cache::set_roi(uint32_t start, uint32_t end) { roi.set(start, end); }
 
 void cache::show_stats() {
     std::cout << cache_name << " (" << sets*ways*CACHE_LINE_SIZE << " B): ";
@@ -191,18 +269,19 @@ void cache::log_stats(std::ofstream& log_file) {
 }
 
 void cache::dump() const {
-    #if CACHE_MODE == CACHE_MODE_FUNC
-    std::cout << "  data:" << std::endl;
+    std::cout << "  state:" << std::endl;
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
             auto& line = cache_entries[set][way];
             std::cout << "    s" << set << " w" << way
                       << " tag: 0x" << std::hex << line.tag
                       << " lru: " << std::dec << line.metadata.lru_cnt
+                      << " scp: " << line.metadata.scp
                       << " valid: " << line.metadata.valid
                       << " dirty: " << line.metadata.dirty
                       << " access_cnt: " << line.access_cnt
                       << std::endl;
+            #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line
             std::cout << "     ";
             for (uint32_t i = 0; i < CACHE_LINE_SIZE; i++) {
@@ -211,8 +290,8 @@ void cache::dump() const {
                 if (i % 4 == 3) std::cout << " ";
                 if (i % 64 == 63) std::cout << std::endl;
             }
+            #endif
         }
     }
     std::cout << std::dec << std::endl;
-    #endif
 }

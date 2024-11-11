@@ -135,7 +135,8 @@ enum class csr_op_t {
 };
 
 enum class custom_ext_t {
-    fma = 0b000,
+    arith = 0b000,
+    memory = 0b001,
 };
 
 enum class alu_custom_op_t {
@@ -144,11 +145,22 @@ enum class alu_custom_op_t {
     op_fma4 = 0x2,
 };
 
+enum class scp_custom_op_t {
+    op_ld = 0x10,
+    op_rel = 0x12,
+};
+
 enum class csr_perm_t {
     ro = 0b00,
     rw = 0b01,
     warl_unimp = 0b10
 };
+
+// caches
+enum class access_t { read, write };
+enum class scp_mode_t { m_none, m_ld, m_rel };
+// success always 0, fail 1 for now, use values >0 for error codes if needed
+enum class scp_status_t { success, fail };
 
 struct dasm_str {
     std::ostringstream asm_ss;
@@ -324,6 +336,13 @@ struct CSR_entry {
         PROF_RD_RS1_RS2 \
         break;
 
+#define CASE_SCP_CUSTOM(op) \
+    case TO_U8(scp_custom_op_t::op_##op): \
+        write_rf(ip.rd(), \
+                 TO_U32(mem->cache_hint(rf[ip.rs1()], scp_mode_t::m_##op))); \
+        PROF_G(scp_##op) \
+        PROF_RD_RS1 \
+
 #define CASE_CSR(op) \
     case TO_U8(csr_op_t::op_##op): \
         csr_##op(init_val_rs1); \
@@ -342,8 +361,7 @@ struct CSR_entry {
         DASM_CSR_IMM \
         break;
 
-#define W_CSR(expr) \
-    write_csr(ip.csr_addr(), expr)
+#define W_CSR(expr) write_csr(ip.csr_addr(), expr)
 
 #define MEM_OUT_OF_RANGE(addr, reson) \
     do { \
@@ -399,8 +417,7 @@ struct CSR_entry {
              << it->second.value << std::dec
 
 #ifdef ENABLE_DASM
-#define DASM_OP(o) \
-    dasm.op = #o;
+#define DASM_OP(o) dasm.op = #o;
 
 #define DASM_CSR_REG \
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES] << "," \

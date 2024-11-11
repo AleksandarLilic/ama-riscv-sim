@@ -20,14 +20,12 @@
     << ", \"writes\": " << stat_struct->bw_mem.writes << "}" \
     << "},"
 
-enum class access_t { read, write };
-
 struct metadata_t {
     bool valid;
     bool dirty;
-    // bool scp;
+    bool scp;
     uint32_t lru_cnt;
-    metadata_t() : valid(false), dirty(false), lru_cnt(0) {}
+    metadata_t() : valid(false), dirty(false), scp(false), lru_cnt(0) {}
 };
 
 struct cache_line_t {
@@ -60,8 +58,8 @@ struct data_bandwidth_t {
 };
 
 struct cache_stats_t {
-    private:
     uint32_t accesses;
+    private:
     uint32_t hits;
     uint32_t misses;
     uint32_t evicts;
@@ -131,6 +129,19 @@ struct target_t {
 
 class main_memory; // forward declaration
 
+/*
+Cache parameters (P: parametrized, D: derived, S: single option):
+- line size (P): number of bytes in a cache line
+- sets (P): number of sets in the cache
+- ways (P): associativity - number of ways in each set
+- size (D): sets * ways * CACHE_LINE_SIZE
+- replacement policy (S): LRU
+- write policy (S): write-back
+- write-allocate (S): yes
+- prefetching (S): no
+- inclusive/exclusive (S): not applicable, no L2 cache
+- cache coherence (S): not applicable, single core
+*/
 class cache {
     private:
         uint32_t sets;
@@ -146,6 +157,8 @@ class cache {
         region_of_interest_t roi;
         uint32_t rd_buf;
         uint32_t wr_buf;
+        uint32_t max_scp;
+        scp_status_t scp_status;
 
     public:
         cache() = delete;
@@ -153,14 +166,22 @@ class cache {
               std::string cache_name, main_memory* mem);
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
+        scp_status_t scp_ld(uint32_t addr);
+        scp_status_t scp_rel(uint32_t addr);
+        // stats
         void set_roi(uint32_t start, uint32_t end);
         void show_stats();
         void log_stats(std::ofstream& log_file);
         void dump() const;
 
 private:
-        void access(uint32_t addr, uint32_t size, access_t atype);
+        void access(uint32_t addr, uint32_t size,
+                    access_t atype, scp_mode_t scp);
         void update_lru(uint32_t index, uint32_t way);
+        scp_status_t update_scp(scp_mode_t mode, cache_line_t& line,
+                                uint32_t index);
+        scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
+        scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(uint32_t byte_addr, uint32_t size,

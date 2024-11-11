@@ -34,6 +34,7 @@ class memory {
         void wr(uint32_t address, uint32_t data, uint32_t size);
         void dump();
         void dump(uint32_t start, uint32_t size);
+        scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
         #ifdef ENABLE_HW_PROF
         void log_cache_stats(std::ofstream& log_file);
         #endif

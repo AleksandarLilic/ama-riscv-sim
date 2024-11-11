@@ -41,6 +41,21 @@ uint32_t memory::set_addr(uint32_t address) {
     return address;
 }
 
+scp_status_t memory::cache_hint(uint32_t address, scp_mode_t scp_mode) {
+    #ifdef ENABLE_HW_PROF
+    address = address - mem_map[0].base;
+    dev_ptr = mem_map[0].ptr;
+    main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
+    return mm_ptr->scp(address, scp_mode);
+    #else
+    // hint ignored if caches are not enabled
+    std::cout << "Warning: Caches are not simulated but encoutered cache hint "
+              << "at 0x" << std::hex << address << std::dec
+              << " with mode " << TO_U32(scp_mode) << std::endl;
+    return scp_status_t::fail;
+    #endif
+}
+
 uint32_t memory::rd_inst(uint32_t address) {
     address = address - mem_map[0].base;
     dev_ptr = mem_map[0].ptr;

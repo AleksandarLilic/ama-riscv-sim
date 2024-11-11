@@ -13,6 +13,7 @@ from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ARITH = "ARITH"
 MEM = "MEM"
+MEM_HINTS = "MEM_HINTS"
 BRANCH = "BRANCH"
 JUMP = "JUMP"
 CSR = "CSR"
@@ -44,6 +45,7 @@ inst_t = {
         "fma4", "fma8", "fma16",
     ],
     MEM: inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
+    MEM_HINTS: ["scp.ld", "scp.rel"],
     BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu", "c.beqz", "c.bnez"],
     JUMP: ["jalr", "jal","c.j" ,"c.jal" ,"c.jr" ,"c.jalr"],
     CSR: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
@@ -321,7 +323,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         current_sym = None
         append = False
         PADDING = len(str(df['count'].max())) + 1
-
+        prev_addr = None
         for line in infile:
             if line.startswith('Disassembly of section .') and section in line:
                 append = True
@@ -373,7 +375,8 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 outfile.write(line)
 
         # write the last symbol
-        symbols[current_sym]['addr_end'] = prev_addr
+        if prev_addr:
+            symbols[current_sym]['addr_end'] = prev_addr
 
     filter_str = []
     if section == "text":

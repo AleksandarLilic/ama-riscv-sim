@@ -39,6 +39,8 @@ enum class opc_g {
 
     // custom
     i_fma16, i_fma8, i_fma4,
+    // custom mem
+    i_scp_ld, i_scp_rel,
 
     // Zicsr extension
     i_csrrw, i_csrrs, i_csrrc, i_csrrwi, i_csrrsi, i_csrrci,
