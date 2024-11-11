@@ -33,7 +33,8 @@
 #endif
 
 #define BASE_ADDR 0x10000
-#define MEM_ADDR_BITWIDTH 5
+#define ADDR_BITS 17 // 128KB address space
+#define MEM_ADDR_BITWIDTH 5 // digits in hex printout
 //#define MEM_SIZE 16384
 #define MEM_SIZE 32768
 //#define MEM_SIZE 65536

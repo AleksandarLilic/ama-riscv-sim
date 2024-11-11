@@ -32,9 +32,10 @@ cache::cache(uint32_t sets, uint32_t ways,
         index_bits_num++;
         index_mask = (index_mask << 1) | 1;
     }
-    tag_bits_num = 32 - index_bits_num - CACHE_BYTE_ADDR_BITS;
+    tag_bits_num = ADDR_BITS - index_bits_num - CACHE_BYTE_ADDR_BITS;
     tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
     max_scp = ways >> 1; // half of the ways in a set can be converted to scp
+    metadata_bits_num = metadata_t::get_bits_num();
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
@@ -227,7 +228,11 @@ void cache::write_to_cache(uint32_t byte_addr, uint32_t size,
 void cache::set_roi(uint32_t start, uint32_t end) { roi.set(start, end); }
 
 void cache::show_stats() {
-    std::cout << cache_name << " (" << sets*ways*CACHE_LINE_SIZE << " B): ";
+    std::cout << cache_name
+              << " (d/t/m: " << sets*ways*CACHE_LINE_SIZE
+              << "/" << ((sets*ways*tag_bits_num)>>3)+1
+              << "/" << ((sets*ways*metadata_bits_num)>>3)+1
+              << " B): "; // round up to the byte
     stats.show();
     std::cout << std::endl;
 

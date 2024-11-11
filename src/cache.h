@@ -24,8 +24,10 @@ struct metadata_t {
     bool valid;
     bool dirty;
     bool scp;
+    //bool speculative; // speculative load, evict on mispred (ignore lru)
     uint32_t lru_cnt;
     metadata_t() : valid(false), dirty(false), scp(false), lru_cnt(0) {}
+    static uint32_t get_bits_num() { return 3; } // update if more flags added
 };
 
 struct cache_line_t {
@@ -150,6 +152,7 @@ class cache {
         uint32_t index_mask;
         uint32_t tag_bits_num;
         uint32_t tag_off;
+        uint32_t metadata_bits_num;
         std::vector<std::vector<cache_line_t>> cache_entries;
         cache_stats_t stats;
         std::string cache_name;
