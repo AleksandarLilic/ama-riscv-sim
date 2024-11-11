@@ -60,10 +60,29 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
 }
 
 uint32_t run_inference(uint8_t* input_img) {
-    int32_t layer_out[256];
-    uint8_t layer_in[256];
+    int32_t layer_out[64];
+    uint8_t layer_in[64];
 
+    #ifdef CUSTOM_ISA
+    asm volatile("scp.ld x0, %0" : : "r"(input_img));
+    asm volatile("scp.ld x0, %0" : : "r"(input_img+64));
+    asm volatile("scp.ld x0, %0" : : "r"(input_img+128));
+    asm volatile("scp.ld x0, %0" : : "r"(input_img+192));
+    #endif
     fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
+    #ifdef CUSTOM_ISA
+    asm volatile("scp.rel x0, %0" : : "r"(input_img));
+    asm volatile("scp.rel x0, %0" : : "r"(input_img+64));
+    asm volatile("scp.rel x0, %0" : : "r"(input_img+128));
+    asm volatile("scp.rel x0, %0" : : "r"(input_img+192));
+    // and move 'layer_out' (allocated on the stack) to scp
+    asm volatile("scp.ld x0, %0" : : "r"(layer_out));
+    asm volatile("scp.ld x0, %0" : : "r"(layer_out+16));
+    asm volatile("scp.ld x0, %0" : : "r"(layer_out+32));
+    asm volatile("scp.ld x0, %0" : : "r"(layer_out+48));
+    // no more space in scp, so LRU will have to do the job
+    //asm volatile("scp.ld x0, %0" : : "r"(layer_in));
+    #endif
     relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT);
 
     fc_layer(layer_in, fc2_weight, layer_out, FC2_WEIGHT_IN, FC2_WEIGHT_OUT);
@@ -74,5 +93,13 @@ uint32_t run_inference(uint8_t* input_img) {
 
     fc_layer(layer_in, fc_last_weight, layer_out,
              FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT);
-    return relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT);
+    uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT);
+    #ifdef CUSTOM_ISA
+    // be a good citizen and release the scp
+    asm volatile("scp.rel x0, %0" : : "r"(layer_out));
+    asm volatile("scp.rel x0, %0" : : "r"(layer_out+16));
+    asm volatile("scp.rel x0, %0" : : "r"(layer_out+32));
+    asm volatile("scp.rel x0, %0" : : "r"(layer_out+48));
+    #endif
+    return out;
 }
