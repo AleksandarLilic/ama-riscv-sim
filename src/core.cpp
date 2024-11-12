@@ -131,10 +131,14 @@ void core::exec_inst() {
 // }
 
 void core::finish(bool dump_regs) {
+    if (dump_regs) dump();
+    #ifdef ENABLE_PROF
+    prof_fusion.finish();
+    prof.finish();
+    #endif
     #ifdef ENABLE_HW_PROF
     log_hw_stats();
     #endif
-    if (dump_regs) dump();
 }
 
 // Integer extension

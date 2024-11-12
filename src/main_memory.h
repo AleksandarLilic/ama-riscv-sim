@@ -15,9 +15,6 @@ class main_memory : public dev {
     public:
         main_memory() = delete;
         main_memory(size_t size, std::string test_bin);
-        #if defined(ENABLE_HW_PROF) && !defined(DPI)
-        ~main_memory() { icache.show_stats(); dcache.show_stats(); }
-        #endif
         uint32_t rd_inst(uint32_t addr);
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
@@ -29,5 +26,6 @@ class main_memory : public dev {
            icache.log_stats(log_file);
            dcache.log_stats(log_file);
         }
+        void finish() { icache.show_stats(); dcache.show_stats(); }
         #endif
 };

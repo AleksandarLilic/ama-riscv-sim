@@ -33,7 +33,7 @@ class profiler_fusion {
     public:
         profiler_fusion() : current_state(state::START) {}
         void attack(inst_opt opt);
-        ~profiler_fusion();
+        void finish();
 
     private:
         void transition();
