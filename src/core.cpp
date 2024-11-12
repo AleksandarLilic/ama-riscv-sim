@@ -4,17 +4,13 @@
 
 core::core(uint32_t base_addr, memory *mem, std::string log_name,
            logging_pc_t logging_pc)
+    : running(false), mem(mem), pc(base_addr), next_pc(0), inst(0),
+      inst_cnt(0), inst_cnt_csr(0),
+      log_name(log_name), logging_pc(logging_pc), logging(false)
     #ifdef ENABLE_PROF
-    : prof(log_name)
+    , prof(log_name)
     #endif
 {
-    inst_cnt = 0;
-    inst_cnt_csr = 0;
-    pc = base_addr; // reset vector
-    next_pc = 0;
-    this->mem = mem;
-    this->log_name = log_name;
-    this->logging_pc = logging_pc;
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
     for (const auto &c : supported_csrs)
@@ -40,22 +36,21 @@ void core::exec() {
     return;
 }
 
+void core::profiling(bool enable) {
+    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+    logging = enable;
+    #endif
+    #ifdef ENABLE_PROF
+    prof.active = enable;
+    #endif
+    #ifdef ENABLE_HW_PROF
+    mem->cache_profiling(enable);
+    #endif
+}
+
 void core::exec_inst() {
-    if (pc == logging_pc.start) {
-        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-        logging = true;
-        #endif
-        #ifdef ENABLE_PROF
-        prof.active = true;
-        #endif
-    } else if (pc == logging_pc.stop) {
-        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-        logging = false;
-        #endif
-        #ifdef ENABLE_PROF
-        prof.active = false;
-        #endif
-    }
+    if (pc == logging_pc.start) profiling(true);
+    else if (pc == logging_pc.stop) profiling(false);
 
     inst_fetch();
     uint32_t op_c = ip.copcode();

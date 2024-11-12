@@ -37,6 +37,7 @@ class core{
             csr.at(addr).value = data;
         }
         void cntr_update();
+        void profiling(bool enable);
 
         // instruction decoders
         void al_reg();
@@ -134,23 +135,12 @@ class core{
         uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
         uint32_t al_slti(uint32_t a, uint32_t b) {
             if (inst == INST_HINT_LOG_START) {
-                #ifdef ENABLE_DASM
-                logging = true;
-                #endif
-                #ifdef ENABLE_PROF
-                prof.active = true;
-                #endif
+                profiling(true);
                 return 0;
             } else if (inst == INST_HINT_LOG_END) {
-                #ifdef ENABLE_DASM
-                logging = false;
-                #endif
-                #ifdef ENABLE_PROF
-                prof.active = false;
-                #endif
+                profiling(false);
                 return 0;
             }
-
             return al_slt(a, b);
         };
         uint32_t al_sltiu(uint32_t a, uint32_t b) { return al_sltu(a, b); };
@@ -279,19 +269,16 @@ class core{
 
     private:
         bool running;
-        bool logging;
-        logging_pc_t logging_pc;
         std::array<int32_t, 32> rf;
+        memory *mem;
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
         uint64_t inst_cnt;
         uint64_t inst_cnt_csr;
-        std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
-        std::chrono::time_point<std::chrono::high_resolution_clock> run_time;
-        // FIXME: mtime should be an actual MMIO put somewhere in the memory map
-        uint64_t mtime;
         std::string log_name;
+        logging_pc_t logging_pc;
+        bool logging;
         #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
         std::ofstream log_ofstream;
         #endif
@@ -301,7 +288,8 @@ class core{
         #ifdef ENABLE_DASM
         dasm_str dasm;
         #endif
-        memory *mem;
+
+        std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 14> supported_csrs = {{
             {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
             {CSR_MSCRATCH, "mscratch", csr_perm_t::rw, 0u},
@@ -320,13 +308,16 @@ class core{
             {CSR_TIMEH, "timeh", csr_perm_t::ro, 0u},
             {CSR_INSTRETH, "instreth", csr_perm_t::ro, 0u},
         }};
+
+        std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+        std::chrono::time_point<std::chrono::high_resolution_clock> run_time;
+        // FIXME: mtime should be an actual MMIO put somewhere in the memory map
+        uint64_t mtime;
+
         #ifdef ENABLE_PROF
         profiler prof;
         profiler_fusion prof_fusion;
         #endif
-
-        // csr map
-        std::map<uint16_t, CSR> csr;
 
         // register names
         static constexpr std::array<std::array<const char*, 2>, 32>

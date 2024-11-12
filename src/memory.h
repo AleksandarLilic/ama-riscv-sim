@@ -37,5 +37,8 @@ class memory {
         scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
         #ifdef ENABLE_HW_PROF
         void log_cache_stats(std::ofstream& log_file);
+        void cache_profiling(bool enable) {
+            mm.cache_profiling(enable);
+        }
         #endif
 };
