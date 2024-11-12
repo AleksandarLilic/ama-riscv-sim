@@ -74,8 +74,10 @@ void cache::access(uint32_t addr, uint32_t size,
         auto& line = cache_entries[index][way];
         if (line.metadata.valid && line.tag == tag) {
             // hit, doesn't go to main mem
-            update_lru(index, way);
             scp_status = update_scp(scp_mode, line, index);
+            // don't update lru on release
+            if (scp_mode == scp_mode_t::m_rel) return;
+            update_lru(index, way);
             line.access();
             stats.hit();
             if (roi.has(addr)) roi.stats.hit();
