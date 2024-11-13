@@ -7,9 +7,8 @@
 #define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
 //#define CACHE_ADDR_MASK 1FFFF // 17 bits
 
-#define CACHE_JSON_ENTRY(name, stat_struct) \
-    "\"" << name << "\"" << ": {" \
-    << "\"accesses\": " << stat_struct->accesses \
+#define CACHE_STATS_JSON_ENTRY(stat_struct) \
+    "\"accesses\": " << stat_struct->accesses \
     << ", \"hits\": " << stat_struct->hits \
     << ", \"misses\": " << stat_struct->misses \
     << ", \"evicts\": " << stat_struct->evicts \
@@ -18,7 +17,13 @@
     << ", \"writes\": " << stat_struct->bw_core.writes << "}" \
     << ", \"bw_mem\": {\"reads\": " << stat_struct->bw_mem.reads \
     << ", \"writes\": " << stat_struct->bw_mem.writes << "}" \
-    << "},"
+
+#define CACHE_SIZE_JSON_ENTRY(size_struct) \
+    "\"size\"" << ": {" \
+    << "\"data\": " << size_struct->data \
+    << ", \"tags\": " << size_struct->tags \
+    << ", \"metadata\": " << size_struct->metadata \
+    << "}"
 
 struct metadata_t {
     bool valid;
@@ -61,6 +66,28 @@ struct data_bandwidth_t {
     uint32_t reads; // bytes
     uint32_t writes;
     data_bandwidth_t() : reads(0), writes(0) {}
+};
+
+struct cache_size_t {
+    private:
+        uint32_t data;
+        uint32_t tags;
+        uint32_t metadata;
+    public:
+        cache_size_t() : data(0), tags(0), metadata(0) {}
+        cache_size_t(uint32_t sets, uint32_t ways, uint32_t line_size,
+                     uint32_t tag_bits_num, uint32_t metadata_bits_num) {
+            data = sets * ways * line_size;
+            tags = ((sets * ways * tag_bits_num) >> 3) + 1;
+            metadata = ((sets * ways * metadata_bits_num) >> 3) + 1;
+        }
+        void show() const {
+            std::cout << " (d/t/m: " << data << "/" << tags << "/" << metadata
+                      << " B): ";
+        }
+        void log(std::ofstream& log_file) const {
+            log_file << CACHE_SIZE_JSON_ENTRY(this);
+        }
 };
 
 struct cache_stats_t {
@@ -120,8 +147,8 @@ struct cache_stats_t {
                     << "core " << bw_core.reads << "/"<< bw_core.writes << " B"
                     << ", mem " << bw_mem.reads << "/" << bw_mem.writes << " B";
         }
-        void log(std::string name, std::ofstream& log_file) const {
-            log_file << CACHE_JSON_ENTRY(name, this) << std::endl;
+        void log(std::ofstream& log_file) const {
+            log_file << CACHE_STATS_JSON_ENTRY(this);
         }
 };
 
@@ -172,10 +199,11 @@ class cache {
         std::string cache_name;
         main_memory* mem;
         cache_stats_t stats;
+        cache_size_t size;
         region_of_interest_t roi;
         uint32_t rd_buf;
         uint32_t wr_buf;
-        uint32_t max_scp;
+        uint32_t max_scp_ways;
         scp_status_t scp_status;
         speculative_t smode;
         bool speculative_exec_active; // not used atm

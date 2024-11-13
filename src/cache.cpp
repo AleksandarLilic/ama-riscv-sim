@@ -34,9 +34,11 @@ cache::cache(uint32_t sets, uint32_t ways,
     }
     tag_bits_num = ADDR_BITS - index_bits_num - CACHE_BYTE_ADDR_BITS;
     tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
-    max_scp = ways >> 1; // half of the ways in a set can be converted to scp
+    // half of the ways in a any set can be converted to scratchpad, at most
+    max_scp_ways = ways >> 1;
     metadata_bits_num = metadata_t::get_bits_num();
     metadata_bits_num += log2(ways); // lru counters
+    size = {sets, ways, CACHE_LINE_SIZE, tag_bits_num, metadata_bits_num};
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
@@ -203,7 +205,7 @@ scp_status_t cache::convert_to_scp(cache_line_t& line, uint32_t index) {
     for (uint32_t way = 0; way < ways; way++) {
         if (cache_entries[index][way].metadata.scp) scp_cnt++;
     }
-    if (scp_cnt < max_scp) {
+    if (scp_cnt < max_scp_ways) {
         line.metadata.scp = true;
         return scp_status_t::success;
     } else {
@@ -243,11 +245,8 @@ void cache::write_to_cache(uint32_t byte_addr, uint32_t size,
 void cache::set_roi(uint32_t start, uint32_t end) { roi.set(start, end); }
 
 void cache::show_stats() {
-    std::cout << cache_name
-              << " (d/t/m: " << sets*ways*CACHE_LINE_SIZE
-              << "/" << ((sets*ways*tag_bits_num)>>3)+1
-              << "/" << ((sets*ways*metadata_bits_num)>>3)+1
-              << " B): "; // round up to the byte
+    std::cout << cache_name;
+    size.show();
     stats.show();
     std::cout << std::endl;
 
@@ -285,7 +284,11 @@ void cache::show_stats() {
 }
 
 void cache::log_stats(std::ofstream& log_file) {
-    stats.log(cache_name, log_file);
+    log_file << "\"" << cache_name << "\"" << ": {";
+    stats.log(log_file);
+    log_file << ", ";
+    size.log(log_file);
+    log_file << "}," << std::endl;
 }
 
 void cache::dump() const {
