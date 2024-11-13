@@ -105,11 +105,3 @@ void memory::dump() {
 void memory::dump(uint32_t start, uint32_t size) {
     mem_dump(start, size);
 }
-
-#ifdef ENABLE_HW_PROF
-void memory::log_cache_stats(std::ofstream& log_file) {
-    main_memory* mm_ptr = static_cast<main_memory*>(this->mem_map[0].ptr);
-    mm_ptr->log_cache_stats(log_file);
-    mm_ptr->finish();
-}
-#endif

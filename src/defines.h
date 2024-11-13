@@ -162,6 +162,10 @@ enum class access_t { read, write };
 enum class scp_mode_t { m_none, m_ld, m_rel };
 // success always 0, fail 1 for now, use values >0 for error codes if needed
 enum class scp_status_t { success, fail };
+enum class speculative_t { enter, exit_commit, exit_flush };
+
+// branches
+enum class b_dir_t { backward, forward};
 
 struct dasm_str {
     std::ostringstream asm_ss;
@@ -459,13 +463,17 @@ struct CSR_entry {
     prof.log_inst(opc_g::i_##op);
 
 #define PROF_J(op) \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
+    b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir));
 
 #define PROF_B_T(op) \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(next_pc > pc));
+    b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir));
 
 #define PROF_B_NT(op, b) \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t((pc + ip.imm##b()) > pc));
+    b_dir_t dir = ((pc + ip.imm##b()) > pc) ? b_dir_t::forward : \
+                                              b_dir_t::backward; \
+    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir));
 
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, ip.rd()); \

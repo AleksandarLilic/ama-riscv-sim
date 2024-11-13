@@ -75,7 +75,6 @@ enum class opc_j {
     _count
 };
 
-enum class b_dir_t { backward, forward};
 enum class reg_use_t { rd, rs1, rs2 };
 
 struct inst_prof_g {

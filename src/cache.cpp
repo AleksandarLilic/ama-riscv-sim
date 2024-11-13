@@ -36,6 +36,7 @@ cache::cache(uint32_t sets, uint32_t ways,
     tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
     max_scp = ways >> 1; // half of the ways in a set can be converted to scp
     metadata_bits_num = metadata_t::get_bits_num();
+    metadata_bits_num += log2(ways); // lru counters
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
@@ -58,11 +59,19 @@ void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
     access(addr, size, access_t::write, scp_mode_t::m_none);
 }
 
+void cache::speculative_exec(speculative_t smode) {
+    this->smode = smode;
+    speculative_exec_active = (smode == speculative_t::enter);
+}
+
 // uses the real address so that the tags are appropriately set
 void cache::access(uint32_t addr, uint32_t size,
                    access_t atype, scp_mode_t scp_mode) {
-    stats.access(atype, size);
-    if (roi.has(addr)) roi.stats.access(atype, size);
+    // don't count access for scp release, no data is accessed
+    if (scp_mode != scp_mode_t::m_rel) {
+        stats.access(atype, size);
+        if (roi.has(addr)) roi.stats.access(atype, size);
+    }
     #if CACHE_MODE == CACHE_MODE_FUNC
     uint32_t byte_addr = addr & CACHE_BYTE_ADDR_MASK;
     #endif
@@ -98,6 +107,8 @@ void cache::access(uint32_t addr, uint32_t size,
 
     // can't release on miss, assume to be an erroneous attempt from SW
     if (scp_mode == scp_mode_t::m_rel) return;
+
+    // TODO: don't service misses in speculative mode?
 
     // miss, goes to main mem
     stats.miss();
@@ -165,6 +176,8 @@ void cache::access(uint32_t addr, uint32_t size,
 }
 
 void cache::update_lru(uint32_t index, uint32_t way) {
+    // TODO: don't update lru in speculative mode?
+    //if (smode == speculative_t::enter) return;
     auto& active_set = cache_entries[index];
     auto& active_lru_cnt = active_set[way].metadata.lru_cnt;
     // increment all counters newer than the current way

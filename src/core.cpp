@@ -10,6 +10,9 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name,
     #ifdef ENABLE_PROF
     , prof(log_name)
     #endif
+    #ifdef ENABLE_HW_PROF
+    , bpr("Static predictor")
+    #endif
 {
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
     // initialize CSRs
@@ -30,6 +33,9 @@ void core::exec() {
     running = true;
     start_time = std::chrono::high_resolution_clock::now();
     run_time = start_time;
+    #ifdef UART_ENABLE
+    std::cout << "=== UART START ===" << std::endl;
+    #endif
     while (running) exec_inst();
     cntr_update(); // so that all instructions since last CSR access are counted
     finish(true);
@@ -44,6 +50,7 @@ void core::profiling(bool enable) {
     prof.active = enable;
     #endif
     #ifdef ENABLE_HW_PROF
+    bpr.profiling(enable);
     mem->cache_profiling(enable);
     #endif
 }
@@ -132,6 +139,8 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
+    bpr.finish();
+    mem->cache_finish();
     log_hw_stats();
     #endif
 }
@@ -245,7 +254,7 @@ void core::store() {
 }
 
 void core::branch() {
-    next_pc = pc + 4;
+    next_pc = pc + 4; // updated in CASE_BRANCH if taken
     switch (ip.funct3()) {
         CASE_BRANCH(beq)
         CASE_BRANCH(bne)
@@ -255,6 +264,25 @@ void core::branch() {
         CASE_BRANCH(bgeu)
         default: unsupported("branch");
     }
+
+    #ifdef ENABLE_HW_PROF
+    uint32_t speculative_next_pc;
+    bool correct;
+    last_inst_branch = true;
+    speculative_next_pc = bpr.predict(pc, ip.imm_b());
+    mem->speculative_exec(speculative_t::enter);
+    inst_speculative = mem->rd_inst(speculative_next_pc);
+    correct = next_pc == speculative_next_pc;
+    bpr.update(correct);
+    if (!correct) {
+        mem->speculative_exec(speculative_t::exit_flush);
+        inst = mem->rd_inst(next_pc);
+    } else {
+        mem->speculative_exec(speculative_t::exit_commit);
+        inst = inst_speculative;
+    }
+    #endif
+
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rs1()][RF_NAMES] << ","
                 << rf_names[ip.rs2()][RF_NAMES] << ","
@@ -880,7 +908,7 @@ void core::log_hw_stats() {
     ofs.open(log_name + "_hw_stats.json");
     ofs << "{\n";
     mem->log_cache_stats(ofs);
-    // TODO: branch predictor stats
+    bpr.log_stats(ofs);
     ofs << "\"_done\": true"; // to avoid trailing comma
     ofs << "\n}\n";
     ofs.close();

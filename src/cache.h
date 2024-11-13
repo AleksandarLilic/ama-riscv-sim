@@ -24,7 +24,7 @@ struct metadata_t {
     bool valid;
     bool dirty;
     bool scp;
-    //bool speculative; // speculative load, evict on mispred (ignore lru)
+    //bool speculative; // line brought in during speculative execution
     uint32_t lru_cnt;
     metadata_t() : valid(false), dirty(false), scp(false), lru_cnt(0) {}
     static uint32_t get_bits_num() { return 3; } // update if more flags added
@@ -177,6 +177,8 @@ class cache {
         uint32_t wr_buf;
         uint32_t max_scp;
         scp_status_t scp_status;
+        speculative_t smode;
+        bool speculative_exec_active; // not used atm
 
     public:
         cache() = delete;
@@ -186,6 +188,7 @@ class cache {
         void wr(uint32_t addr, uint32_t data, uint32_t size);
         scp_status_t scp_ld(uint32_t addr);
         scp_status_t scp_rel(uint32_t addr);
+        void speculative_exec(speculative_t smode);
         // prof
         void profiling(bool enable) {
             stats.profiling(enable);

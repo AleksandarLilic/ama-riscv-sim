@@ -26,6 +26,10 @@ class main_memory : public dev {
             icache.profiling(enable);
             dcache.profiling(enable);
         }
+        void speculative_exec(speculative_t smode) {
+            icache.speculative_exec(smode);
+            dcache.speculative_exec(smode);
+        }
         void log_cache_stats(std::ofstream& log_file) {
            icache.log_stats(log_file);
            dcache.log_stats(log_file);

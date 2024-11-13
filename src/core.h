@@ -5,6 +5,7 @@
 #include "inst_parser.h"
 #include "profiler.h"
 #include "profiler_fusion.h"
+#include "bp.h"
 
 class core{
     public:
@@ -59,8 +60,11 @@ class core{
         // instruction parsing
         inst_parser ip;
         void inst_fetch() {
-            inst = mem->rd_inst(pc);
+            // if previous inst was branch, use that instead of fetching
+            // this prevents cache from logging the same access twice
+            if (!last_inst_branch) inst = mem->rd_inst(pc);
             ip.inst = inst;
+            last_inst_branch = false;
         }
 
         // arithmetic and logic operations
@@ -317,6 +321,11 @@ class core{
         #ifdef ENABLE_PROF
         profiler prof;
         profiler_fusion prof_fusion;
+        #endif
+        #ifdef ENABLE_HW_PROF
+        bp bpr;
+        uint32_t inst_speculative;
+        bool last_inst_branch;
         #endif
 
         // register names
