@@ -1,0 +1,18 @@
+{
+    "cpu_frequency_mhz" : 125,
+    "pipeline" : 3,
+    "alu" : 1,
+    "csr" : 1,
+    "mul" : 3,
+    "fma" : 4,
+    "div" : 5,
+    "branch_resolution" : 2,
+    "jump_resolution" : 2,
+    "icache" : 1,
+    "dcache" : 1,
+    "bpred" : 1,
+    "mem" : 4,
+    "icache_name" : "Icache",
+    "dcache_name" : "Dcache",
+    "bpred_name" : "Static predictor"
+}
