@@ -2,12 +2,12 @@
     "cpu_frequency_mhz" : 125,
     "pipeline" : 3,
     "branch_resolution" : 2,
-    "jump_resolution" : 1,
+    "jump_resolution" : 2,
     "icache" : 1,
     "dcache" : 1,
     "bpred" : 1,
     "mem" : 4,
     "icache_name" : "Icache",
     "dcache_name" : "Dcache",
-    "bpred_name" : "pred"
+    "bpred_name" : "Bpred"
 }

@@ -65,7 +65,8 @@ class perf:
         self.bp_stats = {
             "pred": hw_bp["predicted"],
             "mispred": hw_bp["mispredicted"],
-            "acc": (hw_bp["predicted"] / hw_bp["branches"]) * 100
+            "acc": (hw_bp["predicted"] / hw_bp["branches"]) * 100,
+            "type": hw_bp["type"]
         }
         hw_ic = self.hw_stats[self.ic_name]
         hw_dc = self.hw_stats[self.dc_name]
@@ -73,13 +74,19 @@ class perf:
             "accesses": hw_ic["accesses"],
             "hits": hw_ic["hits"],
             "misses": hw_ic["misses"],
-            "hit_rate": (hw_ic["hits"] / hw_ic["accesses"]) * 100
+            "hit_rate": (hw_ic["hits"] / hw_ic["accesses"]) * 100,
+            "sets": hw_ic["size"]["sets"],
+            "ways": hw_ic["size"]["ways"],
+            "data": hw_ic["size"]["data"]
         }
         self.dc_stats = {
             "accesses": hw_dc["accesses"],
             "hits": hw_dc["hits"],
             "misses": hw_dc["misses"],
-            "hit_rate": (hw_dc["hits"] / hw_dc["accesses"]) * 100
+            "hit_rate": (hw_dc["hits"] / hw_dc["accesses"]) * 100,
+            "sets": hw_dc["size"]["sets"],
+            "ways": hw_dc["size"]["ways"],
+            "data": hw_dc["size"]["data"]
         }
 
         self.freq = hwpm['cpu_frequency_mhz']
@@ -128,29 +135,30 @@ class perf:
               f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
         return out
 
+    def _cache_stats_str(self, name, stats):
+        out = f"{name} " + \
+              f"({stats['sets']} sets, {stats['ways']} ways, " + \
+              f"{stats['data']}B data): " + \
+              f"Accesses: {stats['accesses']}, " + \
+              f"Hits: {stats['hits']}, " + \
+              f"Misses: {stats['misses']}, " + \
+              f"Hit Rate: {stats['hit_rate']:.2f}%"
+        return out
+
     def __str__(self):
         out_sp = f"Peak Stack usage: {self.sp_usage} bytes"
         out_ic = []
         out_dc = []
         out_b = []
 
-        out_ic.append(f"Instruction executed: {self.inst_total}")
-        out_ic.append(
-            f"ICache accesses: {self.ic_stats['accesses']}, " + \
-            f"Hits: {self.ic_stats['hits']}, " + \
-            f"Misses: {self.ic_stats['misses']}, " + \
-            f"Hit Rate: {self.ic_stats['hit_rate']:.2f}%"
-            )
+        out_ic.append(f"Instructions executed: {self.inst_total}")
+        out_ic.append(self._cache_stats_str(self.ic_name, self.ic_stats))
 
         out_dc.append(
             f"Loads & Stores: {self.dc_inst} " + \
             f"({self.ls_perc:.2f}% instructions)"
             )
-        out_dc.append(
-            f"DCache accesses: {self.dc_stats['accesses']}, " + \
-            f"Hits: {self.dc_stats['hits']}, " + \
-            f"Misses: {self.dc_stats['misses']}, " + \
-            f"Hit Rate: {self.dc_stats['hit_rate']:.2f}%")
+        out_dc.append(self._cache_stats_str(self.dc_name, self.dc_stats))
 
         out_b.append(
             f"Branches: {self.b_inst} " + \
@@ -167,6 +175,7 @@ class perf:
         #    f"Backwards: {self.b['not_taken_bwd']}"
         #    )
         out_b.append(
+            f"Branch Predictor ({self.bp_stats['type']}): " + \
             f"Predicted: {self.bp_stats['pred']}, " + \
             f"Mispredicted: {self.bp_stats['mispred']}, " + \
             f"Accuracy: {self.bp_stats['acc']:.2f}%"
