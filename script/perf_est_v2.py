@@ -8,7 +8,7 @@ from run_analysis import json_prof_to_df
 class perf:
     # TODO: needs compressed ISA
     b_inst_a = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
-    j_inst_a = ["jalr", "jal"]
+    j_inst_a = ["jalr", "jal"] # split jal vs jalr?
     dc_inst_a = ["lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw",
                  "scp.ld", "scp.rel"]
     mul_inst_a = ["mul", "mulh", "mulhsu", "mulhu"]
@@ -16,7 +16,6 @@ class perf:
     div_inst_a = ["div", "divu", "rem", "remu"]
     csr_inst_a = ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"]
     expected_hw_metrics = ["cpu_frequency_mhz", "pipeline",
-                           "alu", "mul", "fma", "div", "csr",
                            "branch_resolution", "jump_resolution",
                            "icache", "dcache", "bpred", "mem",
                            "icache_name", "dcache_name", "bpred_name"]
@@ -52,11 +51,6 @@ class perf:
                                   "HW performance metrics JSON file")
 
         self.c_pipeline = hwpm['pipeline']
-        self.c_alu = hwpm['alu']
-        self.c_csr = hwpm['csr']
-        self.c_mul = hwpm['mul']
-        self.c_fma = hwpm['fma']
-        self.c_div = hwpm['div']
         self.c_branch_resolution = hwpm['branch_resolution']
         self.c_jump_resolution = hwpm['jump_resolution']
         self.c_ic = hwpm['icache']
@@ -76,11 +70,13 @@ class perf:
         hw_ic = self.hw_stats[self.ic_name]
         hw_dc = self.hw_stats[self.dc_name]
         self.ic_stats = {
+            "accesses": hw_ic["accesses"],
             "hits": hw_ic["hits"],
             "misses": hw_ic["misses"],
             "hit_rate": (hw_ic["hits"] / hw_ic["accesses"]) * 100
         }
         self.dc_stats = {
+            "accesses": hw_dc["accesses"],
             "hits": hw_dc["hits"],
             "misses": hw_dc["misses"],
             "hit_rate": (hw_dc["hits"] / hw_dc["accesses"]) * 100
@@ -93,35 +89,25 @@ class perf:
         self.b_inst = df.loc[df['name'].isin(self.b_inst_a)]['count'].sum()
         self.j_inst = df.loc[df['name'].isin(self.j_inst_a)]['count'].sum()
         self.dc_inst = df.loc[df['name'].isin(self.dc_inst_a)]['count'].sum()
-        self.mul_inst = df.loc[df['name'].isin(self.mul_inst_a)]['count'].sum()
-        self.fma_inst = df.loc[df['name'].isin(self.fma_inst_a)]['count'].sum()
-        self.div_inst = df.loc[df['name'].isin(self.div_inst_a)]['count'].sum()
-        self.csr_inst = df.loc[df['name'].isin(self.csr_inst_a)]['count'].sum()
 
-        self.alu_inst = self.inst_total - \
-                        (self.b_inst + self.j_inst + self.dc_inst + \
-                         self.mul_inst + self.fma_inst + self.div_inst + \
-                         self.csr_inst)
-        self.alu_cycles = self.c_pipeline + self.alu_inst * self.c_alu
-        self.b_cycles = self.b_inst * self.c_branch_resolution
-        self.j_cycles = self.j_inst * self.c_jump_resolution
-        self.dc_cycles = self.c_dc * self.hw_stats[self.dc_name]["hits"] + \
-                         self.c_mem * self.hw_stats[self.dc_name]["misses"]
-        self.fe_cycles = self.c_ic * self.hw_stats[self.ic_name]["hits"] + \
-                         self.c_mem * self.hw_stats[self.ic_name]["misses"]
-        # only count extra cycles the frontend needs to feed the intpipe
-        self.fe_extra_cycles = self.fe_cycles - self.inst_total
-        self.mul_cycles = self.mul_inst * self.c_mul
-        self.fma_cycles = self.fma_inst * self.c_fma
-        self.div_cycles = self.div_inst * self.c_div
-        self.csr_cycles = self.csr_inst * self.c_csr
-        self.non_b_cycles = self.fe_extra_cycles + \
-                            self.alu_cycles + self.j_cycles + \
-                            self.dc_cycles + self.mul_cycles + \
-                            self.fma_cycles + self.div_cycles + self.csr_cycles
+        self.ipc_1_cycles = self.c_pipeline + self.inst_total
+        # extra cycles for insts that might stall the pipeline
+        self.b_stalls = \
+            (self.c_bp - 1) * self.bp_stats['pred'] + \
+            self.c_branch_resolution * self.bp_stats['mispred']
+        self.j_stalls = (self.c_jump_resolution - 1) * self.j_inst
+        self.dc_stalls = \
+            (self.c_dc - 1) * self.hw_stats[self.dc_name]["hits"] + \
+            self.c_mem * self.hw_stats[self.dc_name]["misses"]
+        self.ic_stalls = \
+            (self.c_ic - 1) * self.hw_stats[self.ic_name]["hits"] + \
+            self.c_mem * self.hw_stats[self.ic_name]["misses"]
 
-        self.total_cycles = self.non_b_cycles + self.b_cycles
+        self.total_cycles = self.ipc_1_cycles + \
+                            self.j_stalls + self.b_stalls + \
+                            self.dc_stalls + self.ic_stalls
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
+        self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
         self.total_cycles = int(np.ceil(self.total_cycles))
         self.perf_str = self._estimated_perf(self.total_cycles)
 
@@ -138,35 +124,66 @@ class perf:
         self.est["exec_time_us"] = round(exec_time_us, 2)
         self.est["mips"] = round(mips, 2)
         out = f"Estimated HW performance at {self.freq}MHz: " + \
-              f"cycles={cycles}, CPI={cpi:.2f}, " + \
-              f"time={exec_time_us:.1f}us, MIPS={mips:.1f}"
+              f"Cycles: {cycles}, CPI: {cpi:.2f}, " + \
+              f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
         return out
 
     def __str__(self):
-        out1 = f"Peak Stack usage: {self.sp_usage} bytes"
+        out_sp = f"Peak Stack usage: {self.sp_usage} bytes"
+        out_ic = []
+        out_dc = []
         out_b = []
-        out_b.append(f"Branches total: {self.b_inst} out of " + \
-                   f"{self.inst_total} total instructions " + \
-                   f"({self.branches_perc:.2f}% branches)")
-        out_b.append(f"Taken: {self.b['taken']}, " + \
-                   f"Forwards: {self.b['taken_fwd']}, " + \
-                   f"Backwards: {self.b['taken_bwd']}")
-        out_b.append(f"Not taken: {self.b['not_taken']}, " + \
-                   f"Forwards: {self.b['not_taken_fwd']}, " + \
-                   f"Backwards: {self.b['not_taken_bwd']}")
-        out_b.append(f"Predicted: {self.bp_stats['pred']}, " + \
-                   f"Mispredicted: {self.bp_stats['mispred']}, " + \
-                   f"Accuracy: {self.bp_stats['acc']:.2f}%")
-        out_ic = f"ICache: hits={self.ic_stats['hits']}, " + \
-                 f"misses={self.ic_stats['misses']}, " + \
-                 f"hit rate={self.ic_stats['hit_rate']:.2f}%"
-        out_dc = f"DCache: hits={self.dc_stats['hits']}, " + \
-                 f"misses={self.dc_stats['misses']}, " + \
-                 f"hit rate={self.dc_stats['hit_rate']:.2f}%"
+
+        out_ic.append(f"Instruction executed: {self.inst_total}")
+        out_ic.append(
+            f"ICache accesses: {self.ic_stats['accesses']}, " + \
+            f"Hits: {self.ic_stats['hits']}, " + \
+            f"Misses: {self.ic_stats['misses']}, " + \
+            f"Hit Rate: {self.ic_stats['hit_rate']:.2f}%"
+            )
+
+        out_dc.append(
+            f"Loads & Stores: {self.dc_inst} " + \
+            f"({self.ls_perc:.2f}% instructions)"
+            )
+        out_dc.append(
+            f"DCache accesses: {self.dc_stats['accesses']}, " + \
+            f"Hits: {self.dc_stats['hits']}, " + \
+            f"Misses: {self.dc_stats['misses']}, " + \
+            f"Hit Rate: {self.dc_stats['hit_rate']:.2f}%")
+
+        out_b.append(
+            f"Branches: {self.b_inst} " + \
+            f"({self.branches_perc:.2f}% instructions)"
+            )
+        #out_b.append(
+        #    f"Taken: {self.b['taken']}, " + \
+        #    f"Forwards: {self.b['taken_fwd']}, " + \
+        #    f"Backwards: {self.b['taken_bwd']}"
+        #    )
+        #out_b.append(
+        #    f"Not taken: {self.b['not_taken']}, " + \
+        #    f"Forwards: {self.b['not_taken_fwd']}, " + \
+        #    f"Backwards: {self.b['not_taken_bwd']}"
+        #    )
+        out_b.append(
+            f"Predicted: {self.bp_stats['pred']}, " + \
+            f"Mispredicted: {self.bp_stats['mispred']}, " + \
+            f"Accuracy: {self.bp_stats['acc']:.2f}%"
+            )
+
+        out_stalls = f"Pipeline stalls: " + \
+            f"Jumps: {self.j_stalls}, " + \
+            f"Branches: {self.b_stalls}, " + \
+            f"DCache: {self.dc_stalls}, ICache: {self.ic_stalls}"
 
         delim = "\n    "
-        stats = f"{self.name}\n{out1}\n{delim.join(out_b)}" + \
-                     f"\n{out_ic}\n{out_dc}"
+        stats = f"{self.name}" + \
+                f"\n{out_sp}" + \
+                f"\n{delim.join(out_ic)}" + \
+                f"\n{delim.join(out_dc)}" + \
+                f"\n{delim.join(out_b)}" + \
+                f"\n{out_stalls}"
 
         return f"{stats}\n{self.perf_str}"
 
