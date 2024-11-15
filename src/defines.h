@@ -11,6 +11,25 @@
 #include <map>
 #include <chrono>
 
+// Planned CLI switches
+#define ICACHE_SETS 1
+#define ICACHE_WAYS 4
+
+#define DCACHE_SETS 1
+#define DCACHE_WAYS 8
+
+#define ROI_START 0x17280 // bytes
+#define ROI_SIZE 256 // bytes
+
+// all predictors will work, the selected one will drive the icache
+#define BRANCH_PERDICTOR bp_t::bimodal
+//#define BRANCH_PERDICTOR bp_t::sttc
+
+// branch predictor type specific
+#define BP_BIMODAL_ENTRIES 8
+#define BP_BIMODAL_CNT_BITS 2
+
+// casts
 #define TO_F64(x) static_cast<double_t>(x)
 #define TO_F32(x) static_cast<float_t>(x)
 #define TO_U64(x) static_cast<uint64_t>(x)
@@ -24,6 +43,7 @@
 #define TO_U4(x) static_cast<uint8_t>(x & 0xF)
 #define TO_I4(x) static_cast<int8_t>((x & 0xF) | ((x & 0x8) ? 0xF0 : 0x00))
 
+// dasm RF option
 #ifdef USE_ABI_NAMES
 #define RF_NAMES 1u
 #define FRF_W 4
@@ -32,6 +52,7 @@
 #define FRF_W 3
 #endif
 
+// Memory
 #define BASE_ADDR 0x10000
 #define ADDR_BITS 17 // 128KB address space
 #define MEM_ADDR_BITWIDTH 5 // digits in hex printout
@@ -40,6 +61,7 @@
 //#define MEM_SIZE 65536
 #define UART0_SIZE 12 // 3 32-bit registers
 
+// HW models
 #define ENABLE_HW_PROF // enabled by default
 //#define CACHE_VERIFY // only for CACHE_MODE_FUNC
 
@@ -48,6 +70,12 @@
 
 #ifndef CACHE_MODE
 #define CACHE_MODE CACHE_MODE_PERF
+
+#define CACHE_LINE_SIZE 64 // bytes
+#define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
+#define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
+//#define CACHE_ADDR_MASK 1FFFF // 17 bits
+
 #endif
 
 
@@ -166,6 +194,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
+enum class bp_t { sttc, bimodal };
 
 struct dasm_str {
     std::ostringstream asm_ss;

@@ -11,7 +11,7 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name,
     , prof(log_name)
     #endif
     #ifdef ENABLE_HW_PROF
-    , bpr("Static predictor")
+    , bpr("Bpred", BRANCH_PERDICTOR)
     #endif
 {
     for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
@@ -266,14 +266,13 @@ void core::branch() {
     }
 
     #ifdef ENABLE_HW_PROF
-    uint32_t speculative_next_pc;
-    bool correct;
     last_inst_branch = true;
-    speculative_next_pc = bpr.predict(pc, ip.imm_b());
+    uint32_t speculative_next_pc = bpr.predict(pc, ip.imm_b());
     mem->speculative_exec(speculative_t::enter);
     inst_speculative = mem->rd_inst(speculative_next_pc);
-    correct = next_pc == speculative_next_pc;
-    bpr.update(correct);
+    bool actually_taken = next_pc != pc + 4;
+    bpr.update(next_pc, actually_taken);
+    bool correct = next_pc == speculative_next_pc;
     if (!correct) {
         mem->speculative_exec(speculative_t::exit_flush);
         inst = mem->rd_inst(next_pc);

@@ -1,12 +1,5 @@
 #include "main_memory.h"
 
-// TODO: pass from cli
-#define ICACHE_SETS 1
-#define ICACHE_WAYS 4
-
-#define DCACHE_SETS 1
-#define DCACHE_WAYS 8
-
 main_memory::main_memory(size_t size, std::string test_bin) :
     dev(size)
     #ifdef ENABLE_HW_PROF
@@ -17,10 +10,7 @@ main_memory::main_memory(size_t size, std::string test_bin) :
 {
     burn(test_bin);
     #ifdef ENABLE_HW_PROF
-    // TODO: pass from cli as well
-    uint32_t roi_start = 0x17280; // bytes
-    uint32_t roi_size = 256; // bytes
-    dcache.set_roi(roi_start, roi_start + roi_size);
+    dcache.set_roi(ROI_START, ROI_START + ROI_SIZE);
     #endif
 }
 
