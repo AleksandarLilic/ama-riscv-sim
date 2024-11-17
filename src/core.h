@@ -60,11 +60,15 @@ class core{
         // instruction parsing
         inst_parser ip;
         void inst_fetch() {
+            #ifdef ENABLE_HW_PROF
             // if previous inst was branch, use that instead of fetching
             // this prevents cache from logging the same access twice
             if (!last_inst_branch) inst = mem->rd_inst(pc);
-            ip.inst = inst;
             last_inst_branch = false;
+            #else
+            inst = mem->rd_inst(pc);
+            #endif
+            ip.inst = inst;
         }
 
         // arithmetic and logic operations

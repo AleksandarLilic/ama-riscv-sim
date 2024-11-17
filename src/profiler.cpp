@@ -191,9 +191,7 @@ void profiler::log_to_file() {
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
-    #ifndef DPI
     info(profiled_inst_cnt, min_sp);
-    #endif
 
     ofs.open(log_name + "_reg_hist.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),

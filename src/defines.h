@@ -62,8 +62,10 @@
 #define UART0_SIZE 12 // 3 32-bit registers
 
 // HW models
+#ifndef DPI
 #define ENABLE_HW_PROF // enabled by default
 //#define CACHE_VERIFY // only for CACHE_MODE_FUNC
+#endif
 
 #define CACHE_MODE_PERF 0 // tags and stats
 #define CACHE_MODE_FUNC 1 // adds data
