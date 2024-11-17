@@ -50,6 +50,7 @@ run_make(["make", "clean"])
 #    run_make(["make", "-j"])
 
 out_txt = []
+hex_gen = ["HEX=1"] if args.hex else []
 for directory, entry in tests.items():
     test_list, test_opts = entry if len(entry) == 2 else (entry, [])
     test_dir = os.path.join(TEST_DIR, directory)
@@ -61,7 +62,6 @@ for directory, entry in tests.items():
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j", "-B", "common"] # rebuild common with test's flags
     run_make(make_cmd)
-    hex_gen = ["HEX=1"] if args.hex else []
     make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
     run_make(make_cmd)
     if make_all:
@@ -75,13 +75,14 @@ if args.isa_tests:
     print("Preparing ISA tests also")
     os.chdir(ISA_TEST_DIR)
     run_make(["make", "clean"])
+    make_cmd = ["make", "-j"] + hex_gen
     if not args.clean_only:
-        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32ui"]) # RV32I
-        run_make(["make", "-j", "DIR=modified_riscv-tests/isa/rv32mi/"]) # memory
-        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32um/",
-                                "MARCH=rv32im_zicsr_zifencei"]) # RV32M
-        run_make(["make", "-j", "DIR=riscv-tests/isa/rv32uc/",
-                                "MARCH=rv32ic_zicsr_zifencei"]) # RV32C
+        run_make(make_cmd + ["DIR=riscv-tests/isa/rv32ui"]) # RV32I
+        run_make(make_cmd + ["DIR=modified_riscv-tests/isa/rv32mi/"]) # memory
+        run_make(make_cmd + ["DIR=riscv-tests/isa/rv32um/",
+                             "MARCH=rv32im_zicsr_zifencei"]) # RV32M
+        run_make(make_cmd + ["DIR=riscv-tests/isa/rv32uc/",
+                             "MARCH=rv32ic_zicsr_zifencei"]) # RV32C
         isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
 
 if args.clean_only:

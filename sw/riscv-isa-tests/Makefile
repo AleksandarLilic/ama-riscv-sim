@@ -16,14 +16,27 @@ TESTS_BIN := $(subst .S,.bin,$(TESTS))
 # remove "ma_data" from the list of tests if it exists (rv32ui only)
 TESTS_BIN := $(filter-out %ma_data.bin,$(TESTS_BIN))
 
+RV_GNU_DEFAULT := riscv64-unknown-elf
+BIN2HEX :=
+HEX ?= 0
+ifeq ($(HEX), 1)
+	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
+		BIN2HEX := $(RV_GNU)-bin2hex
+	else ifneq (, $(shell command -v $(RV_GNU_DEFAULT)-bin2hex 2> /dev/null))
+		BIN2HEX := $(RV_GNU_DEFAULT)-bin2hex
+	else
+		$(error "No bin2hex tool found")
+	endif
+endif
+
 all: $(TESTS_BIN)
 
 %.bin: $(DIR)/%.S
 	@$(RV_GNU)-gcc $(GCC_OPTS) -Idefines -Iriscv-tests/env -Iriscv-tests/isa/macros/scalar $^ -o $(basename $@).elf
 	@$(RV_GNU)-objdump -D -Mnumeric --disassembler-options=no-aliases $(basename $@).elf > $(basename $@).dump
 	@$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin
-	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" = "1" ]; then \
-		$(RV_GNU)-bin2hex -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
+	@if [ "$(HEX)" = "1" ]; then \
+		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
 	fi
 	@echo "Generated $@"
 
