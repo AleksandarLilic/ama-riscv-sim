@@ -101,6 +101,13 @@ void core::exec_inst() {
     #endif
 
     #ifdef ENABLE_DASM
+
+    #ifdef DPI
+    // always log the for DPI
+    dasm.asm_str = dasm.asm_ss.str();
+    dasm.asm_ss.str("");
+    #endif
+
     if (logging) {
         dasm.asm_str = dasm.asm_ss.str();
         dasm.asm_ss.str("");
