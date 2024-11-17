@@ -1,5 +1,5 @@
 
-# set up for "gcc version 13.2.0 (gc891d8dc23e)"
+# set up for "gcc 14"
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
@@ -19,6 +19,7 @@ USER_DEFINES =
 # if not set in test's Makefile, default to all supported ISA extensions
 #export MARCH ?= rv32imc_zicsr_zifencei_zicntr
 export MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
+#export MARCH ?= rv32i_zicsr
 export MABI ?= ilp32
 export CFLAGS
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
@@ -33,14 +34,27 @@ OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 #OBJDUMP_OPTS := -S # inline C source code in disassembly
 MEM_WIDTH := 32
 
-# run with RTL_SIM=1 to generate hex file for RTL simulation
+RV_GNU_DEFAULT := riscv64-unknown-elf
+BIN2HEX :=
+HEX ?= 0
+ifeq ($(HEX), 1)
+	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
+		BIN2HEX := $(RV_GNU)-bin2hex
+	else ifneq (, $(shell command -v $(RV_GNU_DEFAULT)-bin2hex 2> /dev/null))
+		BIN2HEX := $(RV_GNU_DEFAULT)-bin2hex
+	else
+		$(error "No bin2hex tool found")
+	endif
+endif
+
+# run with HEX=1 to generate hex file for RTL simulation
 $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
 	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) \
 	-o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(TARGET).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(TARGET).bin
-	@if [ -n "$(RTL_SIM)" -a "$(RTL_SIM)" = "1" ]; then \
-		$(RV_GNU)-bin2hex -w $(MEM_WIDTH) $(TARGET).bin $(TARGET).hex; \
+	@if [ "$(HEX)" = "1" ]; then \
+		$(BIN2HEX) -w $(MEM_WIDTH) $(TARGET).bin $(TARGET).hex; \
 	fi
 	@echo "Generated $@"
 	@$(RV_GNU)-size $@

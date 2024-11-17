@@ -20,6 +20,7 @@ def parse_args():
     parser.add_argument("-t", "--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
     parser.add_argument("--isa_tests", default=False, action='store_true', help="Also prepare ISA tests")
     parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
+    parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
     return parser.parse_args()
 
 def run_make(make_cmd):
@@ -60,7 +61,8 @@ for directory, entry in tests.items():
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j", "-B", "common"] # rebuild common with test's flags
     run_make(make_cmd)
-    make_cmd = ["make", "-j"] + all_targets + test_opts # build all targets
+    hex_gen = ["HEX=1"] if args.hex else []
+    make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
     run_make(make_cmd)
     if make_all:
         all_bin_files = glob.glob(f"{test_dir}/*.bin")
