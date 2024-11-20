@@ -55,7 +55,11 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
     for (uint32_t i = 0; i < n_output; i++) {
         // pointer to the weights of the current neuron
         const int8_t* weightidx = weights + i * n_input;
+        #ifdef CUSTOM_ISA
+        output[i] = _simd_dot_product_int8(activations, weightidx, n_input);
+        #else
         output[i] = dot_product_int8(activations, weightidx, n_input);
+        #endif
     }
 }
 
@@ -64,25 +68,20 @@ uint32_t run_inference(uint8_t* input_img) {
     uint8_t layer_in[64];
 
     #ifdef CUSTOM_ISA
-    LOAD_AND_RESERVE_SCP(input_img);
-    LOAD_AND_RESERVE_SCP(input_img+64);
-    LOAD_AND_RESERVE_SCP(input_img+128);
-    LOAD_AND_RESERVE_SCP(input_img+192);
+    //#pragma GCC unroll 4 // force if gcc doesn't unroll
+    for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(input_img + 64*i);
     #endif
+
     fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
+
     #ifdef CUSTOM_ISA
-    RELEASE_SCP(input_img);
-    RELEASE_SCP(input_img+64);
-    RELEASE_SCP(input_img+128);
-    RELEASE_SCP(input_img+192);
+    for (int i = 0; i < 4; i++) RELEASE_SCP(input_img + 64*i);
     // and move 'layer_out' (allocated on the stack) to scp
-    LOAD_AND_RESERVE_SCP(layer_out);
-    LOAD_AND_RESERVE_SCP(layer_out+16);
-    LOAD_AND_RESERVE_SCP(layer_out+32);
-    LOAD_AND_RESERVE_SCP(layer_out+48);
+    for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(layer_out + 16*i);
     // no more space in scp, so LRU will have to do the job
     //LOAD_AND_RESERVE_SCP(layer_in);
     #endif
+
     relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT);
 
     fc_layer(layer_in, fc2_weight, layer_out, FC2_WEIGHT_IN, FC2_WEIGHT_OUT);
@@ -94,12 +93,11 @@ uint32_t run_inference(uint8_t* input_img) {
     fc_layer(layer_in, fc_last_weight, layer_out,
              FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT);
     uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT);
+
     #ifdef CUSTOM_ISA
     // be a good citizen and release the scp
-    RELEASE_SCP(layer_out);
-    RELEASE_SCP(layer_out+16);
-    RELEASE_SCP(layer_out+32);
-    RELEASE_SCP(layer_out+48);
+    for (int i = 0; i < 4; i++) RELEASE_SCP(layer_out + 16*i);
     #endif
+
     return out;
 }
