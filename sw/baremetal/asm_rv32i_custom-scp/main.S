@@ -20,9 +20,9 @@ li x12, 65
 add x26, x11, x12
 OP_END(100)
 
-op_scp_ld:
+op_scp_lcl:
 lla x11, dat3
-scp.ld x0, x11
+scp.lcl x0, x11
 
 op_add2:
 li x9, 0x00c0ffee

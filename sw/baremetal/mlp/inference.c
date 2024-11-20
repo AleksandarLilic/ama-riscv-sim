@@ -64,24 +64,24 @@ uint32_t run_inference(uint8_t* input_img) {
     uint8_t layer_in[64];
 
     #ifdef CUSTOM_ISA
-    asm volatile("scp.ld x0, %0" : : "r"(input_img));
-    asm volatile("scp.ld x0, %0" : : "r"(input_img+64));
-    asm volatile("scp.ld x0, %0" : : "r"(input_img+128));
-    asm volatile("scp.ld x0, %0" : : "r"(input_img+192));
+    LOAD_AND_RESERVE_SCP(input_img);
+    LOAD_AND_RESERVE_SCP(input_img+64);
+    LOAD_AND_RESERVE_SCP(input_img+128);
+    LOAD_AND_RESERVE_SCP(input_img+192);
     #endif
     fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
     #ifdef CUSTOM_ISA
-    asm volatile("scp.rel x0, %0" : : "r"(input_img));
-    asm volatile("scp.rel x0, %0" : : "r"(input_img+64));
-    asm volatile("scp.rel x0, %0" : : "r"(input_img+128));
-    asm volatile("scp.rel x0, %0" : : "r"(input_img+192));
+    RELEASE_SCP(input_img);
+    RELEASE_SCP(input_img+64);
+    RELEASE_SCP(input_img+128);
+    RELEASE_SCP(input_img+192);
     // and move 'layer_out' (allocated on the stack) to scp
-    asm volatile("scp.ld x0, %0" : : "r"(layer_out));
-    asm volatile("scp.ld x0, %0" : : "r"(layer_out+16));
-    asm volatile("scp.ld x0, %0" : : "r"(layer_out+32));
-    asm volatile("scp.ld x0, %0" : : "r"(layer_out+48));
+    LOAD_AND_RESERVE_SCP(layer_out);
+    LOAD_AND_RESERVE_SCP(layer_out+16);
+    LOAD_AND_RESERVE_SCP(layer_out+32);
+    LOAD_AND_RESERVE_SCP(layer_out+48);
     // no more space in scp, so LRU will have to do the job
-    //asm volatile("scp.ld x0, %0" : : "r"(layer_in));
+    //LOAD_AND_RESERVE_SCP(layer_in);
     #endif
     relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT);
 
@@ -96,10 +96,10 @@ uint32_t run_inference(uint8_t* input_img) {
     uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT);
     #ifdef CUSTOM_ISA
     // be a good citizen and release the scp
-    asm volatile("scp.rel x0, %0" : : "r"(layer_out));
-    asm volatile("scp.rel x0, %0" : : "r"(layer_out+16));
-    asm volatile("scp.rel x0, %0" : : "r"(layer_out+32));
-    asm volatile("scp.rel x0, %0" : : "r"(layer_out+48));
+    RELEASE_SCP(layer_out);
+    RELEASE_SCP(layer_out+16);
+    RELEASE_SCP(layer_out+32);
+    RELEASE_SCP(layer_out+48);
     #endif
     return out;
 }

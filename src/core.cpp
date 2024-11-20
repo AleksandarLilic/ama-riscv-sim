@@ -14,7 +14,8 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name,
     , bpr("Bpred", BRANCH_PERDICTOR)
     #endif
 {
-    for (uint32_t i = 0; i < 32; i++) rf[i] = 0;
+    rf[0] = 0;
+    for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
     // initialize CSRs
     for (const auto &c : supported_csrs)
         csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
@@ -401,9 +402,9 @@ void core::custom_ext() {
         DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
                    << "," << rf_names[ip.rs2()][RF_NAMES];
         #endif
-    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
+    } else if (funct3 == TO_U8(custom_ext_t::hints)) {
         switch (funct7) {
-            CASE_SCP_CUSTOM(ld); DASM_OP(scp.ld); break;
+            CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
             default : unsupported("custom memory extension");
         }

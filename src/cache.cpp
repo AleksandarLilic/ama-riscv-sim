@@ -46,8 +46,8 @@ uint32_t cache::rd(uint32_t addr, uint32_t size) {
     return rd_buf;
 }
 
-scp_status_t cache::scp_ld(uint32_t addr) {
-    access(addr, 0u, access_t::read, scp_mode_t::m_ld);
+scp_status_t cache::scp_lcl(uint32_t addr) {
+    access(addr, 0u, access_t::read, scp_mode_t::m_lcl);
     return scp_status;
 }
 
@@ -194,7 +194,7 @@ void cache::update_lru(uint32_t index, uint32_t way) {
 scp_status_t cache::update_scp(scp_mode_t scp_mode, cache_line_t& line,
                            uint32_t index){
     if (scp_mode == scp_mode_t::m_none) return scp_status_t::success;
-    if (scp_mode == scp_mode_t::m_ld) return convert_to_scp(line, index);
+    if (scp_mode == scp_mode_t::m_lcl) return convert_to_scp(line, index);
     else if (scp_mode == scp_mode_t::m_rel) return release_scp(line);
     else throw std::runtime_error("Unknown SCP mode.");
 }

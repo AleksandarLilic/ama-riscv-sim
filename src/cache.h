@@ -87,7 +87,7 @@ class cache {
               std::string cache_name, main_memory* mem);
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
-        scp_status_t scp_ld(uint32_t addr);
+        scp_status_t scp_lcl(uint32_t addr);
         scp_status_t scp_rel(uint32_t addr);
         void speculative_exec(speculative_t smode);
         // prof

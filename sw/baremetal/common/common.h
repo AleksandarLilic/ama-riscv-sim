@@ -22,6 +22,13 @@
 #define LOG_START asm volatile ("slti x0, x0, 0x10")
 #define LOG_STOP asm volatile ("slti x0, x0, 0x11")
 
+#ifdef CUSTOM_ISA
+#define LOAD_AND_RESERVE_SCP(addr) asm volatile("scp.lcl x0, %0" : : "r"(addr))
+// TODO: can reserve with rd!=0 if success/fail status is needed
+#define RELEASE_SCP(addr) asm volatile("scp.rel x0, %0" : : "r"(addr))
+// TODO: same as above for scp.rel
+#endif
+
 void test_end();
 void write_mismatch(uint32_t res, uint32_t ref, uint8_t idx);
 void write_csr_status();

@@ -168,17 +168,18 @@ enum class csr_op_t {
 enum class custom_ext_t {
     arith = 0b000,
     memory = 0b001,
+    hints = 0b010,
 };
 
 enum class alu_custom_op_t {
     op_fma16 = 0x0,
     op_fma8 = 0x1,
-    op_fma4 = 0x2,
+    op_fma4 = 0x40,
 };
 
 enum class scp_custom_op_t {
-    op_ld = 0x10,
-    op_rel = 0x12,
+    op_lcl = 0x10,
+    op_rel = 0x11,
 };
 
 enum class csr_perm_t {
@@ -189,7 +190,7 @@ enum class csr_perm_t {
 
 // caches
 enum class access_t { read, write };
-enum class scp_mode_t { m_none, m_ld, m_rel };
+enum class scp_mode_t { m_none, m_lcl, m_rel };
 // success always 0, fail 1 for now, use values >0 for error codes if needed
 enum class scp_status_t { success, fail };
 enum class speculative_t { enter, exit_commit, exit_flush };

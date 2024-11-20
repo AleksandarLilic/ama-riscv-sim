@@ -7,7 +7,7 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len) 
     int32_t c = 0;
 
     #if defined(LOAD_OPT) || defined(CUSTOM_ISA)
-    // 2 bytes at a time
+    // 2 halves at a time
     for (size_t k = 0; k < (len >> 1) << 1; k += 2) {
         int32_t a_slice = *(int32_t*)(a + k);
         int32_t b_slice = *(int32_t*)(b + k);
@@ -16,7 +16,7 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len) 
         c += fma16(a_slice, b_slice);
 
         #else
-        // Loop through each byte in the 32-bit slice
+        // Loop through each half in the 32-bit slice
         int16_t a_half, b_half;
         for (size_t i = 0; i < 2; i++) {
             a_half = a_slice >> 16;
@@ -28,7 +28,7 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len) 
         #endif
     }
 
-    // leftover bytes, if any, no benefit in using simd
+    // leftover halves, if any, no benefit in using simd
     size_t rem = len % 2;
     if (rem > 0) {
         for (size_t i = 0; i < rem; i++)

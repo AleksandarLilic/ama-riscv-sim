@@ -47,7 +47,7 @@ struct cache_size_t {
         void show() const {
             std::cout << " (W/S: " << ways << "/" << sets
                       << ", D/T/M: " << data << "/" << tags << "/" << metadata
-                      << " B), : ";
+                      << " B): ";
         }
         void log(std::ofstream& log_file) const {
             log_file << CACHE_SIZE_JSON_ENTRY(this);

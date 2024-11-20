@@ -60,7 +60,7 @@ uint32_t main_memory::rd_inst(uint32_t addr) {
 #ifdef ENABLE_HW_PROF
 scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
     addr += BASE_ADDR;
-    if (scp_mode == scp_mode_t::m_ld) return dcache.scp_ld(addr);
+    if (scp_mode == scp_mode_t::m_lcl) return dcache.scp_lcl(addr);
     else if (scp_mode == scp_mode_t::m_rel) return dcache.scp_rel(addr);
     else throw std::runtime_error("ERROR: Invalid cache hint mode");
 }
