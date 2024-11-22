@@ -61,7 +61,8 @@ int main(int argc, char* argv[]) {
 
     TRY_CATCH({
         memory mem(BASE_ADDR, test_bin);
-        core rv32(BASE_ADDR, &mem, gen_log_name(test_bin), {pc_start, pc_stop});
+        core rv32(BASE_ADDR, &mem, gen_log_name(test_bin),
+                  {pc_start, pc_stop, 0});
         rv32.exec();
     });
     return 0;

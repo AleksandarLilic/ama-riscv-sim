@@ -208,6 +208,7 @@ struct dasm_str {
 struct logging_pc_t {
     uint32_t start;
     uint32_t stop;
+    uint64_t inst_cnt;
 };
 
 // Instruction field masks

@@ -114,8 +114,11 @@ void core::exec_inst() {
         dasm.asm_ss.str("");
 
         #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-        log_ofstream << FORMAT_INST(inst, inst_w) << " "
+        log_ofstream << "(" << std::setw(8) << std::setfill(' ')
+                     << logging_pc.inst_cnt << ") "
+                     << FORMAT_INST(inst, inst_w) << " "
                      << dasm.asm_str << std::endl;
+        logging_pc.inst_cnt++;
         #endif
 
         #ifdef LOG_EXEC_ALL
