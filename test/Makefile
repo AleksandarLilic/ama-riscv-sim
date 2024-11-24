@@ -41,14 +41,13 @@ build_sim:
 	make -C ../src --no-print-directory -j $(SIM_FLAGS)
 
 cleanlogs:
-	rm -f *.log *_profiler.* *trace* *_perf_est.csv
+	rm -rf *.log out_*
 
 cleanbins:
 	rm -f unsupported*.bin oversized.bin
 
-LOGS = *_dump.log *_hw_stats.json
 clean: cleanlogs cleanbins
-	rm -rf $(TEST) *.o *.d *.i *.s *.ii  $(LOGS) $(COVDIR) *.gc* gtest_testlist.txt
+	rm -rf $(TEST) $(COVDIR) *.gc* gtest_testlist.txt
 
 cleanall: clean
 	make -C ../src --no-print-directory clean
