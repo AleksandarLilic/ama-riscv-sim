@@ -20,12 +20,17 @@
         return 1; \
     }
 
-std::string gen_log_name(const std::string& path) {
-    std::filesystem::path p(path);
+std::string gen_log_path(const std::string& test_bin_path) {
+    std::filesystem::path p(test_bin_path);
     std::string last_directory = p.parent_path().filename().string();
     std::string binary_name = p.stem().string();
-    std::string formatted = last_directory + "_" + binary_name;
-    return formatted;
+    std::string path_out = "out_" + last_directory + "_" + binary_name + "/";
+    if (!std::filesystem::exists(path_out) &&
+        !std::filesystem::create_directory(path_out)) {
+        std::cerr << "Failed to create directory: " << path_out << std::endl;
+        throw std::runtime_error("Failed to create directory");
+    }
+    return path_out;
 }
 
 int main(int argc, char* argv[]) {
@@ -61,7 +66,7 @@ int main(int argc, char* argv[]) {
 
     TRY_CATCH({
         memory mem(BASE_ADDR, test_bin);
-        core rv32(BASE_ADDR, &mem, gen_log_name(test_bin),
+        core rv32(BASE_ADDR, &mem, gen_log_path(test_bin),
                   {pc_start, pc_stop, 0});
         rv32.exec();
     });

@@ -105,7 +105,7 @@ class profiler{
         bool active;
 
     private:
-        std::string log_name;
+        std::string log_path;
         std::ofstream ofs;
         uint64_t inst_cnt;
         uint32_t inst;
@@ -116,7 +116,7 @@ class profiler{
 
     public:
         profiler() = delete;
-        profiler(std::string log_name);
+        profiler(std::string log_path);
         void new_inst(uint32_t inst);
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);

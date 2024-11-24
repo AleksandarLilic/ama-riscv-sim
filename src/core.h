@@ -10,7 +10,7 @@
 class core{
     public:
         core() = delete;
-        core(uint32_t base_addr, memory *mem, std::string log_name,
+        core(uint32_t base_addr, memory *mem, std::string log_path,
              logging_pc_t logging_pc);
         void exec();
         void exec_inst();
@@ -284,7 +284,7 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         uint64_t inst_cnt_csr;
-        std::string log_name;
+        std::string log_path;
         logging_pc_t logging_pc;
         bool logging;
         #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)

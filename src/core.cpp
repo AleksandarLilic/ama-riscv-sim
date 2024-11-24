@@ -2,13 +2,13 @@
 
 #define INDENT "    "
 
-core::core(uint32_t base_addr, memory *mem, std::string log_name,
+core::core(uint32_t base_addr, memory *mem, std::string log_path,
            logging_pc_t logging_pc)
     : running(false), mem(mem), pc(base_addr), next_pc(0), inst(0),
       inst_cnt(0), inst_cnt_csr(0),
-      log_name(log_name), logging_pc(logging_pc), logging(false)
+      log_path(log_path), logging_pc(logging_pc), logging(false)
     #ifdef ENABLE_PROF
-    , prof(log_name)
+    , prof(log_path)
     #endif
     #ifdef ENABLE_HW_PROF
     , bpr("Bpred", BRANCH_PERDICTOR)
@@ -23,7 +23,7 @@ core::core(uint32_t base_addr, memory *mem, std::string log_name,
 
 void core::exec() {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-    log_ofstream.open(log_name + "_exec.log");
+    log_ofstream.open(log_path + "exec.log");
     logging = false;
     #endif
 
@@ -915,7 +915,7 @@ void core::illegal(const std::string &msg, uint32_t memw) {
 #ifdef ENABLE_HW_PROF
 void core::log_hw_stats() {
     std::ofstream ofs;
-    ofs.open(log_name + "_hw_stats.json");
+    ofs.open(log_path + "hw_stats.json");
     ofs << "{\n";
     mem->log_cache_stats(ofs);
     bpr.log_stats(ofs);

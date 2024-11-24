@@ -312,13 +312,17 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 
     symbols = {}
     pc_inst_map_arr = []
-    dasm_ext = os.path.splitext(args.dasm)[1]
+    logs_path = os.path.dirname(args.trace)
+    os.system(f"cp {args.dasm} {logs_path}") # copy og for reference
+    dasm_name = os.path.basename(args.dasm)
+    dasm_ext = os.path.splitext(dasm_name)[1]
     new_dasm_ext = ".prof" + dasm_ext
     if section == "data":
         # avoid writing to the inst annotated file, no annotations for data
         new_dasm_ext = ".dummy" + dasm_ext
 
-    outfile_name = args.dasm.replace(dasm_ext, new_dasm_ext)
+    outfile_name = dasm_name.replace(dasm_ext, new_dasm_ext)
+    outfile_name = os.path.join(logs_path, outfile_name)
     with open(args.dasm, 'r') as infile, open(outfile_name, 'w') as outfile:
         current_sym = None
         append = False
@@ -734,6 +738,9 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if args.dasm:
         symbols, _ = backannotate_dasm(args, df, "data")
 
+    if args.symbols_only:
+        return df, None, None
+
     fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
     fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
     return df, fig, fig2
@@ -780,13 +787,7 @@ def run_main(args) -> None:
         if int(args.dmem_begin, 16) >= int(args.dmem_end, 16):
             raise ValueError("--dmem_begin must be less than --dmem_end")
 
-    if run_trace:
-        args_log = args.trace
-        profiler_str = "_trace.bin"
-    else:
-        args_log = args.inst_log
-        profiler_str = "_inst_profiler.json"
-
+    args_log = args.trace if run_trace else args.inst_log
     if not os.path.exists(args_log):
         raise FileNotFoundError(f"File {args_log} not found")
 
@@ -805,7 +806,7 @@ def run_main(args) -> None:
 
     fig_arr = []
     ext = os.path.splitext(args_log)[1]
-    title = os.path.basename(args_log.replace(profiler_str, ""))
+    title = os.path.basename(os.path.dirname(args_log)).replace("out_", "")
     log_path = os.path.realpath(args_log)
 
     if run_trace:

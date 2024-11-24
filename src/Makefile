@@ -8,10 +8,18 @@ CXXFLAGS += -Ofast -s -flto -march=native -mtune=native # release build
 #CXXFLAGS += -O0 -g # gdb build
 #CXXFLAGS += -save-temps
 LDFLAGS :=
+
+BDIR := build
+$(shell mkdir -p $(BDIR))
+
 TARGET := ama-riscv-sim
 SOURCES := $(wildcard *.cpp)
-OBJECTS := $(SOURCES:.cpp=.o)
-DEPS := $(SOURCES:.cpp=.d)
+SOURCES += $(wildcard profilers/*.cpp)
+SOURCES += $(wildcard hw_models/*.cpp)
+OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
+DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
+INC := -I. -I./profilers -I./hw_models
+
 USER_DEFINES =
 DEFINES =
 DEFINES += -DLOG_EXEC -DENABLE_DASM
@@ -25,22 +33,19 @@ DEFINES += -DUART_ENABLE
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(BDIR)/$@ $^ $(LDFLAGS)
+	@ln -sf $(BDIR)/$@ $@
 
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES)
+$(BDIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
 
 -include $(DEPS)
 
-INST_LOGS := *inst_profiler.json *inst_profiler.csv *inst_profiler.png
-TRACES := *_trace*.csv *_trace*.bin *_trace*.png *_trace*.svg
-REG_HIST := *_reg_hist.csv *_reg_hist.bin
-HW_STATS := *_hw_stats.json *_perf_est.csv
-
 cleanlogs:
-	rm -f *.log $(TRACES) $(REG_HIST) $(INST_LOGS) $(HW_STATS)
+	rm -rf out_*
 
 clean: cleanlogs
-	rm -f $(TARGET)* $(OBJECTS) $(DEPS) *.i *.s *.d *.ii *.gc*
+	rm -rf $(BDIR) $(TARGET)
 
-.PHONY: all clean
+.PHONY: all clean cleanlogs

@@ -1,9 +1,9 @@
 #include "profiler.h"
 
-profiler::profiler(std::string log_name) {
+profiler::profiler(std::string log_path) {
     inst_cnt = 0;
     rst_te();
-    this->log_name = log_name;
+    this->log_path = log_path;
 
     prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
     prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
@@ -157,7 +157,7 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
 
 void profiler::log_to_file() {
     uint32_t profiled_inst_cnt = 0;
-    ofs.open(log_name + "_inst_profiler.json");
+    ofs.open(log_path + "inst_profiler.json");
     ofs << "{\n";
     for (auto &i : prof_g_arr) {
         if (i.name != "") {
@@ -186,14 +186,14 @@ void profiler::log_to_file() {
     ofs << "\n}\n";
     ofs.close();
 
-    ofs.open(log_name + "_trace.bin", std::ios::binary);
+    ofs.open(log_path + "trace.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(trace.data()),
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
     info(profiled_inst_cnt, min_sp);
 
-    ofs.open(log_name + "_reg_hist.bin", std::ios::binary);
+    ofs.open(log_path + "reg_hist.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),
              prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
     ofs.close();
