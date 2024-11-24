@@ -118,13 +118,14 @@ void core::exec_inst() {
                      << logging_pc.inst_cnt << ") "
                      << FORMAT_INST(inst, inst_w) << " "
                      << dasm.asm_str << std::endl;
-        logging_pc.inst_cnt++;
         #endif
+        logging_pc.inst_cnt++;
 
         #ifdef LOG_EXEC_ALL
         log_ofstream << mem_ostr.str();
         mem_ostr.str("");
-        log_ofstream << dump_state() << std::endl;
+        log_ofstream << dump_state(csr_updated) << std::endl;
+        csr_updated = false;
         #endif
 
     } else {
@@ -150,7 +151,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
-    bpr.finish();
+    bpr.finish(logging_pc.inst_cnt);
     mem->cache_finish();
     log_hw_stats();
     #endif
@@ -478,6 +479,9 @@ void core::csr_access() {
         }
         if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
+    #ifdef LOG_EXEC_ALL
+    csr_updated = true;
+    #endif
 }
 
 // Zicntr extension
@@ -930,8 +934,9 @@ void core::dump() {
     #ifdef UART_ENABLE
     std::cout << "=== UART END ===\n" << std::endl;
     #endif
-    std::cout << std::dec << "Inst Counter: " << inst_cnt << std::endl;
-    std::cout << dump_state() << std::endl;
+    std::cout << std::dec << "Inst Counters - executed: " << inst_cnt
+              << ", logged: " << logging_pc.inst_cnt << std::endl;
+    std::cout << dump_state(true) << std::endl;
 
     #ifdef CHECK_LOG
     // open file for check log
@@ -949,7 +954,7 @@ void core::dump() {
     #endif
 }
 
-std::string core::dump_state() {
+std::string core::dump_state(bool dump_csr) {
     std::ostringstream state;
     state << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
     for(uint32_t i = 0; i < 32; i+=4){
@@ -959,8 +964,10 @@ std::string core::dump_state() {
         }
         state << std::endl;
     }
-    for (auto it = csr.begin(); it != csr.end(); it++)
-        state << INDENT << CSRF(it) << std::endl;
+    if (dump_csr) {
+        for (auto it = csr.begin(); it != csr.end(); it++)
+            state << INDENT << CSRF(it) << std::endl;
+    }
 
     return state.str();
 }

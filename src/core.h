@@ -15,7 +15,7 @@ class core{
         void exec();
         void exec_inst();
         void dump();
-        std::string dump_state();
+        std::string dump_state(bool dump_csr);
         void finish(bool dump_regs);
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
@@ -292,6 +292,7 @@ class core{
         #endif
         #if defined(LOG_EXEC_ALL)
         std::ostringstream mem_ostr;
+        bool csr_updated = false;
         #endif
         #ifdef ENABLE_DASM
         dasm_str dasm;

@@ -24,6 +24,7 @@ struct bp_stats_t {
         uint32_t predicted;
         uint32_t mispredicted;
         uint32_t total;
+        uint64_t all_insts;
         const std::string type_name;
 
     public:
@@ -40,23 +41,27 @@ struct bp_stats_t {
                 else mispredicted_bwd++;
             }
         }
-        void summarize() {
+        void summarize(uint64_t all_insts) {
             predicted = predicted_fwd + predicted_bwd;
             mispredicted = mispredicted_fwd + mispredicted_bwd;
             total = predicted + mispredicted;
+            this->all_insts = all_insts;
         }
         void show(std::string name) const {
             float_t acc = 0.0;
-            if (total > 0) acc = TO_F32(predicted) / TO_F32(total) * 100;
-            std::cout << "  " << name
-                      << ": B: " << total
-                      << ", P(f/b): " << predicted
+            float_t perc_branches = 0.0;
+            if (total > 0) {
+                acc = TO_F32(predicted) / TO_F32(total) * 100;
+                perc_branches = TO_F64(total) / TO_F64(all_insts) * 100;
+            }
+            std::cout << "  " << name << std::fixed << std::setprecision(2)
+                      << ": B: " << total << "(" << perc_branches
+                      << "%), P(f/b): " << predicted
                       << "(" << predicted_fwd << "/" << predicted_bwd
                       << "), MP(f/b): " << mispredicted
                       << "(" << mispredicted_fwd << "/" << mispredicted_bwd
-                      << "), ACC: " << std::fixed << std::setprecision(2)
-                      << acc << "%"
-                      << std::endl;
+                      << "), ACC: "
+                      << acc << "%" << std::endl;
         }
         void log(std::string name, std::ofstream& log_file) const {
             log_file << BP_JSON_ENTRY(name, type_name, this) << std::endl;

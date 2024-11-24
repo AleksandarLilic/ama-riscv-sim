@@ -26,9 +26,9 @@ void bp::update(uint32_t current_pc, bool taken) {
     bimodal_bp.update_stats(current_pc);
 }
 
-void bp::finish() {
-    static_bp.stats.summarize();
-    bimodal_bp.stats.summarize();
+void bp::finish(uint64_t all_insts) {
+    static_bp.stats.summarize(all_insts);
+    bimodal_bp.stats.summarize(all_insts);
     show_stats();
 }
 
