@@ -8,10 +8,10 @@
     << ", \"misses\": " << stat_struct->misses \
     << ", \"evicts\": " << stat_struct->evicts \
     << ", \"writebacks\": " << stat_struct->writebacks \
-    << ", \"bw_core\": {\"reads\": " << stat_struct->bw_core.reads \
-    << ", \"writes\": " << stat_struct->bw_core.writes << "}" \
-    << ", \"bw_mem\": {\"reads\": " << stat_struct->bw_mem.reads \
-    << ", \"writes\": " << stat_struct->bw_mem.writes << "}" \
+    << ", \"cm_core\": {\"reads\": " << stat_struct->cm_core.reads \
+    << ", \"writes\": " << stat_struct->cm_core.writes << "}" \
+    << ", \"cm_mem\": {\"reads\": " << stat_struct->cm_mem.reads \
+    << ", \"writes\": " << stat_struct->cm_mem.writes << "}" \
 
 #define CACHE_SIZE_JSON_ENTRY(size_struct) \
     "\"size\"" << ": {" \
@@ -54,13 +54,13 @@ struct cache_size_t {
         }
 };
 
-struct data_bandwidth_t {
+struct channel_metrics_t {
     // TODO: this needs to be expanded when used with DPI (i.e. timing sim)
     // and should be able to show memory pressure as time series
     // for now, just keep track of the total data transferred
     uint32_t reads; // bytes
     uint32_t writes;
-    data_bandwidth_t() : reads(0), writes(0) {}
+    channel_metrics_t() : reads(0), writes(0) {}
 };
 
 struct cache_stats_t {
@@ -70,21 +70,21 @@ struct cache_stats_t {
         uint32_t misses;
         uint32_t evicts;
         uint32_t writebacks;
-        data_bandwidth_t bw_core;
-        data_bandwidth_t bw_mem;
+        channel_metrics_t cm_core;
+        channel_metrics_t cm_mem;
         bool prof_active = false;
 
     public:
         cache_stats_t() :
             accesses(0), hits(0), misses(0), evicts(0), writebacks(0),
-            bw_core(), bw_mem() {}
+            cm_core(), cm_mem() {}
 
         void profiling(bool enable) { prof_active = enable; }
         void access(access_t atype, uint32_t size) {
             if (!prof_active) return;
             accesses++;
-            if (atype == access_t::read) bw_core.reads += size;
-            else bw_core.writes += size;
+            if (atype == access_t::read) cm_core.reads += size;
+            else cm_core.writes += size;
         }
         void hit() {
             if (!prof_active) return;
@@ -93,7 +93,7 @@ struct cache_stats_t {
         void miss() {
             if (!prof_active) return;
             misses++;
-            bw_mem.reads += CACHE_LINE_SIZE;
+            cm_mem.reads += CACHE_LINE_SIZE;
         }
         void evict(bool dirty) {
             if (!prof_active) return;
@@ -105,7 +105,7 @@ struct cache_stats_t {
         void writeback() {
             if (!prof_active) return;
             writebacks++;
-            bw_mem.writes += CACHE_LINE_SIZE;
+            cm_mem.writes += CACHE_LINE_SIZE;
         }
 
     public:
@@ -119,9 +119,9 @@ struct cache_stats_t {
                     << ", WB: " << writebacks
                     << ", HR: " << std::fixed << std::setprecision(2)
                     << hit_rate << "%"
-                    << "; BW (R/W): "
-                    << "core " << bw_core.reads << "/"<< bw_core.writes << " B"
-                    << ", mem " << bw_mem.reads << "/" << bw_mem.writes << " B";
+                    << "; CM (R/W): "
+                    << "core " << cm_core.reads << "/"<< cm_core.writes << " B"
+                    << ", mem " << cm_mem.reads << "/" << cm_mem.writes << " B";
         }
         void log(std::ofstream& log_file) const {
             log_file << CACHE_STATS_JSON_ENTRY(this);
