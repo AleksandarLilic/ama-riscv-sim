@@ -43,7 +43,7 @@ void core::exec() {
     return;
 }
 
-void core::profiling(bool enable) {
+void core::log_and_prof(bool enable) {
     #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
     logging = enable;
     #endif
@@ -57,8 +57,8 @@ void core::profiling(bool enable) {
 }
 
 void core::exec_inst() {
-    if (pc == logging_pc.start) profiling(true);
-    else if (pc == logging_pc.stop) profiling(false);
+    if (logging_pc.should_start(pc)) log_and_prof(true);
+    else if (logging_pc.should_stop(pc)) log_and_prof(false);
 
     inst_fetch();
     uint32_t op_c = ip.copcode();

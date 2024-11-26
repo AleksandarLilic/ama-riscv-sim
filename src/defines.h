@@ -80,7 +80,6 @@
 
 #endif
 
-
 // Decoder types
 enum class opcode {
     al_reg = 0b011'0011, // R type
@@ -206,9 +205,31 @@ struct dasm_str {
 };
 
 struct logging_pc_t {
-    uint32_t start;
-    uint32_t stop;
-    uint64_t inst_cnt;
+    public:
+        uint32_t start;
+        uint32_t stop;
+        bool first_match;
+        uint64_t inst_cnt;
+        logging_pc_t(uint32_t start, uint32_t stop, bool first_match) :
+            start(start), stop(stop), first_match(first_match), inst_cnt(0) {
+                run_once = false;
+        }
+        bool should_start() {
+            if (run_once && first_match) return false;
+            run_once = true;
+            return true;
+        }
+        bool should_start(uint32_t pc) {
+            if (run_once && first_match) return false;
+            if (pc == start) { run_once = true; return true; }
+            return false;
+        }
+        bool should_stop(uint32_t pc) {
+            if (pc == stop) return true;
+            return false;
+        }
+    private:
+        bool run_once;
 };
 
 // Instruction field masks

@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
     // Parse optional arguments
     uint32_t pc_start = 0;
     uint32_t pc_stop = 0;
+    bool first_match = false;
     for (int i = 2; i < argc; ++i) {
         std::string arg = argv[i];
         i++;
@@ -53,6 +54,8 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--log_pc_stop") {
             if (i < argc) pc_stop = std::stoll(argv[i], nullptr, 16);
             else PARSE_ERROR("Missing argument for --log_pc_stop");
+        } else if (arg == "--log_first_match_only") {
+            first_match = true;
         } else {
             PARSE_ERROR("Unknown argument: " + arg);
         }
@@ -62,12 +65,14 @@ int main(int argc, char* argv[]) {
         std::cout << "Logging start pc: 0x" << std::hex << pc_start << " ";
     if (pc_stop != 0)
         std::cout << "Logging end pc: 0x" << std::hex << pc_stop;
+    if (first_match)
+        std::cout << "Logging first match only";
     std::cout << std::dec << std::endl;
 
+    logging_pc_t log_pc = {pc_start, pc_stop, first_match};
     TRY_CATCH({
         memory mem(BASE_ADDR, test_bin);
-        core rv32(BASE_ADDR, &mem, gen_log_path(test_bin),
-                  {pc_start, pc_stop, 0});
+        core rv32(BASE_ADDR, &mem, gen_log_path(test_bin), log_pc);
         rv32.exec();
     });
     return 0;

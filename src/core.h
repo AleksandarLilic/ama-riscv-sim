@@ -38,7 +38,7 @@ class core{
             csr.at(addr).value = data;
         }
         void cntr_update();
-        void profiling(bool enable);
+        void log_and_prof(bool enable);
 
         // instruction decoders
         void al_reg();
@@ -143,10 +143,10 @@ class core{
         uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
         uint32_t al_slti(uint32_t a, uint32_t b) {
             if (inst == INST_HINT_LOG_START) {
-                profiling(true);
+                log_and_prof(logging_pc.should_start());
                 return 0;
             } else if (inst == INST_HINT_LOG_END) {
-                profiling(false);
+                log_and_prof(false);
                 return 0;
             }
             return al_slt(a, b);
