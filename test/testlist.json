@@ -13,6 +13,7 @@
     "vector_mac_uint8": ["basic"],
     "vector_basic": ["all"],
     "dot_product": ["all"],
+    "dot_product_unaligned_len_even": ["all"],
     "sorting": ["all"],
     "uart_direct_send": ["hello_world"],
     "uart_printf_mini": ["hello_world"],

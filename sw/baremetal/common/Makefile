@@ -13,8 +13,9 @@ MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
-GCC_OPTS += -fvisibility=hidden -ffreestanding -save-temps
-GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
+GCC_OPTS += -fvisibility=hidden -ffreestanding
+#GCC_OPTS += -save-temps
+GCC_OPTS += -O3 # -ffunction-sections -fdata-sections
 #GCC_OPTS += g
 
 #MATH_LIB_OPT ?= -DCUSTOM_ISA

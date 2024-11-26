@@ -25,7 +25,7 @@ export CFLAGS
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
-GCC_OPTS += -save-temps
+#GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--no-warn-rwx-segments
 GCC_OPTS += -Wl,-Map=$(TARGET).map
@@ -36,7 +36,7 @@ MEM_WIDTH := 32
 
 RV_GNU_DEFAULT := riscv64-unknown-elf
 BIN2HEX :=
-HEX ?= 0
+HEX ?= 1
 ifeq ($(HEX), 1)
 	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
 		BIN2HEX := $(RV_GNU)-bin2hex
