@@ -400,7 +400,7 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(fma16)
             CASE_ALU_CUSTOM_OP(fma8)
             CASE_ALU_CUSTOM_OP(fma4)
-            default : unsupported("fma");
+            default : unsupported("custom extension - arith");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
@@ -410,7 +410,18 @@ void core::custom_ext() {
         switch (funct7) {
             CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
-            default : unsupported("custom memory extension");
+            default : unsupported("custom extension - hint");
+        }
+        #ifdef ENABLE_DASM
+        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
+        #endif
+    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
+        uint32_t rs1 = rf[ip.rs1()];
+        switch (funct7) {
+            CASE_MEM_CUSTOM_OP(unpk16)
+            CASE_MEM_CUSTOM_OP(unpk8)
+            CASE_MEM_CUSTOM_OP(unpk4)
+            default: unsupported("custom extension - memory");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
@@ -452,6 +463,52 @@ uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
         b >>= 4;
     }
     return res;
+}
+
+reg_pair core::mem_c_unpk16(uint32_t a) {
+    // unpack 2 16-bit values to 2 32-bit values
+    int16_t halves[2];
+    for (int i = 0; i < 2; i++) {
+        halves[i] = TO_I16(a & 0xffff);
+        a >>= 16;
+    }
+    return {TO_U32(halves[0]), TO_U32(halves[1])};
+}
+
+reg_pair core::mem_c_unpk8(uint32_t a) {
+    // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
+    int8_t bytes[4];
+    for (int i = 0; i < 4; i++) {
+        bytes[i] = TO_I8(a & 0xff);
+        a >>= 8;
+    }
+    int32_t words[2];
+    words[0] = (TO_I32(TO_I16(bytes[0])) & 0xFFFF) |
+               ((TO_I32(TO_I16(bytes[1])) & 0xFFFF) << 16);
+    words[1] = (TO_I32(TO_I16(bytes[2])) & 0xFFFF) |
+               ((TO_I32(TO_I16(bytes[3])) & 0xFFFF) << 16);
+
+    return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::mem_c_unpk4(uint32_t a) {
+    // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values)
+    int8_t nibbles[8];
+    for (int i = 0; i < 8; i++) {
+        nibbles[i] = TO_I4(a & 0xf);
+        a >>= 4;
+    }
+    int32_t words[2];
+    words[0] = (TO_I32(TO_I8(nibbles[0])) & 0xFF) |
+               ((TO_I32(TO_I8(nibbles[1])) & 0xFF) << 8) |
+               ((TO_I32(TO_I8(nibbles[2])) & 0xFF) << 16) |
+               ((TO_I32(TO_I8(nibbles[3])) & 0xFF) << 24);
+    words[1] = (TO_I32(TO_I8(nibbles[4])) & 0xFF) |
+               ((TO_I32(TO_I8(nibbles[5])) & 0xFF) << 8) |
+               ((TO_I32(TO_I8(nibbles[6])) & 0xFF) << 16) |
+               ((TO_I32(TO_I8(nibbles[7])) & 0xFF) << 24);
+
+    return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
 // Zicsr extension

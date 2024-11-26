@@ -29,7 +29,15 @@ class core{
         #endif
 
     private:
-        void write_rf(uint32_t reg, uint32_t data) { if(reg) rf[reg] = data; }
+        void write_rf(uint32_t reg, uint32_t data) { if (reg) rf[reg] = data; }
+        void write_rf_pair(uint32_t reg, reg_pair rp) {
+            if (reg == 31)
+                throw std::runtime_error("write_rf_pair: reg == 31");
+            if (reg) {
+                rf[reg] = rp.a;
+                rf[reg + 1] = rp.b;
+            }
+        }
         void write_csr(uint16_t addr, uint32_t data) {
             if (csr.at(addr).perm == csr_perm_t::ro)
                 illegal("CSR write attempt to RO CSR", 4);
@@ -229,10 +237,18 @@ class core{
             W_CSR(csr.at(ip.csr_addr()).value & ~ip.uimm_csr());
         }
 
-        // custom extension
+        // custom extension - arithmetic and logic operations
         uint32_t al_c_fma16(uint32_t a, uint32_t b);
         uint32_t al_c_fma8(uint32_t a, uint32_t b);
         uint32_t al_c_fma4(uint32_t a, uint32_t b);
+
+        // custom extension - memory operations
+        reg_pair mem_c_unpk16(uint32_t a);
+        //reg_pair mem_c_unpk16u(uint32_t a);
+        reg_pair mem_c_unpk8(uint32_t a);
+        //reg_pair mem_c_unpk8u(uint32_t a);
+        reg_pair mem_c_unpk4(uint32_t a);
+        //reg_pair mem_c_unpk4u(uint32_t a);
 
         // C extension
         void c0();

@@ -18,7 +18,8 @@
 #define DCACHE_SETS 1
 #define DCACHE_WAYS 8
 
-#define ROI_START 0x17280 // bytes
+//#define ROI_START 0x17280 // bytes
+#define ROI_START 0x170c0 // bytes
 #define ROI_SIZE 256 // bytes
 
 // all predictors will work, the selected one will drive the icache
@@ -171,9 +172,18 @@ enum class custom_ext_t {
 };
 
 enum class alu_custom_op_t {
-    op_fma16 = 0x0,
-    op_fma8 = 0x1,
-    op_fma4 = 0x40,
+    op_fma16 = 0x06,
+    op_fma8 = 0x07,
+    op_fma4 = 0x46,
+};
+
+enum class mem_custom_op_t {
+    op_unpk16 = 0x00,
+    op_unpk16u = 0x20,
+    op_unpk8 = 0x01,
+    op_unpk8u = 0x21,
+    op_unpk4 = 0x40,
+    op_unpk4u = 0x60,
 };
 
 enum class scp_custom_op_t {
@@ -185,6 +195,11 @@ enum class csr_perm_t {
     ro = 0b00,
     rw = 0b01,
     warl_unimp = 0b10
+};
+
+struct reg_pair {
+    uint32_t a;
+    uint32_t b;
 };
 
 // caches
@@ -395,6 +410,14 @@ struct CSR_entry {
         PROF_RD_RS1_RS2 \
         break;
 
+#define CASE_MEM_CUSTOM_OP(op) \
+    case TO_U8(mem_custom_op_t::op_##op): \
+        write_rf_pair(ip.rd(), mem_c_##op(rs1)); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RDP_RS1 \
+        break;
+
 #define CASE_SCP_CUSTOM(op) \
     case TO_U8(scp_custom_op_t::op_##op): \
         write_rf(ip.rd(), \
@@ -532,6 +555,9 @@ struct CSR_entry {
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, ip.rd()); \
 
+#define PROF_RDP \
+    prof.log_reg_use(reg_use_t::rd, ip.rd()+1); \
+
 #define PROF_RS1 \
     prof.log_reg_use(reg_use_t::rs1, ip.rs1());
 
@@ -542,6 +568,11 @@ struct CSR_entry {
     PROF_RD \
     PROF_RS1 \
     PROF_RS2
+
+#define PROF_RD_RDP_RS1 \
+    PROF_RD \
+    PROF_RDP \
+    PROF_RS1
 
 #define PROF_RD_RS1 \
     PROF_RD \
@@ -561,9 +592,11 @@ struct CSR_entry {
 #define PROF_B_T(op)
 #define PROF_B_NT(op, b)
 #define PROF_RD
+#define PROF_RDP
 #define PROF_RS1
 #define PROF_RS2
 #define PROF_RD_RS1_RS2
+#define PROF_RD_RDP_RS1
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)

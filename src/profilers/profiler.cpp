@@ -32,6 +32,13 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_fma8)] = {"fma8", 0};
     prof_g_arr[TO_U32(opc_g::i_fma4)] = {"fma4", 0};
 
+    prof_g_arr[TO_U32(opc_g::i_unpk16)] = {"unpk16", 0};
+    //prof_g_arr[TO_U32(opc_g::i_unpk16u)] = {"unpk16u", 0};
+    prof_g_arr[TO_U32(opc_g::i_unpk8)] = {"unpk8", 0};
+    //prof_g_arr[TO_U32(opc_g::i_unpk8u)] = {"unpk8u", 0};
+    prof_g_arr[TO_U32(opc_g::i_unpk4)] = {"unpk4", 0};
+    //prof_g_arr[TO_U32(opc_g::i_unpk4u)] = {"unpk4u", 0};
+
     prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
     prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
     prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};
