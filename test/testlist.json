@@ -4,6 +4,7 @@
     "asm_rv32im": ["basic"],
     "asm_rv32ic": ["basic"],
     "asm_rv32i_custom-fma": ["basic"],
+    "asm_rv32i_custom-unpk": ["basic"],
     "asm_rv32i_custom-scp": ["basic"],
     "factorial": ["n_20"],
     "fibonacci": ["n_18"],
