@@ -485,6 +485,13 @@ struct CSR_entry {
 #define FORMAT_INST(inst, n) \
     MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT(inst, n)
 
+#define FHEXZ(val, w) \
+    "0x" << std::setw(w) << std::setfill('0') << std::hex << val << std::dec
+
+#define FHEXN(val, w) \
+    "0x" << std::left << std::setw(w) << std::setfill(' ') << std::hex \
+         << val << std::dec
+
 // Format Register File print
 #define FRF(addr, val) \
     std::left << std::setw(FRF_W) << std::setfill(' ') << addr \

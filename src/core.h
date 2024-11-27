@@ -244,11 +244,11 @@ class core{
 
         // custom extension - memory operations
         reg_pair mem_c_unpk16(uint32_t a);
-        //reg_pair mem_c_unpk16u(uint32_t a);
+        reg_pair mem_c_unpk16u(uint32_t a);
         reg_pair mem_c_unpk8(uint32_t a);
-        //reg_pair mem_c_unpk8u(uint32_t a);
+        reg_pair mem_c_unpk8u(uint32_t a);
         reg_pair mem_c_unpk4(uint32_t a);
-        //reg_pair mem_c_unpk4u(uint32_t a);
+        reg_pair mem_c_unpk4u(uint32_t a);
 
         // C extension
         void c0();

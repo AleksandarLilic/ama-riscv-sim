@@ -216,7 +216,7 @@ void core::al_imm() {
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES] << ",";
     if (is_shift)
-        dasm.asm_ss << std::hex << "0x" << ip.imm_i_shamt() << std::dec;
+        dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
     else
         dasm.asm_ss << TO_I32(ip.imm_i());
     #endif
@@ -239,7 +239,7 @@ void core::load() {
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()])
-             << "] (0x" << rf[ip.rd()]<< ") -> "
+             << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
              << rf_names[ip.rd()][RF_NAMES] << std::endl;
     #endif
 }
@@ -259,7 +259,7 @@ void core::store() {
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << rf_names[ip.rs2()][RF_NAMES]
-             << " (0x" << rf[ip.rs2()] << ") -> mem["
+             << " (" << FHEXZ(rf[ip.rd()], 8) << ") -> mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_s()) + rf[ip.rs1()]) << "]"
              << std::endl;
     #endif
@@ -332,7 +332,7 @@ void core::lui() {
     PROF_G(lui)
     PROF_RD
     #ifdef ENABLE_DASM
-    DASM_OP_RD << ", 0x" << std::hex << (ip.imm_u() >> 12) << std::dec;
+    DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
     #endif
 }
 
@@ -343,7 +343,7 @@ void core::auipc() {
     PROF_G(auipc)
     PROF_RD
     #ifdef ENABLE_DASM
-    DASM_OP_RD << ", 0x" << std::hex << (ip.imm_u() >> 12) << std::dec;
+    DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
     #endif
 }
 
@@ -406,22 +406,25 @@ void core::custom_ext() {
         DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
                    << "," << rf_names[ip.rs2()][RF_NAMES];
         #endif
+    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
+        uint32_t rs1 = rf[ip.rs1()];
+        switch (funct7) {
+            CASE_MEM_CUSTOM_OP(unpk16)
+            CASE_MEM_CUSTOM_OP(unpk16u)
+            CASE_MEM_CUSTOM_OP(unpk8)
+            CASE_MEM_CUSTOM_OP(unpk8u)
+            CASE_MEM_CUSTOM_OP(unpk4)
+            CASE_MEM_CUSTOM_OP(unpk4u)
+            default: unsupported("custom extension - memory");
+        }
+        #ifdef ENABLE_DASM
+        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
+        #endif
     } else if (funct3 == TO_U8(custom_ext_t::hints)) {
         switch (funct7) {
             CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
             default : unsupported("custom extension - hint");
-        }
-        #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
-        #endif
-    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
-        uint32_t rs1 = rf[ip.rs1()];
-        switch (funct7) {
-            CASE_MEM_CUSTOM_OP(unpk16)
-            CASE_MEM_CUSTOM_OP(unpk8)
-            CASE_MEM_CUSTOM_OP(unpk4)
-            default: unsupported("custom extension - memory");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
@@ -475,6 +478,16 @@ reg_pair core::mem_c_unpk16(uint32_t a) {
     return {TO_U32(halves[0]), TO_U32(halves[1])};
 }
 
+reg_pair core::mem_c_unpk16u(uint32_t a) {
+    // unpack 2 16-bit values to 2 32-bit values unsigned
+    uint16_t halves[2];
+    for (int i = 0; i < 2; i++) {
+        halves[i] = TO_U16(a & 0xffff);
+        a >>= 16;
+    }
+    return {TO_U32(halves[0]), TO_U32(halves[1])};
+}
+
 reg_pair core::mem_c_unpk8(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
     int8_t bytes[4];
@@ -487,8 +500,22 @@ reg_pair core::mem_c_unpk8(uint32_t a) {
                ((TO_I32(TO_I16(bytes[1])) & 0xFFFF) << 16);
     words[1] = (TO_I32(TO_I16(bytes[2])) & 0xFFFF) |
                ((TO_I32(TO_I16(bytes[3])) & 0xFFFF) << 16);
-
     return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::mem_c_unpk8u(uint32_t a) {
+    // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
+    uint8_t bytes[4];
+    for (int i = 0; i < 4; i++) {
+        bytes[i] = TO_U8(a & 0xff);
+        a >>= 8;
+    }
+    uint32_t words[2];
+    words[0] = (TO_U32(TO_U16(bytes[0])) & 0xFFFF) |
+               ((TO_U32(TO_U16(bytes[1])) & 0xFFFF) << 16);
+    words[1] = (TO_U32(TO_U16(bytes[2])) & 0xFFFF) |
+               ((TO_U32(TO_U16(bytes[3])) & 0xFFFF) << 16);
+    return {words[0], words[1]};
 }
 
 reg_pair core::mem_c_unpk4(uint32_t a) {
@@ -507,8 +534,26 @@ reg_pair core::mem_c_unpk4(uint32_t a) {
                ((TO_I32(TO_I8(nibbles[5])) & 0xFF) << 8) |
                ((TO_I32(TO_I8(nibbles[6])) & 0xFF) << 16) |
                ((TO_I32(TO_I8(nibbles[7])) & 0xFF) << 24);
-
     return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::mem_c_unpk4u(uint32_t a) {
+    // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
+    uint8_t nibbles[8];
+    for (int i = 0; i < 8; i++) {
+        nibbles[i] = TO_U4(a & 0xf);
+        a >>= 4;
+    }
+    uint32_t words[2];
+    words[0] = (TO_U32(TO_U8(nibbles[0])) & 0xFF) |
+               ((TO_U32(TO_U8(nibbles[1])) & 0xFF) << 8) |
+               ((TO_U32(TO_U8(nibbles[2])) & 0xFF) << 16) |
+               ((TO_U32(TO_U8(nibbles[3])) & 0xFF) << 24);
+    words[1] = (TO_U32(TO_U8(nibbles[4])) & 0xFF) |
+               ((TO_U32(TO_U8(nibbles[5])) & 0xFF) << 8) |
+               ((TO_U32(TO_U8(nibbles[6])) & 0xFF) << 16) |
+               ((TO_U32(TO_U8(nibbles[7])) & 0xFF) << 24);
+    return {words[0], words[1]};
 }
 
 // Zicsr extension
@@ -517,8 +562,8 @@ void core::csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
-        std::cerr << "Unsupported CSR. Address: 0x"
-                  << std::hex << csr_addr << std::dec <<std::endl;
+        std::cerr << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3)
+                  << std::endl;
         throw std::runtime_error("Unsupported CSR");
     } else {
         // using temp in case rd and rs1 are the same register
@@ -667,7 +712,7 @@ void core::c_lui() {
     DASM_OP(c.lui)
     PROF_G(c_lui)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << std::hex << "0x" << (ip.imm_c_lui()>>12) << std::dec;
+    DASM_OP_RD << "," << FHEXN((ip.imm_c_lui() >> 12), 5);
     #endif
     next_pc = pc + 2;
 }
@@ -784,8 +829,7 @@ void core::c_slli() {
     prof_fusion.attack({trigger::slli_lea, inst, mem->rd_inst(pc + 2), true});
     #endif
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << std::hex << "0x" <<  TO_I32(ip.imm_c_slli())
-               << std::dec;
+    DASM_OP_RD << "," << FHEXN(TO_I32(ip.imm_c_slli()), 2);
     #endif
     next_pc = pc + 2;
 }
@@ -822,7 +866,8 @@ void core::c_lw() {
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()])
-             << "] (0x" << rf[ip.cregl()]<< ") -> " << DASM_CREGL     << std::endl;
+             << "] (" << FHEXZ(rf[ip.cregl()], 8) << ") -> " << DASM_CREGL
+             << std::endl;
     #endif
     next_pc = pc + 2;
 }
@@ -838,7 +883,7 @@ void core::c_lwsp() {
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2])
-             << "] (0x" << rf[ip.rd()]<< ") -> "
+             << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
              << rf_names[ip.rd()][RF_NAMES] << std::endl;
     #endif
     next_pc = pc + 2;
@@ -853,7 +898,8 @@ void core::c_sw() {
                 << "(" << rf_names[ip.cregh()][RF_NAMES] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << DASM_CREGL << " (0x" << rf[ip.cregl()] << ") -> mem["
+    mem_ostr << INDENT << DASM_CREGL
+             << " (" << FHEXZ(rf[ip.cregl()], 8) << ") -> mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()]) << "]"
              << std::endl;
     #endif
@@ -871,7 +917,7 @@ void core::c_swsp() {
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << rf_names[ip.crs2()][RF_NAMES]
-             << " (0x" << rf[ip.crs2()] << ") -> mem["
+             << " (" << FHEXZ(rf[ip.crs2()], 8) << ") -> mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_swsp()) + rf[2]) << "]"
              << std::endl;
     #endif
@@ -1000,13 +1046,9 @@ void core::dump() {
     std::ofstream file;
     file.open("sim.check");
     file << std::dec << inst_cnt << std::endl;
-    for(uint32_t i = 0; i < 32; i++){
-        file << "0x" << std::setw(8) << std::setfill('0')
-             << std::hex << rf[i] << std::endl;
-    }
+    for(uint32_t i = 0; i < 32; i++) file << FHEXZ(rf[i], 8) << std::endl;
     file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
-    file << "0x" << std::setw(8) << std::setfill('0')
-         << std::hex << csr.at(CSR_TOHOST).value << std::endl;
+    file << FHEXZ(csr.at(CSR_TOHOST).value, 8) << std::endl;
     file.close();
     #endif
 }
