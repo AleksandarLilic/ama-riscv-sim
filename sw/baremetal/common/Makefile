@@ -15,7 +15,7 @@ GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding
 #GCC_OPTS += -save-temps
-GCC_OPTS += -O3 # -ffunction-sections -fdata-sections
+GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
 #GCC_OPTS += g
 
 #MATH_LIB_OPT ?= -DCUSTOM_ISA

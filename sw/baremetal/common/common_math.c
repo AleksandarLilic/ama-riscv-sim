@@ -1,13 +1,5 @@
 #include "common_math.h"
 
-// paired registers for unpacking ISA, RDP has to be +1 of RD
-#define RD_1 t5 // x30
-#define RDP_1 t6 // x31, the paired register
-#define RD_2 t3 // x28
-#define RDP_2 t4 // x29, the paired register
-#define RD_3 t1 // x6
-#define RDP_3 t2 // x7, the paired register
-
 #ifdef CUSTOM_ISA
 INLINE_OPTION int32_t _simd_dot_product_int16(
     const int16_t* a, const int16_t* b, const size_t len) {

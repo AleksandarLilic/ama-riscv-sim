@@ -7,6 +7,7 @@
 #endif
 
 #define ARR_LEN 16
+
 // input data A
 #if defined(NF_INT16) || defined(NF_INT16_INT8) || defined(NF_INT16_INT4)
 int16_t a[ARR_LEN] = {
@@ -19,6 +20,9 @@ int8_t a[ARR_LEN] = {
 #elif defined(NF_INT4)
 // packed data type, has to be a multiple of 2 (pad with 0 at the end if needed)
 int8_t a[ARR_LEN>>1] = { 116, -115, 59, -5, -79, -83, -4, 14 };
+/* actual values
+{ 4, 7, -3, -8, -5, 3, -5, -1, 1, -5, -3, -6, -4, -1, -2, 0 };
+*/
 #else
 _Static_assert(0, "Unsupported number format");
 #endif
@@ -34,6 +38,9 @@ int8_t b[ARR_LEN] = {
 };
 #elif defined(NF_INT16_INT4) || defined(NF_INT8_INT4) || defined(NF_INT4)
 int8_t b[ARR_LEN>>1] = { 64, -110, -2, 111, -112, 29, 5, -63 };
+/* actual values
+{ 0, 4, 2, -7, -2, -1, -1, 6, 0, -7, -3, 1, 5, 0, 1, -4 };
+*/
 #else
 _Static_assert(0, "Unsupported number format");
 #endif
@@ -87,8 +94,8 @@ void main(void) {
         LOG_START;
         int32_t result = FUNC(a, b, ARR_LEN);
         LOG_STOP;
-        printf("%d\n",result);
-        printf("%d\n",ref);
+        //printf("%d\n",result);
+        //printf("%d\n",ref);
         if (result != ref) {
             write_mismatch(result, ref, 1);
             fail();
