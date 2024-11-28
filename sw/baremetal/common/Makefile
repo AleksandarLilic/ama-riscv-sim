@@ -18,18 +18,14 @@ GCC_OPTS += -fvisibility=hidden -ffreestanding
 GCC_OPTS += -O3 -flto # -ffunction-sections -fdata-sections
 #GCC_OPTS += g
 
-#MATH_LIB_OPT ?= -DCUSTOM_ISA
-#MATH_LIB_OPT ?= -DLOAD_OPT
-#CFLAGS += $(MATH_LIB_OPT)
-
 # set all target to make all objects
 all: $(OBJECTS_C) $(OBJECTS_S)
 
 %.o: %.c
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< -o $@ $(USER_DEFINES)
 
 %.o: %.S
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< -o $@ $(USER_DEFINES)
 
 clean:
 	rm -f *.o *.d *.i *.s
