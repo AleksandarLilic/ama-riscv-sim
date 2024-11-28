@@ -35,7 +35,7 @@ class bp_bimodal {
           table(BP_BIMODAL_ENTRIES),
           cnt_max((1 << cnt_bits) - 1),
           thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1),
-          size((BP_BIMODAL_ENTRIES*cnt_bits)>>3),
+          size((BP_BIMODAL_ENTRIES * cnt_bits) >> 3),
           type_name(type_name),
           stats(type_name)
         {
@@ -46,7 +46,7 @@ class bp_bimodal {
         }
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
-            idx = (pc>>2) & (BP_BIMODAL_ENTRIES-1);
+            idx = (pc >> 2) & (BP_BIMODAL_ENTRIES - 1);
             if (table[idx].hist >= thr_taken) predicted_pc = target_pc;
             else predicted_pc = pc + 4;
             return predicted_pc;

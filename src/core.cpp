@@ -282,8 +282,7 @@ void core::branch() {
     uint32_t speculative_next_pc = bpr.predict(pc, ip.imm_b());
     mem->speculative_exec(speculative_t::enter);
     inst_speculative = mem->rd_inst(speculative_next_pc);
-    bool actually_taken = next_pc != pc + 4;
-    bpr.update(next_pc, actually_taken);
+    bpr.update(pc, next_pc);
     bool correct = next_pc == speculative_next_pc;
     if (!correct) {
         mem->speculative_exec(speculative_t::exit_flush);

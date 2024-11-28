@@ -255,12 +255,7 @@ void cache::show_stats() {
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
             uint32_t cnt = cache_entries[set][way].access_cnt;
-            int32_t s = 0;
-            while (cnt) {
-                cnt /= 10;
-                s++;
-            }
-            if (s > n) n = s;
+            n = std::max(n, TO_I32(std::to_string(cnt).size()));
         }
     }
 
