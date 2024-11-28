@@ -25,7 +25,6 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
     size_t len_s16 = (len >> 4) << 4;
     for (size_t k = 0; k < len_s16; k += 16) {
         int32_t a_arr[4], b_arr[4], p_arr[4];
-        int32_t temp;
 
         #pragma GCC unroll 4
         for (size_t i = 0; i < 4; i++) {
@@ -37,10 +36,11 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
             "fma8 %[p2], %[a1], %[b1];"
             "fma8 %[p3], %[a2], %[b2];"
             "fma8 %[p4], %[a3], %[b3];"
-            "add %[t], %[p1], %[p2];"
-            "add %[c], %[p3], %[p4];"
-            "add %[c], %[c], %[t];"
-            : [c] "+r" (c), [t] "+r" (temp),
+            "add %[c], %[c], %[p1];"
+            "add %[c], %[c], %[p2];"
+            "add %[c], %[c], %[p3];"
+            "add %[c], %[c], %[p4];"
+            : [c] "+r" (c),
               [p1] "+r" (p_arr[0]),
               [p2] "+r" (p_arr[1]),
               [p3] "+r" (p_arr[2]),

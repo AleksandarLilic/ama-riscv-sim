@@ -18,5 +18,11 @@ void main(void) {
     printf("Predicted inf_0: %d (label: %d); clock cycles: %d\n",
            predicted, label_0, clk_diff);
 
+    // assumed model is accurate for the provided input
+    if (predicted != label_0) {
+        write_mismatch(predicted, label_0, 1);
+        fail();
+    }
+
     pass();
 }
