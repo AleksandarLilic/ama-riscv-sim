@@ -40,7 +40,8 @@ enum class opc_g {
     // custom
     i_fma16, i_fma8, i_fma4,
     // custom mem
-    i_unpk16, i_unpk16u, i_unpk8, i_unpk8u, i_unpk4, i_unpk4u,
+    i_unpk16, i_unpk16u, i_unpk8, i_unpk8u,
+    i_unpk4, i_unpk4u, i_unpk2, i_unpk2u,
 
     // custom hints
     i_scp_lcl, i_scp_rel,

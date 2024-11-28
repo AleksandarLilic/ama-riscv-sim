@@ -414,6 +414,8 @@ void core::custom_ext() {
             CASE_MEM_CUSTOM_OP(unpk8u)
             CASE_MEM_CUSTOM_OP(unpk4)
             CASE_MEM_CUSTOM_OP(unpk4u)
+            CASE_MEM_CUSTOM_OP(unpk2)
+            CASE_MEM_CUSTOM_OP(unpk2u)
             default: unsupported("custom extension - memory");
         }
         #ifdef ENABLE_DASM
@@ -524,15 +526,11 @@ reg_pair core::mem_c_unpk4(uint32_t a) {
         nibbles[i] = TO_I4(a & 0xf);
         a >>= 4;
     }
-    int32_t words[2];
-    words[0] = (TO_I32(TO_I8(nibbles[0])) & 0xFF) |
-               ((TO_I32(TO_I8(nibbles[1])) & 0xFF) << 8) |
-               ((TO_I32(TO_I8(nibbles[2])) & 0xFF) << 16) |
-               ((TO_I32(TO_I8(nibbles[3])) & 0xFF) << 24);
-    words[1] = (TO_I32(TO_I8(nibbles[4])) & 0xFF) |
-               ((TO_I32(TO_I8(nibbles[5])) & 0xFF) << 8) |
-               ((TO_I32(TO_I8(nibbles[6])) & 0xFF) << 16) |
-               ((TO_I32(TO_I8(nibbles[7])) & 0xFF) << 24);
+    uint32_t words[2] = {0, 0};
+    for (int i = 0; i < 4; i++) {
+        words[0] |= (TO_I32(TO_I8(nibbles[i])) & 0xFF) << (i * 8);
+        words[1] |= (TO_I32(TO_I8(nibbles[i + 4])) & 0xFF) << (i * 8);
+    }
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
@@ -543,15 +541,42 @@ reg_pair core::mem_c_unpk4u(uint32_t a) {
         nibbles[i] = TO_U4(a & 0xf);
         a >>= 4;
     }
-    uint32_t words[2];
-    words[0] = (TO_U32(TO_U8(nibbles[0])) & 0xFF) |
-               ((TO_U32(TO_U8(nibbles[1])) & 0xFF) << 8) |
-               ((TO_U32(TO_U8(nibbles[2])) & 0xFF) << 16) |
-               ((TO_U32(TO_U8(nibbles[3])) & 0xFF) << 24);
-    words[1] = (TO_U32(TO_U8(nibbles[4])) & 0xFF) |
-               ((TO_U32(TO_U8(nibbles[5])) & 0xFF) << 8) |
-               ((TO_U32(TO_U8(nibbles[6])) & 0xFF) << 16) |
-               ((TO_U32(TO_U8(nibbles[7])) & 0xFF) << 24);
+    uint32_t words[2] = {0, 0};
+    for (int i = 0; i < 4; i++) {
+        words[0] |= (TO_U32(TO_U8(nibbles[i])) & 0xFF) << (i * 8);
+        words[1] |= (TO_U32(TO_U8(nibbles[i + 4])) & 0xFF) << (i * 8);
+    }
+    return {words[0], words[1]};
+}
+
+reg_pair core::mem_c_unpk2(uint32_t a) {
+    // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values)
+    int8_t crumbs[16];
+    for (int i = 0; i < 16; i++) {
+        crumbs[i] = TO_I2(a & 0x3);
+        a >>= 2;
+    }
+    std::cout << std::dec << std::endl;
+    int32_t words[2] = {0, 0};
+    for (int i = 0; i < 8; i++) {
+        words[0] |= (TO_I32(TO_I8(crumbs[i])) & 0xF) << (i * 4);
+        words[1] |= (TO_I32(TO_I8(crumbs[i + 8])) & 0xF) << (i * 4);
+    }
+    return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::mem_c_unpk2u(uint32_t a) {
+    // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
+    uint8_t crumbs[16];
+    for (int i = 0; i < 16; i++) {
+        crumbs[i] = TO_U2(a & 0x3);
+        a >>= 2;
+    }
+    uint32_t words[2] = {0, 0};
+    for (int i = 0; i < 8; i++) {
+        words[0] |= (TO_U32(TO_U8(crumbs[i])) & 0xF) << (i * 4);
+        words[1] |= (TO_U32(TO_U8(crumbs[i+8])) & 0xF) << (i * 4);
+    }
     return {words[0], words[1]};
 }
 

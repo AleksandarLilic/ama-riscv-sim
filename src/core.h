@@ -249,6 +249,8 @@ class core{
         reg_pair mem_c_unpk8u(uint32_t a);
         reg_pair mem_c_unpk4(uint32_t a);
         reg_pair mem_c_unpk4u(uint32_t a);
+        reg_pair mem_c_unpk2(uint32_t a);
+        reg_pair mem_c_unpk2u(uint32_t a);
 
         // C extension
         void c0();

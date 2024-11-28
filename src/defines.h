@@ -43,6 +43,8 @@
 #define TO_I8(x) static_cast<int8_t>(x)
 #define TO_U4(x) static_cast<uint8_t>(x & 0xF)
 #define TO_I4(x) static_cast<int8_t>((x & 0xF) | ((x & 0x8) ? 0xF0 : 0x00))
+#define TO_U2(x) static_cast<uint8_t>(x & 0x3)
+#define TO_I2(x) static_cast<int8_t>((x & 0x3) | ((x & 0x2) ? 0xFC : 0x00))
 
 // dasm RF option
 #ifdef USE_ABI_NAMES
@@ -184,6 +186,8 @@ enum class mem_custom_op_t {
     op_unpk8u = 0x21,
     op_unpk4 = 0x40,
     op_unpk4u = 0x60,
+    op_unpk2 = 0x41,
+    op_unpk2u = 0x61,
 };
 
 enum class scp_custom_op_t {

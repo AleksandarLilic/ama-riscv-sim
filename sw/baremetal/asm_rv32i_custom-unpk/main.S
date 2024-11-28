@@ -133,6 +133,42 @@ op_unpk4u_msb_set:
     mv x26, RDP
     OP_END(0x00080007)
 
+op_unpk2:
+    lla x11, dat4
+    lw x12, 0(x11)
+    unpk2 RD, x12
+    mv x26, RD
+    OP_END(0x01100010)
+    mv x26, RDP
+    OP_END(0x00010000)
+
+op_unpk2_msb_set:
+    lla x11, dat1
+    lw x12, 0(x11)
+    unpk2 RD, x12
+    mv x26, RD
+    OP_END(0x001e0011)
+    mv x26, RDP
+    OP_END(0x00e0001f)
+
+op_unpk2u:
+    lla x11, dat4
+    lw x12, 0(x11)
+    unpk2u RD, x12
+    mv x26, RD
+    OP_END(0x01100010)
+    mv x26, RDP
+    OP_END(0x00010000)
+
+op_unpk2u_msb_set:
+    lla x11, dat1
+    lw x12, 0(x11)
+    unpk2u RD, x12
+    mv x26, RD
+    OP_END(0x00120011)
+    mv x26, RDP
+    OP_END(0x00200013)
+
 loop_end:
     li x24, 0x123456
     bne x4, x5, loop
@@ -162,3 +198,4 @@ pass:
     dat1: .word 0x08070605
     dat2: .word 0x0282a701
     dat3: .word 0x01020304
+    dat4: .word 0x01001404
