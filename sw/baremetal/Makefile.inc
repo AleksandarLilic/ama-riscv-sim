@@ -1,11 +1,13 @@
 
-# set up for "gcc 14"
+REPO_ROOT := $(shell git rev-parse --show-toplevel)
+
+# set up for gcc14
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
 COMMON_OBJ_NAMES += crt0.o common.o common_math.o mini-printf.o
-COMMON_PATH := ../common
+COMMON_PATH := $(REPO_ROOT)/sw/baremetal/common
 COMMON_OBJS = $(addprefix $(COMMON_PATH)/, $(COMMON_OBJ_NAMES))
 
 C_SRCS := $(wildcard *.c)
