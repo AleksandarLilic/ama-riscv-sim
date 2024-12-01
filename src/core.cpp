@@ -151,7 +151,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
-    bpr.finish(logging_pc.inst_cnt);
+    bpr.finish(log_path, logging_pc.inst_cnt);
     mem->cache_finish();
     log_hw_stats();
     #endif
@@ -1061,7 +1061,7 @@ void core::dump() {
     #ifdef UART_ENABLE
     std::cout << "=== UART END ===\n" << std::endl;
     #endif
-    std::cout << std::dec << "Inst Counters - executed: " << inst_cnt
+    std::cout << std::dec << "Instruction Counters - executed: " << inst_cnt
               << ", logged: " << logging_pc.inst_cnt << std::endl;
     std::cout << dump_state(true) << std::endl;
 

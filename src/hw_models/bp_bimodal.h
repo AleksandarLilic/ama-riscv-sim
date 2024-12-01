@@ -46,10 +46,13 @@ class bp_bimodal {
         }
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
-            idx = (pc >> 2) & (BP_BIMODAL_ENTRIES - 1);
+            idx = get_idx(pc);
             if (table[idx].hist >= thr_taken) predicted_pc = target_pc;
             else predicted_pc = pc + 4;
             return predicted_pc;
+        }
+        uint8_t get_idx(uint32_t pc) {
+            return (pc >> 2) & (BP_BIMODAL_ENTRIES - 1);
         }
         void update(uint32_t target, bool taken) {
             uint8_t& entry = table[idx].hist;
@@ -60,9 +63,9 @@ class bp_bimodal {
             }
             table[idx].target = target;
         }
-        void update_stats(uint32_t current_pc) {
-            bool correct = (current_pc == predicted_pc);
-            stats.eval(correct, dir);
+        void update_stats(uint32_t pc, uint32_t next_pc) {
+            bool correct = (next_pc == predicted_pc);
+            stats.eval(pc, correct, dir);
         }
         void dump() {
             std::cout << "bimodal table: ";

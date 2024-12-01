@@ -19,15 +19,13 @@ struct bi_program_stats_t {
     b_dir_t dir;
     uint32_t taken;
     uint32_t total;
+    std::vector<bool> pattern;
 };
 
-/*
 struct bi_predictor_stats_t {
     uint32_t predicted;
-    uint32_t mispredicted;
     // internal counters? predictor specific
 };
-*/
 
 // branch predictor stats
 struct bp_stats_t {
@@ -36,6 +34,7 @@ struct bp_stats_t {
         uint32_t predicted_bwd;
         uint32_t mispredicted_fwd;
         uint32_t mispredicted_bwd;
+        std::map<uint32_t, bi_predictor_stats_t> bi_predictor_stats;
         // derived, only for summary
         uint32_t predicted;
         uint32_t mispredicted;
@@ -48,7 +47,7 @@ struct bp_stats_t {
         : predicted_fwd(0), predicted_bwd(0),
           mispredicted_fwd(0), mispredicted_bwd(0),
           type_name(type_name2) { }
-        void eval(bool correct, b_dir_t dir) {
+        void eval(uint32_t pc, bool correct, b_dir_t dir) {
             if (correct) {
                 if (dir == b_dir_t::forward) predicted_fwd++;
                 else predicted_bwd++;
@@ -56,12 +55,22 @@ struct bp_stats_t {
                 if (dir == b_dir_t::forward) mispredicted_fwd++;
                 else mispredicted_bwd++;
             }
+            if (bi_predictor_stats.find(pc) == bi_predictor_stats.end()) {
+                bi_predictor_stats[pc] = {0};
+            }
+            bi_predictor_stats[pc].predicted += correct;
         }
         void summarize(uint64_t all_insts) {
             predicted = predicted_fwd + predicted_bwd;
             mispredicted = mispredicted_fwd + mispredicted_bwd;
             total = predicted + mispredicted;
             this->all_insts = all_insts;
+        }
+        uint32_t get_predicted(uint32_t pc) const {
+            if (bi_predictor_stats.find(pc) == bi_predictor_stats.end()) {
+                return 0;
+            }
+            return bi_predictor_stats.at(pc).predicted;
         }
         void show(std::string name) const {
             float_t acc = 0.0;

@@ -24,8 +24,8 @@ class bp_static {
             else predicted_pc = target_pc;
             return predicted_pc;
         }
-        void update_stats(uint32_t current_pc) {
-            bool correct = (current_pc == predicted_pc);
-            stats.eval(correct, dir);
+        void update_stats(uint32_t pc, uint32_t next_pc) {
+            bool correct = (next_pc == predicted_pc);
+            stats.eval(pc, correct, dir);
         }
 };

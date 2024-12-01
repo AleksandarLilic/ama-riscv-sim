@@ -23,7 +23,8 @@ class bp {
         uint32_t predict(uint32_t pc, int32_t offset);
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
-        void finish(uint64_t all_insts);
+        void finish(std::string log_path, uint64_t all_insts);
     private:
-        void show_stats();
+        void show_stats(std::string log_path);
+        void update_stats(uint32_t pc, bool taken);
 };
