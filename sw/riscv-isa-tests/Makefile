@@ -18,7 +18,7 @@ TESTS_BIN := $(filter-out %ma_data.bin,$(TESTS_BIN))
 
 RV_GNU_DEFAULT := riscv64-unknown-elf
 BIN2HEX :=
-HEX ?= 0
+HEX ?= 1
 ifeq ($(HEX), 1)
 	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
 		BIN2HEX := $(RV_GNU)-bin2hex

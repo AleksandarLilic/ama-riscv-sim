@@ -11,5 +11,6 @@
 *_symbols.json
 local/
 baremetal/*/test_array*h
+baremetal/aapg_static/*/main.S
 
 NN/data/*

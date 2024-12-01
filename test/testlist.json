@@ -8,6 +8,8 @@
     "asm_rv32i_custom-scp": ["basic"],
     "aapg_static/rv32i": ["basic"],
     "aapg_static/rv32i_zmmul": ["basic"],
+    "aapg_static/rv32i_branches": ["basic"],
+    "aapg_static/rv32i_mem": ["basic"],
     "factorial": ["n_20"],
     "fibonacci": ["n_18"],
     "gcd_lcm": ["n_large"],

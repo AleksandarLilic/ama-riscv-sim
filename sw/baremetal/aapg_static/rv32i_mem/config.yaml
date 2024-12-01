@@ -1,0 +1,91 @@
+priv-mode:
+  mode: m
+
+general:
+  total_instructions: 2400
+  regs_not_use: x1,x2
+  custom_trap_handler: false
+  code_start_address: 0x10000
+  default_program_exit: false
+  delegation: 0x000
+
+isa-instruction-distribution:
+  rel_sys.csr: 0
+  rel_rv32i.ctrl: 1
+  rel_rv32i.compute: 2
+  rel_rv32i.data: 20
+  rel_rv32i.fence: 0
+  rel_rv32m: 0
+
+# Compressed instructions
+  rel_rvc.ctrl: 0
+  rel_rvc.compute: 0
+  rel_rvc.sp: 0
+  rel_rvc.data: 0
+  rel_rvc.fdata: 0
+
+  rel_rv32c.compute: 0
+  rel_rv32c.ctrl: 0
+  rel_rv32c.fdata: 0
+
+branch-control:
+  backward-probability: 0.5
+  block-size: 7
+
+recursion-options:
+  recursion-enable: false
+  recursion-depth: 10
+  recursion-calls: 5
+
+access-sections:
+  section1: 0x10000,0x11000,rw
+  #section1: 0x11000,0x12000,r
+
+csr-sections:
+  #sections: 0x51e:0x51e # tohost
+  sections: 0x340:0x340 # mscratch
+
+user-functions:
+  func1: '{0:"add x0,x0,x0"}'
+
+switch-priv-modes:
+  switch_modes: false
+  num_switches: 0
+
+i-cache:
+  num_calls: 0
+  num_bytes_per_block: 16
+  num_blocks: 8
+  num_cycles: 10
+
+d-cache:
+  num_calls: 0
+  num_bytes_per_block: 16
+  num_blocks: 8
+  num_cycles: 10
+
+exception-generation:
+  ecause00: 0
+  ecause01: 0
+  ecause02: 0
+  ecause03: 0
+  ecause04: 0
+  ecause05: 0
+  ecause06: 0
+  ecause07: 0
+  ecause08: 0
+  ecause09: 0
+  ecause10: 0
+  ecause11: 0
+  ecause12: 0
+  ecause13: 0
+  ecause14: 0
+
+data-hazards:
+  raw_prob: 0.5
+  war_prob: 0.5
+  waw_prob: 0.5
+  num_regs_lookbehind: 3
+
+program-macro:
+  post_program_macro: "j pass"
