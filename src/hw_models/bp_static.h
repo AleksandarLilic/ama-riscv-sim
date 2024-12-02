@@ -17,6 +17,7 @@ class bp_static {
         bp_static(std::string type_name)
         : type_name(type_name),
           stats(type_name) { }
+
         // backward taken, forward not taken
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
@@ -24,6 +25,7 @@ class bp_static {
             else predicted_pc = target_pc;
             return predicted_pc;
         }
+
         void update_stats(uint32_t pc, uint32_t next_pc) {
             bool correct = (next_pc == predicted_pc);
             stats.eval(pc, correct, dir);

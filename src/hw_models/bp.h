@@ -3,6 +3,7 @@
 #include "defines.h"
 #include "bp_static.h"
 #include "bp_bimodal.h"
+#include "bp_local.h"
 
 class bp {
     private:
@@ -14,6 +15,7 @@ class bp {
         bool prof_active = false;
         bp_static static_bp;
         bp_bimodal bimodal_bp;
+        bp_local local_bp;
         std::map<uint32_t, bi_program_stats_t> bi_program_stats;
 
     public:
