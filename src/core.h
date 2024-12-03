@@ -5,7 +5,7 @@
 #include "inst_parser.h"
 #include "profiler.h"
 #include "profiler_fusion.h"
-#include "bp.h"
+#include "bp_if.h"
 
 class core{
     public:
@@ -346,7 +346,7 @@ class core{
         profiler_fusion prof_fusion;
         #endif
         #ifdef ENABLE_HW_PROF
-        bp bpr;
+        bp_if bp;
         uint32_t inst_speculative;
         bool last_inst_branch;
         #endif

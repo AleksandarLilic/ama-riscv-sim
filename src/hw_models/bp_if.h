@@ -5,7 +5,7 @@
 #include "bp_bimodal.h"
 #include "bp_local.h"
 
-class bp {
+class bp_if {
     private:
         std::string bp_name;
         bp_t bp_active;
@@ -19,8 +19,8 @@ class bp {
         std::map<uint32_t, bi_program_stats_t> bi_program_stats;
 
     public:
-        bp() = delete;
-        bp(std::string name, bp_t bp_type);
+        bp_if() = delete;
+        bp_if(std::string name, bp_t bp_type);
         void profiling(bool enable) { prof_active = enable; }
         uint32_t predict(uint32_t pc, int32_t offset);
         void update(uint32_t pc, uint32_t next_pc);

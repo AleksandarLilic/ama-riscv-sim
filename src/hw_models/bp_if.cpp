@@ -1,12 +1,12 @@
-#include "bp.h"
+#include "bp_if.h"
 
-bp::bp(std::string name, bp_t bp_type) :
+bp_if::bp_if(std::string name, bp_t bp_type) :
     bp_name(name), bp_active(bp_type),
     static_bp("static"),
     bimodal_bp("bimodal", BP_BIMODAL_CNT_BITS),
     local_bp("local", BP_LOCAL_HIST_BITS, BP_LOCAL_CNT_BITS) {}
 
-uint32_t bp::predict(uint32_t pc, int32_t offset) {
+uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
     target_pc = TO_I32(pc) + offset;
     dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
     if (prof_active) {
@@ -25,7 +25,7 @@ uint32_t bp::predict(uint32_t pc, int32_t offset) {
     else throw std::runtime_error("Unknown branch predictor type");
 }
 
-void bp::update(uint32_t pc, uint32_t next_pc) {
+void bp_if::update(uint32_t pc, uint32_t next_pc) {
     bool taken = next_pc != pc + 4;
     // internal states of all dynamic predictors are always updated
     bimodal_bp.update(taken);
@@ -38,37 +38,23 @@ void bp::update(uint32_t pc, uint32_t next_pc) {
     local_bp.update_stats(pc, next_pc);
 }
 
-void bp::update_stats(uint32_t pc, bool taken) {
+void bp_if::update_stats(uint32_t pc, bool taken) {
     bi_program_stats_t* ptr = &bi_program_stats[pc];
     ptr->taken += taken;
     ptr->total++;
     ptr->pattern.push_back(taken);
 }
 
-void bp::finish(std::string log_path, uint64_t all_insts) {
+void bp_if::finish(std::string log_path, uint64_t all_insts) {
     static_bp.stats.summarize(all_insts);
     bimodal_bp.stats.summarize(all_insts);
     local_bp.stats.summarize(all_insts);
     show_stats(log_path);
 }
 
-void bp::show_stats(std::string log_path) {
-    // find n as a largest number of digits - for alignment in stdout
-    int32_t n = 0;
-    uint32_t branches = 0;
-    for (auto& [pc, stats] : bi_program_stats) {
-        n = std::max(n, TO_I32(std::to_string(stats.total).size()));
-        branches += 1;
-    }
-
-    // print global stats
-    std::cout << "Program branch stats: unique branches: " << branches
-              << std::endl;
-
-    // open file for write
+void bp_if::show_stats(std::string log_path) {
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
-
     bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%"
          << ",P_Static,P_Bimodal,P_Bimodal_idx,P_Local,P_Local_idx"
          << ",P_Static%,P_Bimodal%,P_Local%"
@@ -121,6 +107,9 @@ void bp::show_stats(std::string log_path) {
              << std::endl;
     }
 
+    uint32_t branches = bi_program_stats.size();
+    std::cout << "Program branch stats: unique branches: " << branches
+              << std::endl;
     // show all, but mark the active one (driving the icache)
     std::cout << bp_name << " (active: ";
     if (bp_active == bp_t::sttc) std::cout << static_bp.type_name;
@@ -138,7 +127,7 @@ void bp::show_stats(std::string log_path) {
     local_bp.dump();
 }
 
-void bp::log_stats(std::ofstream& log_file) {
+void bp_if::log_stats(std::ofstream& log_file) {
     if (bp_active == bp_t::sttc) {
         static_bp.stats.log(bp_name, log_file);
     } else if (bp_active == bp_t::bimodal) {

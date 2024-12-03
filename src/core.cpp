@@ -11,7 +11,7 @@ core::core(uint32_t base_addr, memory *mem, std::string log_path,
     , prof(log_path)
     #endif
     #ifdef ENABLE_HW_PROF
-    , bpr("Bpred", BRANCH_PERDICTOR)
+    , bp("Bpred", BRANCH_PERDICTOR)
     #endif
 {
     rf[0] = 0;
@@ -51,7 +51,7 @@ void core::log_and_prof(bool enable) {
     prof.active = enable;
     #endif
     #ifdef ENABLE_HW_PROF
-    bpr.profiling(enable);
+    bp.profiling(enable);
     mem->cache_profiling(enable);
     #endif
 }
@@ -151,7 +151,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
-    bpr.finish(log_path, logging_pc.inst_cnt);
+    bp.finish(log_path, logging_pc.inst_cnt);
     mem->cache_finish();
     log_hw_stats();
     #endif
@@ -279,10 +279,10 @@ void core::branch() {
 
     #ifdef ENABLE_HW_PROF
     last_inst_branch = true;
-    uint32_t speculative_next_pc = bpr.predict(pc, ip.imm_b());
+    uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b());
     mem->speculative_exec(speculative_t::enter);
     inst_speculative = mem->rd_inst(speculative_next_pc);
-    bpr.update(pc, next_pc);
+    bp.update(pc, next_pc);
     bool correct = next_pc == speculative_next_pc;
     if (!correct) {
         mem->speculative_exec(speculative_t::exit_flush);
@@ -1049,7 +1049,7 @@ void core::log_hw_stats() {
     ofs.open(log_path + "hw_stats.json");
     ofs << "{\n";
     mem->log_cache_stats(ofs);
-    bpr.log_stats(ofs);
+    bp.log_stats(ofs);
     ofs << "\"_done\": true"; // to avoid trailing comma
     ofs << "\n}\n";
     ofs.close();
