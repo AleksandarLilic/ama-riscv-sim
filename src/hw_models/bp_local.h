@@ -22,9 +22,7 @@ class bp_local : public bp {
     private:
         bp_cnt cnt;
         uint8_t idx_last;
-        b_dir_t dir_last;
         uint32_t hist_last;
-        uint32_t size;
 
         const uint32_t hist_bits;
         const uint32_t hist_entries;
@@ -49,7 +47,7 @@ class bp_local : public bp {
         uint8_t get_idx(uint32_t pc) { return (pc >> 2) & (hist_entries - 1); }
 
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
-            dir_last = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
+            find_b_dir(target_pc, pc);
             idx_last = get_idx(pc);
             hist_last = hist_table[idx_last].hist_pattern & hist_mask;
             if (cnt.thr_check(hist_last)) predicted_pc = target_pc;

@@ -16,8 +16,6 @@ class bp_bimodal : public bp {
     private:
         bp_cnt cnt;
         uint8_t idx_last;
-        b_dir_t dir_last;
-        uint32_t size;
 
     public:
         bp_bimodal(std::string type_name, bp_cnt_cfg_t cfg)
@@ -28,7 +26,7 @@ class bp_bimodal : public bp {
         uint8_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            dir_last = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
+            find_b_dir(target_pc, pc);
             idx_last = get_idx(pc);
             if (cnt.thr_check(idx_last)) predicted_pc = target_pc;
             else predicted_pc = pc + 4;

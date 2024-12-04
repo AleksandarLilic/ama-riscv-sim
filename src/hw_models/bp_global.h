@@ -12,8 +12,6 @@ class bp_global : public bp {
     private:
         bp_cnt cnt;
         uint8_t idx_last;
-        b_dir_t dir_last;
-        uint32_t size;
         uint64_t gr; // global register
         const uint64_t gr_mask;
 
@@ -31,7 +29,7 @@ class bp_global : public bp {
         uint8_t get_idx(uint64_t gr) { return gr & gr_mask; }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            dir_last = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
+            find_b_dir(target_pc, pc);
             idx_last = get_idx(gr);
             if (cnt.thr_check(idx_last)) predicted_pc = target_pc;
             else predicted_pc = pc + 4;

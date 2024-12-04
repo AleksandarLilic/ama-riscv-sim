@@ -7,10 +7,11 @@ class bp_static : public bp {
         bp_static(std::string type_name) : bp(type_name) {
             size = 0;
         }
+
         // backward taken, forward not taken
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
-            if (dir == b_dir_t::forward) predicted_pc = pc + 4;
+            find_b_dir(target_pc, pc);
+            if (b_dir_last == b_dir_t::forward) predicted_pc = pc + 4;
             else predicted_pc = target_pc;
             return predicted_pc;
         }
