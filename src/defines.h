@@ -31,6 +31,8 @@
 #define BP_LOCAL_ENTRIES 16
 #define BP_LOCAL_CNT_BITS 2
 #define BP_LOCAL_HIST_BITS 8
+#define BP_GLOBAL_CNT_BITS 2
+#define BP_GLOBAL_GR_BITS 16
 
 // casts
 #define TO_F64(x) static_cast<double_t>(x)
@@ -217,7 +219,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
-enum class bp_t { sttc, bimodal, local, _count };
+enum class bp_t { sttc, bimodal, local, global, _count };
 
 struct dasm_str {
     std::ostringstream asm_ss;

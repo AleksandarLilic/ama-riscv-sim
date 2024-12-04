@@ -4,11 +4,13 @@ bp_if::bp_if(std::string name, bp_t bp_type) :
     bp_name(name), bp_active(bp_type),
     static_bp("static"),
     bimodal_bp("bimodal", {BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS}),
-    local_bp("local", {BP_LOCAL_ENTRIES, BP_LOCAL_HIST_BITS, BP_LOCAL_CNT_BITS})
+    local_bp("local", {BP_LOCAL_ENTRIES,BP_LOCAL_HIST_BITS,BP_LOCAL_CNT_BITS}),
+    global_bp("global", {BP_GLOBAL_CNT_BITS, BP_GLOBAL_GR_BITS})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
         predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
         predictors[TO_U8(bp_t::local)] = &local_bp;
+        predictors[TO_U8(bp_t::global)] = &global_bp;
     }
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
@@ -53,8 +55,8 @@ void bp_if::show_stats(std::string log_path) {
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
     bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%"
-         << ",P_Static,P_Bimodal,P_Local"
-         << ",P_Static%,P_Bimodal%,P_Local%"
+         << ",P_Static,P_Bimodal,P_Local,P_Global"
+         << ",P_Static%,P_Bimodal%,P_Local%,P_Global%"
          // << ",P_Bimodal_idx,P_Local_idx"
          << ",Pattern" << std::endl;
 
@@ -99,9 +101,11 @@ void bp_if::show_stats(std::string log_path) {
              << "," << predicted[TO_U8(bp_t::sttc)]
              << "," << predicted[TO_U8(bp_t::bimodal)]
              << "," << predicted[TO_U8(bp_t::local)]
+             << "," << predicted[TO_U8(bp_t::global)]
              << "," << acc[TO_U8(bp_t::sttc)]
              << "," << acc[TO_U8(bp_t::bimodal)]
              << "," << acc[TO_U8(bp_t::local)]
+             << "," << acc[TO_U8(bp_t::global)]
              //<< "," << TO_U32(bimodal_bp.get_idx(pc))
              //<< "," << TO_U32(local_bp.get_idx(pc))
              << "," << pattern_str << std::endl;

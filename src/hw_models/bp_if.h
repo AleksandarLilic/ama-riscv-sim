@@ -4,6 +4,7 @@
 #include "bp_static.h"
 #include "bp_bimodal.h"
 #include "bp_local.h"
+#include "bp_global.h"
 
 class bp_if {
     private:
@@ -16,6 +17,7 @@ class bp_if {
         bp_static static_bp;
         bp_bimodal bimodal_bp;
         bp_local local_bp;
+        bp_global global_bp;
         static constexpr uint8_t num_predictors = TO_U8(bp_t::_count);
         std::array<bp*, num_predictors> predictors;
         std::array<uint32_t, num_predictors> predicted_pcs;
