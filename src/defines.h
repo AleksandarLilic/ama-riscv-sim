@@ -24,7 +24,6 @@
 
 // all predictors will work, the selected one will drive the icache
 #define BRANCH_PERDICTOR bp_t::bimodal
-//#define BRANCH_PERDICTOR bp_t::sttc
 
 // branch predictor type specific
 #define BP_BIMODAL_ENTRIES 8
@@ -218,7 +217,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
-enum class bp_t { sttc, bimodal, local };
+enum class bp_t { sttc, bimodal, local, _count };
 
 struct dasm_str {
     std::ostringstream asm_ss;

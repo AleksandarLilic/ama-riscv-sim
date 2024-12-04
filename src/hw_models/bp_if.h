@@ -16,6 +16,9 @@ class bp_if {
         bp_static static_bp;
         bp_bimodal bimodal_bp;
         bp_local local_bp;
+        static constexpr uint8_t num_predictors = TO_U8(bp_t::_count);
+        std::array<bp*, num_predictors> predictors;
+        std::array<uint32_t, num_predictors> predicted_pcs;
         std::map<uint32_t, bi_program_stats_t> bi_program_stats;
 
     public:
@@ -29,4 +32,5 @@ class bp_if {
     private:
         void show_stats(std::string log_path);
         void update_stats(uint32_t pc, bool taken);
+
 };
