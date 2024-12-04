@@ -2,7 +2,9 @@
 
 #include "defines.h"
 #include "dev.h"
+#ifdef ENABLE_HW_PROF
 #include "cache.h"
+#endif
 
 class main_memory : public dev {
     private:

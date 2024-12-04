@@ -3,9 +3,13 @@
 #include "defines.h"
 #include "memory.h"
 #include "inst_parser.h"
+#ifdef ENABLE_PROF
 #include "profiler.h"
 #include "profiler_fusion.h"
+#endif
+#ifdef ENABLE_HW_PROF
 #include "bp_if.h"
+#endif
 
 class core{
     public:
@@ -26,6 +30,11 @@ class core{
         #endif
         #ifdef ENABLE_DASM
         std::string get_inst_asm() { return dasm.asm_str; }
+        std::string get_rd_val_str() {
+            std::ostringstream ostr;
+            ostr << "x" << ip.rd() << ": " << FHEXZ(rf[ip.rd()], 8);
+            return ostr.str();
+        }
         #endif
 
     private:
