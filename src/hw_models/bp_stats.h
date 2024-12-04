@@ -43,10 +43,10 @@ struct bp_stats_t {
         const std::string type_name;
 
     public:
-        bp_stats_t(const std::string type_name2)
+        bp_stats_t(const std::string type_name)
         : predicted_fwd(0), predicted_bwd(0),
           mispredicted_fwd(0), mispredicted_bwd(0),
-          type_name(type_name2) { }
+          type_name(type_name) { }
         void eval(uint32_t pc, bool correct, b_dir_t dir) {
             if (correct) {
                 if (dir == b_dir_t::forward) predicted_fwd++;
@@ -72,14 +72,14 @@ struct bp_stats_t {
             }
             return bi_predictor_stats.at(pc).predicted;
         }
-        void show(std::string name) const {
+        void show() const {
             float_t acc = 0.0;
             float_t perc_branches = 0.0;
             if (total > 0) {
                 acc = TO_F32(predicted) / TO_F32(total) * 100;
                 perc_branches = TO_F64(total) / TO_F64(all_insts) * 100;
             }
-            std::cout << "  " << name << std::fixed << std::setprecision(2)
+            std::cout << "  " << type_name << std::fixed << std::setprecision(2)
                       << ": B: " << total << "(" << perc_branches
                       << "%), P(f/b): " << predicted
                       << "(" << predicted_fwd << "/" << predicted_bwd

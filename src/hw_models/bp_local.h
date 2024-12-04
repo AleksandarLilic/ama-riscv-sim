@@ -1,8 +1,13 @@
 #pragma once
 
-#include "defines.h"
-#include "bp_common.h"
-#include "bp_stats.h"
+#include "bp.h"
+#include "bp_cnt.h"
+
+struct bp_local_cfg_t {
+    uint32_t hist_entries;
+    uint8_t hist_bits;
+    uint8_t cnt_bits;
+};
 
 struct bp_local_entry_t {
     // tag table, can be used to improve prediction
@@ -10,92 +15,62 @@ struct bp_local_entry_t {
     // BTB, needed if uarch can't resolve branch target in the same cycle
     //uint32_t target;
     // local history (max 32 last branches)
-    uint32_t history;
+    uint32_t hist_pattern;
 };
 
-class bp_local {
+class bp_local : public bp {
     private:
-        const uint8_t cnt_bits;
-        const uint32_t hist_bits;
-        std::vector<bp_cnt_entry_t> cnt_table;
-        std::vector<bp_local_entry_t> hist_table;
-        const uint8_t cnt_max;
-        const uint8_t thr_taken;
+        bp_cnt cnt;
         uint8_t idx_last;
-        uint32_t hist_last;
-        uint32_t predicted_pc;
         b_dir_t dir_last;
-        const uint32_t size;
+        uint32_t hist_last;
+        uint32_t size;
+
+        const uint32_t hist_bits;
+        const uint32_t hist_entries;
+        std::vector<bp_local_entry_t> hist_table;
         const uint32_t hist_mask;
 
     public:
-        const std::string type_name;
-        bp_stats_t stats;
-
-    public:
-        bp_local(std::string type_name, uint32_t hist_bits, uint8_t cnt_bits)
-        : cnt_bits(cnt_bits),
-          hist_bits(hist_bits),
-          cnt_table((1 << hist_bits)), // counter per history entry
-          hist_table(BP_LOCAL_ENTRIES),
-          cnt_max((1 << cnt_bits) - 1),
-          thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1),
-          size(
-              ((cnt_table.size() * cnt_bits) >> 3) +
-              ((hist_table.size() * hist_bits) >> 3)
-         ),
-          hist_mask((1 << hist_bits) - 1),
-          type_name(type_name),
-          stats(type_name)
+        bp_local(std::string type_name, bp_local_cfg_t cfg)
+        :  bp(type_name),
+           // counter per history entry
+           cnt({TO_U32((1 << cfg.hist_bits)), cfg.cnt_bits}),
+           hist_bits(cfg.hist_bits),
+           hist_entries(cfg.hist_entries),
+           hist_table(cfg.hist_entries),
+           hist_mask((1 << hist_bits) - 1)
         {
-            for (uint32_t i = 0; i < BP_LOCAL_ENTRIES; i++) {
-                hist_table[i] = {0};
-            }
-            for (uint32_t i = 0; i < hist_mask + 1; i++) {
-                cnt_table[i] = {thr_taken};
-            }
+            for (size_t i = 0; i < hist_entries; i++) hist_table[i] = {0};
+            size = (hist_table.size() * hist_bits) >> 3;
+            size += cnt.get_size();
         }
+
+        uint8_t get_idx(uint32_t pc) { return (pc >> 2) & (hist_entries - 1); }
 
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             dir_last = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
             idx_last = get_idx(pc);
-            hist_last = hist_table[idx_last].history & hist_mask;
-            if (cnt_table[hist_last].cnt >= thr_taken) predicted_pc = target_pc;
+            hist_last = hist_table[idx_last].hist_pattern & hist_mask;
+            if (cnt.thr_check(hist_last)) predicted_pc = target_pc;
             else predicted_pc = pc + 4;
             return predicted_pc;
         }
 
-        uint8_t get_idx(uint32_t pc) {
-            return (pc >> 2) & (BP_LOCAL_ENTRIES - 1);
-        }
-
-        void update(bool taken) {
-            uint32_t& hist_entry = hist_table[idx_last].history;
+        virtual void update(bool taken) override {
+            uint32_t& hist_entry = hist_table[idx_last].hist_pattern;
             hist_entry = ((hist_entry << 1) | taken) & hist_mask;
-            uint8_t& cnt_entry = cnt_table[hist_last].cnt;
-            if (taken) {
-                if (cnt_entry < cnt_max) cnt_entry++;
-            } else {
-                if (cnt_entry > 0) cnt_entry--;
-            }
+            cnt.update(taken, hist_last);
         }
 
-        void update_stats(uint32_t pc, uint32_t next_pc) {
-            bool correct = (next_pc == predicted_pc);
-            stats.eval(pc, correct, dir_last);
-        }
-
-        void dump() {
+        virtual void dump() override {
             std::cout << "    " << type_name << ": " << std::endl;
             std::cout << "      history: ";
             for (auto& local_entry : hist_table) {
-                std::cout << std::hex << TO_U32(local_entry.history) << " ";
+                std::cout << std::hex << TO_U32(local_entry.hist_pattern) <<" ";
             }
             std::cout << std::endl;
-            std::cout << "      counters: ";
-            for (auto& cnt_entry : cnt_table) {
-                std::cout << std::hex << TO_U32(cnt_entry.cnt) << " ";
-            }
+            cnt.dump();
             std::cout << std::dec << std::endl;
         }
 };

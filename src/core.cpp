@@ -51,6 +51,7 @@ void core::log_and_prof(bool enable) {
     prof.active = enable;
     #endif
     #ifdef ENABLE_HW_PROF
+    logging = enable;
     bp.profiling(enable);
     mem->cache_profiling(enable);
     #endif
@@ -135,7 +136,10 @@ void core::exec_inst() {
         #endif
     }
 
-    #endif
+    #elif defined(ENABLE_HW_PROF)
+    if (logging) logging_pc.inst_cnt++;
+    #endif // ENABLE_DASM
+
     pc = next_pc;
     inst_cnt++;
 }

@@ -3,8 +3,9 @@
 bp_if::bp_if(std::string name, bp_t bp_type) :
     bp_name(name), bp_active(bp_type),
     static_bp("static"),
-    bimodal_bp("bimodal", BP_BIMODAL_CNT_BITS),
-    local_bp("local", BP_LOCAL_HIST_BITS, BP_LOCAL_CNT_BITS) {}
+    bimodal_bp("bimodal", {BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS}),
+    local_bp("local", {BP_LOCAL_ENTRIES, BP_LOCAL_HIST_BITS, BP_LOCAL_CNT_BITS})
+    {}
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
     target_pc = TO_I32(pc) + offset;
@@ -118,9 +119,9 @@ void bp_if::show_stats(std::string log_path) {
     std::cout << ")" << std::endl;
 
     // TODO: predictor size
-    static_bp.stats.show("static");
-    bimodal_bp.stats.show("bimodal");
-    local_bp.stats.show("local");
+    static_bp.stats.show();
+    bimodal_bp.stats.show();
+    local_bp.stats.show();
     return;
     std::cout << "  Predictors internal state:" << std::endl;
     bimodal_bp.dump();
