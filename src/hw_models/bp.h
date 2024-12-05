@@ -37,7 +37,8 @@ class bp {
         virtual void dump() = 0;
 
         virtual void show_stats() {
-            std::cout << "  " << type_name << " (" << size << " B): ";
+            std::cout << "  " << std::left << std::setw(8) << type_name;
+            std::cout << " (" << std::right << std::setw(5) << size << " B): ";
             stats.show();
             std::cout << std::endl;
         }

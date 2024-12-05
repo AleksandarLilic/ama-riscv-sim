@@ -15,15 +15,15 @@ struct bp_bimodal_entry_t {
 class bp_bimodal : public bp {
     private:
         bp_cnt cnt;
-        uint8_t idx_last;
+        uint32_t idx_last;
 
     public:
         bp_bimodal(std::string type_name, bp_cnt_cfg_t cfg)
         : bp(type_name), cnt(cfg) {
-            size = cnt.get_size();
+            size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
         }
 
-        uint8_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
+        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
             find_b_dir(target_pc, pc);

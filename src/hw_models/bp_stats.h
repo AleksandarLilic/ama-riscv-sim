@@ -80,10 +80,10 @@ struct bp_stats_t {
                 perc_branches = TO_F64(total) / TO_F64(all_insts) * 100;
             }
             std::cout << std::fixed << std::setprecision(2)
-                      << "B: " << total << "(" << perc_branches
+                      << "BT: " << total << "(" << perc_branches
                       << "%), P(f/b): " << predicted
                       << "(" << predicted_fwd << "/" << predicted_bwd
-                      << "), MP(f/b): " << mispredicted
+                      << "), M(f/b): " << mispredicted
                       << "(" << mispredicted_fwd << "/" << mispredicted_bwd
                       << "), ACC: "
                       << acc << "%";

@@ -3,25 +3,30 @@
 bp_if::bp_if(std::string name, bp_t bp_type) :
     bp_name(name), bp_active(bp_type),
     static_bp("static"),
-    bimodal_bp("bimodal", {BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS}),
-    local_bp("local", {BP_LOCAL_ENTRIES,BP_LOCAL_HIST_BITS,BP_LOCAL_CNT_BITS}),
-    global_bp("global", {BP_GLOBAL_CNT_BITS, BP_GLOBAL_GR_BITS})
+    bimodal_bp("bimodal", BP_BIMODAL_CFG),
+    local_bp("local", BP_LOCAL_CFG),
+    global_bp("global", BP_GLOBAL_CFG),
+    gselect_bp("gselect", BP_GSELECT_CFG),
+    gshare_bp("gshare", BP_GSHARE_CFG)
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
         predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
         predictors[TO_U8(bp_t::local)] = &local_bp;
         predictors[TO_U8(bp_t::global)] = &global_bp;
+        predictors[TO_U8(bp_t::gselect)] = &gselect_bp;
+        predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
     }
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
-    target_pc = TO_I32(pc) + offset;
-    dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
+    uint32_t target_pc = TO_U32(TO_I32(pc) + offset);
+    b_dir_t dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
     if (prof_active) {
         if (bi_program_stats.find(pc) == bi_program_stats.end()) {
             bi_program_stats[pc] = {dir, 0, 0, {}};
         }
     }
 
+    std::array<uint32_t, num_predictors> predicted_pcs;
     for (uint8_t i = 0; i < predictors.size(); i++) {
         predicted_pcs[i] = predictors[i]->predict(target_pc, pc);
     }

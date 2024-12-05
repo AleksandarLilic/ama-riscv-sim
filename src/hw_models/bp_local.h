@@ -21,7 +21,7 @@ struct bp_local_entry_t {
 class bp_local : public bp {
     private:
         bp_cnt cnt;
-        uint8_t idx_last;
+        uint32_t idx_last;
         uint32_t hist_last;
 
         const uint32_t hist_bits;
@@ -40,11 +40,12 @@ class bp_local : public bp {
            hist_mask((1 << hist_bits) - 1)
         {
             for (size_t i = 0; i < hist_entries; i++) hist_table[i] = {0};
-            size = (hist_table.size() * hist_bits) >> 3;
-            size += cnt.get_size();
+            size = hist_table.size() * hist_bits;
+            size += cnt.get_bit_size();
+            size = (size + 8) >> 3; // to bytes, round up
         }
 
-        uint8_t get_idx(uint32_t pc) { return (pc >> 2) & (hist_entries - 1); }
+        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & (hist_entries - 1); }
 
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             find_b_dir(target_pc, pc);

@@ -33,6 +33,19 @@
 #define BP_LOCAL_HIST_BITS 8
 #define BP_GLOBAL_CNT_BITS 2
 #define BP_GLOBAL_GR_BITS 8
+#define BP_GSELECT_CNT_BITS 2
+#define BP_GSELECT_GR_BITS 4
+#define BP_GSELECT_PC_BITS 4
+#define BP_GSHARE_CNT_BITS 2
+#define BP_GSHARE_GR_BITS 8
+#define BP_GSHARE_PC_BITS 8
+
+#define BP_BIMODAL_CFG {BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS}
+#define BP_LOCAL_CFG {BP_LOCAL_ENTRIES,BP_LOCAL_HIST_BITS,BP_LOCAL_CNT_BITS}
+#define BP_GLOBAL_CFG {BP_GLOBAL_CNT_BITS, BP_GLOBAL_GR_BITS}
+#define BP_GSELECT_CFG {BP_GSELECT_CNT_BITS, BP_GSELECT_GR_BITS, \
+                     BP_GSELECT_PC_BITS}
+#define BP_GSHARE_CFG {BP_GSHARE_CNT_BITS, BP_GSHARE_GR_BITS, BP_GSHARE_PC_BITS}
 
 // casts
 #define TO_F64(x) static_cast<double_t>(x)
@@ -219,7 +232,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
-enum class bp_t { sttc, bimodal, local, global, _count };
+enum class bp_t { sttc, bimodal, local, global, gselect, gshare, _count };
 
 struct dasm_str {
     std::ostringstream asm_ss;
