@@ -47,17 +47,18 @@ void bp_if::update_stats(uint32_t pc, bool taken) {
 }
 
 void bp_if::finish(std::string log_path, uint64_t all_insts) {
-    for (auto& p : predictors) { p->stats.summarize(all_insts); }
+    for (auto& p : predictors) { p->summarize_stats(all_insts); }
     show_stats(log_path);
 }
 
 void bp_if::show_stats(std::string log_path) {
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
-    bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%"
-         << ",P_Static,P_Bimodal,P_Local,P_Global"
-         << ",P_Static%,P_Bimodal%,P_Local%,P_Global%"
-         // << ",P_Bimodal_idx,P_Local_idx"
+    bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%";
+    for (auto& p : predictors) { bcsv << ",P_" << p->type_name; }
+    for (auto& p : predictors) { bcsv << ",P_" << p->type_name << "%"; }
+    //bcsv << ",P_Bimodal_idx,P_Local_idx";
+    bcsv << ",Best,P_best,P_best%"
          << ",Pattern" << std::endl;
 
     for (auto& [pc, stats] : bi_program_stats) {
@@ -80,51 +81,51 @@ void bp_if::show_stats(std::string log_path) {
         float_t taken_ratio =
             (TO_F32(stats.taken) / TO_F32(stats.total)) * 100;
 
-        std::array<uint32_t, num_predictors> predicted;
+        size_t idx_best = TO_U8(bp_t::sttc); // defaults to the simplest one
+        std::array<uint32_t, num_predictors> pred;
         for (uint8_t i = 0; i < num_predictors; i++) {
-            predicted[i] = predictors[i]->stats.get_predicted(pc);
+            pred[i] = predictors[i]->get_predicted_stats(pc);
+            if (pred[i] > pred[idx_best]) idx_best = i;
         }
 
         std::array<float_t, num_predictors> acc;
         for (uint8_t i = 0; i < num_predictors; i++) {
-            acc[i] = (TO_F32(predicted[i]) / TO_F32(stats.total)) * 100;
+            acc[i] = (TO_F32(pred[i]) / TO_F32(stats.total)) * 100;
         }
 
+        std::string best_name = predictors[idx_best]->type_name;
+        uint32_t best_p = pred[idx_best];
+        float_t best_acc = acc[idx_best];
+
         bcsv << std::hex << pc << std::dec
-             << std::fixed << std::setprecision(0)
+             << std::fixed << std::setprecision(1)
              << "," << (stats.dir == b_dir_t::forward ? "F" : "B")
              << "," << stats.taken
              << "," << stats.total - stats.taken
              << "," << stats.total
-             << "," << taken_ratio
-             // enforce order to match the header
-             << "," << predicted[TO_U8(bp_t::sttc)]
-             << "," << predicted[TO_U8(bp_t::bimodal)]
-             << "," << predicted[TO_U8(bp_t::local)]
-             << "," << predicted[TO_U8(bp_t::global)]
-             << "," << acc[TO_U8(bp_t::sttc)]
-             << "," << acc[TO_U8(bp_t::bimodal)]
-             << "," << acc[TO_U8(bp_t::local)]
-             << "," << acc[TO_U8(bp_t::global)]
-             //<< "," << TO_U32(bimodal_bp.get_idx(pc))
-             //<< "," << TO_U32(local_bp.get_idx(pc))
-             << "," << pattern_str << std::endl;
+             << "," << taken_ratio;
+        for (auto& p : pred) { bcsv << "," << p; };
+        for (auto& a : acc) { bcsv << "," << a; };
+        bcsv << "," << best_name
+             << "," << best_p
+             << "," << best_acc;
+        //bcsv << "," << TO_U32(bimodal_bp.get_idx(pc))
+        //     << "," << TO_U32(local_bp.get_idx(pc));
+        bcsv << "," << pattern_str << std::endl;
     }
 
     uint32_t branches = bi_program_stats.size();
-    std::cout << "Program branch stats: unique branches: " << branches
-              << std::endl;
+    std::cout << "Branch stats: unique branches: " << branches << std::endl;
     // show all, but mark the active one (driving the icache)
     std::cout << bp_name << " (active: ";
     std::cout << predictors[TO_U8(bp_active)]->type_name << ")" << std::endl;
 
-    // TODO: predictor size
-    for (auto& p : predictors) { p->stats.show(); }
+    for (auto& p : predictors) { p->show_stats(); }
     return;
     std::cout << "  Predictors internal state:" << std::endl;
     for (auto& p : predictors) { p->dump(); }
 }
 
 void bp_if::log_stats(std::ofstream& log_file) {
-    predictors[TO_U8(bp_active)]->stats.log(bp_name, log_file);
+    predictors[TO_U8(bp_active)]->log_stats(bp_name, log_file);
 }

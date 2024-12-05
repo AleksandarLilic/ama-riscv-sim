@@ -79,14 +79,14 @@ struct bp_stats_t {
                 acc = TO_F32(predicted) / TO_F32(total) * 100;
                 perc_branches = TO_F64(total) / TO_F64(all_insts) * 100;
             }
-            std::cout << "  " << type_name << std::fixed << std::setprecision(2)
-                      << ": B: " << total << "(" << perc_branches
+            std::cout << std::fixed << std::setprecision(2)
+                      << "B: " << total << "(" << perc_branches
                       << "%), P(f/b): " << predicted
                       << "(" << predicted_fwd << "/" << predicted_bwd
                       << "), MP(f/b): " << mispredicted
                       << "(" << mispredicted_fwd << "/" << mispredicted_bwd
                       << "), ACC: "
-                      << acc << "%" << std::endl;
+                      << acc << "%";
         }
         void log(std::string name, std::ofstream& log_file) const {
             log_file << BP_JSON_ENTRY(name, type_name, this) << std::endl;
