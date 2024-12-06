@@ -10,23 +10,25 @@ struct bp_global_cfg_t {
 
 class bp_global : public bp {
     private:
+        uint32_t idx_bits;
+        const uint32_t idx_mask;
         bp_cnt cnt;
-        uint32_t idx_last;
         uint32_t gr; // global register
-        const uint32_t gr_mask;
+        uint32_t idx_last;
 
     public:
         bp_global(std::string type_name, bp_global_cfg_t cfg)
         : bp(type_name),
-          cnt({TO_U32(1 << cfg.gr_bits), cfg.cnt_bits}),
-          gr(0),
-          gr_mask((1 << cfg.gr_bits) - 1)
+          idx_bits(cfg.gr_bits),
+          idx_mask((1 << idx_bits) - 1),
+          cnt({TO_U32(1 << idx_bits), cfg.cnt_bits}),
+          gr(0)
         {
-            size = cnt.get_bit_size() + cfg.gr_bits;
+            size = cnt.get_bit_size() + idx_bits;
             size = (size + 8) >> 3; // to bytes, round up
         }
 
-        uint32_t get_idx(uint32_t gr) { return gr & gr_mask; }
+        uint32_t get_idx(uint32_t gr) { return gr & idx_mask; }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
             find_b_dir(target_pc, pc);
@@ -38,7 +40,7 @@ class bp_global : public bp {
 
         virtual void update(bool taken) override {
             cnt.update(taken, idx_last);
-            gr = ((gr << 1) | taken) & gr_mask;
+            gr = ((gr << 1) | taken) & idx_mask;
         }
 
         virtual void dump() override {

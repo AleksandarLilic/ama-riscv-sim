@@ -21,7 +21,7 @@ class bp_cnt {
         bp_cnt(bp_cnt_cfg_t cfg)
         : cnt_bits(cfg.cnt_bits),
           cnt_entries(cfg.cnt_entries),
-          cnt_entries_mask(cnt_entries - 1),
+          cnt_entries_mask(std::max(1u, cnt_entries) - 1),
           cnt_max((1 << cnt_bits) - 1),
           thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1)
         {
@@ -30,7 +30,7 @@ class bp_cnt {
 
         void resize_table(uint32_t new_size) {
             cnt_table.resize(new_size);
-            for (size_t i = 0; i < cnt_entries; i++) cnt_table[i] = {thr_taken};
+            for (auto& e : cnt_table) e = thr_taken;
             bit_size = cnt_table.size() * cnt_bits;
         }
 

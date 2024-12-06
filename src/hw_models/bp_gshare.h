@@ -10,12 +10,11 @@ class bp_gshare : public bp_gselect {
             // workaround to reuse the gselect's constructor,
             // and then resize the table
             // the longer one determines the size since it's XORing for index
-            uint32_t max_bits = std::max(cfg.gr_bits, cfg.pc_bits);
-            uint32_t cnt_table_size = 1 << max_bits;
-            cnt.resize_table(cnt_table_size);
+            idx_bits = std::max(cfg.gr_bits, cfg.pc_bits);
+            idx_mask = std::max(1u, idx_bits) - 1;
+            cnt.resize_table(1 << idx_bits);
             size = cnt.get_bit_size() + cfg.gr_bits;
             size = (size + 8) >> 3; // to bytes, round up
-            idx_mask = max_bits - 1;
         }
 
         virtual uint32_t get_idx(uint32_t pc, uint32_t gr) override {
