@@ -40,12 +40,24 @@
 #define BP_GSHARE_GR_BITS 8
 #define BP_GSHARE_PC_BITS 8
 
-#define BP_BIMODAL_CFG {BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS}
-#define BP_LOCAL_CFG {BP_LOCAL_ENTRIES,BP_LOCAL_HIST_BITS,BP_LOCAL_CNT_BITS}
-#define BP_GLOBAL_CFG {BP_GLOBAL_CNT_BITS, BP_GLOBAL_GR_BITS}
-#define BP_GSELECT_CFG {BP_GSELECT_CNT_BITS, BP_GSELECT_GR_BITS, \
-                     BP_GSELECT_PC_BITS}
-#define BP_GSHARE_CFG {BP_GSHARE_CNT_BITS, BP_GSHARE_GR_BITS, BP_GSHARE_PC_BITS}
+// cnt_entries. cnt_bits, hist_entries, hist_bits, gr_bits, pc_bits
+#define BP_STATIC_CFG { 0, 0, 0, 0, 0, 0}
+#define BP_BIMODAL_CFG { \
+    BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS, 0, 0, 0, 0}
+#define BP_LOCAL_CFG { \
+    0, BP_LOCAL_CNT_BITS, BP_LOCAL_ENTRIES, BP_LOCAL_HIST_BITS, 0, 0}
+#define BP_GLOBAL_CFG { \
+    0, BP_GLOBAL_CNT_BITS, 0, 0, BP_GLOBAL_GR_BITS, 0}
+#define BP_GSELECT_CFG { \
+    0, BP_GSELECT_CNT_BITS, 0, 0, BP_GSELECT_GR_BITS, BP_GSELECT_PC_BITS}
+#define BP_GSHARE_CFG { \
+    0, BP_GSHARE_CNT_BITS, 0, 0, BP_GSHARE_GR_BITS, BP_GSHARE_PC_BITS}
+
+#define BP_COMBINED_CFG { \
+    BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS, 0, 0, 0, 0}
+
+#define BP_C1 bp_t::sttc
+#define BP_C2 bp_t::global
 
 // casts
 #define TO_F64(x) static_cast<double_t>(x)
@@ -232,7 +244,8 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
-enum class bp_t { sttc, bimodal, local, global, gselect, gshare, _count };
+enum class bp_t { sttc, bimodal, local, global, gselect, gshare, combined,
+                  _count };
 
 struct dasm_str {
     std::ostringstream asm_ss;

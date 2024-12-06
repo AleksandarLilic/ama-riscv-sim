@@ -18,8 +18,10 @@ class bp_bimodal : public bp {
         uint32_t idx_last;
 
     public:
-        bp_bimodal(std::string type_name, bp_cnt_cfg_t cfg)
-        : bp(type_name), cnt(cfg) {
+        bp_bimodal(std::string type_name, bp_cfg_t cfg)
+        : bp(type_name, cfg),
+          cnt({cfg.cnt_entries, cfg.cnt_bits})
+        {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
         }
 
@@ -33,7 +35,10 @@ class bp_bimodal : public bp {
             return predicted_pc;
         }
 
-        virtual void update(bool taken) override {cnt.update(taken, idx_last);}
+        virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
+            cnt.update(taken, idx_last);
+            return (next_pc == predicted_pc);
+        }
 
         virtual void dump() override {
             std::cout << "    " << type_name << ": " << std::endl;

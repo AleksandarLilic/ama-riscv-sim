@@ -2,12 +2,13 @@
 
 bp_if::bp_if(std::string name, bp_t bp_type) :
     bp_name(name), bp_active(bp_type),
-    static_bp("static"),
+    static_bp("static", BP_STATIC_CFG),
     bimodal_bp("bimodal", BP_BIMODAL_CFG),
     local_bp("local", BP_LOCAL_CFG),
     global_bp("global", BP_GLOBAL_CFG),
     gselect_bp("gselect", BP_GSELECT_CFG),
-    gshare_bp("gshare", BP_GSHARE_CFG)
+    gshare_bp("gshare", BP_GSHARE_CFG),
+    combined_bp("combined", BP_COMBINED_CFG, {BP_C1, BP_C2})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
         predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
@@ -15,6 +16,10 @@ bp_if::bp_if(std::string name, bp_t bp_type) :
         predictors[TO_U8(bp_t::global)] = &global_bp;
         predictors[TO_U8(bp_t::gselect)] = &gselect_bp;
         predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
+        predictors[TO_U8(bp_t::combined)] = &combined_bp;
+
+        combined_bp.add_size(predictors[TO_U8(BP_C1)]->get_size());
+        combined_bp.add_size(predictors[TO_U8(BP_C2)]->get_size());
     }
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
@@ -27,17 +32,26 @@ uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
     }
 
     std::array<uint32_t, num_predictors> predicted_pcs;
-    for (uint8_t i = 0; i < predictors.size(); i++) {
+    for (uint8_t i = 0; i < predictors.size() - 1; i++) {
         predicted_pcs[i] = predictors[i]->predict(target_pc, pc);
     }
+    bp_t bp_sel = combined_bp.select(pc);
+    combined_bp.store_prediction(predicted_pcs[TO_U8(bp_sel)]);
+    combined_bp.store_direction(target_pc, pc);
 
     return predicted_pcs[TO_U8(bp_active)];
 }
 
 void bp_if::update(uint32_t pc, uint32_t next_pc) {
     bool taken = next_pc != pc + 4;
+
     // internal states always updated
-    for (auto& p : predictors) { p->update(taken); }
+    std::array<bool, num_predictors> correct;
+    for (uint8_t i = 0; i < predictors.size() - 1; i++) {
+        correct[i] = predictors[i]->eval_and_update(taken, next_pc);
+    }
+    combined_bp.update(correct[TO_U8(BP_C1)], correct[TO_U8(BP_C2)]);
+
     // but only update stats if profiling is active
     if (!prof_active) return;
     update_stats(pc, taken);

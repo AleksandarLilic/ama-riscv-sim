@@ -4,7 +4,7 @@
 
 class bp_gshare : public bp_gselect {
     public:
-        bp_gshare(std::string type_name, bp_gselect_cfg_t cfg)
+        bp_gshare(std::string type_name, bp_cfg_t cfg)
         : bp_gselect(type_name, cfg)
         {
             // workaround to reuse the gselect's constructor,

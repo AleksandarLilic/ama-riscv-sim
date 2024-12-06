@@ -39,6 +39,7 @@ class bp_cnt {
 
         bool thr_check(uint32_t idx) { return cnt_table[idx] >= thr_taken; }
 
+        // for single predictor
         void update(bool taken, uint32_t idx) {
             uint8_t& cnt_entry = cnt_table[idx];
             if (taken) {
@@ -46,6 +47,18 @@ class bp_cnt {
             } else {
                 if (cnt_entry > 0) cnt_entry--;
             }
+        }
+
+        // for combined predictor
+        void update(bool p0c, bool p1c, uint32_t idx) {
+            uint8_t& cnt_entry = cnt_table[idx];
+            if (p0c != p1c) {
+                if (p0c) {
+                    if (cnt_entry < cnt_max) cnt_entry++;
+                } else { // p1c, decrement
+                    if (cnt_entry > 0) cnt_entry--;
+                }
+            } // no change if they match
         }
 
         void dump() {

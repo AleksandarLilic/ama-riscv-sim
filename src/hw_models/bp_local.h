@@ -3,12 +3,6 @@
 #include "bp.h"
 #include "bp_cnt.h"
 
-struct bp_local_cfg_t {
-    uint32_t hist_entries;
-    uint8_t hist_bits;
-    uint8_t cnt_bits;
-};
-
 struct bp_local_entry_t {
     // tag table, can be used to improve prediction
     //uint32_t tag;
@@ -30,8 +24,8 @@ class bp_local : public bp {
         uint32_t hist_last;
 
     public:
-        bp_local(std::string type_name, bp_local_cfg_t cfg)
-        :  bp(type_name),
+        bp_local(std::string type_name, bp_cfg_t cfg)
+        :  bp(type_name, cfg),
            hist_bits(cfg.hist_bits),
            hist_mask((1 << hist_bits) - 1),
            hist_entries(cfg.hist_entries),
@@ -56,10 +50,11 @@ class bp_local : public bp {
             return predicted_pc;
         }
 
-        virtual void update(bool taken) override {
+        virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             uint32_t& hist_entry = hist_table[idx_last].hist_pattern;
             hist_entry = ((hist_entry << 1) | taken) & hist_mask;
             cnt.update(taken, hist_last);
+            return (next_pc == predicted_pc);
         }
 
         virtual void dump() override {

@@ -3,6 +3,15 @@
 #include "defines.h"
 #include "bp_stats.h"
 
+struct bp_cfg_t {
+    uint32_t cnt_entries;
+    uint8_t cnt_bits;
+    uint32_t hist_entries;
+    uint8_t hist_bits;
+    uint32_t gr_bits;
+    uint32_t pc_bits;
+};
+
 class bp {
     public:
         const std::string type_name;
@@ -14,7 +23,8 @@ class bp {
         bp_stats_t stats;
 
     public:
-        bp(std::string type_name) : type_name(type_name), stats(type_name) {}
+        bp(std::string type_name, bp_cfg_t /* cfg */)
+        : type_name(type_name), stats(type_name) {}
 
         virtual ~bp() = default;
 
@@ -27,7 +37,7 @@ class bp {
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) = 0;
 
-        virtual void update(bool taken) = 0;
+        virtual bool eval_and_update(bool taken, uint32_t next_pc) = 0;
 
         virtual void update_stats(uint32_t pc, uint32_t next_pc) {
             bool correct = (next_pc == predicted_pc);

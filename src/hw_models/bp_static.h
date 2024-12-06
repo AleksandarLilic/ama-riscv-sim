@@ -4,7 +4,7 @@
 
 class bp_static : public bp {
     public:
-        bp_static(std::string type_name) : bp(type_name) {
+        bp_static(std::string type_name, bp_cfg_t cfg) : bp(type_name, cfg) {
             size = 0;
         }
 
@@ -16,9 +16,9 @@ class bp_static : public bp {
             return predicted_pc;
         }
 
-        // no update, static prediction, three ways to handle it (for ref.)
-        virtual void update(bool /* taken */) override { }
-        //virtual void update([[maybe_unused]] bool taken) override { }
-        //virtual void update(bool taken) override { (void)taken; }
+        virtual bool eval_and_update(bool /*taken*/, uint32_t next_pc)override{
+            return (next_pc == predicted_pc);
+        }
+
         virtual void dump() override { }
 };

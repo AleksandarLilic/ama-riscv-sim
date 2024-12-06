@@ -3,11 +3,6 @@
 #include "bp.h"
 #include "bp_cnt.h"
 
-struct bp_global_cfg_t {
-    uint8_t cnt_bits;
-    uint8_t gr_bits;
-};
-
 class bp_global : public bp {
     private:
         uint32_t idx_bits;
@@ -17,8 +12,8 @@ class bp_global : public bp {
         uint32_t idx_last;
 
     public:
-        bp_global(std::string type_name, bp_global_cfg_t cfg)
-        : bp(type_name),
+        bp_global(std::string type_name, bp_cfg_t cfg)
+        : bp(type_name, cfg),
           idx_bits(cfg.gr_bits),
           idx_mask((1 << idx_bits) - 1),
           cnt({TO_U32(1 << idx_bits), cfg.cnt_bits}),
@@ -38,9 +33,10 @@ class bp_global : public bp {
             return predicted_pc;
         }
 
-        virtual void update(bool taken) override {
+        virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             cnt.update(taken, idx_last);
             gr = ((gr << 1) | taken) & idx_mask;
+            return (next_pc == predicted_pc);
         }
 
         virtual void dump() override {
