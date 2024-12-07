@@ -4,3 +4,6 @@
 [submodule "sw/BitNetMCU"]
 	path = sw/BitNetMCU
 	url = git@github.com:AleksandarLilic/BitNetMCU.git
+[submodule "src/external/cxxopts"]
+	path = src/external/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git

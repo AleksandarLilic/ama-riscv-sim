@@ -98,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 TEST_F(sim_test, missing_arguments) {
-    ASSERT_TRUE(check_error("", "Missing arguments."));
+    ASSERT_TRUE(check_error("", "Missing binary file path."));
 }
 
 TEST_F(sim_test, bin_file_not_found) {

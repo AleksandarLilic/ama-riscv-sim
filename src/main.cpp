@@ -1,7 +1,9 @@
+#include <filesystem>
+
 #include "defines.h"
 #include "memory.h"
 #include "core.h"
-#include <filesystem>
+#include <external/cxxopts/include/cxxopts.hpp>
 
 #ifdef TEST_BUILD
 #define TRY_CATCH(x) \
@@ -33,47 +35,62 @@ std::string gen_log_path(const std::string& test_bin_path) {
     return path_out;
 }
 
+struct defs_t {
+    static constexpr char log_pc_start[] = "0";
+    static constexpr char log_pc_stop[] = "0";
+    static constexpr char log_first_match_only[] = "false";
+};
+
 int main(int argc, char* argv[]) {
-    if(argc < 2) {
-        std::cerr << "Missing arguments. Usage: " << argv[0]
-                  << " <path_to_bin_file>" << std::endl;
+    logging_pc_t log_pc = {0, 0, false};
+    std::string test_bin;
+    cxxopts::Options options(argv[0], "ama-riscv-sim");
+
+    options.add_options()
+        ("p,path", "Path to binary executable", cxxopts::value<std::string>())
+        ("log_pc_start", "Start PC (hex) for logging and profiling",
+         cxxopts::value<std::string>()->default_value(defs_t::log_pc_start))
+        ("log_pc_stop", "Stop PC (hex) for logging and profiling",
+         cxxopts::value<std::string>()->default_value(defs_t::log_pc_stop))
+        ("log_first_match_only", "Log and profile only first match on PC",
+         cxxopts::value<bool>()->default_value(defs_t::log_first_match_only))
+        ("h,help", "Print usage");
+
+    options.parse_positional({"path"});
+
+    auto result = options.parse(argc, argv);
+    if (result.count("help")) {
+        std::cout << options.help() << std::endl;
+        return 0;
+    }
+
+     if (!result.count("path")) {
+        std::cerr << "Missing binary file path. Usage: " << argv[0]
+                  << " <path_to_bin_file> [options]" << std::endl;
         return 1;
     }
-    std::string test_bin = argv[1];
 
-    // Parse optional arguments
-    uint32_t pc_start = 0;
-    uint32_t pc_stop = 0;
-    bool first_match = false;
-    for (int i = 2; i < argc; ++i) {
-        std::string arg = argv[i];
-        i++;
-        if (arg == "--log_pc_start") {
-            if (i < argc) pc_start = std::stoll(argv[i], nullptr, 16);
-            else PARSE_ERROR("Missing argument for --log_pc_start");
-        } else if (arg == "--log_pc_stop") {
-            if (i < argc) pc_stop = std::stoll(argv[i], nullptr, 16);
-            else PARSE_ERROR("Missing argument for --log_pc_stop");
-        } else if (arg == "--log_first_match_only") {
-            first_match = true;
-        } else {
-            PARSE_ERROR("Unknown argument: " + arg);
-        }
-    }
+    test_bin = result["path"].as<std::string>();
+    log_pc.start =
+        std::stoul(result["log_pc_start"].as<std::string>(), nullptr, 16);
+    log_pc.stop =
+        std::stoul(result["log_pc_stop"].as<std::string>(), nullptr, 16);
+    log_pc.first_match = result["log_first_match_only"].as<bool>();
 
-    if (pc_start != 0)
-        std::cout << "Logging start pc: 0x" << std::hex << pc_start << " ";
-    if (pc_stop != 0)
-        std::cout << "Logging end pc: 0x" << std::hex << pc_stop;
-    if (first_match)
+    std::cout << "Binary file: " << test_bin << std::hex << std::endl;
+    if (log_pc.start != 0)
+        std::cout << "Logging start pc: 0x" << log_pc.start << " ";
+    if (log_pc.stop != 0)
+        std::cout << "Logging stop pc: 0x" << log_pc.stop;
+    if (log_pc.first_match)
         std::cout << "Logging first match only";
     std::cout << std::dec << std::endl;
 
-    logging_pc_t log_pc = {pc_start, pc_stop, first_match};
     TRY_CATCH({
         memory mem(BASE_ADDR, test_bin);
         core rv32(BASE_ADDR, &mem, gen_log_path(test_bin), log_pc);
         rv32.exec();
     });
+
     return 0;
 }

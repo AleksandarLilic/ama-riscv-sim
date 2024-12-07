@@ -59,6 +59,8 @@
 #define BP_C1 bp_t::sttc
 #define BP_C2 bp_t::global
 
+// end of planned CLI switches
+
 // casts
 #define TO_F64(x) static_cast<double_t>(x)
 #define TO_F32(x) static_cast<float_t>(x)
