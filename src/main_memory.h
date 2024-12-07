@@ -16,7 +16,7 @@ class main_memory : public dev {
 
     public:
         main_memory() = delete;
-        main_memory(size_t size, std::string test_bin);
+        main_memory(size_t size, std::string test_bin, hw_cfg_t hw_cfg);
         uint32_t rd_inst(uint32_t addr);
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;

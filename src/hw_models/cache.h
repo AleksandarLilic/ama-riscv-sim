@@ -98,8 +98,9 @@ class cache {
                 for (auto& line : set) line.profiling(enable);
             }
         }
+
         // stats
-        void set_roi(uint32_t start, uint32_t end);
+        void set_roi(uint32_t start, uint32_t size);
         void show_stats();
         void log_stats(std::ofstream& log_file);
         void dump() const;

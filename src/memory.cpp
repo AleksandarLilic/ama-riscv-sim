@@ -1,16 +1,19 @@
 #include "memory.h"
 
-memory::memory(uint32_t base_address, std::string test_bin) :
-    mm(MEM_SIZE, test_bin),
-    #ifdef UART_ENABLE
-    uart0(UART0_SIZE),
-    #endif
-    mem_map {{
-        {base_address, MEM_SIZE, &mm},
+memory::memory(
+    uint32_t base_address,
+    std::string test_bin,
+    [[maybe_unused]] hw_cfg_t hw_cfg) :
+        mm(MEM_SIZE, test_bin, hw_cfg),
         #ifdef UART_ENABLE
-        {base_address + MEM_SIZE, UART0_SIZE, &uart0}
+        uart0(UART0_SIZE),
         #endif
-    }}
+        mem_map {{
+            {base_address, MEM_SIZE, &mm},
+            #ifdef UART_ENABLE
+            {base_address + MEM_SIZE, UART0_SIZE, &uart0}
+            #endif
+        }}
  {
     dev_ptr = nullptr;
  }

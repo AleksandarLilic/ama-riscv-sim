@@ -11,17 +11,16 @@
 #include <map>
 #include <chrono>
 
+struct hw_cfg_t {
+    uint32_t icache_sets;
+    uint32_t icache_ways;
+    uint32_t dcache_sets;
+    uint32_t dcache_ways;
+    uint32_t roi_start;
+    uint32_t roi_size;
+};
+
 // Planned CLI switches
-#define ICACHE_SETS 1
-#define ICACHE_WAYS 4
-
-#define DCACHE_SETS 1
-#define DCACHE_WAYS 8
-
-//#define ROI_START 0x17280 // bytes
-#define ROI_START 0x170c0 // bytes
-#define ROI_SIZE 256 // bytes
-
 // all predictors will work, the selected one will drive the icache
 #define BRANCH_PERDICTOR bp_t::bimodal
 
