@@ -3,7 +3,7 @@
 *.log
 
 # test files
-test/*_dump.log
+test/out_*/
 test/gtest_testlist.txt
 test/ama-riscv-sim_test
 test/*.gcno
