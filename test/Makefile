@@ -11,9 +11,9 @@ COVLOG := coverage.log
 VALGRIND := valgrind --leak-check=full
 NO_PREP ?= 0
 
-all: build_sim prepare_tests coverage
+all: coverage
 
-run_gtest: $(TEST)
+run_gtest: build_sim prepare_tests $(TEST)
 	./$(TEST)
 
 coverage: run_gtest
@@ -27,10 +27,12 @@ run_valgrind: $(TEST)
 
 $(TEST): $(SOURCES)
 	$(CXX) -o $@ $^ $(GTEST_LIBS) $(CXXFLAGS)
+	@echo "Gtest build done."
 
 prepare_tests:
 	@if [ "$(NO_PREP)" = "0" ]; then \
 		$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests; \
+		echo "RISC-V tests build done."; \
 	fi
 
 clean_tests:
@@ -39,6 +41,7 @@ clean_tests:
 build_sim:
 	make -C ../src --no-print-directory clean
 	make -C ../src --no-print-directory -j $(SIM_FLAGS)
+	@echo "Simulator build done."
 
 cleanlogs:
 	rm -rf *.log out_*
@@ -52,4 +55,4 @@ clean: cleanlogs cleanbins
 cleanall: clean
 	make -C ../src --no-print-directory clean
 
-.PHONY: all clean prepare
+.PHONY: all run_gtest coverage run_valgrind prepare_tests clean_tests build_sim cleanlogs cleanbins clean cleanall
