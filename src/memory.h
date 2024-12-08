@@ -28,7 +28,7 @@ class memory {
 
     public:
         memory() = delete;
-        memory(uint32_t base_address, std::string test_bin, hw_cfg_t hw_cfg);
+        memory(std::string test_bin, hw_cfg_t hw_cfg);
         uint32_t rd_inst(uint32_t address);
         uint32_t rd(uint32_t address, uint32_t size);
         void wr(uint32_t address, uint32_t data, uint32_t size);

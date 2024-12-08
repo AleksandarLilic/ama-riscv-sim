@@ -59,9 +59,31 @@ std::string gen_help_list(const std::unordered_map<std::string, T>& map) {
 }
 
 // args maps
+// available rf names
 const std::unordered_map<std::string, rf_names_t> rf_names_map = {
     {"abi", rf_names_t::mode_abi},
     {"x", rf_names_t::mode_x}
+};
+
+// all available branch predictors
+const std::unordered_map<std::string, bp_t> bp_names_map = {
+    {"static", bp_t::sttc},
+    {"bimodal", bp_t::bimodal},
+    {"local", bp_t::local},
+    {"global", bp_t::global},
+    {"gselect", bp_t::gselect},
+    {"gshare", bp_t::gshare},
+    {"combined", bp_t::combined}
+};
+
+// allowed options for combined predictor
+const std::unordered_map<std::string, bp_t> bpc_names_map = {
+    {"static", bp_t::sttc},
+    {"bimodal", bp_t::bimodal},
+    {"local", bp_t::local},
+    {"global", bp_t::global},
+    {"gselect", bp_t::gselect},
+    {"gshare", bp_t::gshare}
 };
 
 // defaults
@@ -70,6 +92,7 @@ struct defs_t {
     static constexpr char log_pc_stop[] = "0";
     static constexpr char log_first_match_only[] = "false";
     static constexpr char rf_names[] = "abi";
+    static constexpr char dump_all_regs[] = "false";
 };
 
 #ifdef ENABLE_HW_PROF
@@ -80,6 +103,9 @@ struct hw_defs_t {
     static constexpr char dcache_ways[] = "8";
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
+    static constexpr char bp_active[] = "bimodal";
+    static constexpr char bpc_1[] = "static";
+    static constexpr char bpc_2[] = "bimodal";
 };
 #endif
 
@@ -98,8 +124,11 @@ int main(int argc, char* argv[]) {
         ("log_first_match_only", "Log and profile only first match on PC",
          cxxopts::value<bool>()->default_value(defs_t::log_first_match_only))
         ("rf_names",
-         "RF names for execution log. Options: " + gen_help_list(rf_names_map),
+         "Register file names used for execution log. Options: " +
+         gen_help_list(rf_names_map),
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
+        ("dump_all_regs", "Dump all registers at the end of simulation",
+         cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
         #ifdef ENABLE_HW_PROF
         ("icache_sets", "Number of sets in I$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::icache_sets))
@@ -113,6 +142,18 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_start))
         ("roi_size", "D$ Region of interest size",
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_size))
+        ("bp_active",
+         "Active branch predictor (driving I$). Options: " +
+         gen_help_list(bp_names_map),
+         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_active))
+        ("bpc_1",
+         "First branch predictor for combined predictor. Options: " +
+         gen_help_list(bpc_names_map),
+         cxxopts::value<std::string>()->default_value(hw_defs_t::bpc_1))
+        ("bpc_2",
+         "Second branch predictor for combined predictor. Options: " +
+         gen_help_list(bpc_names_map),
+         cxxopts::value<std::string>()->default_value(hw_defs_t::bpc_2))
         #endif
         ("h,help", "Print usage");
 
@@ -140,6 +181,7 @@ int main(int argc, char* argv[]) {
         cfg.log_pc.first_match = TO_BOOL(result["log_first_match_only"]);
         cfg.rf_names = resolve_arg(
             "rf_names", result["rf_names"].as<std::string>(), rf_names_map);
+        cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
         #ifdef ENABLE_HW_PROF
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
@@ -147,6 +189,12 @@ int main(int argc, char* argv[]) {
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
+        hw_cfg.bp_active = resolve_arg(
+            "bp_active", result["bp_active"].as<std::string>(), bp_names_map);
+        hw_cfg.bpc_1 = resolve_arg(
+            "bpc_1", result["bpc_1"].as<std::string>(), bpc_names_map);
+        hw_cfg.bpc_2 = resolve_arg(
+            "bpc_2", result["bpc_2"].as<std::string>(), bpc_names_map);
         #endif
     } catch (const cxxopts::exceptions::option_has_no_value& e) {
         std::cerr << e.what() << std::endl;
@@ -158,7 +206,7 @@ int main(int argc, char* argv[]) {
     }
 
     // print useful info about the run
-    std::cout << "Binary file: " << test_bin << std::hex << std::endl;
+    std::cout << "Running: " << test_bin << std::hex << std::endl;
     if (cfg.log_pc.start != 0) {
         std::cout << "Logging start pc: 0x" << cfg.log_pc.start << " ";
     }
@@ -171,8 +219,8 @@ int main(int argc, char* argv[]) {
     std::cout << std::dec << std::endl;
 
     TRY_CATCH({
-        memory mem(BASE_ADDR, test_bin, hw_cfg);
-        core rv32(BASE_ADDR, &mem, gen_log_path(test_bin), cfg);
+        memory mem(test_bin, hw_cfg);
+        core rv32(&mem, gen_log_path(test_bin), cfg, hw_cfg);
         rv32.exec();
     });
 

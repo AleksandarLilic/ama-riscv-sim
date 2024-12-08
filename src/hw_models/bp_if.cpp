@@ -1,14 +1,15 @@
 #include "bp_if.h"
 
-bp_if::bp_if(std::string name, bp_t bp_type) :
-    bp_name(name), bp_active(bp_type),
+bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
+    bp_name(name), bp_active(hw_cfg.bp_active),
+    bpc_1(hw_cfg.bpc_1), bpc_2(hw_cfg.bpc_2),
     static_bp("static", BP_STATIC_CFG),
     bimodal_bp("bimodal", BP_BIMODAL_CFG),
     local_bp("local", BP_LOCAL_CFG),
     global_bp("global", BP_GLOBAL_CFG),
     gselect_bp("gselect", BP_GSELECT_CFG),
     gshare_bp("gshare", BP_GSHARE_CFG),
-    combined_bp("combined", BP_COMBINED_CFG, {BP_C1, BP_C2})
+    combined_bp("combined", BP_COMBINED_CFG, {bpc_1, bpc_2})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
         predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
@@ -18,8 +19,8 @@ bp_if::bp_if(std::string name, bp_t bp_type) :
         predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
         predictors[TO_U8(bp_t::combined)] = &combined_bp;
 
-        combined_bp.add_size(predictors[TO_U8(BP_C1)]->get_size());
-        combined_bp.add_size(predictors[TO_U8(BP_C2)]->get_size());
+        combined_bp.add_size(predictors[TO_U8(bpc_1)]->get_size());
+        combined_bp.add_size(predictors[TO_U8(bpc_2)]->get_size());
     }
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
@@ -50,7 +51,7 @@ void bp_if::update(uint32_t pc, uint32_t next_pc) {
     for (uint8_t i = 0; i < predictors.size() - 1; i++) {
         correct[i] = predictors[i]->eval_and_update(taken, next_pc);
     }
-    combined_bp.update(correct[TO_U8(BP_C1)], correct[TO_U8(BP_C2)]);
+    combined_bp.update(correct[TO_U8(bpc_1)], correct[TO_U8(bpc_2)]);
 
     // but only update stats if profiling is active
     if (!prof_active) return;

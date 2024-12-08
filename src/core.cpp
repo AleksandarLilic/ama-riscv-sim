@@ -2,20 +2,21 @@
 
 #define INDENT "    "
 
-core::core(uint32_t base_addr, memory *mem, std::string log_path, cfg_t cfg)
-    : running(false), mem(mem), pc(base_addr), next_pc(0), inst(0),
+core::core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg)
+    : running(false), mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
       inst_cnt(0), inst_cnt_csr(0),
       log_path(log_path), logging_pc(cfg.log_pc), logging(false)
     #ifdef ENABLE_PROF
     , prof(log_path)
     #endif
     #ifdef ENABLE_HW_PROF
-    , bp("Bpred", BRANCH_PERDICTOR)
+    , bp("Bpred", hw_cfg)
     #endif
 {
     rf[0] = 0;
     rf_names_idx = TO_U8(cfg.rf_names);
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
+    dump_all_regs = cfg.dump_all_regs;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
     // initialize CSRs
     for (const auto &c : supported_csrs)
@@ -1066,9 +1067,10 @@ void core::dump() {
     #ifdef UART_ENABLE
     std::cout << "=== UART END ===\n" << std::endl;
     #endif
-    std::cout << std::dec << "Instruction Counters - executed: " << inst_cnt
+    std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
               << ", logged: " << logging_pc.inst_cnt << std::endl;
-    std::cout << dump_state(true) << std::endl;
+    if (dump_all_regs) std::cout << dump_state(true) << std::endl;
+    else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << std::endl;
 
     #ifdef CHECK_LOG
     // open file for check log

@@ -1,7 +1,6 @@
 #include "memory.h"
 
 memory::memory(
-    uint32_t base_address,
     std::string test_bin,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         mm(MEM_SIZE, test_bin, hw_cfg),
@@ -9,9 +8,9 @@ memory::memory(
         uart0(UART0_SIZE),
         #endif
         mem_map {{
-            {base_address, MEM_SIZE, &mm},
+            {BASE_ADDR, MEM_SIZE, &mm},
             #ifdef UART_ENABLE
-            {base_address + MEM_SIZE, UART0_SIZE, &uart0}
+            {BASE_ADDR + MEM_SIZE, UART0_SIZE, &uart0}
             #endif
         }}
  {
