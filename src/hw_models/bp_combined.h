@@ -13,13 +13,14 @@ class bp_combined : public bp {
         uint32_t idx_last;
 
     public:
-        bp_combined(std::string type_name,
-                    bp_cfg_t cfg,
-                    std::array<bp_t, 2> bps)
-        : bp(type_name, cfg),
-          type_name(type_name),
-          cnt({cfg.cnt_entries, cfg.cnt_bits}),
-          bps(bps)
+        bp_combined(
+            std::string type_name,
+            bp_cfg_t cfg,
+            std::array<bp_t, 2> bps) :
+                bp(type_name, cfg),
+                type_name(type_name),
+                cnt({cfg.pc_bits, cfg.cnt_bits}),
+                bps(bps)
         {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
             // plus the size of the two predictors from their own instances

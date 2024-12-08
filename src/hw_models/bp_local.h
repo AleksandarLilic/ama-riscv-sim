@@ -14,24 +14,24 @@ struct bp_local_entry_t {
 
 class bp_local : public bp {
     private:
+        const uint32_t pc_bits;
+        const uint32_t pc_mask;
         const uint32_t hist_bits;
         const uint32_t hist_mask;
-        const uint32_t hist_entries;
         std::vector<bp_local_entry_t> hist_table;
-        const uint32_t idx_mask;
         bp_cnt cnt; // counter per history entry
         uint32_t idx_last;
         uint32_t hist_last;
 
     public:
-        bp_local(std::string type_name, bp_cfg_t cfg)
-        :  bp(type_name, cfg),
-           hist_bits(cfg.hist_bits),
-           hist_mask((1 << hist_bits) - 1),
-           hist_entries(cfg.hist_entries),
-           hist_table(cfg.hist_entries),
-           idx_mask(hist_entries - 1),
-           cnt({TO_U32((1 << hist_bits)), cfg.cnt_bits})
+        bp_local(std::string type_name, bp_cfg_t cfg) :
+            bp(type_name, cfg),
+            pc_bits(cfg.pc_bits),
+            pc_mask((1 << pc_bits) - 1),
+            hist_bits(cfg.hist_bits),
+            hist_mask((1 << hist_bits) - 1),
+            hist_table((1 << pc_bits)),
+            cnt({hist_bits, cfg.cnt_bits})
         {
             for (auto& e : hist_table) e.hist_pattern = 0;
             size = hist_table.size() * hist_bits;
@@ -39,7 +39,7 @@ class bp_local : public bp {
             size = (size + 8) >> 3; // to bytes, round up
         }
 
-        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & idx_mask; }
+        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & pc_mask; }
 
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             find_b_dir(target_pc, pc);

@@ -4,12 +4,10 @@
 #include "bp_stats.h"
 
 struct bp_cfg_t {
-    uint32_t cnt_entries;
+    uint32_t pc_bits;
     uint8_t cnt_bits;
-    uint32_t hist_entries;
     uint8_t hist_bits;
     uint32_t gr_bits;
-    uint32_t pc_bits;
 };
 
 class bp {

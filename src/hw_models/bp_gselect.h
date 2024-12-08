@@ -16,16 +16,16 @@ class bp_gselect : public bp {
         uint32_t idx_last;
 
     public:
-        bp_gselect(std::string type_name, bp_cfg_t cfg)
-        : bp(type_name, cfg),
-          idx_bits(cfg.gr_bits + cfg.pc_bits),
-          gr_bits(cfg.gr_bits),
-          pc_bits(cfg.pc_bits),
-          idx_mask((1 << idx_bits) - 1),
-          gr_mask((1 << gr_bits) - 1),
-          pc_mask((1 << pc_bits) - 1),
-          cnt({TO_U32(1 << idx_bits), cfg.cnt_bits}),
-          gr(0)
+        bp_gselect(std::string type_name, bp_cfg_t cfg) :
+            bp(type_name, cfg),
+            idx_bits(cfg.gr_bits + cfg.pc_bits),
+            gr_bits(cfg.gr_bits),
+            pc_bits(cfg.pc_bits),
+            idx_mask((1 << idx_bits) - 1),
+            gr_mask((1 << gr_bits) - 1),
+            pc_mask((1 << pc_bits) - 1),
+            cnt({idx_bits, cfg.cnt_bits}),
+            gr(0)
         {
             size = cnt.get_bit_size() + cfg.gr_bits;
             size = (size + 8) >> 3; // to bytes, round up

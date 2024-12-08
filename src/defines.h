@@ -6,9 +6,9 @@
 // all predictors will work, the selected one will drive the icache
 
 // branch predictor type specific
-#define BP_BIMODAL_ENTRIES 8
+#define BP_BIMODAL_PC_BITS 3
 #define BP_BIMODAL_CNT_BITS 2
-#define BP_LOCAL_ENTRIES 16
+#define BP_LOCAL_PC_BITS 4
 #define BP_LOCAL_CNT_BITS 2
 #define BP_LOCAL_HIST_BITS 8
 #define BP_GLOBAL_CNT_BITS 2
@@ -19,22 +19,25 @@
 #define BP_GSHARE_CNT_BITS 2
 #define BP_GSHARE_GR_BITS 8
 #define BP_GSHARE_PC_BITS 8
+// combined predictor is not required to have the same number of bits as
+// the selected individual predictors
+#define BP_COMBINED_PC_BITS 4
+#define BP_COMBINED_CNT_BITS 2
 
-// cnt_entries. cnt_bits, hist_entries, hist_bits, gr_bits, pc_bits
-#define BP_STATIC_CFG { 0, 0, 0, 0, 0, 0}
+// pc_bits, cnt_bits, hist_bits, gr_bits
+#define BP_STATIC_CFG { 0, 0, 0, 0}
 #define BP_BIMODAL_CFG { \
-    BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS, 0, 0, 0, 0}
+    BP_BIMODAL_PC_BITS, BP_BIMODAL_CNT_BITS, 0, 0}
 #define BP_LOCAL_CFG { \
-    0, BP_LOCAL_CNT_BITS, BP_LOCAL_ENTRIES, BP_LOCAL_HIST_BITS, 0, 0}
+    BP_LOCAL_PC_BITS, BP_LOCAL_CNT_BITS, BP_LOCAL_HIST_BITS, 0}
 #define BP_GLOBAL_CFG { \
-    0, BP_GLOBAL_CNT_BITS, 0, 0, BP_GLOBAL_GR_BITS, 0}
+    0, BP_GLOBAL_CNT_BITS, 0, BP_GLOBAL_GR_BITS}
 #define BP_GSELECT_CFG { \
-    0, BP_GSELECT_CNT_BITS, 0, 0, BP_GSELECT_GR_BITS, BP_GSELECT_PC_BITS}
+    BP_GSELECT_PC_BITS, BP_GSELECT_CNT_BITS, 0, BP_GSELECT_GR_BITS}
 #define BP_GSHARE_CFG { \
-    0, BP_GSHARE_CNT_BITS, 0, 0, BP_GSHARE_GR_BITS, BP_GSHARE_PC_BITS}
-
+    BP_GSHARE_PC_BITS, BP_GSHARE_CNT_BITS, 0, BP_GSHARE_GR_BITS}
 #define BP_COMBINED_CFG { \
-    BP_BIMODAL_ENTRIES, BP_BIMODAL_CNT_BITS, 0, 0, 0, 0}
+    BP_COMBINED_PC_BITS, BP_COMBINED_CNT_BITS, 0, 0}
 
 // end of planned CLI options
 

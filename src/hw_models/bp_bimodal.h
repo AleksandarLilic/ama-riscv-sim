@@ -18,9 +18,9 @@ class bp_bimodal : public bp {
         uint32_t idx_last;
 
     public:
-        bp_bimodal(std::string type_name, bp_cfg_t cfg)
-        : bp(type_name, cfg),
-          cnt({cfg.cnt_entries, cfg.cnt_bits})
+        bp_bimodal(std::string type_name, bp_cfg_t cfg) :
+            bp(type_name, cfg),
+            cnt({cfg.pc_bits, cfg.cnt_bits})
         {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
         }
