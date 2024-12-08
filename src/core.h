@@ -14,8 +14,7 @@
 class core{
     public:
         core() = delete;
-        core(uint32_t base_addr, memory *mem, std::string log_path,
-             logging_pc_t logging_pc);
+        core(uint32_t base_addr, memory *mem, std::string log_path, cfg_t cfg);
         void exec();
         void exec_inst();
         void dump();
@@ -311,6 +310,8 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         uint64_t inst_cnt_csr;
+        uint8_t rf_names_idx;
+        uint8_t rf_names_w;
         std::string log_path;
         logging_pc_t logging_pc;
         bool logging;

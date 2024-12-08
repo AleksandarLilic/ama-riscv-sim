@@ -4,7 +4,7 @@ CXXFLAGS += -Wcast-qual -Wold-style-cast
 CXXFLAGS += -Wunreachable-code -Wnull-dereference
 CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
-CXXFLAGS += -Ofast -s -flto -march=native -mtune=native # release build
+CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
 #CXXFLAGS += -O0 -g # gdb build
 #CXXFLAGS += -save-temps
 LDFLAGS :=
@@ -18,16 +18,11 @@ SOURCES += $(wildcard profilers/*.cpp)
 SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC := -I. -I./profilers -I./hw_models
+INC := -I. -I./profilers -I./hw_models -I./external/cxxopts/include
 
 USER_DEFINES =
-DEFINES =
-DEFINES += -DLOG_EXEC -DENABLE_DASM
-#DEFINES += -DLOG_EXEC_ALL
-DEFINES += -DUSE_ABI_NAMES
-DEFINES += -DENABLE_PROF
+DEFINES := -DLOG_EXEC -DENABLE_DASM # -DLOG_EXEC_ALL
 #DEFINES += -DCHECK_LOG
-DEFINES += -DUART_ENABLE
 #DEFINES += -DUART_INPUT_ENABLE
 
 all: $(TARGET)

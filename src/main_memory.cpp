@@ -1,16 +1,19 @@
 #include "main_memory.h"
 
-main_memory::main_memory(size_t size, std::string test_bin) :
-    dev(size)
-    #ifdef ENABLE_HW_PROF
-    ,
-    icache(ICACHE_SETS, ICACHE_WAYS, "Icache", this),
-    dcache(DCACHE_SETS, DCACHE_WAYS, "Dcache", this)
-    #endif
+main_memory::main_memory(
+    size_t size,
+    std::string test_bin,
+    [[maybe_unused]] hw_cfg_t hw_cfg) :
+        dev(size)
+        #ifdef ENABLE_HW_PROF
+        ,
+        icache(hw_cfg.icache_sets, hw_cfg.icache_ways, "Icache", this),
+        dcache(hw_cfg.dcache_sets, hw_cfg.dcache_ways, "Dcache", this)
+        #endif
 {
     burn(test_bin);
     #ifdef ENABLE_HW_PROF
-    dcache.set_roi(ROI_START, ROI_START + ROI_SIZE);
+    dcache.set_roi(hw_cfg.roi_start, hw_cfg.roi_size);
     #endif
 }
 

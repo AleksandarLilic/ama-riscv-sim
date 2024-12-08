@@ -242,7 +242,7 @@ void cache::write_to_cache(uint32_t byte_addr, uint32_t size,
 #endif
 
 // stats
-void cache::set_roi(uint32_t start, uint32_t end) { roi.set(start, end); }
+void cache::set_roi(uint32_t start, uint32_t size) { roi.set(start, size); }
 
 void cache::show_stats() {
     std::cout << cache_name;

@@ -133,9 +133,9 @@ struct region_of_interest_t {
     uint32_t end;
     cache_stats_t stats;
     region_of_interest_t() : start(0), end(0), stats() {}
-    void set(uint32_t start, uint32_t end) {
+    void set(uint32_t start, uint32_t size) {
         this->start = start;
-        this->end = end;
+        this->end = start + size;
     }
     bool has(uint32_t addr) const { return start <= addr && addr <= end; }
 };

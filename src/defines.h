@@ -11,17 +11,53 @@
 #include <map>
 #include <chrono>
 
-// Planned CLI switches
-#define ICACHE_SETS 1
-#define ICACHE_WAYS 4
+// CLI options
+enum class rf_names_t { mode_x, mode_abi };
 
-#define DCACHE_SETS 1
-#define DCACHE_WAYS 8
+struct logging_pc_t {
+    public:
+        uint32_t start;
+        uint32_t stop;
+        bool first_match;
+        uint64_t inst_cnt;
+        logging_pc_t(uint32_t start, uint32_t stop, bool first_match) :
+            start(start), stop(stop), first_match(first_match), inst_cnt(0) {
+                run_once = false;
+        }
+        bool should_start() {
+            if (run_once && first_match) return false;
+            run_once = true;
+            return true;
+        }
+        bool should_start(uint32_t pc) {
+            if (run_once && first_match) return false;
+            if (pc == start) { run_once = true; return true; }
+            return false;
+        }
+        bool should_stop(uint32_t pc) {
+            if (pc == stop) return true;
+            return false;
+        }
+    private:
+        bool run_once;
+};
 
-//#define ROI_START 0x17280 // bytes
-#define ROI_START 0x170c0 // bytes
-#define ROI_SIZE 256 // bytes
+struct cfg_t {
+    logging_pc_t log_pc;
+    rf_names_t rf_names;
+    cfg_t() : log_pc(0, 0, false), rf_names(rf_names_t::mode_abi) {}
+};
 
+struct hw_cfg_t {
+    uint32_t icache_sets;
+    uint32_t icache_ways;
+    uint32_t dcache_sets;
+    uint32_t dcache_ways;
+    uint32_t roi_start;
+    uint32_t roi_size;
+};
+
+// Planned CLI options
 // all predictors will work, the selected one will drive the icache
 #define BRANCH_PERDICTOR bp_t::bimodal
 
@@ -59,6 +95,15 @@
 #define BP_C1 bp_t::sttc
 #define BP_C2 bp_t::global
 
+// end of planned CLI options
+
+// default defines
+#ifndef DPI
+#define UART_ENABLE
+#define ENABLE_PROF
+#define ENABLE_HW_PROF
+#endif
+
 // casts
 #define TO_F64(x) static_cast<double_t>(x)
 #define TO_F32(x) static_cast<float_t>(x)
@@ -75,15 +120,6 @@
 #define TO_U2(x) static_cast<uint8_t>(x & 0x3)
 #define TO_I2(x) static_cast<int8_t>((x & 0x3) | ((x & 0x2) ? 0xFC : 0x00))
 
-// dasm RF option
-#ifdef USE_ABI_NAMES
-#define RF_NAMES 1u
-#define FRF_W 4
-#else
-#define RF_NAMES 0u
-#define FRF_W 3
-#endif
-
 // Memory
 #define BASE_ADDR 0x10000
 #define ADDR_BITS 17 // 128KB address space
@@ -94,23 +130,18 @@
 #define UART0_SIZE 12 // 3 32-bit registers
 
 // HW models
-#ifndef DPI
-#define ENABLE_HW_PROF // enabled by default
-//#define CACHE_VERIFY // only for CACHE_MODE_FUNC
-#endif
-
 #define CACHE_MODE_PERF 0 // tags and stats
 #define CACHE_MODE_FUNC 1 // adds data
+//#define CACHE_VERIFY // only for CACHE_MODE_FUNC
 
 #ifndef CACHE_MODE
 #define CACHE_MODE CACHE_MODE_PERF
+#endif
 
 #define CACHE_LINE_SIZE 64 // bytes
 #define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
 #define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
 //#define CACHE_ADDR_MASK 1FFFF // 17 bits
-
-#endif
 
 // Decoder types
 enum class opcode {
@@ -247,38 +278,11 @@ enum class b_dir_t { backward, forward};
 enum class bp_t { sttc, bimodal, local, global, gselect, gshare, combined,
                   _count };
 
+// dasm
 struct dasm_str {
     std::ostringstream asm_ss;
     std::string asm_str;
     std::string op;
-};
-
-struct logging_pc_t {
-    public:
-        uint32_t start;
-        uint32_t stop;
-        bool first_match;
-        uint64_t inst_cnt;
-        logging_pc_t(uint32_t start, uint32_t stop, bool first_match) :
-            start(start), stop(stop), first_match(first_match), inst_cnt(0) {
-                run_once = false;
-        }
-        bool should_start() {
-            if (run_once && first_match) return false;
-            run_once = true;
-            return true;
-        }
-        bool should_start(uint32_t pc) {
-            if (run_once && first_match) return false;
-            if (pc == start) { run_once = true; return true; }
-            return false;
-        }
-        bool should_stop(uint32_t pc) {
-            if (pc == stop) return true;
-            return false;
-        }
-    private:
-        bool run_once;
 };
 
 // Instruction field masks
@@ -528,7 +532,7 @@ struct CSR_entry {
 
 // Format Register File print
 #define FRF(addr, val) \
-    std::left << std::setw(FRF_W) << std::setfill(' ') << addr \
+    std::left << std::setw(rf_names_w) << std::setfill(' ') << addr \
               << ": 0x" << std::right << std::setw(8) << std::setfill('0') \
               << std::hex << val << std::dec << "  "
 
@@ -543,23 +547,23 @@ struct CSR_entry {
 #define DASM_OP(o) dasm.op = #o;
 
 #define DASM_CSR_REG \
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES] << "," \
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx] << "," \
                 << csr.at(ip.csr_addr()).name << "," \
-                << rf_names[ip.rs1()][RF_NAMES];
+                << rf_names[ip.rs1()][rf_names_idx];
 
 #define DASM_CSR_IMM \
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES] << "," \
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx] << "," \
                 << csr.at(ip.csr_addr()).name << "," \
                 << ip.uimm_csr();
 
 #define DASM_OP_RD \
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][RF_NAMES]
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx]
 
 #define DASM_OP_CREGH \
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.cregh()][RF_NAMES]
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.cregh()][rf_names_idx]
 
 #define DASM_CREGL \
-    rf_names[ip.cregl()][RF_NAMES]
+    rf_names[ip.cregl()][rf_names_idx]
 
 #else
 #define DASM_OP(o)
