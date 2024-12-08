@@ -73,6 +73,7 @@ const std::unordered_map<std::string, bp_t> bp_names_map = {
     {"global", bp_t::global},
     {"gselect", bp_t::gselect},
     {"gshare", bp_t::gshare},
+    {"ideal", bp_t::ideal},
     {"combined", bp_t::combined}
 };
 
@@ -83,7 +84,8 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
     {"local", bp_t::local},
     {"global", bp_t::global},
     {"gselect", bp_t::gselect},
-    {"gshare", bp_t::gshare}
+    {"gshare", bp_t::gshare},
+    {"ideal", bp_t::ideal}
 };
 
 // defaults

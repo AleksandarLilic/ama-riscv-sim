@@ -285,6 +285,7 @@ void core::branch() {
 
     #ifdef ENABLE_HW_PROF
     last_inst_branch = true;
+    bp.ideal(next_pc);
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b());
     mem->speculative_exec(speculative_t::enter);
     inst_speculative = mem->rd_inst(speculative_next_pc);

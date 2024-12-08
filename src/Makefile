@@ -5,7 +5,7 @@ CXXFLAGS += -Wunreachable-code -Wnull-dereference
 CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
 CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
-#CXXFLAGS += -O0 -g # gdb build
+#CXXFLAGS += -O0 -g # -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 LDFLAGS :=
 

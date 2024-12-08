@@ -9,6 +9,7 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     global_bp("global", BP_GLOBAL_CFG),
     gselect_bp("gselect", BP_GSELECT_CFG),
     gshare_bp("gshare", BP_GSHARE_CFG),
+    ideal_bp("_ideal_", BP_STATIC_CFG),
     combined_bp("combined", BP_COMBINED_CFG, {bpc_1, bpc_2})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
@@ -17,6 +18,7 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
         predictors[TO_U8(bp_t::global)] = &global_bp;
         predictors[TO_U8(bp_t::gselect)] = &gselect_bp;
         predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
+        predictors[TO_U8(bp_t::ideal)] = &ideal_bp;
         predictors[TO_U8(bp_t::combined)] = &combined_bp;
 
         combined_bp.add_size(predictors[TO_U8(bpc_1)]->get_size());
@@ -37,9 +39,10 @@ uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
         predicted_pcs[i] = predictors[i]->predict(target_pc, pc);
     }
     bp_t bp_sel = combined_bp.select(pc);
-    combined_bp.store_prediction(predicted_pcs[TO_U8(bp_sel)]);
+    uint32_t combined_bp_predicted_pc = predicted_pcs[TO_U8(bp_sel)];
+    combined_bp.store_prediction(combined_bp_predicted_pc);
     combined_bp.store_direction(target_pc, pc);
-
+    predicted_pcs[TO_U8(bp_t::combined)] = combined_bp_predicted_pc;
     return predicted_pcs[TO_U8(bp_active)];
 }
 

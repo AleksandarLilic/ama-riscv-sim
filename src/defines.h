@@ -4,7 +4,6 @@
 
 // Planned CLI options
 // all predictors will work, the selected one will drive the icache
-#define BRANCH_PERDICTOR bp_t::bimodal
 
 // branch predictor type specific
 #define BP_BIMODAL_ENTRIES 8

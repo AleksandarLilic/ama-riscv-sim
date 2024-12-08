@@ -8,6 +8,7 @@
 #include "bp_gselect.h"
 #include "bp_gshare.h"
 #include "bp_combined.h"
+#include "bp_ideal.h"
 
 class bp_if {
     private:
@@ -22,6 +23,7 @@ class bp_if {
         bp_global global_bp;
         bp_gselect gselect_bp;
         bp_gshare gshare_bp;
+        bp_ideal ideal_bp;
         bp_combined combined_bp;
         static constexpr uint8_t num_predictors = TO_U8(bp_t::_count);
         std::array<bp*, num_predictors> predictors;
@@ -35,6 +37,7 @@ class bp_if {
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
         void finish(std::string log_path, uint64_t all_insts);
+        void ideal(uint32_t correct_pc) { ideal_bp.goto_future(correct_pc); }
 
     private:
         void show_stats(std::string log_path);
