@@ -18,17 +18,13 @@ SOURCES += $(wildcard profilers/*.cpp)
 SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC := -I. -I./profilers -I./hw_models -I./external
+INC := -I. -I./profilers -I./hw_models -I./external/cxxopts/include
 
 USER_DEFINES =
-DEFINES =
-DEFINES += -DLOG_EXEC -DENABLE_DASM
-#DEFINES += -DLOG_EXEC_ALL
-DEFINES += -DUSE_ABI_NAMES
-DEFINES += -DENABLE_PROF
+DEFINES := -DLOG_EXEC -DENABLE_DASM # -DLOG_EXEC_ALL
 #DEFINES += -DCHECK_LOG
-DEFINES += -DUART_ENABLE
 #DEFINES += -DUART_INPUT_ENABLE
+DEFINES += $(USER_DEFINES)
 
 all: $(TARGET)
 
@@ -38,7 +34,7 @@ $(TARGET): $(OBJECTS)
 
 $(BDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
+	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(INC)
 
 -include $(DEPS)
 

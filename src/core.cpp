@@ -2,11 +2,10 @@
 
 #define INDENT "    "
 
-core::core(uint32_t base_addr, memory *mem, std::string log_path,
-           logging_pc_t logging_pc)
+core::core(uint32_t base_addr, memory *mem, std::string log_path, cfg_t cfg)
     : running(false), mem(mem), pc(base_addr), next_pc(0), inst(0),
       inst_cnt(0), inst_cnt_csr(0),
-      log_path(log_path), logging_pc(logging_pc), logging(false)
+      log_path(log_path), logging_pc(cfg.log_pc), logging(false)
     #ifdef ENABLE_PROF
     , prof(log_path)
     #endif
@@ -15,6 +14,8 @@ core::core(uint32_t base_addr, memory *mem, std::string log_path,
     #endif
 {
     rf[0] = 0;
+    rf_names_idx = TO_U8(cfg.rf_names);
+    rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
     // initialize CSRs
     for (const auto &c : supported_csrs)
@@ -195,8 +196,8 @@ void core::al_reg() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
-               << "," << rf_names[ip.rs2()][RF_NAMES];
+    DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx]
+               << "," << rf_names[ip.rs2()][rf_names_idx];
     #endif
 }
 
@@ -218,7 +219,7 @@ void core::al_imm() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES] << ",";
+    DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx] << ",";
     if (is_shift)
         dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
     else
@@ -238,13 +239,13 @@ void core::load() {
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i())
-               << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
+               << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()])
              << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
-             << rf_names[ip.rd()][RF_NAMES] << std::endl;
+             << rf_names[ip.rd()][rf_names_idx] << std::endl;
     #endif
 }
 
@@ -257,12 +258,12 @@ void core::store() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs2()][RF_NAMES] <<","
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs2()][rf_names_idx] <<","
                 << TO_I32(ip.imm_s())
-                << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
+                << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[ip.rs2()][RF_NAMES]
+    mem_ostr << INDENT << rf_names[ip.rs2()][rf_names_idx]
              << " (" << FHEXZ(rf[ip.rd()], 8) << ") -> mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_s()) + rf[ip.rs1()]) << "]"
              << std::endl;
@@ -298,8 +299,8 @@ void core::branch() {
     #endif
 
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs1()][RF_NAMES] << ","
-                << rf_names[ip.rs2()][RF_NAMES] << ","
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs1()][rf_names_idx] << ","
+                << rf_names[ip.rs2()][rf_names_idx] << ","
                 << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
     #endif
 }
@@ -313,7 +314,7 @@ void core::jalr() {
     PROF_RD_RS1
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i())
-               << "(" << rf_names[ip.rs1()][RF_NAMES] << ")";
+               << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
     #endif
 }
 
@@ -406,8 +407,8 @@ void core::custom_ext() {
             default : unsupported("custom extension - arith");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES]
-                   << "," << rf_names[ip.rs2()][RF_NAMES];
+        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx]
+                   << "," << rf_names[ip.rs2()][rf_names_idx];
         #endif
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
@@ -423,7 +424,7 @@ void core::custom_ext() {
             default: unsupported("custom extension - memory");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
+        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx];
         #endif
     } else if (funct3 == TO_U8(custom_ext_t::hints)) {
         switch (funct7) {
@@ -432,7 +433,7 @@ void core::custom_ext() {
             default : unsupported("custom extension - hint");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][RF_NAMES];
+        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx];
         #endif
     } else {
         unsupported("custom extension");
@@ -867,7 +868,7 @@ void core::c_mv() {
     DASM_OP(c.mv)
     PROF_G(c_mv)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.crs2()][RF_NAMES];
+    DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
     #endif
     next_pc = pc + 2;
 }
@@ -877,7 +878,7 @@ void core::c_add() {
     DASM_OP(c.add)
     PROF_G(c_add)
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.crs2()][RF_NAMES];
+    DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
     #endif
     next_pc = pc + 2;
 }
@@ -889,7 +890,7 @@ void core::c_lw() {
     PROF_G(c_lw)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
-                << "(" << rf_names[ip.cregh()][RF_NAMES] << ")";
+                << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
@@ -906,13 +907,13 @@ void core::c_lwsp() {
     PROF_G(c_lwsp)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
-               << "(" << rf_names[2][RF_NAMES] << ")";
+               << "(" << rf_names[2][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << "mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2])
              << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
-             << rf_names[ip.rd()][RF_NAMES] << std::endl;
+             << rf_names[ip.rd()][rf_names_idx] << std::endl;
     #endif
     next_pc = pc + 2;
 }
@@ -923,7 +924,7 @@ void core::c_sw() {
     PROF_G(c_sw)
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
-                << "(" << rf_names[ip.cregh()][RF_NAMES] << ")";
+                << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
     mem_ostr << INDENT << DASM_CREGL
@@ -939,12 +940,12 @@ void core::c_swsp() {
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][RF_NAMES] << ","
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","
                 << TO_I32(ip.imm_c_swsp())
-                << "(" << rf_names[2][RF_NAMES] << ")";
+                << "(" << rf_names[2][rf_names_idx] << ")";
     #endif
     #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[ip.crs2()][RF_NAMES]
+    mem_ostr << INDENT << rf_names[ip.crs2()][rf_names_idx]
              << " (" << FHEXZ(rf[ip.crs2()], 8) << ") -> mem["
              << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_swsp()) + rf[2]) << "]"
              << std::endl;
@@ -1087,7 +1088,7 @@ std::string core::dump_state(bool dump_csr) {
     for(uint32_t i = 0; i < 32; i+=4){
         state << INDENT;
         for(uint32_t j = 0; j < 4; j++) {
-            state << FRF(rf_names[i+j][RF_NAMES], rf[i+j]);
+            state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]);
         }
         state << std::endl;
     }
