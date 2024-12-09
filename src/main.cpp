@@ -92,7 +92,7 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
 struct defs_t {
     static constexpr char log_pc_start[] = "0";
     static constexpr char log_pc_stop[] = "0";
-    static constexpr char log_first_match_only[] = "false";
+    static constexpr char log_pc_sm[] = "0";
     static constexpr char rf_names[] = "abi";
     static constexpr char dump_all_regs[] = "false";
 };
@@ -123,8 +123,9 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(defs_t::log_pc_start))
         ("log_pc_stop", "Stop PC (hex) for logging and profiling",
          cxxopts::value<std::string>()->default_value(defs_t::log_pc_stop))
-        ("log_first_match_only", "Log and profile only first match on PC",
-         cxxopts::value<bool>()->default_value(defs_t::log_first_match_only))
+        ("log_pc_single_match",
+         "Log and profile match number (0 for all matches)",
+         cxxopts::value<std::string>()->default_value(defs_t::log_pc_sm))
         ("rf_names",
          "Register file names used for execution log. Options: " +
          gen_help_list(rf_names_map),
@@ -180,7 +181,7 @@ int main(int argc, char* argv[]) {
         test_bin = result["path"].as<std::string>();
         cfg.log_pc.start = TO_HEX(result["log_pc_start"]);
         cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
-        cfg.log_pc.first_match = TO_BOOL(result["log_first_match_only"]);
+        cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
         cfg.rf_names = resolve_arg(
             "rf_names", result["rf_names"].as<std::string>(), rf_names_map);
         cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
@@ -215,8 +216,8 @@ int main(int argc, char* argv[]) {
     if (cfg.log_pc.stop != 0) {
         std::cout << "Logging stop pc: 0x" << cfg.log_pc.stop << " ";
     }
-    if (cfg.log_pc.first_match) {
-        std::cout << "Logging first match only";
+    if (cfg.log_pc.single_match_num) {
+        std::cout << "Logging only match number: " << cfg.log_pc.single_match_num;
     }
     std::cout << std::dec << std::endl;
 

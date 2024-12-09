@@ -178,20 +178,24 @@ struct logging_pc_t {
     public:
         uint32_t start;
         uint32_t stop;
-        bool first_match;
+        uint32_t single_match_num;
         uint64_t inst_cnt;
     private:
+        uint32_t current_match = 0;
         bool ran_once = false;
     public:
         bool should_start() {
-            if (ran_once && first_match) return false;
-            ran_once = true;
-            return true;
+            if (!single_match_num) return true;
+            current_match++;
+            if (!ran_once && (current_match == single_match_num)) {
+                ran_once = true;
+                return true;
+            }
+            return false;
         }
         bool should_start(uint32_t pc) {
-            if (ran_once && first_match) return false;
-            if (pc == start) { ran_once = true; return true; }
-            return false;
+            if (!(pc == start)) return false;
+            return should_start();
         }
         bool should_stop(uint32_t pc) {
             if (pc == stop) return true;
