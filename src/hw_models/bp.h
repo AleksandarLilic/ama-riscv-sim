@@ -45,7 +45,7 @@ class bp {
         virtual void dump() = 0;
 
         virtual void show_stats() {
-            std::cout << "  " << std::left << std::setw(8) << type_name;
+            std::cout << INDENT << std::left << std::setw(8) << type_name;
             std::cout << " (" << std::right << std::setw(5) << size << " B): ";
             stats.show();
             std::cout << std::endl;
@@ -55,8 +55,8 @@ class bp {
             stats.log(name, file);
         }
 
-        virtual void summarize_stats(uint64_t all_insts) {
-            stats.summarize(all_insts);
+        virtual void summarize_stats() {
+            stats.summarize();
         }
 
         virtual uint32_t get_predicted_stats(uint32_t pc) {

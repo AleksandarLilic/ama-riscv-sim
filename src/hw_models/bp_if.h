@@ -36,7 +36,7 @@ class bp_if {
         uint32_t predict(uint32_t pc, int32_t offset);
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
-        void finish(std::string log_path, uint64_t all_insts);
+        void finish(std::string log_path);
         void ideal(uint32_t correct_pc) { ideal_bp.goto_future(correct_pc); }
 
     private:

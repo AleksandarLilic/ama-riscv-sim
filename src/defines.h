@@ -431,3 +431,5 @@
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)
 #endif
+
+#define INDENT "    "

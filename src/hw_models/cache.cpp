@@ -260,7 +260,7 @@ void cache::show_stats() {
     }
 
     for (uint32_t set = 0; set < sets; set++) {
-        std::cout << "  s" << set << ": ";
+        std::cout << INDENT << "s" << set << ": ";
         for (uint32_t way = 0; way < ways; way++) {
             std::cout << " w" << way << " [" << std::setw(n)
                       << cache_entries[set][way].access_cnt << "] ";
@@ -269,7 +269,7 @@ void cache::show_stats() {
     }
 
     if (!(roi.start == 0 && roi.end == 0)) {
-        std::cout << "  ROI: "
+        std::cout << INDENT << "ROI: "
                   << "(0x" << std::hex << roi.start
                   << " - 0x" << roi.end << "): " << std::dec;
         roi.stats.show();

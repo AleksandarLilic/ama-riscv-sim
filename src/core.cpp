@@ -1,7 +1,5 @@
 #include "core.h"
 
-#define INDENT "    "
-
 core::core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg)
     : running(false), mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
       inst_cnt(0), inst_cnt_csr(0),
@@ -157,7 +155,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
-    bp.finish(log_path, logging_pc.inst_cnt);
+    bp.finish(log_path);
     mem->cache_finish();
     log_hw_stats();
     #endif

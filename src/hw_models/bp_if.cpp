@@ -69,8 +69,8 @@ void bp_if::update_stats(uint32_t pc, bool taken) {
     ptr->pattern.push_back(taken);
 }
 
-void bp_if::finish(std::string log_path, uint64_t all_insts) {
-    for (auto& p : predictors) { p->summarize_stats(all_insts); }
+void bp_if::finish(std::string log_path) {
+    for (auto& p : predictors) { p->summarize_stats(); }
     show_stats(log_path);
 }
 

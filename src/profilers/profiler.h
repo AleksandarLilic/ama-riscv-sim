@@ -103,6 +103,46 @@ struct trace_entry {
     uint32_t sp;
 };
 
+struct cnt_t {
+    public:
+        uint32_t inst = 0;
+        uint32_t rest = 0;
+        uint32_t branch = 0;
+        uint32_t jump = 0;
+        uint32_t load = 0;
+        uint32_t store = 0;
+        uint32_t mem = 0;
+        uint32_t mul = 0;
+        uint32_t div = 0;
+        uint32_t al = 0;
+        uint32_t fma = 0;
+        uint32_t unpk = 0;
+        uint32_t scp = 0;
+
+    public:
+        void find_mem() { mem = load + store; }
+        void find_rest() { rest = inst - branch - jump - mem -
+                                  mul - div - al - fma - unpk - scp; }
+        float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
+};
+
+struct perc_t {
+    public:
+        float_t inst = 0.0;
+        float_t rest = 0.0;
+        float_t branch = 0.0;
+        float_t jump = 0.0;
+        float_t load = 0.0;
+        float_t store = 0.0;
+        float_t mem = 0.0;
+        float_t mul = 0.0;
+        float_t div = 0.0;
+        float_t al = 0.0;
+        float_t fma = 0.0;
+        float_t unpk = 0.0;
+        float_t scp = 0.0;
+};
+
 class profiler{
     public:
         trace_entry te;
@@ -111,7 +151,7 @@ class profiler{
     private:
         std::string log_path;
         std::ofstream ofs;
-        uint64_t inst_cnt;
+        uint64_t inst_cnt_exec;
         uint32_t inst;
         std::vector<trace_entry> trace;
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
@@ -130,6 +170,91 @@ class profiler{
 
     private:
         void log_to_file();
-        void info(uint32_t profiled_inst_cnt, uint32_t max_sp);
         void rst_te() { te = {0, 0, 0, 0, 0}; }
+
+    private:
+        // all compressed instructions
+        static constexpr std::array<opc_g, 21> c_opcs_alu = {
+            opc_g::i_c_add, opc_g::i_c_mv, opc_g::i_c_and, opc_g::i_c_or,
+            opc_g::i_c_xor, opc_g::i_c_sub,
+            opc_g::i_c_addi, opc_g::i_c_addi16sp, opc_g::i_c_addi4spn,
+            opc_g::i_c_andi, opc_g::i_c_srli, opc_g::i_c_slli, opc_g::i_c_srai,
+            opc_g::i_c_nop,
+            opc_g::i_c_lwsp, opc_g::i_c_swsp, opc_g::i_c_lw, opc_g::i_c_sw,
+            opc_g::i_c_li, opc_g::i_c_lui,
+            opc_g::i_c_ebreak
+        };
+
+        static constexpr std::array<opc_j, 6> c_opcs_j = {
+            opc_j::i_c_j, opc_j::i_c_jal, opc_j::i_c_jr, opc_j::i_c_jalr,
+            opc_j::i_c_beqz, opc_j::i_c_bnez,
+        };
+
+        // per type breakdowns
+        static constexpr std::array<opc_j, 8> branch_opcs = {
+            opc_j::i_beq, opc_j::i_bne, opc_j::i_blt,
+            opc_j::i_bge, opc_j::i_bltu, opc_j::i_bgeu,
+            // compressed
+            opc_j::i_c_beqz, opc_j::i_c_bnez
+        };
+
+        static constexpr std::array<opc_j, 4> jump_opcs = {
+            opc_j::i_jalr, opc_j::i_jal,
+            // compressed
+            opc_j::i_c_jal, opc_j::i_c_jalr
+        };
+
+        static constexpr std::array<opc_g, 8> load_opcs = {
+            opc_g::i_lb, opc_g::i_lh, opc_g::i_lw, opc_g::i_lbu, opc_g::i_lhu,
+            // compressed
+            opc_g::i_c_lw, opc_g::i_c_lwsp, opc_g::i_c_li
+        };
+
+        static constexpr std::array<opc_g, 5> store_opcs = {
+            opc_g::i_sb, opc_g::i_sh, opc_g::i_sw,
+            // compressed
+            opc_g::i_c_sw, opc_g::i_c_swsp
+        };
+
+        static constexpr std::array<opc_g, 4> mul_opcs = {
+            opc_g::i_mul, opc_g::i_mulh, opc_g::i_mulhsu, opc_g::i_mulhu,
+        };
+
+        static constexpr std::array<opc_g, 4> div_opcs = {
+            opc_g::i_div, opc_g::i_divu, opc_g::i_rem, opc_g::i_remu,
+        };
+
+        static constexpr std::array<opc_g, 36> alu_opcs = {
+            opc_g::i_add, opc_g::i_sub,
+            opc_g::i_sll, opc_g::i_srl, opc_g::i_sra,
+            opc_g::i_slt, opc_g::i_sltu,
+            opc_g::i_xor, opc_g::i_or, opc_g::i_and,
+            opc_g::i_addi,
+            opc_g::i_slli, opc_g::i_srli, opc_g::i_srai,
+            opc_g::i_slti, opc_g::i_sltiu,
+            opc_g::i_xori, opc_g::i_ori, opc_g::i_andi,
+            opc_g::i_lui, opc_g::i_auipc,
+            // compressed
+            opc_g::i_c_add, opc_g::i_c_sub, opc_g::i_c_mv,
+            opc_g::i_c_addi16sp, opc_g::i_c_addi4spn,
+            opc_g::i_c_and, opc_g::i_c_or, opc_g::i_c_xor,
+            opc_g::i_c_addi,
+            opc_g::i_c_andi, opc_g::i_c_srli, opc_g::i_c_slli, opc_g::i_c_srai,
+            opc_g::i_c_li, opc_g::i_c_lui
+        };
+
+        static constexpr std::array<opc_g, 3> fma_opcs = {
+            opc_g::i_fma16, opc_g::i_fma8, opc_g::i_fma4,
+        };
+
+        static constexpr std::array<opc_g, 8> unpk_opcs = {
+            opc_g::i_unpk16, opc_g::i_unpk16u,
+            opc_g::i_unpk8, opc_g::i_unpk8u,
+            opc_g::i_unpk4, opc_g::i_unpk4u,
+            opc_g::i_unpk2, opc_g::i_unpk2u,
+        };
+
+        static constexpr std::array<opc_g, 2> scp_opcs = {
+            opc_g::i_scp_lcl, opc_g::i_scp_rel,
+        };
 };

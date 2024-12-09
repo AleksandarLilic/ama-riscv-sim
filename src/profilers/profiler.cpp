@@ -1,7 +1,7 @@
 #include "profiler.h"
 
 profiler::profiler(std::string log_path) {
-    inst_cnt = 0;
+    inst_cnt_exec = 0;
     rst_te();
     this->log_path = log_path;
 
@@ -122,7 +122,7 @@ profiler::profiler(std::string log_path) {
 void profiler::new_inst(uint32_t inst) {
     if (active) {
         this->inst = inst;
-        inst_cnt++;
+        inst_cnt_exec++;
     }
 }
 
@@ -165,22 +165,21 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
 }
 
 void profiler::log_to_file() {
-    uint32_t profiled_inst_cnt = 0;
+    cnt_t cnt;
     ofs.open(log_path + "inst_profiler.json");
     ofs << "{\n";
-    for (auto &i : prof_g_arr) {
+    for (const auto &i : prof_g_arr) {
         if (i.name != "") {
             ofs << PROF_JSON_ENTRY(i.name, i.count) << std::endl;
-            profiled_inst_cnt += i.count;
+            cnt.inst += i.count;
         }
     }
 
-    for (std::size_t i = 0; i < prof_j_arr.size(); ++i) {
-        inst_prof_j& e = prof_j_arr[i];
+    for (const auto &e : prof_j_arr) {
         ofs << PROF_JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
                                  e.count_not_taken, e.count_not_taken_fwd);
         ofs << std::endl;
-        profiled_inst_cnt += e.count_taken + e.count_not_taken;
+        cnt.inst += e.count_taken + e.count_not_taken;
     }
 
     uint32_t min_sp = BASE_ADDR + MEM_SIZE;
@@ -191,7 +190,7 @@ void profiler::log_to_file() {
     min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
     ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
-    ofs << "\"_profiled_instructions\": " << profiled_inst_cnt;
+    ofs << "\"_profiled_instructions\": " << cnt.inst;
     ofs << "\n}\n";
     ofs.close();
 
@@ -200,20 +199,91 @@ void profiler::log_to_file() {
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
-    info(profiled_inst_cnt, min_sp);
-
     ofs.open(log_path + "reg_hist.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),
              prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
     ofs.close();
 
-    assert(inst_cnt == profiled_inst_cnt &&
-           "Profiler: instruction count mismatch");
-}
+    // compressed inst cnt
+    uint32_t c_cnt = 0;
+    for (auto &c: c_opcs_alu) c_cnt += prof_g_arr[TO_U32(c)].count;
+    for (auto &c: c_opcs_j) {
+        c_cnt += prof_j_arr[TO_U32(c)].count_taken +
+                 prof_j_arr[TO_U32(c)].count_not_taken;
+    }
+    float_t c_perc = 100.0 * c_cnt / cnt.inst;
 
-void profiler::info(uint32_t profiled_inst_cnt, uint32_t max_sp){
-    std::cout << "Profiler: instructions profiled: "
-              << profiled_inst_cnt << std::endl;
-    std::cout << "Profiler: max SP usage: "
-              << max_sp << std::endl;
+    // per type breakdown
+    for (auto &b: branch_opcs) {
+        cnt.branch += prof_j_arr[TO_U32(b)].count_taken +
+                      prof_j_arr[TO_U32(b)].count_not_taken;
+    }
+    for (auto &j: jump_opcs) cnt.jump += prof_j_arr[TO_U32(j)].count_taken;
+    for (auto &l: load_opcs) cnt.load += prof_g_arr[TO_U32(l)].count;
+    for (auto &s: store_opcs) cnt.store += prof_g_arr[TO_U32(s)].count;
+    for (auto &a: alu_opcs) cnt.al += prof_g_arr[TO_U32(a)].count;
+    for (auto &m: mul_opcs) cnt.mul += prof_g_arr[TO_U32(m)].count;
+    for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
+    for (auto &f: fma_opcs) cnt.fma += prof_g_arr[TO_U32(f)].count;
+    for (auto &u: unpk_opcs) cnt.unpk += prof_g_arr[TO_U32(u)].count;
+    for (auto &s: scp_opcs) cnt.scp += prof_g_arr[TO_U32(s)].count;
+    cnt.find_mem();
+    cnt.find_rest();
+
+    perc_t perc;
+    perc.branch = cnt.get_perc(cnt.branch);
+    perc.jump = cnt.get_perc(cnt.jump);
+    perc.load = cnt.get_perc(cnt.load);
+    perc.store = cnt.get_perc(cnt.store);
+    perc.mem = cnt.get_perc(cnt.mem);
+    perc.al = cnt.get_perc(cnt.al);
+    perc.mul = cnt.get_perc(cnt.mul);
+    perc.div = cnt.get_perc(cnt.div);
+    perc.fma = cnt.get_perc(cnt.fma);
+    perc.unpk = cnt.get_perc(cnt.unpk);
+    perc.scp = cnt.get_perc(cnt.scp);
+    perc.rest = cnt.get_perc(cnt.rest);
+
+    std::cout << std::fixed << std::setprecision(2)
+              << "Profiler: Inst: " << cnt.inst
+              << " - 32/16-bit: " << cnt.inst - c_cnt << "/" << c_cnt
+              << "(" << 100.0 - c_perc << "%/" << c_perc << "%)"
+              << std::endl;
+
+    std::cout << INDENT << "Control: B: " << cnt.branch
+              << "(" << perc.branch << "%)"
+              << ", J: " << cnt.jump
+              << "(" << perc.jump << "%)" << std::endl;
+
+    std::cout << INDENT << "Memory: MEM: " << cnt.mem
+              << "(" << perc.mem
+              << "%) - L/S: " << cnt.load
+              << "/" << cnt.store
+              << "(" << perc.load
+              << "%/" << perc.store << "%)" << std::endl;
+
+    std::cout << INDENT << "Compute: A&L: " << cnt.al
+              << "(" << perc.al << "%)"
+              << ", MUL: " << cnt.mul
+              << "(" << perc.mul << "%)"
+              << ", DIV: " << cnt.div
+              << "(" << perc.div << "%)" << std::endl;
+
+    std::cout << INDENT << "SIMD: FMA: " << cnt.fma
+              << "(" << perc.fma << "%)"
+              << ", UNPK: " << cnt.unpk
+              << "(" << perc.unpk << "%)" << std::endl;
+
+    std::cout << INDENT << "Hints: SCP: " << cnt.scp
+              << "(" << perc.scp << "%)" << std::endl;
+
+    std::cout << INDENT << "Rest: " << cnt.rest
+              << "(" << perc.rest << "%)" << std::endl;
+
+    std::cout << "Profiler: max SP usage: " << min_sp << std::endl;
+
+    // only expected to fail if core has instruction which is
+    // not supported by the profiler - should be fixed in code before release
+    // not expected to fail in normal operation
+    assert(inst_cnt_exec == cnt.inst && "Profiler: instruction count mismatch");
 }

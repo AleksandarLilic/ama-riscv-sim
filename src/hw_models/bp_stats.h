@@ -39,7 +39,6 @@ struct bp_stats_t {
         uint32_t predicted;
         uint32_t mispredicted;
         uint32_t total;
-        uint64_t all_insts;
         const std::string type_name;
 
     public:
@@ -60,11 +59,10 @@ struct bp_stats_t {
             }
             bi_predictor_stats[pc].predicted += correct;
         }
-        void summarize(uint64_t all_insts) {
+        void summarize() {
             predicted = predicted_fwd + predicted_bwd;
             mispredicted = mispredicted_fwd + mispredicted_bwd;
             total = predicted + mispredicted;
-            this->all_insts = all_insts;
         }
         uint32_t get_predicted(uint32_t pc) const {
             if (bi_predictor_stats.find(pc) == bi_predictor_stats.end()) {
@@ -74,18 +72,18 @@ struct bp_stats_t {
         }
         void show() const {
             float_t acc = 0.0;
-            float_t perc_branches = 0.0;
             if (total > 0) {
                 acc = TO_F32(predicted) / TO_F32(total) * 100;
-                perc_branches = TO_F64(total) / TO_F64(all_insts) * 100;
             }
             std::cout << std::fixed << std::setprecision(2)
-                      << "BT: " << total << "(" << perc_branches
-                      << "%), P(f/b): " << predicted
-                      << "(" << predicted_fwd << "/" << predicted_bwd
-                      << "), M(f/b): " << mispredicted
-                      << "(" << mispredicted_fwd << "/" << mispredicted_bwd
-                      << "), ACC: "
+                      << "P: " << predicted
+                      << ", M: " << mispredicted
+                      << ", ACC: "
+                      //<< "P(f/b): " << predicted
+                      //<< "(" << predicted_fwd << "/" << predicted_bwd
+                      //<< "), M(f/b): " << mispredicted
+                      //<< "(" << mispredicted_fwd << "/" << mispredicted_bwd
+                      //<< "), ACC: "
                       << acc << "%";
         }
         void log(std::string name, std::ofstream& log_file) const {
