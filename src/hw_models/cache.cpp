@@ -1,15 +1,11 @@
 #include "cache.h"
 #include "main_memory.h"
 
-cache::cache(uint32_t sets, uint32_t ways,
-             std::string cache_name, main_memory* mem)
-    : sets(sets), ways(ways), cache_name(cache_name), mem(mem) {
-    if (!is_pow_2(sets)) {
-        std::string err_msg =
-            "Number of sets (in: " + std::to_string(sets) +
-            ") must be a power of 2.";
-        throw std::runtime_error(err_msg);
-    }
+cache::cache(
+    uint32_t sets, uint32_t ways, std::string cache_name, main_memory* mem) :
+        sets(sets), ways(ways), cache_name(cache_name), mem(mem)
+    {
+    validate_inputs(sets, ways);
 
     // first dim is number of sets
     cache_entries.resize(sets);
@@ -222,7 +218,44 @@ scp_status_t cache::release_scp(cache_line_t& line) {
     }
 }
 
-// TODO: release all scp entries
+void cache::validate_inputs(uint32_t sets, uint32_t ways) {
+    bool error = false;
+    if (sets == 0) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": number of sets cannot be 0" << std::endl;
+        error = true;
+    }
+
+    if (sets > MAX_CACHE_SETS) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": number of sets cannot exceed " << MAX_CACHE_SETS
+                  << ". Specified: " << sets << std::endl;
+        error = true;
+    }
+
+    if (!is_pow_2(sets)) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": number of sets must be a power of 2. Specified: "
+                  << sets << std::endl;
+
+        error = true;
+    }
+
+    if (ways == 0) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": number of ways cannot be 0" << std::endl;
+        error = true;
+    }
+
+    if (ways > MAX_CACHE_WAYS) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": number of ways cannot exceed " << MAX_CACHE_WAYS
+                  << ". Specified: " << ways << std::endl;
+        error = true;
+    }
+
+    if (error) throw std::runtime_error("Invalid cache inputs encountered");
+}
 
 #if CACHE_MODE == CACHE_MODE_FUNC
 void cache::read_from_cache(uint32_t byte_addr, uint32_t size,

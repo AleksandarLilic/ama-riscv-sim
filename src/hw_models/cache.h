@@ -3,6 +3,9 @@
 #include "defines.h"
 #include "cache_stats.h"
 
+#define MAX_CACHE_SETS 1024
+#define MAX_CACHE_WAYS 128
+
 struct metadata_t {
     bool valid;
     bool dirty;
@@ -114,6 +117,7 @@ class cache {
         scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
         scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
+        void validate_inputs(uint32_t sets, uint32_t ways);
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(uint32_t byte_addr, uint32_t size,
                              cache_line_t& act_line);
