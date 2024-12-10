@@ -20,7 +20,7 @@ class bp_bimodal : public bp {
     public:
         bp_bimodal(std::string type_name, bp_cfg_t cfg) :
             bp(type_name, cfg),
-            cnt({cfg.pc_bits, cfg.cnt_bits})
+            cnt({cfg.pc_bits, cfg.cnt_bits, type_name})
         {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
         }
@@ -28,11 +28,8 @@ class bp_bimodal : public bp {
         uint32_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            find_b_dir(target_pc, pc);
             idx_last = get_idx(pc);
-            if (cnt.thr_check(idx_last)) predicted_pc = target_pc;
-            else predicted_pc = pc + 4;
-            return predicted_pc;
+            return predict_common(target_pc, pc, cnt.thr_check(idx_last));
         }
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {

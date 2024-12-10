@@ -15,8 +15,8 @@ class bp_if {
         std::string bp_name;
         bool prof_active = false;
         bp_t bp_active;
-        bp_t bpc_1;
-        bp_t bpc_2;
+        bp_t bp_combined_p1;
+        bp_t bp_combined_p2;
         bp_static static_bp;
         bp_bimodal bimodal_bp;
         bp_local local_bp;

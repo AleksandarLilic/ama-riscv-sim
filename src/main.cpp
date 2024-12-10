@@ -20,6 +20,9 @@
 #define TO_SIZE(x) std::stoul(x.as<std::string>(), nullptr, 10)
 #define TO_BOOL(x) x.as<bool>()
 
+#define RESOLVE_ARG(str, map) \
+    resolve_arg(str, result[str].as<std::string>(), map)
+
 std::string gen_log_path(const std::string& test_bin_path) {
     std::filesystem::path p(test_bin_path);
     std::string last_directory = p.parent_path().filename().string();
@@ -65,6 +68,7 @@ const std::unordered_map<std::string, rf_names_t> rf_names_map = {
     {"x", rf_names_t::mode_x}
 };
 
+#ifdef ENABLE_HW_PROF
 // all available branch predictors
 const std::unordered_map<std::string, bp_t> bp_names_map = {
     {"static", bp_t::sttc},
@@ -87,6 +91,7 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
     {"gshare", bp_t::gshare},
     {"ideal", bp_t::ideal}
 };
+#endif
 
 // defaults
 struct defs_t {
@@ -106,8 +111,24 @@ struct hw_defs_t {
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
     static constexpr char bp_active[] = "bimodal";
-    static constexpr char bpc_1[] = "static";
-    static constexpr char bpc_2[] = "bimodal";
+    static constexpr char bp_combined_p1[] = "static";
+    static constexpr char bp_combined_p2[] = "bimodal";
+    // supported predictors configurations
+    static constexpr char bp_bimodal_pc_bits[] = "3";
+    static constexpr char bp_bimodal_cnt_bits[] = "2";
+    static constexpr char bp_local_pc_bits[] = "4";
+    static constexpr char bp_local_cnt_bits[] = "2";
+    static constexpr char bp_local_hist_bits[] = "8";
+    static constexpr char bp_global_cnt_bits[] = "2";
+    static constexpr char bp_global_gr_bits[] = "8";
+    static constexpr char bp_gselect_cnt_bits[] = "2";
+    static constexpr char bp_gselect_gr_bits[] = "4";
+    static constexpr char bp_gselect_pc_bits[] = "4";
+    static constexpr char bp_gshare_cnt_bits[] = "2";
+    static constexpr char bp_gshare_gr_bits[] = "8";
+    static constexpr char bp_gshare_pc_bits[] = "8";
+    static constexpr char bp_combined_pc_bits[] = "4";
+    static constexpr char bp_combined_cnt_bits[] = "2";
 };
 #endif
 
@@ -115,6 +136,7 @@ int main(int argc, char* argv[]) {
     cfg_t cfg;
     std::string test_bin;
     cxxopts::Options options(argv[0], "ama-riscv-sim");
+    options.set_width(116);
     hw_cfg_t hw_cfg;
 
     options.add_options()
@@ -132,6 +154,7 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
         ("dump_all_regs", "Dump all registers at the end of simulation",
          cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
+
         #ifdef ENABLE_HW_PROF
         ("icache_sets", "Number of sets in I$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::icache_sets))
@@ -146,18 +169,65 @@ int main(int argc, char* argv[]) {
         ("roi_size", "D$ Region of interest size",
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_size))
         ("bp_active",
-         "Active branch predictor (driving I$). Options: " +
-         gen_help_list(bp_names_map),
+         "Active branch predictor (driving I$).\nOptions: " +
+         gen_help_list(bp_names_map) + "\n ",
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_active))
-        ("bpc_1",
-         "First branch predictor for combined predictor. Options: " +
-         gen_help_list(bpc_names_map),
-         cxxopts::value<std::string>()->default_value(hw_defs_t::bpc_1))
-        ("bpc_2",
-         "Second branch predictor for combined predictor. Options: " +
-         gen_help_list(bpc_names_map),
-         cxxopts::value<std::string>()->default_value(hw_defs_t::bpc_2))
+        ("bp_combined_p1",
+         "First branch predictor for combined predictor.\nOptions: " +
+         gen_help_list(bpc_names_map) + "\n ",
+         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p1))
+        ("bp_combined_p2",
+         "Second branch predictor for combined predictor.\nOptions: " +
+         gen_help_list(bpc_names_map) + "\n ",
+         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p2))
+        // supported predictors configurations
+        ("bp_bimodal_pc_bits", "Bimodal predictor - PC bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_bimodal_pc_bits))
+        ("bp_bimodal_cnt_bits", "Bimodal predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_bimodal_cnt_bits))
+        ("bp_local_pc_bits", "Local predictor - PC bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_local_pc_bits))
+        ("bp_local_cnt_bits", "Local predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_local_cnt_bits))
+        ("bp_local_hist_bits", "Local predictor - local history bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_local_hist_bits))
+        ("bp_global_cnt_bits", "Global predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_global_cnt_bits))
+        ("bp_global_gr_bits", "Global predictor - global register bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_global_gr_bits))
+        ("bp_gselect_cnt_bits", "Gselect predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gselect_cnt_bits))
+        ("bp_gselect_gr_bits", "Gselect predictor - global register bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gselect_gr_bits))
+        ("bp_gselect_pc_bits", "Gselect predictor - PC bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gselect_pc_bits))
+        ("bp_gshare_cnt_bits", "Gshare predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gshare_cnt_bits))
+        ("bp_gshare_gr_bits", "Gshare predictor - global register bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gshare_gr_bits))
+        ("bp_gshare_pc_bits", "Gshare predictor - PC bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_gshare_pc_bits))
+        ("bp_combined_pc_bits", "Combined predictor - PC bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_combined_pc_bits))
+        ("bp_combined_cnt_bits", "Combined predictor - counter bits",
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_combined_cnt_bits))
         #endif
+
         ("h,help", "Print usage");
 
     options.positional_help("<path_to_bin_file>");
@@ -182,9 +252,9 @@ int main(int argc, char* argv[]) {
         cfg.log_pc.start = TO_HEX(result["log_pc_start"]);
         cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
         cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
-        cfg.rf_names = resolve_arg(
-            "rf_names", result["rf_names"].as<std::string>(), rf_names_map);
+        cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
+
         #ifdef ENABLE_HW_PROF
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
@@ -192,13 +262,27 @@ int main(int argc, char* argv[]) {
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
-        hw_cfg.bp_active = resolve_arg(
-            "bp_active", result["bp_active"].as<std::string>(), bp_names_map);
-        hw_cfg.bpc_1 = resolve_arg(
-            "bpc_1", result["bpc_1"].as<std::string>(), bpc_names_map);
-        hw_cfg.bpc_2 = resolve_arg(
-            "bpc_2", result["bpc_2"].as<std::string>(), bpc_names_map);
+        hw_cfg.bp_active = RESOLVE_ARG("bp_active", bp_names_map);
+        hw_cfg.bp_combined_p1 = RESOLVE_ARG("bp_combined_p1", bpc_names_map);
+        hw_cfg.bp_combined_p2 = RESOLVE_ARG("bp_combined_p2", bpc_names_map);
+        // per predictor configurations
+        hw_cfg.bp_bimodal_pc_bits = TO_SIZE(result["bp_bimodal_pc_bits"]);
+        hw_cfg.bp_bimodal_cnt_bits = TO_SIZE(result["bp_bimodal_cnt_bits"]);
+        hw_cfg.bp_local_pc_bits = TO_SIZE(result["bp_local_pc_bits"]);
+        hw_cfg.bp_local_cnt_bits = TO_SIZE(result["bp_local_cnt_bits"]);
+        hw_cfg.bp_local_hist_bits = TO_SIZE(result["bp_local_hist_bits"]);
+        hw_cfg.bp_global_cnt_bits = TO_SIZE(result["bp_global_cnt_bits"]);
+        hw_cfg.bp_global_gr_bits = TO_SIZE(result["bp_global_gr_bits"]);
+        hw_cfg.bp_gselect_cnt_bits = TO_SIZE(result["bp_gselect_cnt_bits"]);
+        hw_cfg.bp_gselect_gr_bits = TO_SIZE(result["bp_gselect_gr_bits"]);
+        hw_cfg.bp_gselect_pc_bits = TO_SIZE(result["bp_gselect_pc_bits"]);
+        hw_cfg.bp_gshare_cnt_bits = TO_SIZE(result["bp_gshare_cnt_bits"]);
+        hw_cfg.bp_gshare_gr_bits = TO_SIZE(result["bp_gshare_gr_bits"]);
+        hw_cfg.bp_gshare_pc_bits = TO_SIZE(result["bp_gshare_pc_bits"]);
+        hw_cfg.bp_combined_pc_bits = TO_SIZE(result["bp_combined_pc_bits"]);
+        hw_cfg.bp_combined_cnt_bits = TO_SIZE(result["bp_combined_cnt_bits"]);
         #endif
+
     } catch (const cxxopts::exceptions::option_has_no_value& e) {
         std::cerr << e.what() << std::endl;
         std::cout << options.help() << std::endl;

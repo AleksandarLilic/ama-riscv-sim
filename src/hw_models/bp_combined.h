@@ -19,7 +19,7 @@ class bp_combined : public bp {
             std::array<bp_t, 2> bps) :
                 bp(type_name, cfg),
                 type_name(type_name),
-                cnt({cfg.pc_bits, cfg.cnt_bits}),
+                cnt({cfg.pc_bits, cfg.cnt_bits, type_name}),
                 bps(bps)
         {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up

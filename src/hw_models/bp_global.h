@@ -5,7 +5,7 @@
 
 class bp_global : public bp {
     private:
-        uint32_t idx_bits;
+        const uint8_t idx_bits;
         const uint32_t idx_mask;
         bp_cnt cnt;
         uint32_t gr; // global register
@@ -16,7 +16,7 @@ class bp_global : public bp {
             bp(type_name, cfg),
             idx_bits(cfg.gr_bits),
             idx_mask((1 << idx_bits) - 1),
-            cnt({idx_bits, cfg.cnt_bits}),
+            cnt({idx_bits, cfg.cnt_bits, type_name}),
             gr(0)
         {
             size = cnt.get_bit_size() + idx_bits;
@@ -26,11 +26,8 @@ class bp_global : public bp {
         uint32_t get_idx(uint32_t gr) { return gr & idx_mask; }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            find_b_dir(target_pc, pc);
             idx_last = get_idx(gr);
-            if (cnt.thr_check(idx_last)) predicted_pc = target_pc;
-            else predicted_pc = pc + 4;
-            return predicted_pc;
+            return predict_common(target_pc, pc, cnt.thr_check(idx_last));
         }
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {

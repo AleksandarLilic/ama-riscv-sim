@@ -1,16 +1,35 @@
 #include "bp_if.h"
 
+// { pc_bits, cnt_bits, hist_bits, gr_bits }
+#define BP_CFG_NONE { 0, 0, 0, 0}
+#define BP_BIMODAL_CFG { \
+    hw_cfg.bp_bimodal_pc_bits, hw_cfg.bp_bimodal_cnt_bits, 0, 0}
+#define BP_LOCAL_CFG { \
+    hw_cfg.bp_local_pc_bits, hw_cfg.bp_local_cnt_bits, \
+    hw_cfg.bp_local_hist_bits, 0}
+#define BP_GLOBAL_CFG { \
+    0, hw_cfg.bp_global_cnt_bits, 0, hw_cfg.bp_global_gr_bits}
+#define BP_GSELECT_CFG { \
+    hw_cfg.bp_gselect_pc_bits, hw_cfg.bp_gselect_cnt_bits, \
+    0, hw_cfg.bp_gselect_gr_bits}
+#define BP_GSHARE_CFG { \
+    hw_cfg.bp_gshare_pc_bits, hw_cfg.bp_gshare_cnt_bits, \
+    0, hw_cfg.bp_gshare_gr_bits}
+#define BP_COMBINED_CFG { \
+    hw_cfg.bp_combined_pc_bits, hw_cfg.bp_combined_cnt_bits, 0, 0}
+
 bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     bp_name(name), bp_active(hw_cfg.bp_active),
-    bpc_1(hw_cfg.bpc_1), bpc_2(hw_cfg.bpc_2),
-    static_bp("static", BP_STATIC_CFG),
+    bp_combined_p1(hw_cfg.bp_combined_p1),
+    bp_combined_p2(hw_cfg.bp_combined_p2),
+    static_bp("static", BP_CFG_NONE),
     bimodal_bp("bimodal", BP_BIMODAL_CFG),
     local_bp("local", BP_LOCAL_CFG),
     global_bp("global", BP_GLOBAL_CFG),
     gselect_bp("gselect", BP_GSELECT_CFG),
     gshare_bp("gshare", BP_GSHARE_CFG),
-    ideal_bp("_ideal_", BP_STATIC_CFG),
-    combined_bp("combined", BP_COMBINED_CFG, {bpc_1, bpc_2})
+    ideal_bp("_ideal_", BP_CFG_NONE),
+    combined_bp("combined", BP_COMBINED_CFG, {bp_combined_p1, bp_combined_p2})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
         predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
@@ -21,8 +40,8 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
         predictors[TO_U8(bp_t::ideal)] = &ideal_bp;
         predictors[TO_U8(bp_t::combined)] = &combined_bp;
 
-        combined_bp.add_size(predictors[TO_U8(bpc_1)]->get_size());
-        combined_bp.add_size(predictors[TO_U8(bpc_2)]->get_size());
+        combined_bp.add_size(predictors[TO_U8(bp_combined_p1)]->get_size());
+        combined_bp.add_size(predictors[TO_U8(bp_combined_p2)]->get_size());
     }
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
@@ -54,7 +73,7 @@ void bp_if::update(uint32_t pc, uint32_t next_pc) {
     for (uint8_t i = 0; i < predictors.size() - 1; i++) {
         correct[i] = predictors[i]->eval_and_update(taken, next_pc);
     }
-    combined_bp.update(correct[TO_U8(bpc_1)], correct[TO_U8(bpc_2)]);
+    combined_bp.update(correct[TO_U8(bp_combined_p1)], correct[TO_U8(bp_combined_p2)]);
 
     // but only update stats if profiling is active
     if (!prof_active) return;

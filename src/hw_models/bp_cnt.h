@@ -2,35 +2,68 @@
 
 #include "defines.h"
 
+#define CNT_ERR(param, msg) \
+    std::cerr << "ERROR: " << param << " for " << type_name << " predictor " \
+              << msg << std::endl;
+
 struct bp_cnt_cfg_t {
-    uint32_t cnt_idx_bits;
-    uint8_t cnt_bits;
+    public:
+        uint8_t cnt_idx_bits;
+        uint8_t cnt_bits;
+    public:
+        bp_cnt_cfg_t(uint8_t cnt_idx_bits, uint8_t cnt_bits, std::string type_name)
+            : cnt_idx_bits(cnt_idx_bits), cnt_bits(cnt_bits) {
+            validate_inputs(type_name);
+        }
+    private:
+        void validate_inputs(std::string type_name) {
+            bool error = false;
+            if (cnt_bits == 0) {
+                CNT_ERR("cnt_bits", "cannot be 0");
+                error = true;
+            }
+            if (cnt_idx_bits == 0) {
+                CNT_ERR("cnt_idx_bits", "cannot be 0");
+                error = true;
+            }
+            if (cnt_bits > 8) {
+                CNT_ERR("cnt_bits", "cannot be greater than 8");
+                std::cerr << "Specified: " << TO_U32(cnt_bits) << std::endl;
+                error = true;
+            }
+            if (cnt_idx_bits > 30) {
+                CNT_ERR("cnt_idx_bits", "cannot be greater than 30");
+                std::cerr << "Specified: " << TO_U32(cnt_idx_bits) << std::endl;
+                error = true;
+            }
+            if (error) {
+                throw std::runtime_error(
+                    "Invalid counter table inputs encountered");
+            }
+        };
 };
 
 class bp_cnt {
     private:
-        uint8_t cnt_bits;
-        uint32_t cnt_entries;
-        uint32_t cnt_entries_mask;
-        uint8_t cnt_max;
-        uint8_t thr_taken;
+        const uint8_t cnt_bits;
+        const uint32_t cnt_entries_num;
+        const uint32_t cnt_entries_mask;
+        const uint8_t cnt_max;
+        const uint8_t thr_taken;
+        const uint32_t bit_size;
         std::vector<uint8_t> cnt_table;
-        uint32_t bit_size;
 
     public:
-        bp_cnt(bp_cnt_cfg_t cfg) {
-            setup(cfg);
-        }
-
-        void setup(bp_cnt_cfg_t cfg) {
-            cnt_bits = cfg.cnt_bits;
-            cnt_entries = TO_U32(1 << cfg.cnt_idx_bits);
-            cnt_entries_mask = std::max(1u, cnt_entries) - 1;
-            cnt_max = (1 << cnt_bits) - 1;
-            thr_taken = cnt_max == 1 ? cnt_max : cnt_max >> 1;
-            cnt_table.resize(cnt_entries);
+        bp_cnt(bp_cnt_cfg_t cfg) :
+            cnt_bits(cfg.cnt_bits),
+            cnt_entries_num(TO_U32(1 << cfg.cnt_idx_bits)),
+            cnt_entries_mask(cnt_entries_num - 1),
+            cnt_max((1 << cnt_bits) - 1),
+            thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1),
+            bit_size(cnt_entries_num * cnt_bits),
+            cnt_table(cnt_entries_num)
+        {
             for (auto& e : cnt_table) e = thr_taken;
-            bit_size = cnt_table.size() * cnt_bits;
         }
 
         uint32_t get_bit_size() { return bit_size; }
@@ -62,7 +95,7 @@ class bp_cnt {
 
         void dump() {
             std::cout << "      counters: ";
-            for (size_t i = 0; i < cnt_entries; i++) {
+            for (size_t i = 0; i < cnt_entries_num; i++) {
                 std::cout << "[" << i << "]=" << TO_U32(cnt_table[i]) << " ";
             }
         }

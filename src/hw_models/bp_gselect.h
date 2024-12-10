@@ -5,10 +5,10 @@
 
 class bp_gselect : public bp {
     protected:
-        uint32_t idx_bits;
-        const uint32_t gr_bits;
-        const uint32_t pc_bits;
-        uint32_t idx_mask;
+        const uint8_t idx_bits;
+        const uint8_t gr_bits;
+        const uint8_t pc_bits;
+        const uint32_t idx_mask;
         const uint32_t gr_mask;
         const uint32_t pc_mask;
         bp_cnt cnt;
@@ -24,7 +24,7 @@ class bp_gselect : public bp {
             idx_mask((1 << idx_bits) - 1),
             gr_mask((1 << gr_bits) - 1),
             pc_mask((1 << pc_bits) - 1),
-            cnt({idx_bits, cfg.cnt_bits}),
+            cnt({idx_bits, cfg.cnt_bits, type_name}),
             gr(0)
         {
             size = cnt.get_bit_size() + cfg.gr_bits;
@@ -39,11 +39,8 @@ class bp_gselect : public bp {
         }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
-            find_b_dir(target_pc, pc);
             idx_last = get_idx(pc, gr);
-            if (cnt.thr_check(idx_last)) predicted_pc = target_pc;
-            else predicted_pc = pc + 4;
-            return predicted_pc;
+            return predict_common(target_pc, pc, cnt.thr_check(idx_last));
         }
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {

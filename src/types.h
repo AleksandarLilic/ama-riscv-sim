@@ -142,7 +142,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 enum class b_dir_t { backward, forward};
 enum class bp_t {sttc, bimodal, local, global, gselect, gshare, ideal, combined,
                  _count };
-
+enum class bp_bits_t { pc, cnt, hist, gr, _count };
 // dasm
 struct dasm_str {
     std::ostringstream asm_ss;
@@ -220,6 +220,22 @@ struct hw_cfg_t {
     // branch predictors
     bp_t bp_active;
     // comvined predictor config
-    bp_t bpc_1;
-    bp_t bpc_2;
+    bp_t bp_combined_p1;
+    bp_t bp_combined_p2;
+    // branch predictor config
+    uint8_t bp_bimodal_pc_bits;
+    uint8_t bp_bimodal_cnt_bits;
+    uint8_t bp_local_pc_bits;
+    uint8_t bp_local_cnt_bits;
+    uint8_t bp_local_hist_bits;
+    uint8_t bp_global_cnt_bits;
+    uint8_t bp_global_gr_bits;
+    uint8_t bp_gselect_cnt_bits;
+    uint8_t bp_gselect_gr_bits;
+    uint8_t bp_gselect_pc_bits;
+    uint8_t bp_gshare_cnt_bits;
+    uint8_t bp_gshare_gr_bits;
+    uint8_t bp_gshare_pc_bits;
+    uint8_t bp_combined_pc_bits;
+    uint8_t bp_combined_cnt_bits;
 };
