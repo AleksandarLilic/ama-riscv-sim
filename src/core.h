@@ -246,9 +246,9 @@ class core{
         }
 
         // custom extension - arithmetic and logic operations
-        uint32_t al_c_fma16(uint32_t a, uint32_t b);
-        uint32_t al_c_fma8(uint32_t a, uint32_t b);
-        uint32_t al_c_fma4(uint32_t a, uint32_t b);
+        uint32_t al_c_dot16(uint32_t a, uint32_t b);
+        uint32_t al_c_dot8(uint32_t a, uint32_t b);
+        uint32_t al_c_dot4(uint32_t a, uint32_t b);
 
         // custom extension - memory operations
         reg_pair mem_c_unpk16(uint32_t a);

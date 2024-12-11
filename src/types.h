@@ -102,9 +102,9 @@ enum class custom_ext_t {
 };
 
 enum class alu_custom_op_t {
-    op_fma16 = 0x06,
-    op_fma8 = 0x07,
-    op_fma4 = 0x46,
+    op_dot16 = 0x06,
+    op_dot8 = 0x07,
+    op_dot4 = 0x46,
 };
 
 enum class mem_custom_op_t {

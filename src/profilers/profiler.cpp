@@ -28,9 +28,9 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
     prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
 
-    prof_g_arr[TO_U32(opc_g::i_fma16)] = {"fma16", 0};
-    prof_g_arr[TO_U32(opc_g::i_fma8)] = {"fma8", 0};
-    prof_g_arr[TO_U32(opc_g::i_fma4)] = {"fma4", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
 
     prof_g_arr[TO_U32(opc_g::i_unpk16)] = {"unpk16", 0};
     prof_g_arr[TO_U32(opc_g::i_unpk16u)] = {"unpk16u", 0};
@@ -224,7 +224,7 @@ void profiler::log_to_file() {
     for (auto &a: alu_opcs) cnt.al += prof_g_arr[TO_U32(a)].count;
     for (auto &m: mul_opcs) cnt.mul += prof_g_arr[TO_U32(m)].count;
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
-    for (auto &f: fma_opcs) cnt.fma += prof_g_arr[TO_U32(f)].count;
+    for (auto &f: dot_opcs) cnt.dot += prof_g_arr[TO_U32(f)].count;
     for (auto &u: unpk_opcs) cnt.unpk += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_opcs) cnt.scp += prof_g_arr[TO_U32(s)].count;
     cnt.find_mem();
@@ -239,7 +239,7 @@ void profiler::log_to_file() {
     perc.al = cnt.get_perc(cnt.al);
     perc.mul = cnt.get_perc(cnt.mul);
     perc.div = cnt.get_perc(cnt.div);
-    perc.fma = cnt.get_perc(cnt.fma);
+    perc.dot = cnt.get_perc(cnt.dot);
     perc.unpk = cnt.get_perc(cnt.unpk);
     perc.scp = cnt.get_perc(cnt.scp);
     perc.rest = cnt.get_perc(cnt.rest);
@@ -269,8 +269,8 @@ void profiler::log_to_file() {
               << ", DIV: " << cnt.div
               << "(" << perc.div << "%)" << std::endl;
 
-    std::cout << INDENT << "SIMD: FMA: " << cnt.fma
-              << "(" << perc.fma << "%)"
+    std::cout << INDENT << "SIMD: DOT: " << cnt.dot
+              << "(" << perc.dot << "%)"
               << ", UNPK: " << cnt.unpk
               << "(" << perc.unpk << "%)" << std::endl;
 

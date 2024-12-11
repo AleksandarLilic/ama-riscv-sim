@@ -3,7 +3,7 @@
     "asm_rv32i_zicsr": ["basic"],
     "asm_rv32im": ["basic"],
     "asm_rv32ic": ["basic"],
-    "asm_rv32i_custom-fma": ["basic"],
+    "asm_rv32i_custom-dot": ["basic"],
     "asm_rv32i_custom-unpk": ["basic"],
     "asm_rv32i_custom-scp": ["basic"],
     "aapg_static/rv32i": ["basic"],

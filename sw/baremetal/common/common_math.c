@@ -8,7 +8,7 @@ INLINE_OPTION int32_t _simd_dot_product_int16(
     for (size_t k = 0; k < len_s2; k += 2) {
         int32_t a_slice = *(int32_t*)(a + k);
         int32_t b_slice = *(int32_t*)(b + k);
-        c += fma16(a_slice, b_slice);
+        c += dot16(a_slice, b_slice);
     }
     size_t rem = len - len_s2;
     if (rem > 0) {
@@ -32,10 +32,10 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
             b_arr[i] = *(int32_t*)(b + k + i * 4);
         }
         asm volatile (
-            "fma8 %[p1], %[a0], %[b0];"
-            "fma8 %[p2], %[a1], %[b1];"
-            "fma8 %[p3], %[a2], %[b2];"
-            "fma8 %[p4], %[a3], %[b3];"
+            "dot8 %[p1], %[a0], %[b0];"
+            "dot8 %[p2], %[a1], %[b1];"
+            "dot8 %[p3], %[a2], %[b2];"
+            "dot8 %[p4], %[a3], %[b3];"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
             "add %[c], %[c], %[p3];"
@@ -60,7 +60,7 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
         for (size_t i = start; i < end; i += 4) {
             int32_t a_slice = *(int32_t*)(a + i);
             int32_t b_slice = *(int32_t*)(b + i);
-            c += fma8(a_slice, b_slice);
+            c += dot8(a_slice, b_slice);
         }
     }
     size_t rem = len - (len_s16 + len_s4);
@@ -79,7 +79,7 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
     for (size_t k = 0; k < len_s4; k += 4) {
         int32_t a_slice = *(int32_t*)(a + k);
         int32_t b_slice = *(int32_t*)(b + k);
-        c += fma8(a_slice, b_slice);
+        c += dot8(a_slice, b_slice);
     }
     size_t rem = len - len_s4;
     if (rem > 0) {
@@ -97,7 +97,7 @@ INLINE_OPTION int32_t _simd_dot_product_int4(
     for (size_t k = 0; k < len_s4; k += 4) {
         int32_t a_slice = *(int32_t*)(a + k);
         int32_t b_slice = *(int32_t*)(b + k);
-        c += fma4(a_slice, b_slice);
+        c += dot4(a_slice, b_slice);
     }
     size_t rem = len_bytes - len_s4;
     if (rem > 0) {
@@ -126,8 +126,8 @@ INLINE_OPTION int32_t _simd_dot_product_int16_int8(
         asm (
             "unpk8 "TOSTR(RD_1)", %[b];"
             // x30 (RD_1) = 2 lower halves, x31 (RDP_1) = 2 upper halves
-            "fma16 %[p1], %[a1], "TOSTR(RD_1)";"
-            "fma16 %[p2], %[a2], "TOSTR(RDP_1)";"
+            "dot16 %[p1], %[a1], "TOSTR(RD_1)";"
+            "dot16 %[p2], %[a2], "TOSTR(RDP_1)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
             : [c] "+r" (c), [p1] "=r" (p1), [p2] "=r" (p2)
@@ -157,13 +157,13 @@ INLINE_OPTION int32_t _simd_dot_product_int16_int4(
         asm (
             "unpk4 "TOSTR(RD_1)", %[b];" // nibbles to bytes
             "unpk8 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low bytes to halfwords
-            "fma16 %[p1], %[a1], "TOSTR(RD_2)";"
-            "fma16 %[p2], %[a2], "TOSTR(RDP_2)";"
+            "dot16 %[p1], %[a1], "TOSTR(RD_2)";"
+            "dot16 %[p2], %[a2], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
             "unpk8 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high bytes to halfwords
-            "fma16 %[p1], %[a3], "TOSTR(RD_2)";"
-            "fma16 %[p2], %[a4], "TOSTR(RDP_2)";"
+            "dot16 %[p1], %[a3], "TOSTR(RD_2)";"
+            "dot16 %[p2], %[a4], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
             : [c] "+r" (c),
@@ -198,8 +198,8 @@ INLINE_OPTION int32_t _simd_dot_product_int8_int4(
         int32_t a_slice_2 = *(int32_t*)(a + k + 4);
         asm (
             "unpk4 "TOSTR(RD_1)", %[b];"
-            "fma8 %[p1], %[a1], "TOSTR(RD_1)";"
-            "fma8 %[p2], %[a2], "TOSTR(RDP_1)";"
+            "dot8 %[p1], %[a1], "TOSTR(RD_1)";"
+            "dot8 %[p2], %[a2], "TOSTR(RDP_1)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
             : [c] "+r" (c), [p1] "=r" (p1), [p2] "=r" (p2)

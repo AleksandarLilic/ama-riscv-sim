@@ -401,9 +401,9 @@ void core::custom_ext() {
     uint8_t funct7 = ip.funct7();
     if (funct3 == TO_U8(custom_ext_t::arith)) {
         switch (funct7) {
-            CASE_ALU_CUSTOM_OP(fma16)
-            CASE_ALU_CUSTOM_OP(fma8)
-            CASE_ALU_CUSTOM_OP(fma4)
+            CASE_ALU_CUSTOM_OP(dot16)
+            CASE_ALU_CUSTOM_OP(dot8)
+            CASE_ALU_CUSTOM_OP(dot4)
             default : unsupported("custom extension - arith");
         }
         #ifdef ENABLE_DASM
@@ -441,7 +441,7 @@ void core::custom_ext() {
     next_pc = pc + 4;
 }
 
-uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
+uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 2; i++) {
@@ -452,7 +452,7 @@ uint32_t core::al_c_fma16(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_fma8(uint32_t a, uint32_t b) {
+uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 4; i++) {
@@ -463,7 +463,7 @@ uint32_t core::al_c_fma8(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_fma4(uint32_t a, uint32_t b) {
+uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
     // multiply 8 nibble chunks and sum the results
     int32_t res = 0;
     for (int i = 0; i < 8; i++) {
@@ -561,7 +561,6 @@ reg_pair core::mem_c_unpk2(uint32_t a) {
         crumbs[i] = TO_I2(a & 0x3);
         a >>= 2;
     }
-    std::cout << std::dec << std::endl;
     int32_t words[2] = {0, 0};
     for (int i = 0; i < 8; i++) {
         words[0] |= (TO_I32(TO_I8(crumbs[i])) & 0xF) << (i * 4);

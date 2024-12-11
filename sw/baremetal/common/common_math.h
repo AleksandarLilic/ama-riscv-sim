@@ -54,25 +54,25 @@ int32_t _simd_dot_product_int8_int4(
 //int32_t _simd_mulu_int8(const uint8_t* a, const uint8_t* b, const size_t len);
 
 // asm wrapper functions
-INLINE int32_t fma16(const int32_t a, const int32_t b) {
+INLINE int32_t dot16(const int32_t a, const int32_t b) {
     int32_t c;
-    asm volatile("fma16 %0, %1, %2"
+    asm volatile("dot16 %0, %1, %2"
                  : "=r"(c)
                  : "r"(a), "r"(b));
     return c;
 }
 
-INLINE int32_t fma8(const int32_t a, const int32_t b) {
+INLINE int32_t dot8(const int32_t a, const int32_t b) {
     int32_t c;
-    asm volatile("fma8 %0, %1, %2"
+    asm volatile("dot8 %0, %1, %2"
                  : "=r"(c)
                  : "r"(a), "r"(b));
     return c;
 }
 
-INLINE int32_t fma4(const int32_t a, const int32_t b) {
+INLINE int32_t dot4(const int32_t a, const int32_t b) {
     int32_t c;
-    asm volatile("fma4 %0, %1, %2"
+    asm volatile("dot4 %0, %1, %2"
                  : "=r"(c)
                  : "r"(a), "r"(b));
     return c;

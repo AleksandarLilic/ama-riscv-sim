@@ -20,22 +20,22 @@ li x12, 65
 add x26, x11, x12
 OP_END(100)
 
-op_fma16:
+op_dot16:
 lw x11, dat1
 lw x12, dat2
-fma16 x26, x11, x12
+dot16 x26, x11, x12
 OP_END(1719842)
 
-op_fma8:
+op_dot8:
 lw x11, dat1
 lw x12, dat2
-fma8 x26, x11, x12
+dot8 x26, x11, x12
 OP_END(60)
 
-op_fma4:
+op_dot4:
 lw x11, dat3
 lw x12, dat4
-fma4 x26, x11, x12
+dot4 x26, x11, x12
 OP_END(14)
 
 li x24, 0x123456
