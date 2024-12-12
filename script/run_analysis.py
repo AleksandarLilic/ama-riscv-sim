@@ -42,7 +42,7 @@ inst_t = {
         "c.andi", "c.srli", "c.slli", "c.srai", "c.and", "c.xor", "c.or",
         "c.mv",
         "c.lui",
-        "fma4", "fma8", "fma16",
+        "dot4", "dot8", "dot16",
     ],
     MEM: inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
     MEM_HINTS: ["scp.ld", "scp.rel"],

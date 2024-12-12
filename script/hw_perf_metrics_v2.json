@@ -7,6 +7,9 @@
     "dcache" : 1,
     "bpred" : 1,
     "mem" : 4,
+    "mul" : 2,
+    "div" : 6,
+    "dot" : 2,
     "icache_name" : "Icache",
     "dcache_name" : "Dcache",
     "bpred_name" : "Bpred"

@@ -5,24 +5,32 @@ import pandas as pd
 import numpy as np
 from run_analysis import json_prof_to_df
 
+DELIM = "\n    "
+R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
+
 class perf:
     # TODO: needs compressed ISA
     b_inst_a = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
     j_inst_a = ["jalr", "jal"] # split jal vs jalr?
-    dc_inst_a = ["lb", "lh", "lw", "lbu", "lhu", "sb", "sh", "sw",
-                 "scp.ld", "scp.rel"]
+    ld_inst_a = ["lb", "lh", "lw", "lbu", "lhu"]
+    st_inst_a = ["sb", "sh", "sw"]
+    scp_inst_a = ["scp.ld", "scp.rel"]
+    #dc_inst_a = ld_inst_a + st_inst_a + scp_inst_a
     mul_inst_a = ["mul", "mulh", "mulhsu", "mulhu"]
-    fma_inst_a = ["fma4", "fma8", "fma16"]
     div_inst_a = ["div", "divu", "rem", "remu"]
+    dot_inst_a = ["dot4", "dot8", "dot16"]
     csr_inst_a = ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"]
     expected_hw_metrics = ["cpu_frequency_mhz", "pipeline",
                            "branch_resolution", "jump_resolution",
                            "icache", "dcache", "bpred", "mem",
+                           "mul", "div", "dot",
                            "icache_name", "dcache_name", "bpred_name"]
 
-    def __init__(self, inst_profiler_path, hw_stats_path, hw_perf_metrics_path):
+    def __init__(self, inst_profiler_path, hw_stats_path, hw_perf_metrics_path,
+                 realistic=False):
         self.inst_profiler_path = inst_profiler_path
-        self.name = os.path.basename(inst_profiler_path)
+        self.name = inst_profiler_path
+        self.realistic = realistic
         df = json_prof_to_df(inst_profiler_path, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
@@ -57,6 +65,9 @@ class perf:
         self.c_dc = hwpm['dcache']
         self.c_bp = hwpm["bpred"]
         self.c_mem = hwpm['mem']
+        self.c_mul = hwpm['mul']
+        self.c_div = hwpm['div']
+        self.c_dot = hwpm['dot']
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
@@ -83,6 +94,7 @@ class perf:
             "accesses": hw_dc["accesses"],
             "hits": hw_dc["hits"],
             "misses": hw_dc["misses"],
+            "writebacks": hw_dc["writebacks"],
             "hit_rate": (hw_dc["hits"] / hw_dc["accesses"]) * 100,
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
@@ -95,28 +107,76 @@ class perf:
         self.inst_total = df['count'].sum()
         self.b_inst = df.loc[df['name'].isin(self.b_inst_a)]['count'].sum()
         self.j_inst = df.loc[df['name'].isin(self.j_inst_a)]['count'].sum()
-        self.dc_inst = df.loc[df['name'].isin(self.dc_inst_a)]['count'].sum()
+        self.ld_inst = df.loc[df['name'].isin(self.ld_inst_a)]['count'].sum()
+        self.st_inst = df.loc[df['name'].isin(self.st_inst_a)]['count'].sum()
+        self.scp_inst = df.loc[df['name'].isin(self.scp_inst_a)]['count'].sum()
+        self.dc_inst = self.ld_inst + self.st_inst + self.scp_inst
+        self.mul_inst = df.loc[df['name'].isin(self.mul_inst_a)]['count'].sum()
+        self.div_inst = df.loc[df['name'].isin(self.div_inst_a)]['count'].sum()
+        self.dot_inst = df.loc[df['name'].isin(self.dot_inst_a)]['count'].sum()
 
+        # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
-        # extra cycles for insts that might stall the pipeline
-        self.b_stalls = \
-            (self.c_bp - 1) * self.bp_stats['pred'] + \
-            self.c_branch_resolution * self.bp_stats['mispred']
-        self.j_stalls = (self.c_jump_resolution - 1) * self.j_inst
-        self.dc_stalls = \
-            (self.c_dc - 1) * self.hw_stats[self.dc_name]["hits"] + \
-            self.c_mem * self.hw_stats[self.dc_name]["misses"]
-        self.ic_stalls = \
-            (self.c_ic - 1) * self.hw_stats[self.ic_name]["hits"] + \
-            self.c_mem * self.hw_stats[self.ic_name]["misses"]
 
-        self.total_cycles = self.ipc_1_cycles + \
-                            self.j_stalls + self.b_stalls + \
-                            self.dc_stalls + self.ic_stalls
+        # extra cycles for insts that might stall the pipeline
+        self.b_stalls = (self.c_bp - 1) * self.bp_stats['pred']
+        self.b_stalls += self.c_branch_resolution * self.bp_stats['mispred']
+        self.j_stalls = (self.c_jump_resolution - 1) * self.j_inst
+        self.ic_stalls = (self.c_ic - 1) * self.hw_stats[self.ic_name]["hits"]
+        self.ic_stalls += self.c_mem * self.hw_stats[self.ic_name]["misses"]
+        self.dc_stalls = (self.c_dc - 1) * self.hw_stats[self.dc_name]["hits"]
+        self.dc_stalls += self.c_mem * self.hw_stats[self.dc_name]["misses"]
+
+        self.mul_stalls = (self.c_mul - 1) * self.mul_inst
+        self.div_stalls = (self.c_div - 1) * self.div_inst
+        self.dot_stalls = (self.c_dot - 1) * self.dot_inst
+        self.alu_stalls = self.mul_stalls + self.div_stalls + self.dot_stalls
+
+        self.fe_stalls = self.b_stalls + self.j_stalls + self.ic_stalls
+        self.be_stalls = self.dc_stalls + self.alu_stalls
+
+        self._est_stalls()
+
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
         self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
-        self.total_cycles = int(np.ceil(self.total_cycles))
-        self.perf_str = self._estimated_perf(self.total_cycles)
+        self.total_cycles_wc = int(np.ceil(self.total_cycles_wc))
+        self.total_cycles_bc = int(np.ceil(self.total_cycles_bc))
+        self.perf_str = f"Estimated HW performance at {self.freq}MHz:"
+        self.perf_str += f"{DELIM}Best:  "
+        self.perf_str += self._estimated_perf(self.total_cycles_bc)
+        self.perf_str += f"{DELIM}Worst: "
+        self.perf_str += self._estimated_perf(self.total_cycles_wc)
+
+    # TODO:
+    # D$ and alu stalls can technically overlap, but unlikely in current uarch
+    def _est_stalls(self):
+        # worst case:
+        #   fe stalls never overlap with dc stalls or alu hazard stall
+        #   alu hazard stall on each multi cycle instruction
+        self.total_cycles_wc = self.ipc_1_cycles
+        if not realistic:
+            self.total_cycles_wc += \
+                self.fe_stalls + self.dc_stalls + self.alu_stalls
+        else:
+            alu_h = self.alu_stalls * (R["hazard_freq"] + R["hazard_range"])
+            # min since there has to be enough cycles in be to overlap fe with
+            fe_s = min(self.fe_stalls, self.dc_stalls + alu_h)
+            fe_o = fe_s * (R["fe_overlap"] - R["fe_range"])
+            self.total_cycles_wc += self.fe_stalls - fe_o # reduced by overlap
+            self.total_cycles_wc += self.dc_stalls + alu_h
+
+        # best case:
+        #   fe stalls overlap with dc stalls completely
+        #   no alu hazard stall (e.g. best possible inst scheduling)
+        self.total_cycles_bc = self.ipc_1_cycles
+        if not realistic:
+            self.total_cycles_bc += max(self.dc_stalls, self.fe_stalls)
+        else:
+            alu_h = self.alu_stalls * (R["hazard_freq"] - R["hazard_range"])
+            fe_s = min(self.fe_stalls, self.dc_stalls + alu_h)
+            fe_o = fe_s * (R["fe_overlap"] + R["fe_range"])
+            self.total_cycles_bc += self.fe_stalls - fe_o
+            self.total_cycles_bc += self.dc_stalls + alu_h
 
     def _log_branches(self, entry):
         for key in entry['breakdown']:
@@ -130,8 +190,7 @@ class perf:
         self.est["cpi"] = round(cpi, 2)
         self.est["exec_time_us"] = round(exec_time_us, 2)
         self.est["mips"] = round(mips, 2)
-        out = f"Estimated HW performance at {self.freq}MHz: " + \
-              f"Cycles: {cycles}, CPI: {cpi:.2f}, " + \
+        out = f"Cycles: {cycles}, CPI: {cpi:.2f}, " + \
               f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
         return out
 
@@ -141,8 +200,10 @@ class perf:
               f"{stats['data']}B data): " + \
               f"Accesses: {stats['accesses']}, " + \
               f"Hits: {stats['hits']}, " + \
-              f"Misses: {stats['misses']}, " + \
-              f"Hit Rate: {stats['hit_rate']:.2f}%"
+              f"Misses: {stats['misses']}, "
+        if "writebacks" in stats and stats['writebacks'] > 0:
+            out += f"Writebacks: {stats['writebacks']}, "
+        out += f"Hit Rate: {stats['hit_rate']:.2f}%"
         return out
 
     def __str__(self):
@@ -155,7 +216,8 @@ class perf:
         out_ic.append(self._cache_stats_str(self.ic_name, self.ic_stats))
 
         out_dc.append(
-            f"Loads & Stores: {self.dc_inst} " + \
+            f"DMEM inst: {self.dc_inst} - " + \
+            f"L/S: {self.ld_inst}/{self.st_inst} " + \
             f"({self.ls_perc:.2f}% instructions)"
             )
         out_dc.append(self._cache_stats_str(self.dc_name, self.dc_stats))
@@ -181,17 +243,23 @@ class perf:
             f"Accuracy: {self.bp_stats['acc']:.2f}%"
             )
 
-        out_stalls = f"Pipeline stalls: " + \
+        out_stalls = f"Pipeline stalls (max): " + \
+            f"FE/BE: {self.fe_stalls}/{self.be_stalls}, " + \
+            f"{DELIM}FE: " + \
+            f"ICache: {self.ic_stalls}, " + \
             f"Jumps: {self.j_stalls}, " + \
-            f"Branches: {self.b_stalls}, " + \
-            f"DCache: {self.dc_stalls}, ICache: {self.ic_stalls}"
+            f"Branches: {self.b_stalls}" + \
+            f"{DELIM}BE: " + \
+            f"DCache: {self.dc_stalls} " + \
+            f"MUL: {self.mul_stalls}, " + \
+            f"DIV: {self.div_stalls}, " + \
+            f"DOT: {self.dot_stalls}"
 
-        delim = "\n    "
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
-                f"\n{delim.join(out_ic)}" + \
-                f"\n{delim.join(out_dc)}" + \
-                f"\n{delim.join(out_b)}" + \
+                f"\n{DELIM.join(out_ic)}" + \
+                f"\n{DELIM.join(out_dc)}" + \
+                f"\n{DELIM.join(out_b)}" + \
                 f"\n{out_stalls}"
 
         return f"{stats}\n{self.perf_str}"
@@ -213,6 +281,9 @@ if __name__ == "__main__":
     hw_stats_path = sys.argv[2]
     hw_perf_metrics_path = sys.argv[3]
 
+    # use with caution
+    realistic = sys.argv[4] == "-r" if len(sys.argv) > 4 else False
+
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
     if not os.path.isfile(hw_stats_path):
@@ -220,5 +291,6 @@ if __name__ == "__main__":
     if not os.path.isfile(hw_perf_metrics_path):
         raise ValueError(f"File {hw_perf_metrics_path} not found")
 
-    est = perf(inst_profiler_path, hw_stats_path, hw_perf_metrics_path)
+    est = perf(
+        inst_profiler_path, hw_stats_path, hw_perf_metrics_path, realistic)
     print(est)
