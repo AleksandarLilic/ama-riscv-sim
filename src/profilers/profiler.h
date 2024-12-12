@@ -164,7 +164,6 @@ class profiler{
         void new_inst(uint32_t inst);
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
-        void log();
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
         void finish() { log_to_file(); }
 

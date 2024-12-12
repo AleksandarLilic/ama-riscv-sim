@@ -123,6 +123,9 @@ void profiler::new_inst(uint32_t inst) {
     if (active) {
         this->inst = inst;
         inst_cnt_exec++;
+        // log to trace and reset entry
+        trace.push_back(te);
+        rst_te();
     }
 }
 
@@ -150,13 +153,6 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
             if (direction == b_dir_t::forward)
                 prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
         }
-    }
-}
-
-void profiler::log() {
-    if (active) {
-        trace.push_back(te);
-        rst_te();
     }
 }
 

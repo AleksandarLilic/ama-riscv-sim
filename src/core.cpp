@@ -98,7 +98,6 @@ void core::exec_inst() {
         prof.te.sp = rf[2];
         prof.te.inst_size = TO_U32(inst_w>>1);
         prof.new_inst(inst);
-        prof.log();
     }
     #endif
 

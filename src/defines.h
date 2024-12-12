@@ -344,10 +344,10 @@
     prof.log_inst(opc_j::i_##op, false, b_dir_t(dir));
 
 #define PROF_RD \
-    prof.log_reg_use(reg_use_t::rd, ip.rd()); \
+    prof.log_reg_use(reg_use_t::rd, ip.rd());
 
 #define PROF_RDP \
-    prof.log_reg_use(reg_use_t::rd, ip.rd()+1); \
+    prof.log_reg_use(reg_use_t::rd, ip.rd()+1);
 
 #define PROF_RS1 \
     prof.log_reg_use(reg_use_t::rs1, ip.rs1());
