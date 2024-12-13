@@ -280,7 +280,7 @@
 #define FRF(addr, val) \
     std::left << std::setw(rf_names_w) << std::setfill(' ') << addr \
               << ": 0x" << std::right << std::setw(8) << std::setfill('0') \
-              << std::hex << val << std::dec << "  "
+              << std::hex << val << std::dec
 
 // Format CSR print
 #define CSRF(it) \
@@ -290,6 +290,9 @@
              << it->second.value << std::dec
 
 #ifdef ENABLE_DASM
+// FIXME: need to differentiate names between macros that redirect to dasm and
+// those that are just formatting string or accessing registers
+
 #define DASM_OP(o) dasm.op = #o;
 
 #define DASM_CSR_REG \
@@ -305,18 +308,55 @@
 #define DASM_OP_RD \
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx]
 
+#define DASM_OP_RS1 rf_names[ip.rs1()][rf_names_idx]
+#define DASM_OP_RS2 rf_names[ip.rs2()][rf_names_idx]
+
 #define DASM_OP_CREGH \
     dasm.asm_ss << dasm.op << " " << rf_names[ip.cregh()][rf_names_idx]
 
 #define DASM_CREGL \
     rf_names[ip.cregl()][rf_names_idx]
 
+#define DASM_ALIGN \
+    dasm.asm_ss << std::setw(34 - inst_w - dasm.asm_ss.tellp()) \
+                << std::setfill(' ') << "  "
+
+// parametrized
+#define DASM_RD_UPDATE_P(rd) \
+    if (rd) DASM_ALIGN << FRF(rf_names[rd][rf_names_idx], rf[rd]);
+
+// generic
+#define DASM_RD_UPDATE \
+    DASM_RD_UPDATE_P(ip.rd())
+
+#define DASM_RD_UPDATE_PAIR \
+    dasm.asm_ss << ", "; \
+    DASM_RD_UPDATE_P(ip.rd() + 1)
+
+// parametrized
+#define DASM_MEM_UPDATE_P(addr, rs) \
+    DASM_ALIGN << "mem[" \
+               << MEM_ADDR_FORMAT(addr) \
+               << "] <- " << rf_names[rs][rf_names_idx] \
+               << " (" << FHEXZ(rf[rs], 8) << ")"
+
+// generic
+#define DASM_MEM_UPDATE \
+    DASM_MEM_UPDATE_P(TO_I32(rf[ip.rs1()] + ip.imm_s()), ip.rs2())
+
 #else
 #define DASM_OP(o)
 #define DASM_CSR_REG
 #define DASM_CSR_IMM
 #define DASM_OP_RD
+#define DASM_OP_RS1
+#define DASM_OP_RS2
 #define DASM_OP_CREGH
+#define DASM_CREGL
+#define DASM_RD_UPDATE_P(rd)
+#define DASM_RD_UPDATE
+#define DASM_MEM_UPDATE_P(addr, rs)
+#define DASM_MEM_UPDATE
 #endif
 
 #if defined(ENABLE_DASM) || defined(ENABLE_PROF)

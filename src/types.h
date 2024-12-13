@@ -179,6 +179,7 @@ struct logging_pc_t {
         uint32_t start;
         uint32_t stop;
         uint32_t single_match_num;
+        bool dump_state;
         uint64_t inst_cnt;
     private:
         uint32_t current_match = 0;

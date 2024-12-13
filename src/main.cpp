@@ -100,6 +100,9 @@ struct defs_t {
     static constexpr char log_pc_sm[] = "0";
     static constexpr char rf_names[] = "abi";
     static constexpr char dump_all_regs[] = "false";
+    #ifdef ENABLE_DASM
+    static constexpr char dump_state[] = "false";
+    #endif
 };
 
 #ifdef ENABLE_HW_PROF
@@ -149,11 +152,16 @@ int main(int argc, char* argv[]) {
          "Log and profile match number (0 for all matches)",
          cxxopts::value<std::string>()->default_value(defs_t::log_pc_sm))
         ("rf_names",
-         "Register file names used for execution log. Options: " +
+         "Register file names used for output. Options: " +
          gen_help_list(rf_names_map),
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
         ("dump_all_regs", "Dump all registers at the end of simulation",
          cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
+
+        #ifdef ENABLE_DASM
+        ("dump_state", "Dump state after each executed instruction",
+         cxxopts::value<bool>()->default_value(defs_t::dump_state))
+        #endif
 
         #ifdef ENABLE_HW_PROF
         ("icache_sets", "Number of sets in I$",
@@ -254,6 +262,10 @@ int main(int argc, char* argv[]) {
         cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
+
+        #ifdef ENABLE_DASM
+        cfg.log_pc.dump_state = TO_BOOL(result["dump_state"]);
+        #endif
 
         #ifdef ENABLE_HW_PROF
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);

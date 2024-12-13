@@ -21,8 +21,7 @@ DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
 INC := -I. -I./profilers -I./hw_models -I./external/cxxopts/include
 
 USER_DEFINES =
-DEFINES := -DLOG_EXEC -DENABLE_DASM # -DLOG_EXEC_ALL
-#DEFINES += -DCHECK_LOG
+DEFINES := -DENABLE_DASM
 #DEFINES += -DUART_INPUT_ENABLE
 
 all: $(TARGET)

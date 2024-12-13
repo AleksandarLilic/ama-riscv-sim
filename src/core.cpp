@@ -22,7 +22,7 @@ core::core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg)
 }
 
 void core::exec() {
-    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+    #ifdef ENABLE_DASM
     log_ofstream.open(log_path + "exec.log");
     logging = false;
     #endif
@@ -44,8 +44,9 @@ void core::exec() {
 }
 
 void core::log_and_prof(bool enable) {
-    #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
+    #ifdef ENABLE_DASM
     logging = enable;
+    dasm.asm_ss.str(""); // clear the string stream on start/stop
     #endif
     #ifdef ENABLE_PROF
     prof.active = enable;
@@ -102,42 +103,33 @@ void core::exec_inst() {
     #endif
 
     #ifdef ENABLE_DASM
-
     #ifdef DPI
     // always log the for DPI
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
-    #endif
 
+    #else // !DPI
     if (logging) {
         dasm.asm_str = dasm.asm_ss.str();
         dasm.asm_ss.str("");
-
-        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
         log_ofstream << "(" << std::setw(8) << std::setfill(' ')
                      << logging_pc.inst_cnt << ") "
                      << FORMAT_INST(inst, inst_w) << " "
                      << dasm.asm_str << std::endl;
-        #endif
+
+
+        if (logging_pc.dump_state) {
+            log_ofstream << dump_state(csr_updated) << std::endl;
+            csr_updated = false;
+        }
         logging_pc.inst_cnt++;
-
-        #ifdef LOG_EXEC_ALL
-        log_ofstream << mem_ostr.str();
-        mem_ostr.str("");
-        log_ofstream << dump_state(csr_updated) << std::endl;
-        csr_updated = false;
-        #endif
-
-    } else {
-        dasm.asm_ss.str("");
-        #ifdef LOG_EXEC_ALL
-        mem_ostr.str("");
-        #endif
     }
+    #endif
 
     #elif defined(ENABLE_HW_PROF)
+    // enable logging in case only HW_PROF is enabled
     if (logging) logging_pc.inst_cnt++;
-    #endif // ENABLE_DASM
+    #endif
 
     pc = next_pc;
     inst_cnt++;
@@ -194,8 +186,8 @@ void core::al_reg() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx]
-               << "," << rf_names[ip.rs2()][rf_names_idx];
+    DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -217,11 +209,12 @@ void core::al_imm() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx] << ",";
+    DASM_OP_RD << "," << DASM_OP_RS1 << ",";
     if (is_shift)
         dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
     else
         dasm.asm_ss << TO_I32(ip.imm_i());
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -236,14 +229,10 @@ void core::load() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << TO_I32(ip.imm_i())
-               << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()])
-             << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
-             << rf_names[ip.rd()][rf_names_idx] << std::endl;
+    DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
+    DASM_RD_UPDATE;
+    dasm.asm_ss << " <- mem["
+                << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()]) << "]";
     #endif
 }
 
@@ -256,15 +245,9 @@ void core::store() {
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs2()][rf_names_idx] <<","
-                << TO_I32(ip.imm_s())
-                << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[ip.rs2()][rf_names_idx]
-             << " (" << FHEXZ(rf[ip.rd()], 8) << ") -> mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_s()) + rf[ip.rs1()]) << "]"
-             << std::endl;
+    dasm.asm_ss << dasm.op << " " << DASM_OP_RS2 << "," << TO_I32(ip.imm_s())
+                << "(" << DASM_OP_RS1 << ")";
+    DASM_MEM_UPDATE;
     #endif
 }
 
@@ -298,8 +281,7 @@ void core::branch() {
     #endif
 
     #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.rs1()][rf_names_idx] << ","
-                << rf_names[ip.rs2()][rf_names_idx] << ","
+    dasm.asm_ss << dasm.op << " " << DASM_OP_RS1 << "," << DASM_OP_RS2 << ","
                 << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
     #endif
 }
@@ -312,8 +294,8 @@ void core::jalr() {
     PROF_J(jalr)
     PROF_RD_RS1
     #ifdef ENABLE_DASM
-    DASM_OP_RD << "," << TO_I32(ip.imm_i())
-               << "(" << rf_names[ip.rs1()][rf_names_idx] << ")";
+    DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -325,6 +307,7 @@ void core::jal() {
     PROF_RD
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << std::hex << pc + TO_I32(ip.imm_j()) << std::dec;
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -336,6 +319,7 @@ void core::lui() {
     PROF_RD
     #ifdef ENABLE_DASM
     DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -347,6 +331,7 @@ void core::auipc() {
     PROF_RD
     #ifdef ENABLE_DASM
     DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
+    DASM_RD_UPDATE;
     #endif
 }
 
@@ -406,8 +391,8 @@ void core::custom_ext() {
             default : unsupported("custom extension - arith");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx]
-                   << "," << rf_names[ip.rs2()][rf_names_idx];
+        DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
+        DASM_RD_UPDATE;
         #endif
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
@@ -423,7 +408,9 @@ void core::custom_ext() {
             default: unsupported("custom extension - memory");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx];
+        DASM_OP_RD << "," << DASM_OP_RS1;
+        DASM_RD_UPDATE;
+        DASM_RD_UPDATE_PAIR;
         #endif
     } else if (funct3 == TO_U8(custom_ext_t::hints)) {
         switch (funct7) {
@@ -432,7 +419,8 @@ void core::custom_ext() {
             default : unsupported("custom extension - hint");
         }
         #ifdef ENABLE_DASM
-        DASM_OP_RD << "," << rf_names[ip.rs1()][rf_names_idx];
+        DASM_OP_RD << "," << DASM_OP_RS1;
+        DASM_RD_UPDATE;
         #endif
     } else {
         unsupported("custom extension");
@@ -608,8 +596,12 @@ void core::csr_access() {
         }
         if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
-    #ifdef LOG_EXEC_ALL
-    csr_updated = true;
+    #ifdef ENABLE_DASM
+    DASM_RD_UPDATE;
+    if (ip.rd()) dasm.asm_ss << "; ";
+    DASM_ALIGN;
+    dasm.asm_ss << CSRF(it);
+    if (logging_pc.dump_state) csr_updated = true;
     #endif
 }
 
@@ -719,6 +711,7 @@ void core::c_addi() {
     PROF_G(c_addi)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -729,6 +722,7 @@ void core::c_li() {
     PROF_G(c_li)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -740,6 +734,7 @@ void core::c_lui() {
     PROF_G(c_lui)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << FHEXN((ip.imm_c_lui() >> 12), 5);
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -761,6 +756,7 @@ void core::c_addi16sp() {
     PROF_G(c_addi16sp)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_16sp());
+    DASM_RD_UPDATE_P(2);
     #endif
     next_pc = pc + 2;
 }
@@ -771,6 +767,7 @@ void core::c_srli() {
     PROF_G(c_srli)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -781,6 +778,7 @@ void core::c_srai() {
     PROF_G(c_srai)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -791,6 +789,7 @@ void core::c_andi() {
     PROF_G(c_andi)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -801,6 +800,7 @@ void core::c_and() {
     PROF_G(c_and)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << DASM_CREGL;
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -811,6 +811,7 @@ void core::c_or() {
     PROF_G(c_or)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << DASM_CREGL;
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -821,6 +822,7 @@ void core::c_xor() {
     PROF_G(c_xor)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << DASM_CREGL;
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -831,6 +833,7 @@ void core::c_sub() {
     PROF_G(c_sub)
     #ifdef ENABLE_DASM
     DASM_OP_CREGH << "," << DASM_CREGL;
+    DASM_RD_UPDATE_P(ip.cregh());
     #endif
     next_pc = pc + 2;
 }
@@ -844,6 +847,7 @@ void core::c_addi4spn() {
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
                 << TO_I32(ip.imm_c_4spn());
+    DASM_RD_UPDATE_P(ip.cregl());
     #endif
     next_pc = pc + 2;
 }
@@ -857,6 +861,7 @@ void core::c_slli() {
     #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << FHEXN(TO_I32(ip.imm_c_slli()), 2);
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -867,6 +872,7 @@ void core::c_mv() {
     PROF_G(c_mv)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -877,6 +883,7 @@ void core::c_add() {
     PROF_G(c_add)
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
+    DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
@@ -889,12 +896,10 @@ void core::c_lw() {
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()])
-             << "] (" << FHEXZ(rf[ip.cregl()], 8) << ") -> " << DASM_CREGL
-             << std::endl;
+    DASM_RD_UPDATE_P(ip.cregl());
+    dasm.asm_ss << " <- mem["
+                << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()])
+                << "]";
     #endif
     next_pc = pc + 2;
 }
@@ -906,12 +911,9 @@ void core::c_lwsp() {
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
                << "(" << rf_names[2][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << "mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2])
-             << "] (" << FHEXZ(rf[ip.rd()], 8) << ") -> "
-             << rf_names[ip.rd()][rf_names_idx] << std::endl;
+    DASM_RD_UPDATE;
+    dasm.asm_ss << " <- mem[" << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp())+rf[2])
+                << "]";
     #endif
     next_pc = pc + 2;
 }
@@ -923,12 +925,7 @@ void core::c_sw() {
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << DASM_CREGL
-             << " (" << FHEXZ(rf[ip.cregl()], 8) << ") -> mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()]) << "]"
-             << std::endl;
+    DASM_MEM_UPDATE_P(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()], ip.cregl());
     #endif
     next_pc = pc + 2;
 }
@@ -941,12 +938,7 @@ void core::c_swsp() {
     dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","
                 << TO_I32(ip.imm_c_swsp())
                 << "(" << rf_names[2][rf_names_idx] << ")";
-    #endif
-    #ifdef LOG_EXEC_ALL
-    mem_ostr << INDENT << rf_names[ip.crs2()][rf_names_idx]
-             << " (" << FHEXZ(rf[ip.crs2()], 8) << ") -> mem["
-             << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_swsp()) + rf[2]) << "]"
-             << std::endl;
+    DASM_MEM_UPDATE_P(TO_I32(ip.imm_c_swsp()) + rf[2], ip.crs2());
     #endif
     next_pc = pc + 2;
 }
@@ -998,6 +990,7 @@ void core::c_jal() {
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
+    DASM_RD_UPDATE_P(1);
     #endif
 }
 
@@ -1020,6 +1013,7 @@ void core::c_jalr() {
     PROF_J(c_jalr)
     #ifdef ENABLE_DASM
     DASM_OP_RD;
+    DASM_RD_UPDATE_P(1);
     #endif
 }
 
@@ -1087,7 +1081,7 @@ std::string core::dump_state(bool dump_csr) {
     for(uint32_t i = 0; i < 32; i+=4){
         state << INDENT;
         for(uint32_t j = 0; j < 4; j++) {
-            state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]);
+            state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]) << "   ";
         }
         state << std::endl;
     }

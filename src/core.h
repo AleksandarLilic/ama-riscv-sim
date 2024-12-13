@@ -316,14 +316,9 @@ class core{
         std::string log_path;
         logging_pc_t logging_pc;
         bool logging;
-        #if defined(LOG_EXEC) or defined(LOG_EXEC_ALL)
-        std::ofstream log_ofstream;
-        #endif
-        #if defined(LOG_EXEC_ALL)
-        std::ostringstream mem_ostr;
-        bool csr_updated = false;
-        #endif
         #ifdef ENABLE_DASM
+        std::ofstream log_ofstream;
+        bool csr_updated = false;
         dasm_str dasm;
         #endif
 
