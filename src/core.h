@@ -80,6 +80,7 @@ class core{
             // if previous inst was branch, use that instead of fetching
             // this prevents cache from logging the same access twice
             if (!last_inst_branch) inst = mem->rd_inst(pc);
+            else inst = inst_resolved;
             last_inst_branch = false;
             #else
             inst = mem->rd_inst(pc);
@@ -354,6 +355,7 @@ class core{
         #ifdef ENABLE_HW_PROF
         bp_if bp;
         uint32_t inst_speculative;
+        uint32_t inst_resolved;
         bool last_inst_branch;
         #endif
 

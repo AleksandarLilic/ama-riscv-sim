@@ -111,7 +111,6 @@ void core::exec_inst() {
     #else // !DPI
     if (logging) {
         dasm.asm_str = dasm.asm_ss.str();
-        dasm.asm_ss.str("");
         log_ofstream << "(" << std::setw(8) << std::setfill(' ')
                      << logging_pc.inst_cnt << ") "
                      << FORMAT_INST(inst, inst_w) << " "
@@ -125,6 +124,7 @@ void core::exec_inst() {
         logging_pc.inst_cnt++;
     }
     #endif
+    dasm.asm_ss.str(""); // FIXME: prevent writing if logging is not active
 
     #elif defined(ENABLE_HW_PROF)
     // enable logging in case only HW_PROF is enabled
@@ -263,6 +263,11 @@ void core::branch() {
         default: unsupported("branch");
     }
 
+    #ifdef ENABLE_DASM
+    dasm.asm_ss << dasm.op << " " << DASM_OP_RS1 << "," << DASM_OP_RS2 << ","
+                << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
+    #endif
+
     #ifdef ENABLE_HW_PROF
     last_inst_branch = true;
     bp.ideal(next_pc);
@@ -270,19 +275,14 @@ void core::branch() {
     mem->speculative_exec(speculative_t::enter);
     inst_speculative = mem->rd_inst(speculative_next_pc);
     bp.update(pc, next_pc);
-    bool correct = next_pc == speculative_next_pc;
+    bool correct = (next_pc == speculative_next_pc);
     if (!correct) {
         mem->speculative_exec(speculative_t::exit_flush);
-        inst = mem->rd_inst(next_pc);
+        inst_resolved = mem->rd_inst(next_pc);
     } else {
         mem->speculative_exec(speculative_t::exit_commit);
-        inst = inst_speculative;
+        inst_resolved = inst_speculative;
     }
-    #endif
-
-    #ifdef ENABLE_DASM
-    dasm.asm_ss << dasm.op << " " << DASM_OP_RS1 << "," << DASM_OP_RS2 << ","
-                << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
     #endif
 }
 
