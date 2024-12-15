@@ -1,5 +1,6 @@
-.section    .text
-.global     main
+.section .text
+.global main
+
 
 #include "../common/asm_test.S"
 #include "../common/csr.h"
@@ -175,27 +176,13 @@ loop_end:
     j pass
 
 fail:
-    add x28, x0, x13 # store failed test id in x28
-    slli x28, x28, 1
-    or x28, x28, 1
-    csrw CSR_TOHOST, x28; # write failed test id
-    nop
-    nop
-    nop
-    nop
-    ecall
+    FAIL
 
 pass:
-    li x28, 0x1
-    csrw CSR_TOHOST, x28;
-    nop
-    nop
-    nop
-    nop
-    ecall
+    PASS
 
 .data
-    dat1: .word 0x08070605
-    dat2: .word 0x0282a701
-    dat3: .word 0x01020304
-    dat4: .word 0x01001404
+dat1: .word 0x08070605
+dat2: .word 0x0282a701
+dat3: .word 0x01020304
+dat4: .word 0x01001404

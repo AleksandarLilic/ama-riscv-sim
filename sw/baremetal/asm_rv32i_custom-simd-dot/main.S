@@ -22,17 +22,23 @@ op_add:
     add x26, x11, x12
     OP_END(100)
 
-op_scp_lcl:
-    lla x11, dat3
-    scp.lcl x0, x11
+op_dot16:
+    lw x11, dat1
+    lw x12, dat2
+    dot16 x26, x11, x12
+    OP_END(1719842)
 
-op_add2:
-    li x9, 0x00c0ffee
-    sw x9, 0(x11)
-    // scp is now dirty
+op_dot8:
+    lw x11, dat1
+    lw x12, dat2
+    dot8 x26, x11, x12
+    OP_END(60)
 
-op_scp_rel:
-    scp.rel x0, x11
+op_dot4:
+    lw x11, dat3
+    lw x12, dat4
+    dot4 x26, x11, x12
+    OP_END(14)
 
     li x24, 0x123456
     bne x4, x5, loop

@@ -35,3 +35,23 @@
     .option rvc;                \
     op v1, v2, v3;              \
     .option norvc
+
+#define FAIL \
+    add x28, x0, x13; \
+    slli x28, x28, 1; \
+    or x28, x28, 1; \
+    csrw CSR_TOHOST, x28; \
+    nop; \
+    nop; \
+    nop; \
+    nop; \
+    ecall;
+
+#define PASS \
+    li x28, 0x1; \
+    csrw CSR_TOHOST, x28; \
+    nop; \
+    nop; \
+    nop; \
+    nop; \
+    ecall;
