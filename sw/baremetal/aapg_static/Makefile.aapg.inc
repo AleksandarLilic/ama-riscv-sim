@@ -8,6 +8,7 @@ FLAGS := -I../
 export CFLAGS
 TARGET :=
 export TARGET
+OPT := -O2 -flto
 
 TARGETS := $(addsuffix .elf, $(TYPES))
 
@@ -15,7 +16,7 @@ all: setup main.S clean_setup $(TARGETS)
 
 %.elf: main.S
 	$(eval TARGET := $(basename $@))
-	$(eval CFLAGS := $(FLAGS))
+	$(eval CFLAGS := $(FLAGS) $(OPT))
 	@echo Building $@ with $(CFLAGS)
 	@$(MAKE) -f $(MAKEFILE_INC) --no-print-directory
 

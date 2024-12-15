@@ -6,24 +6,27 @@ RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
-COMMON_OBJ_NAMES += crt0.o common.o common_math.o mini-printf.o
-COMMON_PATH := $(REPO_ROOT)/sw/baremetal/common
-COMMON_OBJS = $(addprefix $(COMMON_PATH)/, $(COMMON_OBJ_NAMES))
+# if not set in test's Makefile, default to all object files
+COMMON_OBJ_NAMES ?= crt0.o common.o common_math.o mini-printf.o
+COMMON_SRC_PATH := $(REPO_ROOT)/sw/baremetal/common
+COMMON_BUILD_DIR := ./common_build
+COMMON_OBJS = $(addprefix $(COMMON_BUILD_DIR)/, $(COMMON_OBJ_NAMES))
+$(shell mkdir -p $(COMMON_BUILD_DIR))
+vpath %.c $(COMMON_SRC_PATH)
+vpath %.S $(COMMON_SRC_PATH)
 
 C_SRCS := $(wildcard *.c)
 S_SRCS := $(wildcard *.S)
-LD_SRC := $(COMMON_PATH)/link.ld
+LD_SRC := $(COMMON_SRC_PATH)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS)
-INC += $(COMMON_PATH)
+INC += $(COMMON_SRC_PATH)
 LIBS += -lgcc
 USER_DEFINES =
 
 # if not set in test's Makefile, default to all supported ISA extensions
-#export MARCH ?= rv32imc_zicsr_zifencei_zicntr
-export MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
-#export MARCH ?= rv32i_zicsr
-export MABI ?= ilp32
-export CFLAGS
+#MARCH ?= rv32imc_zicsr_zifencei_zicntr
+MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
+MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
 GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
@@ -31,6 +34,7 @@ GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--no-warn-rwx-segments
 GCC_OPTS += -Wl,-Map=$(TARGET).map
+# optimizations not set - expected to come from test's Makefile
 
 OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 #OBJDUMP_OPTS := -S # inline C source code in disassembly
@@ -61,18 +65,22 @@ $(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
 	@echo "Generated $@"
 	@$(RV_GNU)-size $@
 
-common:
-	@make -C $(COMMON_PATH) --no-print-directory all -j
+build_common: $(COMMON_OBJS)
 
-$(COMMON_OBJS):
-	@make -C $(COMMON_PATH) --no-print-directory $@
+$(COMMON_BUILD_DIR)/%.o: %.c
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< \
+	-o $@ $(USER_DEFINES)
+
+$(COMMON_BUILD_DIR)/%.o: %.S
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< \
+	-o $@ $(USER_DEFINES)
 
 clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map
 
 clean_common:
-	@make -C $(COMMON_PATH) --no-print-directory clean
+	rm -rf $(COMMON_BUILD_DIR)
 
 cleanall: clean clean_common
 
-.PHONY: all clean
+.PHONY: all build_common clean clean_common cleanall

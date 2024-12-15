@@ -5,7 +5,7 @@
 .endm
 .macro post_program_macro
 j pass
- .endm
+.endm
 
 .macro pre_branch_macro
 .endm
