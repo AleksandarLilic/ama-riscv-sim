@@ -16,7 +16,8 @@ class bp_static : public bp {
             return predicted_pc;
         }
 
-        virtual bool eval_and_update(bool /*taken*/, uint32_t next_pc)override{
+        virtual bool eval_and_update(
+            bool /* taken */, uint32_t next_pc) override {
             return (next_pc == predicted_pc);
         }
 

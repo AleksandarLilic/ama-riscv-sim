@@ -357,6 +357,7 @@ class core{
         uint32_t inst_speculative;
         uint32_t inst_resolved;
         bool last_inst_branch;
+        bool no_bp;
         #endif
 
         // register names

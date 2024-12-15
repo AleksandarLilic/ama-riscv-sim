@@ -29,6 +29,7 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     gselect_bp("gselect", BP_GSELECT_CFG),
     gshare_bp("gshare", BP_GSHARE_CFG),
     ideal_bp("_ideal_", BP_CFG_NONE),
+    none_bp("none", BP_CFG_NONE),
     combined_bp("combined", BP_COMBINED_CFG, {bp_combined_p1, bp_combined_p2})
     {
         predictors[TO_U8(bp_t::sttc)] = &static_bp;
@@ -38,6 +39,7 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
         predictors[TO_U8(bp_t::gselect)] = &gselect_bp;
         predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
         predictors[TO_U8(bp_t::ideal)] = &ideal_bp;
+        predictors[TO_U8(bp_t::none)] = &none_bp;
         predictors[TO_U8(bp_t::combined)] = &combined_bp;
 
         combined_bp.add_size(predictors[TO_U8(bp_combined_p1)]->get_size());

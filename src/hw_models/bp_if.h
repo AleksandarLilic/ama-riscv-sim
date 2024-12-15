@@ -9,6 +9,7 @@
 #include "bp_gshare.h"
 #include "bp_combined.h"
 #include "bp_ideal.h"
+#include "bp_none.h"
 
 class bp_if {
     private:
@@ -24,6 +25,7 @@ class bp_if {
         bp_gselect gselect_bp;
         bp_gshare gshare_bp;
         bp_ideal ideal_bp;
+        bp_none none_bp;
         bp_combined combined_bp;
         static constexpr uint8_t num_predictors = TO_U8(bp_t::_count);
         std::array<bp*, num_predictors> predictors;

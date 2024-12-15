@@ -78,6 +78,7 @@ const std::unordered_map<std::string, bp_t> bp_names_map = {
     {"gselect", bp_t::gselect},
     {"gshare", bp_t::gshare},
     {"ideal", bp_t::ideal},
+    {"none", bp_t::none},
     {"combined", bp_t::combined}
 };
 

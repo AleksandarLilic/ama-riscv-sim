@@ -9,6 +9,7 @@ core::core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg)
     #endif
     #ifdef ENABLE_HW_PROF
     , bp("Bpred", hw_cfg)
+    , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
 {
     rf[0] = 0;
@@ -272,15 +273,17 @@ void core::branch() {
     last_inst_branch = true;
     bp.ideal(next_pc);
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b());
-    mem->speculative_exec(speculative_t::enter);
-    inst_speculative = mem->rd_inst(speculative_next_pc);
+    if (!no_bp) { // not accessing icache in case there is no bp, stall instead
+        //mem->speculative_exec(speculative_t::enter);
+        inst_speculative = mem->rd_inst(speculative_next_pc);
+    }
     bp.update(pc, next_pc);
     bool correct = (next_pc == speculative_next_pc);
     if (!correct) {
-        mem->speculative_exec(speculative_t::exit_flush);
+        //mem->speculative_exec(speculative_t::exit_flush);
         inst_resolved = mem->rd_inst(next_pc);
     } else {
-        mem->speculative_exec(speculative_t::exit_commit);
+        //mem->speculative_exec(speculative_t::exit_commit);
         inst_resolved = inst_speculative;
     }
     #endif

@@ -140,8 +140,8 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 
 // branches
 enum class b_dir_t { backward, forward};
-enum class bp_t {sttc, bimodal, local, global, gselect, gshare, ideal, combined,
-                 _count };
+enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
+                 ideal, none, combined, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
 // dasm
 struct dasm_str {
