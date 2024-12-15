@@ -10,6 +10,7 @@
     "aapg_static/rv32i_zmmul": ["basic"],
     "aapg_static/rv32i_branches": ["basic"],
     "aapg_static/rv32i_mem": ["basic"],
+    "rd_pairing": ["basic"],
     "factorial": ["n_20"],
     "fibonacci": ["n_18"],
     "gcd_lcm": ["n_large"],
