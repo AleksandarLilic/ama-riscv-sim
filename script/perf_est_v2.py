@@ -59,8 +59,8 @@ class perf:
                                   "HW performance metrics JSON file")
 
         self.c_pipeline = hwpm['pipeline']
-        self.c_branch_resolution = hwpm['branch_resolution']
-        self.c_jump_resolution = hwpm['jump_resolution']
+        self.c_branch_res = hwpm['branch_resolution']
+        self.c_jump_res = hwpm['jump_resolution']
         self.c_ic = hwpm['icache']
         self.c_dc = hwpm['dcache']
         self.c_bp = hwpm["bpred"]
@@ -120,8 +120,8 @@ class perf:
 
         # extra cycles for insts that might stall the pipeline
         self.b_stalls = (self.c_bp - 1) * self.bp_stats['pred']
-        self.b_stalls += self.c_branch_resolution * self.bp_stats['mispred']
-        self.j_stalls = (self.c_jump_resolution - 1) * self.j_inst
+        self.b_stalls += (self.c_branch_res - 1) * self.bp_stats['mispred']
+        self.j_stalls = (self.c_jump_res - 1) * self.j_inst
         self.ic_stalls = (self.c_ic - 1) * self.hw_stats[self.ic_name]["hits"]
         self.ic_stalls += self.c_mem * self.hw_stats[self.ic_name]["misses"]
         self.dc_stalls = (self.c_dc - 1) * self.hw_stats[self.dc_name]["hits"]
