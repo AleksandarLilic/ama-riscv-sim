@@ -388,6 +388,10 @@ void core::custom_ext() {
     uint8_t funct7 = ip.funct7();
     if (funct3 == TO_U8(custom_ext_t::arith)) {
         switch (funct7) {
+            CASE_ALU_CUSTOM_OP(add16)
+            CASE_ALU_CUSTOM_OP(add8)
+            CASE_ALU_CUSTOM_OP(sub16)
+            CASE_ALU_CUSTOM_OP(sub8)
             CASE_ALU_CUSTOM_OP(dot16)
             CASE_ALU_CUSTOM_OP(dot8)
             CASE_ALU_CUSTOM_OP(dot4)
@@ -429,6 +433,54 @@ void core::custom_ext() {
         unsupported("custom extension");
     }
     next_pc = pc + 4;
+}
+
+uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
+    // parallel add 2 halfword chunks
+    int32_t res = 0;
+    for (int i = 0; i < 2; i++) {
+        int32_t sum = TO_I32(TO_I16(a & 0xffff)) + TO_I32(TO_I16(b & 0xffff));
+        a >>= 16;
+        b >>= 16;
+        res |= (sum & 0xFFFF) << (i * 16);
+    }
+    return res;
+}
+
+uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
+    // parallel add 4 byte chunks
+    int32_t res = 0;
+    for (int i = 0; i < 4; i++) {
+        int32_t sum = TO_I32(TO_I8(a & 0xff)) + TO_I32(TO_I8(b & 0xff));
+        a >>= 8;
+        b >>= 8;
+        res |= (sum & 0xFF) << (i * 8);
+    }
+    return res;
+}
+
+uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
+    // parallel sub 2 halfword chunks
+    int32_t res = 0;
+    for (int i = 0; i < 2; i++) {
+        int32_t sum = TO_I32(TO_I16(a & 0xffff)) - TO_I32(TO_I16(b & 0xffff));
+        a >>= 16;
+        b >>= 16;
+        res |= (sum & 0xFFFF) << (i * 16);
+    }
+    return res;
+}
+
+uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
+    // parallel sub 4 byte chunks
+    int32_t res = 0;
+    for (int i = 0; i < 4; i++) {
+        int32_t sum = TO_I32(TO_I8(a & 0xff)) - TO_I32(TO_I8(b & 0xff));
+        a >>= 8;
+        b >>= 8;
+        res |= (sum & 0xFF) << (i * 8);
+    }
+    return res;
 }
 
 uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {

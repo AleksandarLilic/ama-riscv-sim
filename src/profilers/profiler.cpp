@@ -28,6 +28,10 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
     prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
 
+    prof_g_arr[TO_U32(opc_g::i_add16)] = {"add16", 0};
+    prof_g_arr[TO_U32(opc_g::i_add8)] = {"add8", 0};
+    prof_g_arr[TO_U32(opc_g::i_sub16)] = {"sub16", 0};
+    prof_g_arr[TO_U32(opc_g::i_sub8)] = {"sub8", 0};
     prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
     prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
     prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
@@ -201,13 +205,13 @@ void profiler::log_to_file() {
     ofs.close();
 
     // compressed inst cnt
-    uint32_t c_cnt = 0;
-    for (auto &c: c_opcs_alu) c_cnt += prof_g_arr[TO_U32(c)].count;
-    for (auto &c: c_opcs_j) {
-        c_cnt += prof_j_arr[TO_U32(c)].count_taken +
+    uint32_t comp_cnt = 0;
+    for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
+    for (auto &c: comp_opcs_j) {
+        comp_cnt += prof_j_arr[TO_U32(c)].count_taken +
                  prof_j_arr[TO_U32(c)].count_not_taken;
     }
-    float_t c_perc = 100.0 * c_cnt / cnt.inst;
+    float_t comp_perc = 100.0 * comp_cnt / cnt.inst;
 
     // per type breakdown
     for (auto &b: branch_opcs) {
@@ -220,9 +224,10 @@ void profiler::log_to_file() {
     for (auto &a: alu_opcs) cnt.al += prof_g_arr[TO_U32(a)].count;
     for (auto &m: mul_opcs) cnt.mul += prof_g_arr[TO_U32(m)].count;
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
-    for (auto &f: dot_opcs) cnt.dot += prof_g_arr[TO_U32(f)].count;
-    for (auto &u: unpk_opcs) cnt.unpk += prof_g_arr[TO_U32(u)].count;
-    for (auto &s: scp_opcs) cnt.scp += prof_g_arr[TO_U32(s)].count;
+    for (auto &f: dot_c_opcs) cnt.dot_c += prof_g_arr[TO_U32(f)].count;
+    for (auto &a: al_c_opcs) cnt.al_c += prof_g_arr[TO_U32(a)].count;
+    for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.find_mem();
     cnt.find_rest();
 
@@ -235,15 +240,16 @@ void profiler::log_to_file() {
     perc.al = cnt.get_perc(cnt.al);
     perc.mul = cnt.get_perc(cnt.mul);
     perc.div = cnt.get_perc(cnt.div);
-    perc.dot = cnt.get_perc(cnt.dot);
-    perc.unpk = cnt.get_perc(cnt.unpk);
-    perc.scp = cnt.get_perc(cnt.scp);
+    perc.dot_c = cnt.get_perc(cnt.dot_c);
+    perc.al_c = cnt.get_perc(cnt.al_c);
+    perc.unpk_c = cnt.get_perc(cnt.unpk_c);
+    perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
 
     std::cout << std::fixed << std::setprecision(2)
               << "Profiler: Inst: " << cnt.inst
-              << " - 32/16-bit: " << cnt.inst - c_cnt << "/" << c_cnt
-              << "(" << 100.0 - c_perc << "%/" << c_perc << "%)"
+              << " - 32/16-bit: " << cnt.inst - comp_cnt << "/" << comp_cnt
+              << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
               << std::endl;
 
     std::cout << INDENT << "Control: B: " << cnt.branch
@@ -265,13 +271,15 @@ void profiler::log_to_file() {
               << ", DIV: " << cnt.div
               << "(" << perc.div << "%)" << std::endl;
 
-    std::cout << INDENT << "SIMD: DOT: " << cnt.dot
-              << "(" << perc.dot << "%)"
-              << ", UNPK: " << cnt.unpk
-              << "(" << perc.unpk << "%)" << std::endl;
+    std::cout << INDENT << "SIMD: DOT: " << cnt.dot_c
+              << "(" << perc.dot_c << "%)"
+              << ", A&L: " << cnt.al_c
+              << "(" << perc.al_c << "%)"
+              << ", UNPK: " << cnt.unpk_c
+              << "(" << perc.unpk_c << "%)" << std::endl;
 
-    std::cout << INDENT << "Hints: SCP: " << cnt.scp
-              << "(" << perc.scp << "%)" << std::endl;
+    std::cout << INDENT << "Hints: SCP: " << cnt.scp_c
+              << "(" << perc.scp_c << "%)" << std::endl;
 
     std::cout << INDENT << "Rest: " << cnt.rest
               << "(" << perc.rest << "%)" << std::endl;

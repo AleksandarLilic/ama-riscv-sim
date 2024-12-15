@@ -102,8 +102,12 @@ enum class custom_ext_t {
 };
 
 enum class alu_custom_op_t {
-    op_dot16 = 0x06,
-    op_dot8 = 0x07,
+    op_add16 = 0x0,
+    op_add8 = 0x1,
+    op_sub16 = 0x2,
+    op_sub8 = 0x3,
+    op_dot16 = 0x6,
+    op_dot8 = 0x7,
     op_dot4 = 0x46,
 };
 

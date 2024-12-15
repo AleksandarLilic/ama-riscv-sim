@@ -37,7 +37,8 @@ enum class opc_g {
     // hints
     i_hint,
 
-    // custom
+    // custom al
+    i_add16, i_add8, i_sub16, i_sub8,
     i_dot16, i_dot8, i_dot4,
     // custom mem
     i_unpk16, i_unpk16u, i_unpk8, i_unpk8u,
@@ -115,14 +116,17 @@ struct cnt_t {
         uint32_t mul = 0;
         uint32_t div = 0;
         uint32_t al = 0;
-        uint32_t dot = 0;
-        uint32_t unpk = 0;
-        uint32_t scp = 0;
+        uint32_t dot_c = 0;
+        uint32_t al_c = 0;
+        uint32_t unpk_c = 0;
+        uint32_t scp_c = 0;
 
     public:
         void find_mem() { mem = load + store; }
-        void find_rest() { rest = inst - branch - jump - mem -
-                                  mul - div - al - dot - unpk - scp; }
+        void find_rest() {
+            rest = inst - branch - jump - mem -
+                   mul - div - al - dot_c - al_c - unpk_c - scp_c;
+        }
         float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
 };
 
@@ -138,9 +142,10 @@ struct perc_t {
         float_t mul = 0.0;
         float_t div = 0.0;
         float_t al = 0.0;
-        float_t dot = 0.0;
-        float_t unpk = 0.0;
-        float_t scp = 0.0;
+        float_t dot_c = 0.0;
+        float_t al_c = 0.0;
+        float_t unpk_c = 0.0;
+        float_t scp_c = 0.0;
 };
 
 class profiler{
@@ -173,7 +178,7 @@ class profiler{
 
     private:
         // all compressed instructions
-        static constexpr std::array<opc_g, 21> c_opcs_alu = {
+        static constexpr std::array<opc_g, 21> comp_opcs_alu = {
             opc_g::i_c_add, opc_g::i_c_mv, opc_g::i_c_and, opc_g::i_c_or,
             opc_g::i_c_xor, opc_g::i_c_sub,
             opc_g::i_c_addi, opc_g::i_c_addi16sp, opc_g::i_c_addi4spn,
@@ -184,7 +189,7 @@ class profiler{
             opc_g::i_c_ebreak
         };
 
-        static constexpr std::array<opc_j, 6> c_opcs_j = {
+        static constexpr std::array<opc_j, 6> comp_opcs_j = {
             opc_j::i_c_j, opc_j::i_c_jal, opc_j::i_c_jr, opc_j::i_c_jalr,
             opc_j::i_c_beqz, opc_j::i_c_bnez,
         };
@@ -242,18 +247,22 @@ class profiler{
             opc_g::i_c_li, opc_g::i_c_lui
         };
 
-        static constexpr std::array<opc_g, 3> dot_opcs = {
+        static constexpr std::array<opc_g, 3> dot_c_opcs = {
             opc_g::i_dot16, opc_g::i_dot8, opc_g::i_dot4,
         };
 
-        static constexpr std::array<opc_g, 8> unpk_opcs = {
+        static constexpr std::array<opc_g, 4> al_c_opcs = {
+            opc_g::i_add16, opc_g::i_add8, opc_g::i_sub16, opc_g::i_sub8,
+        };
+
+        static constexpr std::array<opc_g, 8> unpk_c_opcs = {
             opc_g::i_unpk16, opc_g::i_unpk16u,
             opc_g::i_unpk8, opc_g::i_unpk8u,
             opc_g::i_unpk4, opc_g::i_unpk4u,
             opc_g::i_unpk2, opc_g::i_unpk2u,
         };
 
-        static constexpr std::array<opc_g, 2> scp_opcs = {
+        static constexpr std::array<opc_g, 2> scp_c_opcs = {
             opc_g::i_scp_lcl, opc_g::i_scp_rel,
         };
 };
