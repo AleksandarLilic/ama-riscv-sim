@@ -18,16 +18,8 @@ const uint32_t ref[ARR_LEN] = {
     11328, 1220160, 44544, 655360, 287232, 753920, 1776000, 3405568
 };
 
-int asm_add(uint32_t a, uint32_t b) {
-    asm volatile("add %0, %1, %2"
-                 : "=r"(a)
-                 : "r"(a), "r"(b));
-    return a;
-}
-
 void set_c() {
-    for (uint8_t i = 0; i < ARR_LEN; i++)
-        c[i] = 0;
+    for (uint8_t i = 0; i < ARR_LEN; i++) c[i] = 0;
 }
 
 void main(void) {
@@ -35,9 +27,7 @@ void main(void) {
         set_c();
         LOG_START;
         for (uint8_t j = 0; j < 64; j++) {
-            for (uint8_t k = 0; k < ARR_LEN; k++) {
-                c[k] = asm_add(c[k], a[k] * b[k]);
-            }
+            for (uint8_t k = 0; k < ARR_LEN; k++) c[k] += a[k] * b[k];
         }
         LOG_STOP;
 

@@ -13,6 +13,7 @@ COMMON_BUILD_DIR := ./common_build
 COMMON_OBJS = $(addprefix $(COMMON_BUILD_DIR)/, $(COMMON_OBJ_NAMES))
 $(shell mkdir -p $(COMMON_BUILD_DIR))
 vpath %.c $(COMMON_SRC_PATH)
+vpath %.h $(COMMON_SRC_PATH)
 vpath %.S $(COMMON_SRC_PATH)
 
 C_SRCS := $(wildcard *.c)
@@ -26,6 +27,7 @@ USER_DEFINES =
 # if not set in test's Makefile, default to all supported ISA extensions
 #MARCH ?= rv32imc_zicsr_zifencei_zicntr
 MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
+#MARCH ?= rv32i_zicsr
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
 GCC_OPTS += -static -fno-pic
@@ -33,12 +35,17 @@ GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
 #GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--no-warn-rwx-segments
-GCC_OPTS += -Wl,-Map=$(TARGET).map
+#GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
 
 OBJDUMP_OPTS := -D -Mnumeric -t --disassembler-options=no-aliases
 #OBJDUMP_OPTS := -S # inline C source code in disassembly
 MEM_WIDTH := 32
+
+# for tests that are parameterized by defines
+define GET_DEFINES
+$(wordlist 2,999,$(subst :, ,$(filter $1:%,$(TEST_DEFINES))))
+endef
 
 RV_GNU_DEFAULT := riscv64-unknown-elf
 BIN2HEX :=
@@ -54,26 +61,23 @@ ifeq ($(HEX), 1)
 endif
 
 # run with HEX=1 to generate hex file for RTL simulation
-$(TARGET).elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) -I$(INC) $(SRCS) $(COMMON_OBJS) \
-	-o $@ $(USER_DEFINES) $(LIBS)
-	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(TARGET).dump
-	@$(RV_GNU)-objcopy $@ -O binary $(TARGET).bin
+%.elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) -I$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
+	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
+	@$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
 	@if [ "$(HEX)" = "1" ]; then \
-		$(BIN2HEX) -w $(MEM_WIDTH) $(TARGET).bin $(TARGET).hex; \
+		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
 	fi
 	@echo "Generated $@"
 	@$(RV_GNU)-size $@
 
 build_common: $(COMMON_OBJS)
 
-$(COMMON_BUILD_DIR)/%.o: %.c
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< \
-	-o $@ $(USER_DEFINES)
+$(COMMON_BUILD_DIR)/%.o: %.c %.h
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
 
 $(COMMON_BUILD_DIR)/%.o: %.S
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(CFLAGS) $(MATH_LIB_OPT) -c $< \
-	-o $@ $(USER_DEFINES)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
 
 clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map

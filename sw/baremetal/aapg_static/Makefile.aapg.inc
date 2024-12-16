@@ -4,21 +4,12 @@ MAKEFILE_INC := ../../Makefile.inc
 
 SEED ?= 47
 
-FLAGS := -I../
-export CFLAGS
-TARGET :=
-export TARGET
 OPT := -O2 -flto
+CFLAGS := -I../
 
 TARGETS := $(addsuffix .elf, $(TYPES))
 
 all: setup main.S clean_setup $(TARGETS)
-
-%.elf: main.S
-	$(eval TARGET := $(basename $@))
-	$(eval CFLAGS := $(FLAGS) $(OPT))
-	@echo Building $@ with $(CFLAGS)
-	@$(MAKE) -f $(MAKEFILE_INC) --no-print-directory
 
 main.S: $(CONFIG_FILE)
 	aapg gen --arch $(AAPG_ARCH) --config_file $(CONFIG_FILE) --seed $(SEED) --asm_name $(basename $@) 2> /dev/null

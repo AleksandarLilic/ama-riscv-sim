@@ -6,7 +6,8 @@ ifeq ($(CACHE_ALIGNED), 1)
 CFLAGS += -DCACHE_ALIGNED
 endif
 
-GCC_OPTS += -O3 -flto
-#GCC_OPTS += -O0
+OPT := -O3 -flto
+
+all: $(TARGET).elf
 
 include ../Makefile.inc

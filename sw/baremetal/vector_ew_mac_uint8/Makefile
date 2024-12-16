@@ -1,7 +1,9 @@
 LOOPS := 1
 TARGET := basic
 
+OPT := -O3 -flto
 CFLAGS += -DLOOPS=$(LOOPS)
-GCC_OPTS += -O3 -flto
+
+all: $(TARGET).elf
 
 include ../Makefile.inc
