@@ -228,7 +228,7 @@ void core::load() {
         CASE_LOAD(lhu)
         default: unsupported("load");
     }
-    prof.log_stack_access_load((rf[ip.rs1()]+ip.imm_i()) > TO_U32(rf[2]));
+    prof.log_stack_access_load((rf[ip.rs1()] + ip.imm_i()) > TO_U32(rf[2]));
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
@@ -245,7 +245,7 @@ void core::store() {
         CASE_STORE(sw)
         default: unsupported("store");
     }
-    prof.log_stack_access_store((rf[ip.rs1()]+ip.imm_s()) > TO_U32(rf[2]));
+    prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_OP_RS2 << "," << TO_I32(ip.imm_s())
@@ -950,6 +950,8 @@ void core::c_lw() {
     write_rf(ip.cregl(), mem->rd(rf[ip.cregh()] + ip.imm_c_mem(), 4u));
     DASM_OP(c.lw)
     PROF_G(c_lw)
+    prof.log_stack_access_load(
+        (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
@@ -965,6 +967,7 @@ void core::c_lwsp() {
     write_rf(ip.rd(), mem->rd(rf[2] + ip.imm_c_lwsp(), 4u));
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
+    prof.log_stack_access_load((rf[2] + ip.imm_c_lwsp()) > TO_U32(rf[2]));
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
                << "(" << rf_names[2][rf_names_idx] << ")";
@@ -979,6 +982,8 @@ void core::c_sw() {
     mem->wr(rf[ip.cregh()] + ip.imm_c_mem(), rf[ip.cregl()], 4u);
     DASM_OP(c.sw)
     PROF_G(c_sw)
+    prof.log_stack_access_store(
+        (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
@@ -991,6 +996,7 @@ void core::c_swsp() {
     mem->wr(rf[2] + ip.imm_c_swsp(), rf[ip.crs2()], 4u);
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
+    prof.log_stack_access_store((rf[2] + ip.imm_c_swsp()) > TO_U32(rf[2]));
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","
                 << TO_I32(ip.imm_c_swsp())
