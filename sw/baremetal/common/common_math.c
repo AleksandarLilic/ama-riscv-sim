@@ -1,7 +1,76 @@
 #include "common_math.h"
 
 #ifdef CUSTOM_ISA
-INLINE_OPTION int32_t _simd_dot_product_int16(
+INLINE_OPTION
+void _simd_add_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        c_slice = add16(a_slice, b_slice);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_add_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    size_t len_s4 = (len >> 2) << 2;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        c_slice = add8(a_slice, b_slice);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_sub_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        c_slice = sub16(a_slice, b_slice);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_sub_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    size_t len_s4 = (len >> 2) << 2;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        c_slice = sub8(a_slice, b_slice);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+int32_t _simd_dot_product_int16(
     const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s2 = (len >> 1) << 1;
@@ -19,7 +88,8 @@ INLINE_OPTION int32_t _simd_dot_product_int16(
 
 #ifdef STREAMING // optimized for pipeline utilization, 4x unrolling
 
-INLINE_OPTION int32_t _simd_dot_product_int8(
+INLINE_OPTION
+int32_t _simd_dot_product_int8(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s16 = (len >> 4) << 4;
@@ -72,7 +142,8 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
 
 #else // one SIMD inst at a time
 
-INLINE_OPTION int32_t _simd_dot_product_int8(
+INLINE_OPTION
+int32_t _simd_dot_product_int8(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
@@ -89,7 +160,8 @@ INLINE_OPTION int32_t _simd_dot_product_int8(
 }
 #endif // STREAMING
 
-INLINE_OPTION int32_t _simd_dot_product_int4(
+INLINE_OPTION
+int32_t _simd_dot_product_int4(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_bytes = len >> 1; // len passed in as number of nibbles
@@ -114,7 +186,8 @@ INLINE_OPTION int32_t _simd_dot_product_int4(
     return c;
 }
 
-INLINE_OPTION int32_t _simd_dot_product_int16_int8(
+INLINE_OPTION
+int32_t _simd_dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
@@ -143,7 +216,8 @@ INLINE_OPTION int32_t _simd_dot_product_int16_int8(
     return c;
 }
 
-INLINE_OPTION int32_t _simd_dot_product_int16_int4(
+INLINE_OPTION
+int32_t _simd_dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
@@ -187,7 +261,8 @@ INLINE_OPTION int32_t _simd_dot_product_int16_int4(
     return c;
 }
 
-INLINE_OPTION int32_t _simd_dot_product_int8_int4(
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
@@ -224,7 +299,118 @@ INLINE_OPTION int32_t _simd_dot_product_int8_int4(
 #else // no custom ISA
 
 #ifdef LOAD_OPT
-INLINE_OPTION int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
+INLINE_OPTION
+void add_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        int16_t a_half, b_half;
+        int32_t c_halves[2];
+        for (size_t i = 0; i < 2; i++) {
+            a_half = (a_slice >> 16) & 0xFFFF;
+            b_half = (b_slice >> 16) & 0xFFFF;
+            c_halves[1 - i] = a_half + b_half;
+            a_slice <<= 16;
+            b_slice <<= 16;
+        }
+        //c_slice = *(int32_t*)c_halves; // not optimal - still uses store half
+        c_slice = (c_halves[1] & 0xFFFF) << 16 | (c_halves[0] & 0xFFFF);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+void add_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    // FIXME: doesn't yield better performance than generic implementation
+    size_t len_s4 = (len >> 2) << 2;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        int8_t a_byte, b_byte;
+        int32_t c_bytes[4];
+        for (size_t i = 0; i < 4; i++) {
+            a_byte = (a_slice >> 24) & 0xFF;
+            b_byte = (b_slice >> 24) & 0xFF;
+            c_bytes[3 - i] = a_byte + b_byte;
+            a_slice <<= 8;
+            b_slice <<= 8;
+        }
+        c_slice = (c_bytes[3] & 0xFF) << 24 | (c_bytes[2] & 0xFF) << 16 |
+                  (c_bytes[1] & 0xFF) << 8 | (c_bytes[0] & 0xFF);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c += a[i] + b[i];
+    }
+}
+
+INLINE_OPTION
+void sub_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        int16_t a_half, b_half;
+        int32_t c_halves[2];
+        for (size_t i = 0; i < 2; i++) {
+            a_half = (a_slice >> 16) & 0xFFFF;
+            b_half = (b_slice >> 16) & 0xFFFF;
+            c_halves[1 - i] = a_half - b_half;
+            a_slice <<= 16;
+            b_slice <<= 16;
+        }
+        //c_slice = *(int32_t*)c_halves; // not optimal - still uses store half
+        c_slice = (c_halves[1] & 0xFFFF) << 16 | (c_halves[0] & 0xFFFF);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] - b[i];
+    }
+}
+
+INLINE_OPTION
+void sub_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    // FIXME: doesn't yield better performance than generic implementation
+    size_t len_s4 = (len >> 2) << 2;
+    int32_t c_slice;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        int8_t a_byte, b_byte;
+        int32_t c_bytes[4];
+        for (size_t i = 0; i < 4; i++) {
+            a_byte = (a_slice >> 24) & 0xFF;
+            b_byte = (b_slice >> 24) & 0xFF;
+            c_bytes[3 - i] = a_byte - b_byte;
+            a_slice <<= 8;
+            b_slice <<= 8;
+        }
+        c_slice = (c_bytes[3] & 0xFF) << 24 | (c_bytes[2] & 0xFF) << 16 |
+                  (c_bytes[1] & 0xFF) << 8 | (c_bytes[0] & 0xFF);
+        *(int32_t*)(c + k) = c_slice;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c += a[i] - b[i];
+    }
+}
+
+INLINE_OPTION
+int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
     int32_t c = 0;
     size_t len_s2 = (len >> 1) << 1;
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -247,7 +433,8 @@ INLINE_OPTION int32_t dot_product_int16(const int16_t* a, const int16_t* b, cons
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
+INLINE_OPTION
+int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -270,7 +457,8 @@ INLINE_OPTION int32_t dot_product_int8(const int8_t* a, const int8_t* b, const s
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
+INLINE_OPTION
+int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_bytes = len >> 1; // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
@@ -302,7 +490,8 @@ INLINE_OPTION int32_t dot_product_int4(const int8_t* a, const int8_t* b, const s
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int16_int8(
+INLINE_OPTION
+int32_t dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
@@ -328,7 +517,8 @@ INLINE_OPTION int32_t dot_product_int16_int8(
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int16_int4(
+INLINE_OPTION
+int32_t dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
@@ -360,7 +550,8 @@ INLINE_OPTION int32_t dot_product_int16_int4(
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int8_int4(
+INLINE_OPTION
+int32_t dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
@@ -393,19 +584,46 @@ INLINE_OPTION int32_t dot_product_int8_int4(
 }
 
 #else // generic implementation
-INLINE_OPTION int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
+INLINE_OPTION
+void add_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] + b[k];
+}
+
+INLINE_OPTION
+void add_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] + b[k];
+}
+
+INLINE_OPTION
+void sub_int16(
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] - b[k];
+}
+
+INLINE_OPTION
+void sub_int8(
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] - b[k];
+}
+
+INLINE_OPTION
+int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
     int32_t c = 0;
     for (size_t k = 0; k < len; k++) c += a[k] * b[k];
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
+INLINE_OPTION
+int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     for (size_t k = 0; k < len; k++) c += a[k] * b[k];
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
+INLINE_OPTION
+int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     int8_t al, bl;
     size_t len_bytes = len >> 1; // len passed in as number of nibbles
@@ -420,14 +638,16 @@ INLINE_OPTION int32_t dot_product_int4(const int8_t* a, const int8_t* b, const s
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int16_int8(
+INLINE_OPTION
+int32_t dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     for (size_t k = 0; k < len; k++) c += a[k] * (int16_t)b[k];
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int16_int4(
+INLINE_OPTION
+int32_t dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     int8_t bl;
@@ -440,7 +660,8 @@ INLINE_OPTION int32_t dot_product_int16_int4(
     return c;
 }
 
-INLINE_OPTION int32_t dot_product_int8_int4(
+INLINE_OPTION
+int32_t dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     int8_t bl;
