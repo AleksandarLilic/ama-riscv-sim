@@ -82,6 +82,18 @@ enum class opc_j {
 
 enum class reg_use_t { rd, rs1, rs2 };
 
+struct stack_access_t {
+    private:
+        uint64_t load = 0;
+        uint64_t store = 0;
+    public:
+        void loading(bool in_range) { load += in_range; }
+        void storing(bool in_range) { store += in_range; }
+        uint64_t total() { return load + store; }
+        uint64_t get_load() { return load; }
+        uint64_t get_store() { return store; }
+};
+
 struct inst_prof_g {
     std::string name;
     uint32_t count;
@@ -157,6 +169,7 @@ class profiler{
         std::string log_path;
         std::ofstream ofs;
         uint64_t inst_cnt_exec;
+        stack_access_t stack_access;
         uint32_t inst;
         std::vector<trace_entry> trace;
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
@@ -170,6 +183,12 @@ class profiler{
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
+        void log_stack_access_load(bool in_range) {
+            if (active) stack_access.loading(in_range);
+        }
+        void log_stack_access_store(bool in_range) {
+            if (active) stack_access.storing(in_range);
+        }
         void finish() { log_to_file(); }
 
     private:

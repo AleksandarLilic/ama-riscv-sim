@@ -228,6 +228,7 @@ void core::load() {
         CASE_LOAD(lhu)
         default: unsupported("load");
     }
+    prof.log_stack_access_load((rf[ip.rs1()]+ip.imm_i()) > TO_U32(rf[2]));
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
@@ -244,6 +245,7 @@ void core::store() {
         CASE_STORE(sw)
         default: unsupported("store");
     }
+    prof.log_stack_access_store((rf[ip.rs1()]+ip.imm_s()) > TO_U32(rf[2]));
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_OP_RS2 << "," << TO_I32(ip.imm_s())

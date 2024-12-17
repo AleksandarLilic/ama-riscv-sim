@@ -246,48 +246,50 @@ void profiler::log_to_file() {
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
 
-    std::cout << std::fixed << std::setprecision(2)
-              << "Profiler: Inst: " << cnt.inst
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "Profiler: Inst: " << cnt.inst
               << " - 32/16-bit: " << cnt.inst - comp_cnt << "/" << comp_cnt
               << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
               << std::endl;
 
-    std::cout << INDENT << "Control: B: " << cnt.branch
-              << "(" << perc.branch << "%)"
-              << ", J: " << cnt.jump
-              << "(" << perc.jump << "%)" << std::endl;
+    std::cout << INDENT << "Control: B: "
+              << cnt.branch << "(" << perc.branch << "%), J: "
+              << cnt.jump << "(" << perc.jump << "%)" << std::endl;
 
-    std::cout << INDENT << "Memory: MEM: " << cnt.mem
-              << "(" << perc.mem
-              << "%) - L/S: " << cnt.load
-              << "/" << cnt.store
-              << "(" << perc.load
-              << "%/" << perc.store << "%)" << std::endl;
+    std::cout << INDENT << "Memory: MEM: "
+              << cnt.mem << "(" << perc.mem << "%) - L/S: "
+              << cnt.load << "/" << cnt.store
+              << "(" << perc.load << "%/" << perc.store << "%)" << std::endl;
 
-    std::cout << INDENT << "Compute: A&L: " << cnt.al
-              << "(" << perc.al << "%)"
-              << ", MUL: " << cnt.mul
-              << "(" << perc.mul << "%)"
-              << ", DIV: " << cnt.div
-              << "(" << perc.div << "%)" << std::endl;
+    std::cout << INDENT << "Compute: A&L: "
+              << cnt.al << "(" << perc.al << "%), MUL: "
+              << cnt.mul << "(" << perc.mul << "%), DIV: "
+              << cnt.div << "(" << perc.div << "%)" << std::endl;
 
-    std::cout << INDENT << "SIMD: DOT: " << cnt.dot_c
-              << "(" << perc.dot_c << "%)"
-              << ", A&L: " << cnt.al_c
-              << "(" << perc.al_c << "%)"
-              << ", UNPK: " << cnt.unpk_c
-              << "(" << perc.unpk_c << "%)" << std::endl;
+    std::cout << INDENT << "SIMD: DOT: "
+              << cnt.dot_c << "(" << perc.dot_c << "%), A&L: "
+              << cnt.al_c << "(" << perc.al_c << "%), UNPK: "
+              << cnt.unpk_c << "(" << perc.unpk_c << "%)" << std::endl;
 
-    std::cout << INDENT << "Hints: SCP: " << cnt.scp_c
-              << "(" << perc.scp_c << "%)" << std::endl;
+    std::cout << INDENT << "Hints: SCP: "
+              << cnt.scp_c << "(" << perc.scp_c << "%)" << std::endl;
 
     std::cout << INDENT << "Rest: " << cnt.rest
               << "(" << perc.rest << "%)" << std::endl;
 
-    std::cout << "Profiler: max SP usage: " << min_sp << std::endl;
+    uint64_t sa_cnt = stack_access.total();
+    uint64_t sa_cnt_load = stack_access.get_load();
+    uint64_t sa_cnt_store = stack_access.get_store();
+    float_t sa_perc = 100.0 * sa_cnt / cnt.mem;
+    float_t sa_perc_load = 100.0 * sa_cnt_load / cnt.load;
+    float_t sa_perc_store = 100.0 * sa_cnt_store / cnt.store;
+    std::cout << "Profiler Stack: peak usage: " << min_sp << " B, Accesses: "
+              << sa_cnt << "(" << sa_perc << "%) - L/S: "
+              << sa_cnt_load << "/" << sa_cnt_store
+              << "(" << sa_perc_load << "%/" << sa_perc_store << "%)"
+              << std::endl;
 
-    // only expected to fail if core has instruction which is
-    // not supported by the profiler - should be fixed in code before release
-    // not expected to fail in normal operation
+    // only expected to fail if core has instruction which is not supported
+    // by the profiler - should be addressed when adding new instructions
     assert(inst_cnt_exec == cnt.inst && "Profiler: instruction count mismatch");
 }
