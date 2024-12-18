@@ -30,8 +30,7 @@ cache::cache(
     }
     tag_bits_num = ADDR_BITS - index_bits_num - CACHE_BYTE_ADDR_BITS;
     tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
-    // half of the ways in a any set can be converted to scratchpad, at most
-    max_scp_ways = ways >> 1;
+    max_scp_ways = ways - 1; // should be fw configurable as MMIO, max = ways-1
     metadata_bits_num = metadata_t::get_bits_num();
     metadata_bits_num += log2(ways); // lru counters
     size = {sets, ways, CACHE_LINE_SIZE, tag_bits_num, metadata_bits_num};
