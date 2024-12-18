@@ -221,16 +221,16 @@ class profiler{
             opc_j::i_c_beqz, opc_j::i_c_bnez
         };
 
-        static constexpr std::array<opc_j, 4> jump_opcs = {
+        static constexpr std::array<opc_j, 6> jump_opcs = {
             opc_j::i_jalr, opc_j::i_jal,
             // compressed
-            opc_j::i_c_jal, opc_j::i_c_jalr
+            opc_j::i_c_j, opc_j::i_c_jal, opc_j::i_c_jr, opc_j::i_c_jalr,
         };
 
-        static constexpr std::array<opc_g, 8> load_opcs = {
+        static constexpr std::array<opc_g, 7> load_opcs = {
             opc_g::i_lb, opc_g::i_lh, opc_g::i_lw, opc_g::i_lbu, opc_g::i_lhu,
             // compressed
-            opc_g::i_c_lw, opc_g::i_c_lwsp, opc_g::i_c_li
+            opc_g::i_c_lw, opc_g::i_c_lwsp
         };
 
         static constexpr std::array<opc_g, 5> store_opcs = {

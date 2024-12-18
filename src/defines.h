@@ -160,7 +160,7 @@
 
 #define CASE_LOAD(op) \
     case TO_U8(load_op_t::op_##op): \
-        write_rf(ip.rd(), load_##op((rf[ip.rs1()]+ip.imm_i()))); \
+        write_rf(ip.rd(), load_##op((rf[ip.rs1()] + ip.imm_i()))); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
@@ -229,13 +229,13 @@
 
 #define W_CSR(expr) write_csr(ip.csr_addr(), expr)
 
-#define MEM_OUT_OF_RANGE(addr, reson) \
+#define MEM_OUT_OF_RANGE(addr, reason) \
     do { \
         std::stringstream ss; \
         ss << MEM_ADDR_FORMAT(address); \
         std::string hex_addr = ss.str(); \
         throw std::runtime_error("Address " + hex_addr + \
-                                 " out of range: " + reson); \
+                                 " out of range: " + reason); \
     } while(0);
 
 //#define CHECK_ADDRESS(address, align)

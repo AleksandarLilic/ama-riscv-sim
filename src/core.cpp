@@ -220,6 +220,7 @@ void core::al_imm() {
 }
 
 void core::load() {
+    uint32_t rs1 = rf[ip.rs1()];
     switch (ip.funct3()) {
         CASE_LOAD(lb)
         CASE_LOAD(lh)
@@ -228,13 +229,13 @@ void core::load() {
         CASE_LOAD(lhu)
         default: unsupported("load");
     }
-    prof.log_stack_access_load((rf[ip.rs1()] + ip.imm_i()) > TO_U32(rf[2]));
+    prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
     dasm.asm_ss << " <- mem["
-                << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rf[ip.rs1()]) << "]";
+                << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rs1) << "]";
     #endif
 }
 
@@ -947,18 +948,17 @@ void core::c_add() {
 
 // C extension - memory operations
 void core::c_lw() {
-    write_rf(ip.cregl(), mem->rd(rf[ip.cregh()] + ip.imm_c_mem(), 4u));
+    uint32_t rs1 = rf[ip.cregh()];
+    write_rf(ip.cregl(), mem->rd(rs1 + ip.imm_c_mem(), 4u));
     DASM_OP(c.lw)
     PROF_G(c_lw)
-    prof.log_stack_access_load(
-        (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
+    prof.log_stack_access_load((rs1 + ip.imm_c_mem()) > TO_U32(rf[2]));
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     DASM_RD_UPDATE_P(ip.cregl());
     dasm.asm_ss << " <- mem["
-                << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()])
-                << "]";
+                << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rs1) << "]";
     #endif
     next_pc = pc + 2;
 }
