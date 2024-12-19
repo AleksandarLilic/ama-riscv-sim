@@ -136,6 +136,10 @@ struct hw_defs_t {
 };
 #endif
 
+void show_help(const cxxopts::Options& options) {
+    std::cout << options.help() << std::endl;
+}
+
 int main(int argc, char* argv[]) {
     cfg_t cfg;
     std::string test_bin;
@@ -247,12 +251,16 @@ int main(int argc, char* argv[]) {
         result = options.parse(argc, argv);
     } catch (const cxxopts::exceptions::missing_argument& e) {
         std::cerr << e.what() << std::endl;
-        std::cout << options.help() << std::endl;
+        show_help(options);
+        return 1;
+    } catch (const cxxopts::exceptions::no_such_option& e) {
+        std::cerr << e.what() << std::endl;
+        show_help(options);
         return 1;
     }
 
     if (result.count("help")) {
-        std::cout << options.help() << std::endl;
+        show_help(options);
         return 0;
     }
 
@@ -298,10 +306,10 @@ int main(int argc, char* argv[]) {
 
     } catch (const cxxopts::exceptions::option_has_no_value& e) {
         std::cerr << e.what() << std::endl;
-        std::cout << options.help() << std::endl;
+        show_help(options);
         return 1;
     } catch (const std::invalid_argument& e) {
-        std::cout << options.help() << std::endl;
+        show_help(options);
         return 1;
     }
 
