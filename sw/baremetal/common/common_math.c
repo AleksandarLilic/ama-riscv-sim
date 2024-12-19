@@ -1,5 +1,64 @@
 #include "common_math.h"
 
+#ifdef PARTIAL_ZBB_SUPPORT
+int32_t max(int32_t a, int32_t b) {
+    int32_t c;
+    asm volatile(
+        ".insn r 0x33, 0x6, 0x5, %0, %1, %2"
+        : "=r"(c)
+        : "r"(a), "r"(b)
+    );
+    return c;
+}
+
+uint32_t maxu(uint32_t a, uint32_t b) {
+    uint32_t c;
+    asm volatile(
+        ".insn r 0x33, 0x7, 0x5, %0, %1, %2"
+        : "=r"(c)
+        : "r"(a), "r"(b)
+    );
+    return c;
+}
+
+int32_t min(int32_t a, int32_t b) {
+    int32_t c;
+    asm volatile(
+        ".insn r 0x33, 0x4, 0x5, %0, %1, %2"
+        : "=r"(c)
+        : "r"(a), "r"(b)
+    );
+    return c;
+}
+
+uint32_t minu(uint32_t a, uint32_t b) {
+    uint32_t c;
+    asm volatile(
+        ".insn r 0x33, 0x5, 0x5, %0, %1, %2"
+        : "=r"(c)
+        : "r"(a), "r"(b)
+    );
+    return c;
+}
+
+#else
+int32_t max(int32_t a, int32_t b) {
+    return a > b ? a : b;
+}
+
+uint32_t maxu(uint32_t a, uint32_t b) {
+    return a > b ? a : b;
+}
+
+int32_t min(int32_t a, int32_t b) {
+    return a < b ? a : b;
+}
+
+uint32_t minu(uint32_t a, uint32_t b) {
+    return a < b ? a : b;
+}
+#endif
+
 #ifdef CUSTOM_ISA
 INLINE_OPTION
 void _simd_add_int16(

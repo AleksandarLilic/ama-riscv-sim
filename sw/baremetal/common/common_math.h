@@ -1,3 +1,6 @@
+#ifndef COMMON_MATH_H
+#define COMMON_MATH_H
+
 #include "common.h"
 
 #define INLINE inline __attribute__((always_inline))
@@ -6,6 +9,12 @@
 #else
 #define INLINE_OPTION
 #endif
+
+#define PARTIAL_ZBB_SUPPORT
+int32_t max(int32_t a, int32_t b);
+uint32_t maxu(uint32_t a, uint32_t b);
+int32_t min(int32_t a, int32_t b);
+uint32_t minu(uint32_t a, uint32_t b);
 
 #ifdef CUSTOM_ISA
 
@@ -129,5 +138,7 @@ int32_t dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len);
+
+#endif
 
 #endif
