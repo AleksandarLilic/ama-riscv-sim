@@ -12,6 +12,8 @@ from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ARITH = "ARITH"
+BITMANIP = "BITMANIP"
+UNPAK = "UNPAK"
 MEM = "MEM"
 MEM_HINTS = "MEM_HINTS"
 BRANCH = "BRANCH"
@@ -43,6 +45,11 @@ inst_t = {
         "c.mv",
         "c.lui",
         "dot4", "dot8", "dot16",
+    ],
+    BITMANIP: [ "max", "maxu", "min", "minu"],
+    UNPAK: [
+        "unpk16", "unpk16u", "unpk8", "unpk8u",
+        "unpk4", "unpk4u", "unpk2", "unpk2u",
     ],
     MEM: inst_t_mem[MEM_S] + inst_t_mem[MEM_L],
     MEM_HINTS: ["scp.ld", "scp.rel"],

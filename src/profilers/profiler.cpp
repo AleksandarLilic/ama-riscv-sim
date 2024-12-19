@@ -234,6 +234,7 @@ void profiler::log_to_file() {
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
     for (auto &f: dot_c_opcs) cnt.dot_c += prof_g_arr[TO_U32(f)].count;
     for (auto &a: al_c_opcs) cnt.al_c += prof_g_arr[TO_U32(a)].count;
+    for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.find_mem();
@@ -250,6 +251,7 @@ void profiler::log_to_file() {
     perc.div = cnt.get_perc(cnt.div);
     perc.dot_c = cnt.get_perc(cnt.dot_c);
     perc.al_c = cnt.get_perc(cnt.al_c);
+    perc.zbb = cnt.get_perc(cnt.zbb);
     perc.unpk_c = cnt.get_perc(cnt.unpk_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
@@ -273,6 +275,9 @@ void profiler::log_to_file() {
               << cnt.al << "(" << perc.al << "%), MUL: "
               << cnt.mul << "(" << perc.mul << "%), DIV: "
               << cnt.div << "(" << perc.div << "%)" << std::endl;
+
+    std::cout << INDENT << "Bitmanip: Zbb: "
+              << cnt.zbb << "(" << perc.zbb << "%)" << std::endl;
 
     std::cout << INDENT << "SIMD: DOT: "
               << cnt.dot_c << "(" << perc.dot_c << "%), A&L: "

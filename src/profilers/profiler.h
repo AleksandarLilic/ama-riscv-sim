@@ -130,6 +130,7 @@ struct cnt_t {
         uint32_t mul = 0;
         uint32_t div = 0;
         uint32_t al = 0;
+        uint32_t zbb = 0;
         uint32_t dot_c = 0;
         uint32_t al_c = 0;
         uint32_t unpk_c = 0;
@@ -139,7 +140,7 @@ struct cnt_t {
         void find_mem() { mem = load + store; }
         void find_rest() {
             rest = inst - branch - jump - mem -
-                   mul - div - al - dot_c - al_c - unpk_c - scp_c;
+                   mul - div - al - zbb - dot_c - al_c - unpk_c - scp_c;
         }
         float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
 };
@@ -156,6 +157,7 @@ struct perc_t {
         float_t mul = 0.0;
         float_t div = 0.0;
         float_t al = 0.0;
+        float_t zbb = 0.0;
         float_t dot_c = 0.0;
         float_t al_c = 0.0;
         float_t unpk_c = 0.0;
@@ -266,6 +268,10 @@ class profiler{
             opc_g::i_c_addi,
             opc_g::i_c_andi, opc_g::i_c_srli, opc_g::i_c_slli, opc_g::i_c_srai,
             opc_g::i_c_li, opc_g::i_c_lui
+        };
+
+        static constexpr std::array<opc_g, 4> zbb_opcs = {
+            opc_g::i_max, opc_g::i_maxu, opc_g::i_min, opc_g::i_minu,
         };
 
         static constexpr std::array<opc_g, 3> dot_c_opcs = {
