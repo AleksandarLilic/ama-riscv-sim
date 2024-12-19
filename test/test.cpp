@@ -149,7 +149,7 @@ TEST_F(sim_test, unsupported_al_reg) {
     arr[3] = 0x40003033;
     std::string filename = "unsupported_al_reg.bin";
     write_bin(filename);
-    ASSERT_TRUE(check_error(filename, UI_MSG("al_reg")));
+    ASSERT_TRUE(check_error(filename, UI_MSG("al_reg_rv32i")));
 }
 
 TEST_F(sim_test, unsupported_al_imm) {

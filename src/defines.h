@@ -150,6 +150,14 @@
         PROF_RD_RS1_RS2 \
         break;
 
+#define CASE_ALU_REG_ZBB_OP(op) \
+    case TO_U8(alu_r_zbb_op_t::op_##op): \
+        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        break;
+
 #define CASE_ALU_IMM_OP(op) \
     case TO_U8(alu_i_op_t::op_##op): \
         write_rf(ip.rd(), al_##op(rf[ip.rs1()], ip.imm_i())); \

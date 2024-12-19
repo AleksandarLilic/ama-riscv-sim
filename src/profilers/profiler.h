@@ -43,7 +43,6 @@ enum class opc_g {
     // custom mem
     i_unpk16, i_unpk16u, i_unpk8, i_unpk8u,
     i_unpk4, i_unpk4u, i_unpk2, i_unpk2u,
-
     // custom hints
     i_scp_lcl, i_scp_rel,
 
@@ -52,6 +51,9 @@ enum class opc_g {
 
     // M extension
     i_mul, i_mulh, i_mulhsu, i_mulhu, i_div, i_divu, i_rem, i_remu,
+
+    // Zbb extension
+    i_max, i_maxu, i_min, i_minu,
 
     // C extension
     // reg-reg

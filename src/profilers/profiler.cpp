@@ -28,6 +28,24 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
     prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
 
+    prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
+    prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
+    prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};
+    prof_g_arr[TO_U32(opc_g::i_lbu)] = {"lbu", 0};
+    prof_g_arr[TO_U32(opc_g::i_lhu)] = {"lhu", 0};
+    prof_g_arr[TO_U32(opc_g::i_sb)] = {"sb", 0};
+    prof_g_arr[TO_U32(opc_g::i_sh)] = {"sh", 0};
+    prof_g_arr[TO_U32(opc_g::i_sw)] = {"sw", 0};
+    prof_g_arr[TO_U32(opc_g::i_fence_i)] = {"fence.i", 0};
+    prof_g_arr[TO_U32(opc_g::i_fence)] = {"fence", 0};
+
+    prof_g_arr[TO_U32(opc_g::i_lui)] = {"lui", 0};
+    prof_g_arr[TO_U32(opc_g::i_auipc)] = {"auipc", 0};
+
+    prof_g_arr[TO_U32(opc_g::i_ecall)] = {"ecall", 0};
+    prof_g_arr[TO_U32(opc_g::i_ebreak)] = {"ebreak", 0};
+
+    // Custom instructions
     prof_g_arr[TO_U32(opc_g::i_add16)] = {"add16", 0};
     prof_g_arr[TO_U32(opc_g::i_add8)] = {"add8", 0};
     prof_g_arr[TO_U32(opc_g::i_sub16)] = {"sub16", 0};
@@ -45,26 +63,10 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_unpk2)] = {"unpk2", 0};
     prof_g_arr[TO_U32(opc_g::i_unpk2u)] = {"unpk2u", 0};
 
-    prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
-    prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
-    prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};
-    prof_g_arr[TO_U32(opc_g::i_lbu)] = {"lbu", 0};
-    prof_g_arr[TO_U32(opc_g::i_lhu)] = {"lhu", 0};
-    prof_g_arr[TO_U32(opc_g::i_sb)] = {"sb", 0};
-    prof_g_arr[TO_U32(opc_g::i_sh)] = {"sh", 0};
-    prof_g_arr[TO_U32(opc_g::i_sw)] = {"sw", 0};
-    prof_g_arr[TO_U32(opc_g::i_fence_i)] = {"fence.i", 0};
-    prof_g_arr[TO_U32(opc_g::i_fence)] = {"fence", 0};
-
     prof_g_arr[TO_U32(opc_g::i_scp_lcl)] = {"scp.lcl", 0};
     prof_g_arr[TO_U32(opc_g::i_scp_rel)] = {"scp.rel", 0};
 
-    prof_g_arr[TO_U32(opc_g::i_lui)] = {"lui", 0};
-    prof_g_arr[TO_U32(opc_g::i_auipc)] = {"auipc", 0};
-
-    prof_g_arr[TO_U32(opc_g::i_ecall)] = {"ecall", 0};
-    prof_g_arr[TO_U32(opc_g::i_ebreak)] = {"ebreak", 0};
-
+    // Zicsr extension
     prof_g_arr[TO_U32(opc_g::i_csrrw)] = {"csrrw", 0};
     prof_g_arr[TO_U32(opc_g::i_csrrs)] = {"csrrs", 0};
     prof_g_arr[TO_U32(opc_g::i_csrrc)] = {"csrrc", 0};
@@ -81,6 +83,12 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_divu)] = {"divu", 0};
     prof_g_arr[TO_U32(opc_g::i_rem)] = {"rem", 0};
     prof_g_arr[TO_U32(opc_g::i_remu)] = {"remu", 0};
+
+    // Zbb extension
+    prof_g_arr[TO_U32(opc_g::i_max)] = {"max", 0};
+    prof_g_arr[TO_U32(opc_g::i_maxu)] = {"maxu", 0};
+    prof_g_arr[TO_U32(opc_g::i_min)] = {"min", 0};
+    prof_g_arr[TO_U32(opc_g::i_minu)] = {"minu", 0};
 
     // C extension
     prof_g_arr[TO_U32(opc_g::i_c_add)] = {"c.add", 0};

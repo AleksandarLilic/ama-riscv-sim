@@ -146,6 +146,23 @@ class core{
             return a % b;
         };
 
+        // arithmetic and logic operations - Zbb extension partial
+        uint32_t al_max(uint32_t a, uint32_t b) {
+            return TO_I32(a) > TO_I32(b) ? a : b;
+        };
+
+        uint32_t al_maxu(uint32_t a, uint32_t b) {
+            return a > b ? a : b;
+        };
+
+        uint32_t al_min(uint32_t a, uint32_t b) {
+            return TO_I32(a) < TO_I32(b) ? a : b;
+        };
+
+        uint32_t al_minu(uint32_t a, uint32_t b) {
+            return a < b ? a : b;
+        };
+
         // arithmetic and logic immediate operations
         uint32_t al_addi(uint32_t a, uint32_t b) { return al_add(a, b); };
         uint32_t al_slli(uint32_t a, uint32_t b) {

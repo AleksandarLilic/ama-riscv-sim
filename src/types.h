@@ -41,14 +41,21 @@ enum class alu_r_op_t {
 };
 
 enum class alu_r_mul_op_t {
-    op_mul = 0b0000,
-    op_mulh = 0b0001,
-    op_mulhsu = 0b0010,
-    op_mulhu = 0b0011,
-    op_div = 0b0100,
-    op_divu = 0b0101,
-    op_rem = 0b0110,
-    op_remu = 0b0111
+    op_mul = 0x0,
+    op_mulh = 0x1,
+    op_mulhsu = 0x2,
+    op_mulhu = 0x3,
+    op_div = 0x4,
+    op_divu = 0x5,
+    op_rem = 0x6,
+    op_remu = 0x7,
+};
+
+enum class alu_r_zbb_op_t {
+    op_max = 0x6,
+    op_maxu = 0x7,
+    op_min = 0x4,
+    op_minu = 0x5,
 };
 
 enum class alu_i_op_t {

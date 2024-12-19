@@ -155,35 +155,49 @@ void core::finish(bool dump_regs) {
 
 // Integer extension
 void core::al_reg() {
-    bool is_mul = ip.funct7_b1() == 1;
+    uint32_t funct7 = ip.funct7();
     uint32_t funct3 = ip.funct3();
     uint32_t alu_op_sel = ((ip.funct7_b5()) << 3) | funct3;
-    if (!is_mul) {
-        switch (alu_op_sel) {
-            CASE_ALU_REG_OP(add)
-            CASE_ALU_REG_OP(sub)
-            CASE_ALU_REG_OP(sll)
-            CASE_ALU_REG_OP(srl)
-            CASE_ALU_REG_OP(sra)
-            CASE_ALU_REG_OP(slt)
-            CASE_ALU_REG_OP(sltu)
-            CASE_ALU_REG_OP(xor)
-            CASE_ALU_REG_OP(or)
-            CASE_ALU_REG_OP(and)
-            default: unsupported("al_reg");
-        }
-    } else {
-        switch (funct3) {
-            CASE_ALU_REG_MUL_OP(mul)
-            CASE_ALU_REG_MUL_OP(mulh)
-            CASE_ALU_REG_MUL_OP(mulhsu)
-            CASE_ALU_REG_MUL_OP(mulhu)
-            CASE_ALU_REG_MUL_OP(div)
-            CASE_ALU_REG_MUL_OP(divu)
-            CASE_ALU_REG_MUL_OP(rem)
-            CASE_ALU_REG_MUL_OP(remu)
-            default: unsupported("al_reg_mul");
-        }
+    switch(funct7) {
+        case 0x00: // rv32i
+        case 0x20: // rv32i sub and sra
+            switch (alu_op_sel) {
+                CASE_ALU_REG_OP(add)
+                CASE_ALU_REG_OP(sub)
+                CASE_ALU_REG_OP(sll)
+                CASE_ALU_REG_OP(srl)
+                CASE_ALU_REG_OP(sra)
+                CASE_ALU_REG_OP(slt)
+                CASE_ALU_REG_OP(sltu)
+                CASE_ALU_REG_OP(xor)
+                CASE_ALU_REG_OP(or)
+                CASE_ALU_REG_OP(and)
+                default: unsupported("al_reg_rv32i");
+            }
+            break;
+        case 0x01: // rv32m
+            switch (funct3) {
+                CASE_ALU_REG_MUL_OP(mul)
+                CASE_ALU_REG_MUL_OP(mulh)
+                CASE_ALU_REG_MUL_OP(mulhsu)
+                CASE_ALU_REG_MUL_OP(mulhu)
+                CASE_ALU_REG_MUL_OP(div)
+                CASE_ALU_REG_MUL_OP(divu)
+                CASE_ALU_REG_MUL_OP(rem)
+                CASE_ALU_REG_MUL_OP(remu)
+                default: unsupported("al_reg_rv32m");
+            }
+            break;
+        case 0x05: // rv32 zbb
+            switch (funct3) {
+                CASE_ALU_REG_ZBB_OP(max)
+                CASE_ALU_REG_ZBB_OP(maxu)
+                CASE_ALU_REG_ZBB_OP(min)
+                CASE_ALU_REG_ZBB_OP(minu)
+                default: unsupported("al_reg_rv32_zbb");
+            }
+            break;
+        default: unsupported("al_reg");
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -1121,6 +1135,10 @@ void core::dump() {
     #ifdef UART_ENABLE
     std::cout << "=== UART END ===\n" << std::endl;
     #endif
+    uint32_t tohost = csr.at(CSR_TOHOST).value;
+    if (tohost != 1) {
+        std::cout << "Failed test ID: " << (tohost >> 1) << std::endl;
+    }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
               << ", logged: " << logging_pc.inst_cnt << std::endl;
     if (dump_all_regs) std::cout << dump_state(true) << std::endl;
