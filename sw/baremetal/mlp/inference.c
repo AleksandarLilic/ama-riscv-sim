@@ -2,48 +2,37 @@
 
 // based on https://github.com/cpldcpu/BitNetMCU/blob/main/BitNetMCU_inference.c
 
-static uint32_t relu_norm(int32_t* input, int8_t* output, uint32_t n_input) {
+static uint32_t relu_norm(
+    int32_t* input, int8_t* output, uint32_t n_input, bool get_idx) {
     int32_t max_val = -INT32_MAX;
     int32_t max_pos = 255;
-    uint32_t scale;
-    uint32_t shift;
-    int32_t rounding;
-    int32_t tmp;
-
     // Find the maximum value in the input array
-    for (uint32_t i = 0; i < n_input; i++) {
-        if (input[i] > max_val) {
-            max_val = input[i];
-            max_pos = i;
+    if (get_idx) {
+        for (uint32_t i = 0; i < n_input; i++) {
+            max_val = max(input[i], max_val);
+            if (max_val == input[i]) max_pos = i;
+        }
+    } else {
+        // dc about the index except in the last layer
+        for (uint32_t i = 0; i < n_input; i++) {
+            max_val = max(input[i], max_val);
         }
     }
 
     // Normalization
     // Dynamic shift according to max value in the input array
     // define max range, all bits above 7 will be shifted down
-    scale = max_val >> 7;
-    shift = 0;
-
+    uint32_t scale = max_val >> 7;
+    uint32_t shift = 0;
     while (scale>0) {
         shift++;
         scale >>= 1;
     }
 
-    // impact of rounding is almost negligible (+0.03% in eval accuracy)
-    // But rounding affects mismatch to python inference engine
-    rounding = (1 << (shift)) >> 1;
-
     // Apply ReLU activation and normalize to 8-bit
     for (uint32_t i = 0; i < n_input; i++) {
-        // Apply ReLU activation
-        if (input[i] < 0) {
-            output[i] = 0;
-        } else {
-            tmp = (input[i] + rounding) >> shift;
-            // clipping needed to catch overflow from rounding
-            if (tmp > 127) output[i] = 127;
-            else output[i] = tmp;
-        }
+        int32_t relu_out = max(input[i], 0);
+        output[i] = min(relu_out >> shift, 127);
     }
 
     return max_pos;
@@ -78,21 +67,21 @@ uint32_t run_inference(uint8_t* input_img) {
     for (int i = 0; i < 4; i++) RELEASE_SCP(input_img + 64*i);
     // and move 'layer_out' (allocated on the stack) to scp
     for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(layer_out + 16*i);
-    // no more space in scp, so LRU will have to do the job
+    // more contention d$ if 'layer_in' is also moved to scp
     //LOAD_AND_RESERVE_SCP(layer_in);
     #endif
 
-    relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT);
+    relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT, false);
 
     fc_layer(layer_in, fc2_weight, layer_out, FC2_WEIGHT_IN, FC2_WEIGHT_OUT);
-    relu_norm(layer_out, layer_in, FC2_WEIGHT_OUT);
+    relu_norm(layer_out, layer_in, FC2_WEIGHT_OUT, false);
 
     fc_layer(layer_in, fc3_weight, layer_out, FC3_WEIGHT_IN, FC3_WEIGHT_OUT);
-    relu_norm(layer_out, layer_in, FC3_WEIGHT_OUT);
+    relu_norm(layer_out, layer_in, FC3_WEIGHT_OUT, false);
 
     fc_layer(layer_in, fc_last_weight, layer_out,
              FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT);
-    uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT);
+    uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT, true);
 
     #ifdef CUSTOM_ISA
     // be a good citizen and release the scp
