@@ -64,3 +64,9 @@ test_end:
     nop
     nop
     ecall
+
+# in case main returns and ecall doesn't end the program
+# (both of which should never happen)
+# prevent the cpu from progressing further
+forever:
+    j forever
