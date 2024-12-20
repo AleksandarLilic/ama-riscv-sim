@@ -122,6 +122,7 @@ struct cnt_t {
     public:
         uint32_t inst = 0;
         uint32_t rest = 0;
+        uint32_t nop = 0;
         uint32_t branch = 0;
         uint32_t jump = 0;
         uint32_t load = 0;
@@ -139,7 +140,7 @@ struct cnt_t {
     public:
         void find_mem() { mem = load + store; }
         void find_rest() {
-            rest = inst - branch - jump - mem -
+            rest = inst - nop - branch - jump - mem -
                    mul - div - al - zbb - dot_c - al_c - unpk_c - scp_c;
         }
         float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
@@ -149,6 +150,7 @@ struct perc_t {
     public:
         float_t inst = 0.0;
         float_t rest = 0.0;
+        float_t nop = 0.0;
         float_t branch = 0.0;
         float_t jump = 0.0;
         float_t load = 0.0;

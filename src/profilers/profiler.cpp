@@ -237,6 +237,7 @@ void profiler::log_to_file() {
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
+    cnt.nop = prof_g_arr[TO_U32(opc_g::i_nop)].count;
     cnt.find_mem();
     cnt.find_rest();
 
@@ -255,40 +256,50 @@ void profiler::log_to_file() {
     perc.unpk_c = cnt.get_perc(cnt.unpk_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
+    perc.nop = cnt.get_perc(cnt.nop);
 
     std::cout << std::fixed << std::setprecision(2);
-    std::cout << "Profiler: Inst: " << cnt.inst
+    std::cout << "Profiler: "
+              << "Inst: " << cnt.inst
               << " - 32/16-bit: " << cnt.inst - comp_cnt << "/" << comp_cnt
               << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
               << std::endl;
 
-    std::cout << INDENT << "Control: B: "
-              << cnt.branch << "(" << perc.branch << "%), J: "
-              << cnt.jump << "(" << perc.jump << "%)" << std::endl;
+    std::cout << INDENT << "Control:"
+              << " B: " << cnt.branch << "(" << perc.branch << "%),"
+              << " J: " << cnt.jump << "(" << perc.jump << "%),"
+              << " NOP: " << cnt.nop << "(" << perc.nop << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "Memory: MEM: "
-              << cnt.mem << "(" << perc.mem << "%) - L/S: "
-              << cnt.load << "/" << cnt.store
-              << "(" << perc.load << "%/" << perc.store << "%)" << std::endl;
+    std::cout << INDENT << "Memory:"
+              << " MEM: " << cnt.mem << "(" << perc.mem << "%)"
+              << " - L/S: " << cnt.load << "/" << cnt.store
+              << "(" << perc.load << "%/" << perc.store << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "Compute: A&L: "
-              << cnt.al << "(" << perc.al << "%), MUL: "
-              << cnt.mul << "(" << perc.mul << "%), DIV: "
-              << cnt.div << "(" << perc.div << "%)" << std::endl;
+    std::cout << INDENT << "Compute: "
+              << " A&L: " << cnt.al << "(" << perc.al << "%),"
+              << " MUL: " << cnt.mul << "(" << perc.mul << "%),"
+              << " DIV: " << cnt.div << "(" << perc.div << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "Bitmanip: Zbb: "
-              << cnt.zbb << "(" << perc.zbb << "%)" << std::endl;
+    std::cout << INDENT << "Bitmanip:"
+              << " Zbb: " << cnt.zbb << "(" << perc.zbb << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "SIMD: DOT: "
-              << cnt.dot_c << "(" << perc.dot_c << "%), A&L: "
-              << cnt.al_c << "(" << perc.al_c << "%), UNPK: "
-              << cnt.unpk_c << "(" << perc.unpk_c << "%)" << std::endl;
+    std::cout << INDENT << "SIMD:"
+              << " A&L: " << cnt.al_c << "(" << perc.al_c << "%),"
+              << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
+              << " UNPK: " << cnt.unpk_c << "(" << perc.unpk_c << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "Hints: SCP: "
-              << cnt.scp_c << "(" << perc.scp_c << "%)" << std::endl;
+    std::cout << INDENT << "Hints:"
+              << " SCP: " << cnt.scp_c << "(" << perc.scp_c << "%)"
+              << std::endl;
 
-    std::cout << INDENT << "Rest: " << cnt.rest
-              << "(" << perc.rest << "%)" << std::endl;
+    std::cout << INDENT
+              << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
+              << std::endl;
 
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();

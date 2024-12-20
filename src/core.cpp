@@ -230,6 +230,9 @@ void core::al_imm() {
     else
         dasm.asm_ss << TO_I32(ip.imm_i());
     DASM_RD_UPDATE;
+    if (alu_op_sel == TO_U8(alu_i_op_t::op_addi) && (inst == INST_NOP)) {
+        dasm.asm_ss = std::ostringstream("nop");
+    }
     #endif
 }
 
