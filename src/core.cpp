@@ -412,6 +412,10 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(add8)
             CASE_ALU_CUSTOM_OP(sub16)
             CASE_ALU_CUSTOM_OP(sub8)
+            CASE_ALU_CUSTOM_OP_PAIR(mul16)
+            CASE_ALU_CUSTOM_OP_PAIR(mul16u)
+            CASE_ALU_CUSTOM_OP_PAIR(mul8)
+            CASE_ALU_CUSTOM_OP_PAIR(mul8u)
             CASE_ALU_CUSTOM_OP(dot16)
             CASE_ALU_CUSTOM_OP(dot8)
             CASE_ALU_CUSTOM_OP(dot4)
@@ -420,6 +424,11 @@ void core::custom_ext() {
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
         DASM_RD_UPDATE;
+        bool paired_arith = (funct7 == TO_U8(alu_custom_op_t::op_mul16) ||
+                             funct7 == TO_U8(alu_custom_op_t::op_mul16u) ||
+                             funct7 == TO_U8(alu_custom_op_t::op_mul8) ||
+                             funct7 == TO_U8(alu_custom_op_t::op_mul8u));
+        if (paired_arith) DASM_RD_UPDATE_PAIR;
         #endif
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
@@ -458,7 +467,7 @@ void core::custom_ext() {
 uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
     // parallel add 2 halfword chunks
     int32_t res = 0;
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         int32_t sum = TO_I32(TO_I16(a & 0xffff)) + TO_I32(TO_I16(b & 0xffff));
         a >>= 16;
         b >>= 16;
@@ -470,7 +479,7 @@ uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
 uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
     // parallel add 4 byte chunks
     int32_t res = 0;
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         int32_t sum = TO_I32(TO_I8(a & 0xff)) + TO_I32(TO_I8(b & 0xff));
         a >>= 8;
         b >>= 8;
@@ -482,7 +491,7 @@ uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
 uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
     // parallel sub 2 halfword chunks
     int32_t res = 0;
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         int32_t sum = TO_I32(TO_I16(a & 0xffff)) - TO_I32(TO_I16(b & 0xffff));
         a >>= 16;
         b >>= 16;
@@ -494,7 +503,7 @@ uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
 uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
     // parallel sub 4 byte chunks
     int32_t res = 0;
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         int32_t sum = TO_I32(TO_I8(a & 0xff)) - TO_I32(TO_I8(b & 0xff));
         a >>= 8;
         b >>= 8;
@@ -503,10 +512,64 @@ uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
     return res;
 }
 
+reg_pair core::al_c_mul16(uint32_t a, uint32_t b) {
+    // multiply 2 halfword chunks into 2 32-bit results
+    int32_t words[2];
+    for (auto &word : words) {
+        word = TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
+        a >>= 16;
+        b >>= 16;
+    }
+    return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::al_c_mul16u(uint32_t a, uint32_t b) {
+    // multiply 2 halfword chunks into 2 32-bit results
+    uint32_t words[2];
+    for (auto &word : words) {
+        word = TO_U32(TO_U16(a & 0xffff)) * TO_U32(TO_U16(b & 0xffff));
+        a >>= 16;
+        b >>= 16;
+    }
+    return {words[0], words[1]};
+}
+
+reg_pair core::al_c_mul8(uint32_t a, uint32_t b) {
+    // multiply 4 byte chunks into 2 32-bit results
+    int16_t halves[4];
+    for (auto &half : halves) {
+        half = TO_I16(TO_I8(a & 0xff)) * TO_I16(TO_I8(b & 0xff));
+        a >>= 8;
+        b >>= 8;
+    }
+    int32_t words[2] = {0, 0};
+    words[0] = (TO_I32(halves[0]) & 0xFFFF) |
+               ((TO_I32(halves[1]) & 0xFFFF) << 16);
+    words[1] = (TO_I32(halves[2]) & 0xFFFF) |
+               ((TO_I32(halves[3]) & 0xFFFF) << 16);
+    return {TO_U32(words[0]), TO_U32(words[1])};
+}
+
+reg_pair core::al_c_mul8u(uint32_t a, uint32_t b) {
+    // multiply 4 byte chunks into 2 32-bit results
+    uint16_t halves[4];
+    for (auto &half : halves) {
+        half = TO_U16(TO_U8(a & 0xff)) * TO_U16(TO_U8(b & 0xff));
+        a >>= 8;
+        b >>= 8;
+    }
+    uint32_t words[2] = {0, 0};
+    words[0] = (TO_U32(halves[0]) & 0xFFFF) |
+               ((TO_U32(halves[1]) & 0xFFFF) << 16);
+    words[1] = (TO_U32(halves[2]) & 0xFFFF) |
+               ((TO_U32(halves[3]) & 0xFFFF) << 16);
+    return {words[0], words[1]};
+}
+
 uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks and sum the results
     int32_t res = 0;
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         res += TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
         a >>= 16;
         b >>= 16;
@@ -517,7 +580,7 @@ uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
 uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks and sum the results
     int32_t res = 0;
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         res += TO_I32(TO_I8(a & 0xff)) * TO_I32(TO_I8(b & 0xff));
         a >>= 8;
         b >>= 8;
@@ -528,7 +591,7 @@ uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
 uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
     // multiply 8 nibble chunks and sum the results
     int32_t res = 0;
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         res += TO_I32(TO_I4(a & 0xf)) * TO_I32(TO_I4(b & 0xf));
         a >>= 4;
         b >>= 4;
@@ -539,7 +602,7 @@ uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
 reg_pair core::mem_c_unpk16(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values
     int16_t halves[2];
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         halves[i] = TO_I16(a & 0xffff);
         a >>= 16;
     }
@@ -549,7 +612,7 @@ reg_pair core::mem_c_unpk16(uint32_t a) {
 reg_pair core::mem_c_unpk16u(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values unsigned
     uint16_t halves[2];
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         halves[i] = TO_U16(a & 0xffff);
         a >>= 16;
     }
@@ -559,7 +622,7 @@ reg_pair core::mem_c_unpk16u(uint32_t a) {
 reg_pair core::mem_c_unpk8(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
     int8_t bytes[4];
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         bytes[i] = TO_I8(a & 0xff);
         a >>= 8;
     }
@@ -574,7 +637,7 @@ reg_pair core::mem_c_unpk8(uint32_t a) {
 reg_pair core::mem_c_unpk8u(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
     uint8_t bytes[4];
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         bytes[i] = TO_U8(a & 0xff);
         a >>= 8;
     }
@@ -589,12 +652,12 @@ reg_pair core::mem_c_unpk8u(uint32_t a) {
 reg_pair core::mem_c_unpk4(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values)
     int8_t nibbles[8];
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         nibbles[i] = TO_I4(a & 0xf);
         a >>= 4;
     }
     uint32_t words[2] = {0, 0};
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         words[0] |= (TO_I32(TO_I8(nibbles[i])) & 0xFF) << (i * 8);
         words[1] |= (TO_I32(TO_I8(nibbles[i + 4])) & 0xFF) << (i * 8);
     }
@@ -604,12 +667,12 @@ reg_pair core::mem_c_unpk4(uint32_t a) {
 reg_pair core::mem_c_unpk4u(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
     uint8_t nibbles[8];
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         nibbles[i] = TO_U4(a & 0xf);
         a >>= 4;
     }
     uint32_t words[2] = {0, 0};
-    for (int i = 0; i < 4; i++) {
+    for (size_t i = 0; i < 4; i++) {
         words[0] |= (TO_U32(TO_U8(nibbles[i])) & 0xFF) << (i * 8);
         words[1] |= (TO_U32(TO_U8(nibbles[i + 4])) & 0xFF) << (i * 8);
     }
@@ -619,12 +682,12 @@ reg_pair core::mem_c_unpk4u(uint32_t a) {
 reg_pair core::mem_c_unpk2(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values)
     int8_t crumbs[16];
-    for (int i = 0; i < 16; i++) {
+    for (size_t i = 0; i < 16; i++) {
         crumbs[i] = TO_I2(a & 0x3);
         a >>= 2;
     }
     int32_t words[2] = {0, 0};
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         words[0] |= (TO_I32(TO_I8(crumbs[i])) & 0xF) << (i * 4);
         words[1] |= (TO_I32(TO_I8(crumbs[i + 8])) & 0xF) << (i * 4);
     }
@@ -634,12 +697,12 @@ reg_pair core::mem_c_unpk2(uint32_t a) {
 reg_pair core::mem_c_unpk2u(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
     uint8_t crumbs[16];
-    for (int i = 0; i < 16; i++) {
+    for (size_t i = 0; i < 16; i++) {
         crumbs[i] = TO_U2(a & 0x3);
         a >>= 2;
     }
     uint32_t words[2] = {0, 0};
-    for (int i = 0; i < 8; i++) {
+    for (size_t i = 0; i < 8; i++) {
         words[0] |= (TO_U32(TO_U8(crumbs[i])) & 0xF) << (i * 4);
         words[1] |= (TO_U32(TO_U8(crumbs[i+8])) & 0xF) << (i * 4);
     }

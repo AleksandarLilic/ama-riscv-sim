@@ -39,6 +39,7 @@ enum class opc_g {
 
     // custom al
     i_add16, i_add8, i_sub16, i_sub8,
+    i_mul16, i_mul16u, i_mul8, i_mul8u,
     i_dot16, i_dot8, i_dot4,
     // custom mem
     i_unpk16, i_unpk16u, i_unpk8, i_unpk8u,
@@ -134,6 +135,7 @@ struct cnt_t {
         uint32_t zbb = 0;
         uint32_t dot_c = 0;
         uint32_t al_c = 0;
+        uint32_t mul_c = 0;
         uint32_t unpk_c = 0;
         uint32_t scp_c = 0;
 
@@ -141,7 +143,8 @@ struct cnt_t {
         void find_mem() { mem = load + store; }
         void find_rest() {
             rest = inst - nop - branch - jump - mem -
-                   mul - div - al - zbb - dot_c - al_c - unpk_c - scp_c;
+                   mul - div - al - zbb -
+                   dot_c - al_c - mul_c - unpk_c - scp_c;
         }
         float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
 };
@@ -162,6 +165,7 @@ struct perc_t {
         float_t zbb = 0.0;
         float_t dot_c = 0.0;
         float_t al_c = 0.0;
+        float_t mul_c = 0.0;
         float_t unpk_c = 0.0;
         float_t scp_c = 0.0;
 };
@@ -282,6 +286,10 @@ class profiler{
 
         static constexpr std::array<opc_g, 4> al_c_opcs = {
             opc_g::i_add16, opc_g::i_add8, opc_g::i_sub16, opc_g::i_sub8,
+        };
+
+        static constexpr std::array<opc_g, 4> mul_c_opcs = {
+            opc_g::i_mul16, opc_g::i_mul16u, opc_g::i_mul8, opc_g::i_mul8u,
         };
 
         static constexpr std::array<opc_g, 8> unpk_c_opcs = {

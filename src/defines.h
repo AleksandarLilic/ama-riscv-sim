@@ -202,6 +202,14 @@
         PROF_RD_RS1_RS2 \
         break;
 
+#define CASE_ALU_CUSTOM_OP_PAIR(op) \
+    case TO_U8(alu_custom_op_t::op_##op): \
+        write_rf_pair(ip.rd(), al_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RDP_RS1_RS2 \
+        break;
+
 #define CASE_MEM_CUSTOM_OP(op) \
     case TO_U8(mem_custom_op_t::op_##op): \
         write_rf_pair(ip.rd(), mem_c_##op(rs1)); \
@@ -335,11 +343,15 @@
 
 // generic
 #define DASM_RD_UPDATE \
-    DASM_RD_UPDATE_P(ip.rd())
+    { \
+        DASM_RD_UPDATE_P(ip.rd()) \
+    }
 
 #define DASM_RD_UPDATE_PAIR \
-    dasm.asm_ss << ", "; \
-    DASM_RD_UPDATE_P(ip.rd() + 1)
+    { \
+        dasm.asm_ss << ", "; \
+        DASM_RD_UPDATE_P(ip.rd() + 1) \
+    }
 
 // parametrized
 #define DASM_MEM_UPDATE_P(addr, rs) \
@@ -408,6 +420,12 @@
     PROF_RS1 \
     PROF_RS2
 
+#define PROF_RD_RDP_RS1_RS2 \
+    PROF_RD \
+    PROF_RDP \
+    PROF_RS1 \
+    PROF_RS2
+
 #define PROF_RD_RDP_RS1 \
     PROF_RD \
     PROF_RDP \
@@ -435,6 +453,7 @@
 #define PROF_RS1
 #define PROF_RS2
 #define PROF_RD_RS1_RS2
+#define PROF_RD_RDP_RS1_RS2
 #define PROF_RD_RDP_RS1
 #define PROF_RD_RS1
 #define PROF_RS1_RS2

@@ -50,6 +50,10 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_add8)] = {"add8", 0};
     prof_g_arr[TO_U32(opc_g::i_sub16)] = {"sub16", 0};
     prof_g_arr[TO_U32(opc_g::i_sub8)] = {"sub8", 0};
+    prof_g_arr[TO_U32(opc_g::i_mul16)] = {"mul16", 0};
+    prof_g_arr[TO_U32(opc_g::i_mul16u)] = {"mul16u", 0};
+    prof_g_arr[TO_U32(opc_g::i_mul8)] = {"mul8", 0};
+    prof_g_arr[TO_U32(opc_g::i_mul8u)] = {"mul8u", 0};
     prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
     prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
     prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
@@ -234,6 +238,7 @@ void profiler::log_to_file() {
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
     for (auto &f: dot_c_opcs) cnt.dot_c += prof_g_arr[TO_U32(f)].count;
     for (auto &a: al_c_opcs) cnt.al_c += prof_g_arr[TO_U32(a)].count;
+    for (auto &m: mul_c_opcs) cnt.mul_c += prof_g_arr[TO_U32(m)].count;
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
@@ -252,6 +257,7 @@ void profiler::log_to_file() {
     perc.div = cnt.get_perc(cnt.div);
     perc.dot_c = cnt.get_perc(cnt.dot_c);
     perc.al_c = cnt.get_perc(cnt.al_c);
+    perc.mul_c = cnt.get_perc(cnt.mul_c);
     perc.zbb = cnt.get_perc(cnt.zbb);
     perc.unpk_c = cnt.get_perc(cnt.unpk_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
@@ -289,6 +295,7 @@ void profiler::log_to_file() {
 
     std::cout << INDENT << "SIMD:"
               << " A&L: " << cnt.al_c << "(" << perc.al_c << "%),"
+              << " MUL: " << cnt.mul_c << "(" << perc.mul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
               << " UNPK: " << cnt.unpk_c << "(" << perc.unpk_c << "%)"
               << std::endl;
