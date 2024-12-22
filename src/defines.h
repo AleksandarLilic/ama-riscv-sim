@@ -4,7 +4,7 @@
 
 // default defines
 #ifndef DPI
-#define UART_ENABLE
+#define UART_ENABLE // some tests require UART, will wait for ready indefinitely
 #define ENABLE_PROF
 #define ENABLE_HW_PROF
 #endif
