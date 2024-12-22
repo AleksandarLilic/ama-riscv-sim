@@ -129,6 +129,102 @@ void _simd_sub_int8(
 }
 
 INLINE_OPTION
+void _simd_mul_int16(
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        register int32_t c_slice_1 asm("t5");
+        register int32_t c_slice_2 asm("t6");
+        asm volatile(
+            "mul16 %[c1], %[a], %[b];"
+            : [c1] "=r" (c_slice_1), [c2] "=r" (c_slice_2)
+            : [a] "r" (a_slice), [b] "r" (b_slice)
+            :
+        );
+        *(c + k) = c_slice_1;
+        *(c + k + 1) = c_slice_2;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_mul_int8(
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
+    size_t len_s4 = (len >> 2) << 2;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(int32_t*)(a + k);
+        int32_t b_slice = *(int32_t*)(b + k);
+        register int32_t c_slice_1 asm("t5");
+        register int32_t c_slice_2 asm("t6");
+        asm volatile(
+            "mul8 %[c1], %[a], %[b];"
+            : [c1] "=r" (c_slice_1), [c2] "=r" (c_slice_2)
+            : [a] "r" (a_slice), [b] "r" (b_slice)
+            :
+        );
+        *(int32_t*)(c + k) = c_slice_1;
+        *(int32_t*)(c + k + 2) = c_slice_2;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_mul_uint16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
+    size_t len_s2 = (len >> 1) << 1;
+    for (size_t k = 0; k < len_s2; k += 2) {
+        uint32_t a_slice = *(uint32_t*)(a + k);
+        uint32_t b_slice = *(uint32_t*)(b + k);
+        register uint32_t c_slice_1 asm("t5");
+        register uint32_t c_slice_2 asm("t6");
+        asm volatile(
+            "mul16u %[c1], %[a], %[b];"
+            : [c1] "=r" (c_slice_1), [c2] "=r" (c_slice_2)
+            : [a] "r" (a_slice), [b] "r" (b_slice)
+            :
+        );
+        *(c + k) = c_slice_1;
+        *(c + k + 1) = c_slice_2;
+    }
+    size_t rem = len - len_s2;
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_mul_uint8(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
+    size_t len_s4 = (len >> 2) << 2;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        uint32_t a_slice = *(uint32_t*)(a + k);
+        uint32_t b_slice = *(uint32_t*)(b + k);
+        register uint32_t c_slice_1 asm("t5");
+        register uint32_t c_slice_2 asm("t6");
+        asm volatile(
+            "mul8 %[c1], %[a], %[b];"
+            : [c1] "=r" (c_slice_1), [c2] "=r" (c_slice_2)
+            : [a] "r" (a_slice), [b] "r" (b_slice)
+            :
+        );
+        *(uint32_t*)(c + k) = c_slice_1;
+        *(uint32_t*)(c + k + 2) = c_slice_2;
+    }
+    size_t rem = len - len_s4;
+    if (rem > 0) {
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
+    }
+}
+
+INLINE_OPTION
 int32_t _simd_dot_product_int16(
     const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
@@ -665,6 +761,30 @@ INLINE_OPTION
 void sub_int8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
     for (size_t k = 0; k < len; k++) c[k] = a[k] - b[k];
+}
+
+INLINE_OPTION
+void mul_int16(
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+INLINE_OPTION
+void mul_int8(
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+INLINE_OPTION
+void mul_uint16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+INLINE_OPTION
+void mul_uint8(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION

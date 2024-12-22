@@ -37,10 +37,14 @@ void _simd_sub_int8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len);
 
 // mul and mul unsigned
-//int32_t _simd_mul_int16(const int16_t* a, const int16_t* b, const size_t len);
-//int32_t _simd_mul_int8(const int8_t* a, const int8_t* b, const size_t len);
-//int32_t _simd_mulu_int16(const uint16_t* a, const uint16_t* b, const size_t len);
-//int32_t _simd_mulu_int8(const uint8_t* a, const uint8_t* b, const size_t len);
+void _simd_mul_int16(
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len);
+void _simd_mul_int8(
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len);
+void _simd_mul_uint16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len);
+void _simd_mul_uint8(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len);
 
 // dot product
 int32_t _simd_dot_product_int16(
@@ -126,6 +130,16 @@ void sub_int16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len);
 void sub_int8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len);
+
+// mul and mul unsigned
+void mul_int16(
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len);
+void mul_int8(
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len);
+void mul_uint16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len);
+void mul_uint8(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len);
 
 int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len);
 int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len);

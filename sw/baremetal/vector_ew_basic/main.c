@@ -39,14 +39,17 @@ _Static_assert(0, "No operation defined");
     #endif
 
 #elif defined(OP_MUL)
-    #define NO_SIMD // no SIMD support atm
-    /* #if defined(NF_INT16) || defined(NF_UINT16)
+    #if defined(NF_INT16)
         #define FUNC_NAME mul_int16
-    #elif defined(NF_INT8) || defined(NF_UINT8)
+    #elif defined(NF_UINT16)
+        #define FUNC_NAME mul_uint16
+    #elif defined(NF_INT8)
         #define FUNC_NAME mul_int8
+    #elif defined(NF_UINT8)
+        #define FUNC_NAME mul_uint8
     #else
         #define NO_SIMD
-    #endif */
+    #endif
 
 #elif defined(OP_DIV)
     #define NO_SIMD // no SIMD support for div
