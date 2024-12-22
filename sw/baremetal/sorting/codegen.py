@@ -46,7 +46,7 @@ for key,value in NUM.items():
     value['ref'] = np.sort(value['a'])
 
     suffix = "ULL" if key == "uint64_t" else ""
-    code.append(np2c('a', value['a'], "in", suffix))
-    code.append(np2c('ref', value['ref'], "in", suffix) + "\n")
+    code.append(np2c_arr('a', value['a'], "in", suffix))
+    code.append(np2c_arr('ref', value['ref'], "in", suffix) + "\n")
 
 finish_gen(code, OUT)

@@ -2,15 +2,20 @@ import random
 import numpy as np
 
 # format numpy array as C array
-def np2c(var, arr, suffix=""):
-    return f"NF " + var + f"[ARR_LEN]" + \
+def np2c_type(nf):
+    if nf in FP_C_MAP:
+        return FP_C_MAP[nf]
+    return nf.__name__ + "_t"
+
+def np2c_arr(var, arr, nf="NF", suffix=""):
+    return f"{nf} " + var + f"[ARR_LEN]" + \
             " = {" + f"{suffix}, ".join([f"{x}" for x in arr]) + suffix + "};"
 
 NUM = {
-    "uint8_t": {"off_add": 2, "off_sub": 2, "off_mul": 4, "nf": np.uint8},
-    "int8_t": {"off_add": 2, "off_sub": 2, "off_mul": 4, "nf": np.int8},
-    "uint16_t": {"off_add": 2, "off_sub": 2, "off_mul": 8, "nf": np.uint16},
-    "int16_t": {"off_add": 2, "off_sub": 2, "off_mul": 8, "nf": np.int16},
+    "uint8_t": {"off_add": 2, "off_sub": 2, "off_mul": 1, "nf": np.uint8},
+    "int8_t": {"off_add": 2, "off_sub": 2, "off_mul": 1, "nf": np.int8},
+    "uint16_t": {"off_add": 2, "off_sub": 2, "off_mul": 2, "nf": np.uint16},
+    "int16_t": {"off_add": 2, "off_sub": 2, "off_mul": 2, "nf": np.int16},
     "uint32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "nf": np.uint32},
     "int32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "nf": np.int32},
     "uint64_t": {

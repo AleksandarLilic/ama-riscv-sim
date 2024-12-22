@@ -40,15 +40,14 @@ for key,value in NUM.items():
     def_check = "#if " if key == "uint8_t" else "#elif "
     code.append(def_check + "defined(NF_" + value["nf"].__name__.upper() + ")")
 
+    ctype = np2c_type(value["nf"])
     if "float" in value["nf"].__name__:
         typ_min = value["min"]
         typ_max = value["max"]
-        ctype = FP_C_MAP[value["nf"]]
     else:
         shift_amount = value.get(f"off_{op.__name__}", 0)
         typ_min = np.iinfo(value["nf"]).min >> shift_amount
         typ_max = np.iinfo(value["nf"]).max >> shift_amount
-        ctype = value["nf"].__name__ + "_t"
 
     code.append("#define NF " + ctype)
 
@@ -70,18 +69,34 @@ for key,value in NUM.items():
     if "float" in key and op.__name__ == "div":
         value['b'] = np.where(value['b'] == 0, 0.01, value['b'])
 
+    nf_out = value["nf"]
+    # allow for double width output types for mul of 8 and 16 bit
+    if op.__name__ == "mul":
+        if "uint8" in key:
+            nf_out = np.uint16
+        elif "int8" in key:
+            nf_out = np.int16
+        elif "uint16" in key:
+            nf_out = np.uint32
+        elif "int16" in key:
+            nf_out = np.int32
+
     # cast all to nf
-    value['a'] = value['a'].astype(value["nf"])
-    value['b'] = value['b'].astype(value["nf"])
-    value['ref'] = np.zeros(ARR_LEN, dtype=value["nf"])
+    value['a'] = value['a'].astype(nf_out)
+    value['b'] = value['b'].astype(nf_out)
+    value['ref'] = np.zeros(ARR_LEN, dtype=nf_out)
 
     # calculate the result
     for i in range(ARR_LEN):
         value['ref'][i] = op(value['a'][i], value['b'][i])
 
-    code.append(np2c('a', value['a']))
-    code.append(np2c('b', value['b']))
-    code.append(np2c('c', [0]))
-    code.append(np2c('ref', value['ref']) + "\n")
+    code.append(np2c_arr('a', value['a']))
+    code.append(np2c_arr('b', value['b']))
+    if nf_out != value["nf"]:
+        code.append(np2c_arr('c', [0], nf=np2c_type(nf_out)))
+        code.append(np2c_arr('ref', value['ref'], nf=np2c_type(nf_out)) + "\n")
+    else:
+        code.append(np2c_arr('c', [0]))
+        code.append(np2c_arr('ref', value['ref']) + "\n")
 
 finish_gen(code, OUT)
