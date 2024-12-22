@@ -349,17 +349,28 @@ class core{
         #endif
 
         std::map<uint16_t, CSR> csr;
-        static constexpr std::array<CSR_entry, 14> supported_csrs = {{
+        static constexpr std::array<CSR_entry, 17> supported_csrs = {{
             {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
+
+            // Machine Information Registers
+            {CSR_MVENDORID, "mvendorid", csr_perm_t::warl_unimp, 0u},
+            {CSR_MARCHID, "marchid", csr_perm_t::warl_unimp, 0u},
+            {CSR_MIMPID, "mimpid", csr_perm_t::warl_unimp, 0u},
+            {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
+
+            // Machine Trap Setup
+            {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
+
+            // Machine Trap Handling
             {CSR_MSCRATCH, "mscratch", csr_perm_t::rw, 0u},
+
+            // Machine Counter/Timers
             {CSR_MCYCLE, "mcycle", csr_perm_t::rw, 0u},
             {CSR_MINSTRET, "minstret", csr_perm_t::rw, 0u},
             {CSR_MCYCLEH, "mcycleh", csr_perm_t::rw, 0u},
             {CSR_MINSTRETH, "minstreth", csr_perm_t::rw, 0u},
-            // read only CSRs
-            {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
-            {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
-            // read only user CSRs
+
+            // Unprivileged Counter/Timers
             {CSR_CYCLE, "cycle", csr_perm_t::ro, 0u},
             {CSR_TIME, "time", csr_perm_t::ro, 0u},
             {CSR_INSTRET, "instret", csr_perm_t::ro, 0u},

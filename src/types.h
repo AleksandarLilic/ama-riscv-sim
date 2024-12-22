@@ -139,9 +139,10 @@ enum class scp_custom_op_t {
 };
 
 enum class csr_perm_t {
-    ro = 0b00,
-    rw = 0b01,
-    warl_unimp = 0b10
+    ro = 0b00, // read-only
+    rw = 0b01, // read-write
+    warl = 0b10, // write-any-read-legal
+    warl_unimp = 0b11, // warl unimplemented -> always returns 0
 };
 
 enum class rf_names_t { mode_x, mode_abi };
