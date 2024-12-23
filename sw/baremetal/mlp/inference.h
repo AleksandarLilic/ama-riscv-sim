@@ -1,7 +1,7 @@
 #include "stdbool.h"
 #include "common.h"
 #include "common_math.h"
-#include "model.h"
+#include "model_w8a8_64-64-64-10.h"
 
 static uint32_t relu_norm(
     int32_t* input, int8_t* output, uint32_t n_input, bool get_idx);

@@ -21,6 +21,7 @@ S_SRCS := $(wildcard *.S)
 LD_SRC := $(COMMON_SRC_PATH)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS)
 INC += $(COMMON_SRC_PATH)
+INCS := $(wildcard $(addsuffix /*.h, $(INC)))
 LIBS += -lgcc
 USER_DEFINES =
 
@@ -61,7 +62,7 @@ ifeq ($(HEX), 1)
 endif
 
 # run with HEX=1 to generate hex file for RTL simulation
-%.elf: $(SRCS) $(INC)/*.h $(CRT0) $(LD_SRC) $(COMMON_OBJS)
+%.elf: $(SRCS) $(INCS) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
 	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) -I$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
