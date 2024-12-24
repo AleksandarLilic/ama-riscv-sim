@@ -451,6 +451,55 @@ int32_t _simd_dot_product_int8_int4(
     return c;
 }
 
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    size_t len_s16 = (len >> 4) << 4;
+    for (size_t k = 0; k < len_s16; k += 16) {
+        int32_t p1, p2, p3, p4;
+        int32_t b_slice = *(int32_t*)(b + (k >> 2));
+        int32_t a_slice_1 = *(int32_t*)(a + k);
+        int32_t a_slice_2 = *(int32_t*)(a + k + 4);
+        int32_t a_slice_3 = *(int32_t*)(a + k + 8);
+        int32_t a_slice_4 = *(int32_t*)(a + k + 12);
+        asm (
+            "unpk2 "TOSTR(RD_1)", %[b];" // crumbs to nibbles
+            "unpk4 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low nibbles to bytes
+            "dot8 %[p1], %[a1], "TOSTR(RD_2)";"
+            "dot8 %[p2], %[a2], "TOSTR(RDP_2)";"
+            "add %[c], %[c], %[p1];"
+            "add %[c], %[c], %[p2];"
+            "unpk4 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high nibbles to bytes
+            "dot8 %[p1], %[a3], "TOSTR(RD_2)";"
+            "dot8 %[p2], %[a4], "TOSTR(RDP_2)";"
+            "add %[c], %[c], %[p1];"
+            "add %[c], %[c], %[p2];"
+            : [c] "+r" (c),
+              [p1] "+r" (p1), [p2] "+r" (p2)
+            : [b] "r" (b_slice),
+              [a1] "r" (a_slice_1), [a2] "r" (a_slice_2),
+              [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
+            : TOSTR(RDP_1), TOSTR(RD_1), TOSTR(RDP_2), TOSTR(RD_2)
+        );
+    }
+    size_t rem = len - len_s16;
+    if (rem > 0) {
+        int8_t bl;
+        for (size_t i = len_s16; i < len; i += 4) {
+            bl = b[i>>2];
+            c += a[i+3] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i+2] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i+1] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i] * (int8_t)(bl >> 6);
+        }
+    }
+    return c;
+}
+
 #else // no custom ISA
 
 #ifdef LOAD_OPT
@@ -738,6 +787,13 @@ int32_t dot_product_int8_int4(
     return c;
 }
 
+INLINE_OPTION
+int32_t dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    _Static_assert(0,
+        "LOAD OPT for 'dot_product_int8_int2' is currently not supported");
+}
+
 #else // generic implementation
 INLINE_OPTION
 void add_int16(
@@ -849,6 +905,24 @@ int32_t dot_product_int8_int4(
         c += a[k+1] * (int8_t)(bl >> 4);
         bl <<= 4;
         c += a[k] * (int8_t)(bl >> 4);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    int8_t bl;
+    for (size_t k = 0; k < len; k += 4) {
+        bl = b[k>>2];
+        c += a[k+3] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+2] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+1] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k] * (int8_t)(bl >> 6);
     }
     return c;
 }

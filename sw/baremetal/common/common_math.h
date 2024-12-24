@@ -64,8 +64,8 @@ int32_t _simd_dot_product_int16_int4(
 
 int32_t _simd_dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len);
-//int32_t _simd_dot_product_int8_int2(
-//    const int8_t* a, const int8_t* b, const size_t len);
+int32_t _simd_dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len);
 
 //int32_t _simd_dot_product_int4_int2(
 //    const int8_t* a, const int8_t* b, const size_t len);
@@ -151,6 +151,8 @@ int32_t dot_product_int16_int8(
 int32_t dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int8_int4(
+    const int8_t* a, const int8_t* b, const size_t len);
+int32_t dot_product_int8_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
 #endif

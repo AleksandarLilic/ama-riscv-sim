@@ -13,18 +13,17 @@
 int16_t a[ARR_LEN] = {
     -30036, 10799, 9845, 19648, 1, -11525, -2365, 1,
     9225, 24275, 1, 1, 14116, -17833, -17338, 15832 };
-#elif defined(NF_INT8) || defined(NF_INT8_INT4)
+#elif defined(NF_INT8) || defined(NF_INT8_INT4) || defined(NF_INT8_INT2)
 int8_t a[ARR_LEN] = {
     44, -81, -11, 64, -61, 123, 67, -25, -119, 83, -107, 114, -92, -41, -58, 88
 };
 #elif defined(NF_INT4)
 // packed data type, has to be a multiple of 2 (pad with 0 at the end if needed)
 int8_t a[ARR_LEN>>1] = { 116, -115, 59, -5, -79, -83, -4, 14 };
-/* actual values
-{ 4, 7, -3, -8, -5, 3, -5, -1, 1, -5, -3, -6, -4, -1, -2, 0 };
-*/
+//actual values
+//{ 4, 7, -3, -8, -5, 3, -5, -1, 1, -5, -3, -6, -4, -1, -2, 0 };
 #else
-_Static_assert(0, "Unsupported number format");
+_Static_assert(0, "Unsupported number format: a");
 #endif
 
 // input data B
@@ -38,11 +37,14 @@ int8_t b[ARR_LEN] = {
 };
 #elif defined(NF_INT16_INT4) || defined(NF_INT8_INT4) || defined(NF_INT4)
 int8_t b[ARR_LEN>>1] = { 64, -110, -2, 111, -112, 29, 5, -63 };
-/* actual values
-{ 0, 4, 2, -7, -2, -1, -1, 6, 0, -7, -3, 1, 5, 0, 1, -4 };
-*/
+//actual values
+//{ 0, 4, 2, -7, -2, -1, -1, 6, 0, -7, -3, 1, 5, 0, 1, -4 };
+#elif defined(NF_INT16_INT2) || defined(NF_INT8_INT2)
+int8_t b[ARR_LEN>>2] = { -54, 20, -2, -69 };
+// actual values
+// { -2, -2, 0, -1, 0, 1, 1, 0, -2, -1, -1, -1, -1, -2, -1, -2 };
 #else
-_Static_assert(0, "Unsupported number format");
+_Static_assert(0, "Unsupported number format: b");
 #endif
 
 // function
@@ -64,8 +66,10 @@ _Static_assert(0, "Unsupported number format");
 #define FUNC_NAME dot_product_int16_int4
 #elif defined(NF_INT8_INT4)
 #define FUNC_NAME dot_product_int8_int4
+#elif defined(NF_INT8_INT2)
+#define FUNC_NAME dot_product_int8_int2
 #else
-_Static_assert(0, "Unsupported number format");
+_Static_assert(0, "Unsupported number format: FUNC_NAME");
 #endif
 
 #define CONCAT(a, b) a##b
@@ -85,8 +89,10 @@ const int32_t ref = 4190439;
 const int32_t ref = -240769;
 #elif defined(NF_INT8_INT4)
 const int32_t ref = -2028;
+#elif defined(NF_INT8_INT2)
+const int32_t ref = 404;
 #else
-_Static_assert(0, "Unsupported number format");
+_Static_assert(0, "Unsupported number format: ref");
 #endif
 
 void main(void) {
