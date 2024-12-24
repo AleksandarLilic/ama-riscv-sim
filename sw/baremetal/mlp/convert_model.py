@@ -22,7 +22,7 @@ print(f"Converting {pth_input} to {header_out}")
 bitwidth = pth_input.split("_")[1].split(".")[0]
 
 BW_W = int(bitwidth[1])
-SUPPORTED_BW_W = [4, 8]
+SUPPORTED_BW_W = [2, 4, 8]
 if BW_W not in SUPPORTED_BW_W:
     print(f"ERROR: BW_W is {BW_W}. Supported values are {SUPPORTED_BW_W}")
     sys.exit(1)
@@ -106,6 +106,16 @@ with open(f"{header_out}", "w") as f:
             flat_data = [(flat_data[i] & 0xf) | ((flat_data[i+1] & 0xf) << 4)
                          for i in range(0, len(flat_data), 2)]
             # cast to ensure it's int8
+            flat_data = [np.int8(x) for x in flat_data]
+
+        if BW_W == 2:
+            # pack 4 2-bit values into a single byte
+            flat_data = [(flat_data[i] & 0x3) | \
+                         ((flat_data[i+1] & 0x3) << 2) | \
+                         ((flat_data[i+2] & 0x3) << 4) | \
+                         ((flat_data[i+3] & 0x3) << 6) \
+                          for i in range(0, len(flat_data), 4)]
+            # cast to int8
             flat_data = [np.int8(x) for x in flat_data]
 
         nn_size_bytes += len(flat_data)
