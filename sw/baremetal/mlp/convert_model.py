@@ -7,8 +7,31 @@ import torch.nn as nn
 from brevitas.nn import QuantLinear, QuantReLU
 from brevitas.quant import Int8ActPerTensorFloat, Int8WeightPerTensorFloat
 
-BW_W = 8
-BW_A = 8
+if len(sys.argv) < 2:
+    print("Usage: python convert_model.py <model.pth>")
+    sys.exit(1)
+
+pth_input = sys.argv[1]
+if (not os.path.isfile(pth_input)):
+    print(f"Error: {pth_input} not found")
+    sys.exit(1)
+
+header_out = pth_input.replace(".pth", ".h")
+print(f"Converting {pth_input} to {header_out}")
+
+bitwidth = pth_input.split("_")[1].split(".")[0]
+
+BW_W = int(bitwidth[1])
+SUPPORTED_BW_W = [4, 8]
+if BW_W not in SUPPORTED_BW_W:
+    print(f"ERROR: BW_W is {BW_W}. Supported values are {SUPPORTED_BW_W}")
+    sys.exit(1)
+
+BW_A = int(bitwidth[3])
+SUPPORTED_BW_A = 8
+if BW_A != SUPPORTED_BW_A:
+    print(f"ERROR: BW_A is {BW_A}. Supported values are {SUPPORTED_BW_A}")
+    sys.exit(1)
 
 WQ = Int8WeightPerTensorFloat
 AQ = Int8ActPerTensorFloat
@@ -16,6 +39,15 @@ AQ = Int8ActPerTensorFloat
 NIN = 16 # x-dim of the input, square image assumed
 FCDIM = 64
 BIAS = False
+
+dims = pth_input.split("_")[2].split(".")[0]
+dims = dims.split("-")
+dims = [int(x) for x in dims]
+SUPPORTED_DIM = [FCDIM, FCDIM, FCDIM, 10] # only support this for now
+if not dims == SUPPORTED_DIM:
+    print(f"ERROR: Unsupported dimensions {dims}. " + \
+          f"Supported dimensions are {SUPPORTED_DIM}")
+    sys.exit(1)
 
 class QuantizedMLP(nn.Module):
     def __init__(self):
@@ -40,21 +72,10 @@ class QuantizedMLP(nn.Module):
         x = self.fc_last(x)
         return x
 
-if len(sys.argv) < 2:
-    print("Usage: python convert_model.py <model.pth>")
-    sys.exit(1)
-
-pth_input = sys.argv[1]
-if (not os.path.isfile(pth_input)):
-    print(f"Error: {pth_input} not found")
-    sys.exit(1)
-
-header_out = pth_input.replace(".pth", ".h")
-print(f"Converting {pth_input} to {header_out}")
-
 loaded_model = QuantizedMLP()
 loaded_model.load_state_dict(torch.load(pth_input), strict=False)
 
+nn_size_bytes = 0
 SCALE_FACTOR = 2**(BW_W-1) - 1
 with open(f"{header_out}", "w") as f:
     f.write("#ifndef MODEL_H\n")
@@ -74,16 +95,28 @@ with open(f"{header_out}", "w") as f:
         #print("scale_max:", scale_max.round(2), end="; ")
         #print("scale:", scale.round(2))
 
-        # quantize weights/biases to int8 using SCALE_FACTOR
-        data_int8 = np.clip(np.round(data * (scale)), -127, 127).astype(np.int8)
+        # quantize weights/biases using SCALE_FACTOR
+        data = np.clip(np.round(data * (scale)), -SCALE_FACTOR, SCALE_FACTOR) \
+               .astype(np.int8)
 
         # write C array format
-        flat_data = data_int8.flatten()
+        flat_data = data.flatten()
+        if BW_W == 4:
+            # pack 2 4-bit values into a single byte
+            flat_data = [(flat_data[i] & 0xf) | ((flat_data[i+1] & 0xf) << 4)
+                         for i in range(0, len(flat_data), 2)]
+            # cast to ensure it's int8
+            flat_data = [np.int8(x) for x in flat_data]
+
+        nn_size_bytes += len(flat_data)
         # write number of inputs and outputs
-        f.write(f"#define {name.replace('.', '_').upper()}_IN {data_int8.shape[1]}\n")
-        f.write(f"#define {name.replace('.', '_').upper()}_OUT {data_int8.shape[0]}\n")
-        f.write(f"static const int8_t {name.replace('.', '_')}[] = {{")
+        layer_name = name.replace('.', '_')
+        f.write(f"#define {layer_name.upper()}_IN {data.shape[1]}\n")
+        f.write(f"#define {layer_name.upper()}_OUT {data.shape[0]}\n")
+        f.write(f"static const int8_t {layer_name}[] = {{")
         f.write(", ".join(map(str, flat_data)))
         f.write("};\n\n")
 
     f.write("#endif // MODEL_H\n")
+
+print(f"NN size {nn_size_bytes/1024:.2f} KB")

@@ -43,11 +43,21 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
 
     for (uint32_t i = 0; i < n_output; i++) {
         // pointer to the weights of the current neuron
+        #ifdef W8A8
         const int8_t* weightidx = weights + i * n_input;
         #ifdef CUSTOM_ISA
         output[i] = _simd_dot_product_int8(activations, weightidx, n_input);
         #else
         output[i] = dot_product_int8(activations, weightidx, n_input);
+        #endif
+
+        #elif defined(W4A8)
+        const int8_t* weightidx = weights + (i * (n_input >> 1));
+        #ifdef CUSTOM_ISA
+        output[i] = _simd_dot_product_int8_int4(activations, weightidx,n_input);
+        #else
+        output[i] = dot_product_int8_int4(activations, weightidx, n_input);
+        #endif
         #endif
     }
 }

@@ -27,5 +27,5 @@
     "uart_printf_mini": ["hello_world"],
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],
     "dcache_set_thrashing": ["basic"],
-    "mlp": ["basic"]
+    "mlp": ["all"]
 }

@@ -1,7 +1,16 @@
 #include "stdbool.h"
 #include "common.h"
 #include "common_math.h"
+
+#ifdef W8A8
 #include "model_w8a8_64-64-64-10.h"
+#elif defined(W4A8)
+#include "model_w4a8_64-64-64-10.h"
+#else // default
+#define W8A8
+#include "model_w8a8_64-64-64-10.h"
+//_Static_assert(0, "Unsupported model selected");
+#endif
 
 static uint32_t relu_norm(
     int32_t* input, int8_t* output, uint32_t n_input, bool get_idx);
