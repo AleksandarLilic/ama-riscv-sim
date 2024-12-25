@@ -790,8 +790,38 @@ int32_t dot_product_int8_int4(
 INLINE_OPTION
 int32_t dot_product_int8_int2(
     const int8_t* a, const int8_t* b, const size_t len) {
-    _Static_assert(0,
-        "LOAD OPT for 'dot_product_int8_int2' is currently not supported");
+    int32_t c = 0;
+    size_t len_s16 = (len >> 4) << 4;
+    for (size_t k = 0; k < len_s16; k += 16) {
+        int32_t b_slice = *(int32_t*)(b + (k >> 2));
+        for (size_t j = 0; j < 16; j += 4) {
+            int32_t a_slice = *(int32_t*)(a + k + 12 - j); // MSB first
+            int8_t b_crumb;
+            int8_t a_byte;
+            for (size_t i = 0; i < 4; i++) {
+                b_crumb = b_slice >> 30;
+                a_byte = a_slice >> 24;
+                c += a_byte * (int8_t)b_crumb;
+                b_slice <<= 2;
+                a_slice <<= 8;
+            }
+        }
+    }
+    size_t rem = len - len_s16;
+    if (rem > 0) {
+        int8_t bl;
+        for (size_t i = len_s16; i < len; i += 4) {
+            bl = b[i>>2];
+            c += a[i+3] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i+2] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i+1] * (int8_t)(bl >> 6);
+            bl <<= 2;
+            c += a[i] * (int8_t)(bl >> 6);
+        }
+    }
+    return c;
 }
 
 #else // generic implementation
