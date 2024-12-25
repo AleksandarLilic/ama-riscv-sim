@@ -9,14 +9,20 @@ uint8_t label_1 = 2;
 uint8_t input_img_1[] __attribute__((aligned(64))) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18, 30, 29, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 69, 109, 114, 115, 77, 5, 0, 0, 0, 0, 0, 0, 0, 0, 2, 52, 113, 69, 41, 74, 105, 16, 0, 0, 0, 0, 0, 0, 0, 0, 2, 42, 56, 6, 10, 84, 99, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 48, 113, 71, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 98, 96, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 83, 108, 36, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 37, 115, 70, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 89, 107, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 123, 54, 4, 2, 0, 0, 2, 8, 15, 12, 1, 0, 0, 0, 0, 50, 125, 93, 77, 76, 58, 57, 76, 88, 96, 81, 19, 0, 0, 0, 0, 25, 88, 97, 103, 119, 111, 94, 86, 72, 55, 38, 11, 0, 0, 0, 0, 0, 9, 12, 16, 24, 22, 13, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void main(void) {
+    // read both clk and time, though only one can be used for known fixed freq
     uint32_t start_clk = clock_ticks();
+    uint32_t start_time = time_us();
     LOG_START;
     uint32_t predicted = run_inference(input_img_0);
     LOG_STOP;
     uint32_t end_clk = clock_ticks();
+    uint32_t end_time = time_us();
+
     uint32_t clk_diff = end_clk - start_clk;
-    printf("Predicted inf_0: %d (label: %d); clock cycles: %d\n",
-           predicted, label_0, clk_diff);
+    uint32_t time_diff = (end_time - start_time) / 1000;
+    printf("Predicted: %d (label: %d); "
+           "Performance: cycles: %d, time: %d ms, Inf/s: %d\n",
+           predicted, label_0, clk_diff, time_diff, (1000 / time_diff));
 
     // assumed model is accurate for the provided input
     if (predicted != label_0) {
