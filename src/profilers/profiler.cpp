@@ -173,7 +173,7 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
 }
 
 void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
-    prof_reg_hist[reg][TO_U8(reg_use)]++;
+    if (active) prof_reg_hist[reg][TO_U8(reg_use)]++;
 }
 
 void profiler::log_to_file() {
@@ -221,9 +221,9 @@ void profiler::log_to_file() {
     for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
     for (auto &c: comp_opcs_j) {
         comp_cnt += prof_j_arr[TO_U32(c)].count_taken +
-                 prof_j_arr[TO_U32(c)].count_not_taken;
+                    prof_j_arr[TO_U32(c)].count_not_taken;
     }
-    float_t comp_perc = 100.0 * comp_cnt / cnt.inst;
+    float_t comp_perc = cnt.get_perc(comp_cnt);
 
     // per type breakdown
     for (auto &b: branch_opcs) {
@@ -311,9 +311,12 @@ void profiler::log_to_file() {
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();
     uint64_t sa_cnt_store = stack_access.get_store();
-    float_t sa_perc = 100.0 * sa_cnt / cnt.mem;
-    float_t sa_perc_load = 100.0 * sa_cnt_load / cnt.load;
-    float_t sa_perc_store = 100.0 * sa_cnt_store / cnt.store;
+    float_t sa_perc = 0.0;
+    float_t sa_perc_load = 0.0;
+    float_t sa_perc_store = 0.0;
+    if (cnt.mem) sa_perc = 100.0 * sa_cnt / cnt.mem;
+    if (cnt.load) sa_perc_load = 100.0 * sa_cnt_load / cnt.load;
+    if (cnt.store) sa_perc_store = 100.0 * sa_cnt_store / cnt.store;
     std::cout << "Profiler Stack: peak usage: " << min_sp << " B, Accesses: "
               << sa_cnt << "(" << sa_perc << "%) - L/S: "
               << sa_cnt_load << "/" << sa_cnt_store
