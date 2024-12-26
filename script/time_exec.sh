@@ -26,7 +26,7 @@ EXEC_BIN="$REPO_ROOT/src/ama-riscv-sim"
 RUN_SIM="$EXEC_BIN $RV_BIN"
 
 # get instruction count for the initial iteration
-INST_CNT=$($RUN_SIM | grep "Inst Counter:" | awk '{print $3}')
+INST_CNT=$($RUN_SIM | grep "Instruction Counters:" | awk '{print $4}' | sed 's/,//')
 echo "Inst count: $INST_CNT"
 
 # now time it
@@ -37,11 +37,11 @@ for i in $(seq 1 "$n"); do
     param_time=$(echo "$tot_time" | grep "$param" | awk '{print $2}')
     minutes=$(echo "$param_time" | cut -d'm' -f1)
     seconds=$(echo "$param_time" | cut -d'm' -f2 | sed 's/s//')
-    
+
     param_seconds=$(echo "$minutes * 60 + $seconds" | bc)
     param_mips=$(echo "scale=0; $INST_CNT / $param_seconds / 1000000" | bc)
     echo "loop $i: $param: $param_seconds, MIPS: $param_mips"
-    
+
     param_sum=$(echo "$param_sum + $param_seconds" | bc)
     param_sum_mips=$(echo "$param_sum_mips + $param_mips" | bc)
 done
@@ -49,3 +49,8 @@ done
 param_avg=$(echo "scale=3; $param_sum / $n" | bc)
 param_avg_mips=$(echo "scale=0; $param_sum_mips / $n" | bc)
 echo "avg: $param: $param_avg, MIPS: $param_avg_mips"
+
+echo -e "\nPerf run:"
+# run "sudo sysctl -w kernel.perf_event_paranoid=0" to allow perf to run without sudo
+PERF_FLAGS="instructions,cycles,branches,branch-misses,cache-references,cache-misses"
+perf stat -e $PERF_FLAGS $RUN_SIM
