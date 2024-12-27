@@ -5,7 +5,7 @@
 #include "../common/csr.h"
 
 # only section testing compressed isa has rvc enabled, through macro TEST_C
-.option norvc
+.option arch, -c
 
 main:
     li x13, 0

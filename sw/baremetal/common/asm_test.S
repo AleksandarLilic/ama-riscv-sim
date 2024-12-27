@@ -16,25 +16,25 @@
     li x30, x;    \
     OP_END_C
 
-#define TEST_C0(op) \
-    .option rvc;    \
-    op;             \
-    .option norvc
+#define TEST_C0(op)     \
+    .option arch, +c;   \
+    op;                 \
+    .option arch, -c
 
-#define TEST_C1(op, v1) \
-    .option rvc;        \
-    op v1;              \
-    .option norvc
+#define TEST_C1(op, v1)     \
+    .option arch, +c;       \
+    op v1;                  \
+    .option arch, -c
 
-#define TEST_C2(op, v1, v2) \
-    .option rvc;            \
-    op v1, v2;              \
-    .option norvc
+#define TEST_C2(op, v1, v2)     \
+    .option arch, +c;           \
+    op v1, v2;                  \
+    .option arch, -c
 
-#define TEST_C3(op, v1, v2, v3) \
-    .option rvc;                \
-    op v1, v2, v3;              \
-    .option norvc
+#define TEST_C3(op, v1, v2, v3)     \
+    .option arch, +c;               \
+    op v1, v2, v3;                  \
+    .option arch, -c
 
 #define FAIL \
     add x28, x0, x13; \
