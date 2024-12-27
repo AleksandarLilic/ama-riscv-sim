@@ -146,7 +146,10 @@ struct cnt_t {
                    mul - div - al - zbb -
                    dot_c - al_c - mul_c - unpk_c - scp_c;
         }
-        float_t get_perc(uint32_t count) { return 100.0 * count / inst; }
+        float_t get_perc(uint32_t count) {
+            if (count == 0 || inst == 0) return 0.0;
+            return 100.0 * count / inst;
+        }
 };
 
 struct perc_t {
