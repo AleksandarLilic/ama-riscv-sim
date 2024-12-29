@@ -2,17 +2,12 @@
 
 import os
 import subprocess
-import glob
 import json
 import argparse
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List
-from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
-                              LogFormatterSciNotation, MaxNLocator
 
 def get_reporoot():
     try:
@@ -128,8 +123,8 @@ def run_cache_sweep(
         with open(sweep_results, "w") as f:
             json.dump(sr, f)
 
-    axs = []
-    # plot the results wrt num of ways
+    axs_hr = []
+    # plot HR wrt num of ways
     fig, ax = plt.subplots(figsize=(12, 10))
     for policy, pe in sr.items():
         for set, se in pe.items():
@@ -140,9 +135,9 @@ def run_cache_sweep(
                     label=f"{policy} sets: {set}", marker="o", lw=1)
     ax.set_xlabel("Ways")
     ax.set_xticks(sweep_params["ways"])
-    axs.append(ax)
+    axs_hr.append(ax)
 
-    # plot the results wrt cache size (excl tag & metadata)
+    # plot HR wrt cache size (excl tag & metadata)
     fig, ax = plt.subplots(figsize=(12, 10))
     for policy, pe in sr.items():
         for set, se in pe.items():
@@ -155,21 +150,73 @@ def run_cache_sweep(
             ax.plot(sizes, hit_rate,
                     label=f"{policy} sets: {set}", marker="o", lw=1)
     ax.set_xlabel("Size (B)")
-    ax.set_xticks([2**i for i in range(6, 20) if 2**i <= max_size])
+    ax.set_xticks([2**i for i in range(6, int(np.log2(max_size)))])
     ax.set_xticklabels(ax.get_xticks(), rotation=45)
-    axs.append(ax)
+    axs_hr.append(ax)
 
-    # common for both
-    for a in axs:
-        a.set_ylabel("Hit Rate (%)")
+    axs_ct = []
+    for direction in ["reads", "writes"]:
+        if cache == "icache" and direction == "writes":
+            continue # icache has no writes
+        # plot CT mem wrt num of ways
+        fig, ax = plt.subplots(figsize=(12, 10))
+        for policy, pe in sr.items():
+            for set, se in pe.items():
+                ct_mem_read = np.array(
+                    [se[way][ck]["ct_mem"][direction]
+                    for way in se.keys()])
+                ax.plot(se.keys(), ct_mem_read,
+                        label=f"{policy} sets: {set}", marker="o", lw=1)
+        ax.set_xlabel("Ways")
+        ax.set_xticks(sweep_params["ways"])
+        ax.set_ylabel(f"Cache to Memory Traffic - {direction.capitalize()} (B)")
+        ct_core = hw_stats[ck]["ct_core"][direction]
+        ax.axhline(y=ct_core,color="r", linestyle="--",
+                   label=f"Core to Cache Traffic = {ct_core} B")
+        axs_ct.append(ax)
+
+        # plot CT mem wrt cache size (excl tag & metadata)
+        fig, ax = plt.subplots(figsize=(12, 10))
+        for policy, pe in sr.items():
+            for set, se in pe.items():
+                ct_mem_read = np.array(
+                    [se[way][ck]["ct_mem"][direction]
+                    for way in se.keys()])
+                sizes = np.array(
+                    [se[way][ck]["size"]["data"]
+                    for way in se.keys()])
+                ax.plot(sizes, ct_mem_read,
+                        label=f"{policy} sets: {set}", marker="o", lw=1)
+        ax.set_xlabel("Size (B)")
+        ax.set_xticks([2**i for i in range(6, int(np.log2(max_size)))])
+        ax.set_xticklabels(ax.get_xticks(), rotation=45)
+        ax.set_ylabel(f"Cache to Memory Traffic - {direction.capitalize()} (B)")
+        ax.axhline(y=ct_core,color="r", linestyle="--",
+                   label=f"Core to Cache Traffic = {ct_core} B")
+        axs_ct.append(ax)
+
+    # common for HR
+    for a in axs_hr:
+        a.set_ylabel("Hit Rate [%]")
         a.set_title(f"{ck} Sweep: {test_name}")
         a.legend(loc="lower right")
+        ymin = a.get_ylim()[0]
+        if args.plot_hr_thr:
+            ymin = max(args.plot_hr_thr, ymin)
+        a.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
+
+    # common for CT
+    for a in axs_ct:
+        a.set_title(f"{ck} Sweep: {test_name}")
+        a.legend(loc="upper right")
+        if args.plot_ct_thr:
+            ymax = min(args.plot_ct_thr, a.get_ylim()[1])
+            a.set_ylim(0, ymax)
+
+    # common for all plots
+    for a in axs_hr + axs_ct:
         a.grid(True)
         a.margins(x=0.02)
-        ymin = a.get_ylim()[0]
-        if args.plot_thr:
-            ymin = max(args.plot_thr, ymin)
-        a.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
 
     # remove the out dir (has only the last run anyway)
     subprocess.run(["rm", "-r", out_dir])
@@ -186,7 +233,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
-    parser.add_argument("--plot_thr", type=int, default=None, help="Set the lower limit for the plot y-axis")
+    parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for hit rate")
+    parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
 
     return parser.parse_args()
 
