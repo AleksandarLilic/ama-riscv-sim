@@ -44,6 +44,7 @@ def run_sim(sa: sim_args) -> Dict[str, Any]:
 
     if PASS_STRING not in res.stdout:
         raise RuntimeError("Simulation failed. Check the logs. Sim output: \n\n"
+                           f"{[SIM] + sa.args}\n"
                            f"{res.stderr}"
                            f"{res.stdout}")
 
@@ -229,9 +230,9 @@ def run_cache_sweep(
         a.margins(x=0.02)
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
-    bp = bp.replace("bp_", "") # in case it's passed with the prefix
+    bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
 
-    if bp == "bimodal":
+    if bp == "bimodal" or bp == "combined":
         cnt_entries = 1 << (params["pc_bits"])
         return (cnt_entries*params["cnt_bits"] + 8) >> 3
     if bp == "local":
@@ -253,13 +254,12 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 
     return 1 # can't help you
 
-def gen_bp_sweep_params(bp, sweep_params, max_size) \
+def gen_bp_sweep_params(bp, bp_sweep, max_size) \
 -> List[List[Tuple[str, Any]]]:
-    bp_sweep = sweep_params[bp]
     sk = bp_sweep.keys()
     sk = [k for k in sk if "bits" in k] # only keys with 'bits' in the name
 
-    bp_args = list(bp_sweep.keys())
+    bp_args = list(sk)
     # cartesian product of all the params
     bp_combs = product(*(bp_sweep[bp_arg] for bp_arg in bp_args))
 
@@ -267,16 +267,12 @@ def gen_bp_sweep_params(bp, sweep_params, max_size) \
     for comb in bp_combs:
         if get_bp_size(bp, dict(zip(bp_args, comb))) > int(max_size):
             continue
-        d = {}
         command = []
         for k, v in zip(bp_args, comb):
-            d[k] = v
             command.append(f"--{bp}_{k}")
             command.append(str(v))
-        all.append([command, d.copy()])
+        all.append(command)
 
-    # TODO: how to handle combined predictor ->
-    # need to merge 2 bp sweeps, need to extend both things in [command, d]
     return all
 
 def run_bp_sweep(
@@ -302,24 +298,59 @@ def run_bp_sweep(
         bins = [2**i for i in range(0, int(np.log2(MAX_SIZE))+1)]
 
     # TODO: each predictor sweep can be run in parallel, sync before writing res
+    save_for_combined = {} # save for combined predictor
+    #save_for_combined_best = {} # too restrictive atm
     for bp in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading previous stats
         if bp == "common_settings":
             continue
-        if args.track:
-            print(INDENT, f"BP: {bp}")
 
         best = {}
-        bp_act =  ["--bp_active", bp.replace("bp_", "")]
-        bp_params = gen_bp_sweep_params(bp, sweep_params, MAX_SIZE)
+        bp_act =  ["--bp_active", bp.replace("bp_", "", 1)]
+        if bp == "bp_combined":
+            bpc = sweep_params[bp]
+            bpc_params = gen_bp_sweep_params(bp, bpc, MAX_SIZE)
+            bp1 = sweep_params[bp]['predictors'][0]
+            bp2 = sweep_params[bp]['predictors'][1]
+
+            # if exhaustive, use all the params
+            bp1_params = save_for_combined[bp1]
+            bp2_params = save_for_combined[bp2]
+            # else, use the best params
+            #bp1_params = save_for_combined_best[bp1]
+            #bp2_params = save_for_combined_best[bp2]
+
+            bp_params_list = [
+                bp1_params[bp1_k] + bp2_params[bp2_k]
+                for bp1_k, bp2_k
+                in product(bp1_params, bp2_params)
+                if bp1_k + bp2_k < MAX_SIZE # keys are sizes
+            ]
+            merged = [cmd1 + cmd2
+                      for cmd1, cmd2 in product(bpc_params, bp_params_list)]
+
+            bp1_arg = [f"--bp_combined_p1", bp1.replace("bp_", "", 1)]
+            bp2_arg = [f"--bp_combined_p2", bp2.replace("bp_", "", 1)]
+            for m in merged:
+                # add the combined predictor args into each command
+                m.extend(bp1_arg)
+                m.extend(bp2_arg)
+            bp_params = merged
+        else:
+            save_for_combined[bp] = {}
+            bp_params = gen_bp_sweep_params(bp, sweep_params[bp], MAX_SIZE)
+
+        if args.track:
+            print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
         for bpp in bp_params:
-            bp_param_args = bpp[0]
-            d = bpp[1]
+            d = {}
+            for i in range(0,len(bpp),2):
+                d[bpp[i].replace("--", "", 1)] = bpp[i+1]
 
             msg = f"==> SWEEP: {bp} {d} <=="
             sa = sim_args(
-                args=[args.bin] + bp_param_args + log_arg + bp_act,
+                args=[args.bin] + bpp + log_arg + bp_act,
                 msg=msg,
                 sweep_log=sweep_log,
                 out_dir=out_dir,
@@ -333,9 +364,11 @@ def run_bp_sweep(
             if bp_size not in best or acc > best[bp_size]["acc"]:
                 best[bp_size] = {}
                 for k, v in d.items():
-                    if "no_bits" not in k:
-                        best[bp_size][k] = v
+                    best[bp_size][k] = v
                 best[bp_size]["acc"] = acc
+                #best[bp_size]["bpp"] = bpp
+                if bp != "bp_combined":
+                    save_for_combined[bp][bp_size] = bpp
 
         # for each bin, find the best config for accuracy
         prev_bin = 0
@@ -352,6 +385,9 @@ def run_bp_sweep(
         # sort the best dict by accuracy
         #sr[bp] = dict(sorted(best.items(), key=lambda x: x[1]["acc"]))
         sr[bp] = best_binned
+        #save_for_combined_best[bp] = {}
+        #for k, v in best_binned.items():
+        #    save_for_combined_best[bp][k] = v["bpp"]
 
     sweep_results = sweep_log.replace(".log", "_results.json")
     if args.load_stats:
