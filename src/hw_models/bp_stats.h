@@ -2,17 +2,15 @@
 
 #include "defines.h"
 
-#define BP_JSON_ENTRY(name, type, stat_struct) \
-    "\"" << name << "\"" << ": {" \
-    << "\"type\": " << "\"" << type << "\"" \
+#define BP_STATS_JSON_ENTRY(type, stat_struct) \
+    "\"type\": " << "\"" << type << "\"" \
     << ", \"branches\": " << stat_struct->total \
     << ", \"predicted\": " << stat_struct->predicted \
     << ", \"predicted_fwd\": " << stat_struct->predicted_fwd \
     << ", \"predicted_bwd\": " << stat_struct->predicted_bwd \
     << ", \"mispredicted\": " << stat_struct->mispredicted \
     << ", \"mispredicted_fwd\": " << stat_struct->mispredicted_fwd \
-    << ", \"mispredicted_bwd\": " << stat_struct->mispredicted_bwd \
-    << "},"
+    << ", \"mispredicted_bwd\": " << stat_struct->mispredicted_bwd
 
 // branch instruction stats
 struct bi_program_stats_t {
@@ -86,7 +84,7 @@ struct bp_stats_t {
                       //<< "), ACC: "
                       << acc << "%";
         }
-        void log(std::string name, std::ofstream& log_file) const {
-            log_file << BP_JSON_ENTRY(name, type_name, this) << std::endl;
+        void log(std::ofstream& log_file) const {
+            log_file << BP_STATS_JSON_ENTRY(type_name, this);
         }
 };

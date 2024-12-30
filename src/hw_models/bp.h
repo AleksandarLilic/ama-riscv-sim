@@ -47,7 +47,9 @@ class bp {
         }
 
         virtual void log_stats(std::string name, std::ofstream &file) {
-            stats.log(name, file);
+            file << "\"" << name << "\"" << ": {";
+            stats.log(file);
+            file << ", \"size\": " << size << "},";
         }
 
         virtual void summarize_stats() {
