@@ -6,6 +6,7 @@ import json
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import product
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List
 
@@ -252,6 +253,32 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 
     return 1 # can't help you
 
+def gen_bp_sweep_params(bp, sweep_params, max_size) \
+-> List[List[Tuple[str, Any]]]:
+    bp_sweep = sweep_params[bp]
+    sk = bp_sweep.keys()
+    sk = [k for k in sk if "bits" in k] # only keys with 'bits' in the name
+
+    bp_args = list(bp_sweep.keys())
+    # cartesian product of all the params
+    bp_combs = product(*(bp_sweep[bp_arg] for bp_arg in bp_args))
+
+    all = []
+    for comb in bp_combs:
+        if get_bp_size(bp, dict(zip(bp_args, comb))) > int(max_size):
+            continue
+        d = {}
+        command = []
+        for k, v in zip(bp_args, comb):
+            d[k] = v
+            command.append(f"--{bp}_{k}")
+            command.append(str(v))
+        all.append([command, d.copy()])
+
+    # TODO: how to handle combined predictor ->
+    # need to merge 2 bp sweeps, need to extend both things in [command, d]
+    return all
+
 def run_bp_sweep(
     args: argparse.Namespace,
     sweep_params: Dict[str, Any],
@@ -267,13 +294,13 @@ def run_bp_sweep(
     bpk = args.sweep.capitalize() # bp key in the hw_stats dict
     sr = {} # sweep results dict
 
+    MAX_SIZE = int(sweep_params["common_settings"]["max_size"])
     if "size_bins" in sweep_params["common_settings"]:
         bins = sweep_params["common_settings"]["size_bins"]
     else:
         # create bins as powers of 2 from 1 to MAX_SIZE
         bins = [2**i for i in range(0, int(np.log2(MAX_SIZE))+1)]
 
-    MAX_SIZE = int(sweep_params["common_settings"]["max_size"])
     # TODO: each predictor sweep can be run in parallel, sync before writing res
     for bp in sweep_params.keys():
         if args.load_stats:
@@ -282,61 +309,44 @@ def run_bp_sweep(
             continue
         if args.track:
             print(INDENT, f"BP: {bp}")
-        bp_sweep = sweep_params[bp]
-        sk = bp_sweep.keys()
-        # drop any key that doesn't have 'bits' in the name
-        sk = [k for k in sk if "bits" in k]
 
         best = {}
         bp_act =  ["--bp_active", bp.replace("bp_", "")]
-        d = {}
-        for s0 in bp_sweep[sk[0]]:
-            arg_s0 = [f"--{bp}_{sk[0]}", str(s0)] if s0 else []
-            if s0: d[sk[0]] = s0
-            for s1 in bp_sweep[sk[1]]:
-                arg_s1 = [f"--{bp}_{sk[1]}", str(s1)] if s1 else []
-                if s1: d[sk[1]] = s1
-                for s2 in bp_sweep[sk[2]]:
-                    arg_s2 = [f"--{bp}_{sk[2]}", str(s2)] if s2 else []
-                    if s2: d[sk[2]] = s2
+        bp_params = gen_bp_sweep_params(bp, sweep_params, MAX_SIZE)
+        for bpp in bp_params:
+            bp_param_args = bpp[0]
+            d = bpp[1]
 
-                    if get_bp_size(bp, d) > int(MAX_SIZE):
-                        continue
-
-                    msg = f"==> SWEEP: {bp} {d} <=="
-                    bp_param_args = arg_s0 + arg_s1 + arg_s2
-                    sa = sim_args(
-                        args=[args.bin] + bp_param_args + log_arg + bp_act,
-                        msg=msg,
-                        sweep_log=sweep_log,
-                        out_dir=out_dir,
-                        save_sim=args.save_sim)
-                    hw_stats = run_sim(sa)
-                    size = hw_stats[bpk]['size']
-                    b_pred = hw_stats[bpk]['predicted']
-                    b_tot = hw_stats[bpk]['branches']
-                    acc = round(b_pred/b_tot*100, 2)
-                    #if args.track: # too much noise
-                    #    print(INDENT * 2,
-                    #          f"{bp} {d}, Size: {size}, Acc: {acc}%")
-
-                    if size not in best or acc > best[size]["acc"]:
-                        best[size] = {}
-                        for k, v in d.items():
-                            if "no_bits" not in k:
-                                best[size][k] = v
-                        best[size]["acc"] = acc
+            msg = f"==> SWEEP: {bp} {d} <=="
+            sa = sim_args(
+                args=[args.bin] + bp_param_args + log_arg + bp_act,
+                msg=msg,
+                sweep_log=sweep_log,
+                out_dir=out_dir,
+                save_sim=args.save_sim)
+            hw_stats = run_sim(sa)
+            # check results
+            bp_size = hw_stats[bpk]['size']
+            b_pred = hw_stats[bpk]['predicted']
+            b_tot = hw_stats[bpk]['branches']
+            acc = round(b_pred/b_tot*100, 2)
+            if bp_size not in best or acc > best[bp_size]["acc"]:
+                best[bp_size] = {}
+                for k, v in d.items():
+                    if "no_bits" not in k:
+                        best[bp_size][k] = v
+                best[bp_size]["acc"] = acc
 
         # for each bin, find the best config for accuracy
         prev_bin = 0
         best_binned = {}
         for bin in bins:
-            for size, d in best.items():
-                if size < bin and size >= prev_bin:
+            for bp_size, d in best.items():
+                if bp_size < bin and bp_size >= prev_bin:
                     if (bin not in best_binned or \
                         d["acc"] > best_binned[bin]["acc"]):
                         best_binned[bin] = d
-                        best_binned[bin]["size"] = size
+                        best_binned[bin]["size"] = bp_size
             prev_bin = bin
 
         # sort the best dict by accuracy
