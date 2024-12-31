@@ -269,7 +269,10 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 
     return 1 # can't help you
 
-def gen_bp_sweep_params(bp, bp_sweep, max_size) \
+def within_size(num, size_lim: List[int]) -> bool:
+    return size_lim[0] <= num < size_lim[1]
+
+def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 -> List[List[Tuple[str, Any]]]:
     sk = bp_sweep.keys()
     sk = [k for k in sk if "bits" in k] # only keys with 'bits' in the name
@@ -280,8 +283,9 @@ def gen_bp_sweep_params(bp, bp_sweep, max_size) \
 
     all = []
     for comb in bp_combs:
-        if get_bp_size(bp, dict(zip(bp_args, comb))) > int(max_size):
-            continue
+        if not within_size(get_bp_size(bp, dict(zip(bp_args, comb))), size_lim):
+            if bp != "bp_static": # static is always included
+                continue
         command = []
         for k, v in zip(bp_args, comb):
             command.append(f"--{bp}_{k}")
@@ -306,12 +310,14 @@ def run_bp_sweep(
     sr_bin = {}
     sr_best = {}
 
-    MAX_SIZE = int(sweep_params["common_settings"]["max_size"])
+    SIZE_LIM = [int(sweep_params["common_settings"]["min_size"]),
+                int(sweep_params["common_settings"]["max_size"])]
     if "size_bins" in sweep_params["common_settings"]:
         bins = sweep_params["common_settings"]["size_bins"]
     else:
-        # create bins as powers of 2 from 1 to MAX_SIZE
-        bins = [2**i for i in range(0, int(np.log2(MAX_SIZE))+1)]
+        # create bins as powers of 2 within the size limits
+        bins = [2**i for i
+                in range(SIZE_LIM[0].bit_length(), SIZE_LIM[1].bit_length()+1)]
 
     save_bpp_for_combined = {}
     for bp in sweep_params.keys():
@@ -324,7 +330,7 @@ def run_bp_sweep(
         bp_act =  ["--bp_active", bp.replace("bp_", "", 1)]
         if bp == "bp_combined":
             bpc = sweep_params[bp]
-            bpc_params = gen_bp_sweep_params(bp, bpc, MAX_SIZE)
+            bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
             bp1 = sweep_params[bp]['predictors'][0]
             bp2 = sweep_params[bp]['predictors'][1]
             bp1_params = save_bpp_for_combined[bp1]
@@ -334,7 +340,7 @@ def run_bp_sweep(
                 bp1_params[bp1_k] + bp2_params[bp2_k]
                 for bp1_k, bp2_k
                 in product(bp1_params, bp2_params)
-                if bp1_k + bp2_k < MAX_SIZE # keys are sizes
+                if within_size(bp1_k + bp2_k, SIZE_LIM) # keys are sizes
             ]
             merged = [cmd1 + cmd2
                       for cmd1, cmd2 in product(bpc_params, bp_params_list)]
@@ -348,7 +354,7 @@ def run_bp_sweep(
             bp_params = merged
         else:
             save_bpp_for_combined[bp] = {}
-            bp_params = gen_bp_sweep_params(bp, sweep_params[bp], MAX_SIZE)
+            bp_params = gen_bp_sweep_params(bp, sweep_params[bp], SIZE_LIM)
 
         if args.track:
             print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
@@ -372,8 +378,8 @@ def run_bp_sweep(
             # check results
             bp_size = hw_stats[bpk]['size']
 
-            # FIXME: only for combined, should be resolved before running sim
-            if bp_size > MAX_SIZE:
+            # FIXME: should be resolved before running sim instead
+            if bp == "bp_combined" and not within_size(bp_size, SIZE_LIM):
                 continue
 
             b_pred = hw_stats[bpk]['predicted']
@@ -450,7 +456,7 @@ def run_bp_sweep(
         axs.append(ax)
 
     for a in axs:
-        a.set_xlim(0, MAX_SIZE)
+        a.set_xlim(SIZE_LIM)
         a.set_xlabel("Size (B)")
         a.set_xticks(bins)
         a.set_xticklabels(a.get_xticks(), rotation=45)
