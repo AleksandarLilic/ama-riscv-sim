@@ -37,6 +37,12 @@ def get_test_name(bin: str) -> str:
 def get_out_dir(test_name: str) -> str:
     return f"out_{test_name}"
 
+def gen_sweep_log_name(sweep: str, test_name: str) -> str:
+    return f"sweep_{sweep}_{test_name}.log"
+
+def within_size(num, size_lim: List[int]) -> bool:
+    return size_lim[0] <= num <= size_lim[1]
+
 def reformat_json(json_data, indent=4, max_depth=2):
     dumped_json = json.dumps(json_data, indent=indent)
     deeper_indent = " " * (indent * (max_depth + 1))
@@ -48,35 +54,55 @@ def reformat_json(json_data, indent=4, max_depth=2):
 
 @dataclass
 class sim_args:
+    bin: str
     args: List[str]
     msg: str
     sweep_log: str
-    out_dir: str
     save_sim: bool
+    parallel: bool = False
+    tag: str = ""
+    ret_list: List = None # for parallel, anything needed to be returned
 
 def run_sim(sa: sim_args) -> Dict[str, Any]:
-    res = subprocess.run([SIM] + sa.args, capture_output=True, text=True)
+    tag_arg = []
+    if sa.tag:
+        tag_arg = ["--out_dir_tag", sa.tag]
+    cmd = [SIM] + [sa.bin] + sa.args + tag_arg
+    res = subprocess.run(cmd, capture_output=True, text=True)
 
     if PASS_STRING not in res.stdout:
         raise RuntimeError("Simulation failed. Check the logs. Sim output: \n\n"
-                           f"{[SIM] + sa.args}\n"
+                           f"{cmd}\n"
                            f"{res.stderr}"
                            f"{res.stdout}")
 
-    with open(sa.sweep_log, "a") as f:
-        f.write("\n\n" + sa.msg + "\n") # always write the msg
-        if sa.save_sim:
-            f.write(res.stdout)
+    if not sa.parallel:
+        with open(sa.sweep_log, "a") as f:
+            f.write(sa.msg + "\n") # always write the msg
+            if sa.save_sim:
+                f.write(res.stdout + "\n\n")
 
-    if not os.path.exists(sa.out_dir):
-        raise FileNotFoundError(f"Output directory not found: {sa.out_dir}")
+    out_dir = get_out_dir(get_test_name(args.bin))
+    if sa.tag:
+        out_dir += f"_{sa.tag}"
 
-    json_hw_stats = os.path.join(sa.out_dir, "hw_stats.json")
+    if not os.path.exists(out_dir):
+        raise FileNotFoundError(f"Output directory not found: {out_dir}")
+
+    json_hw_stats = os.path.join(out_dir, "hw_stats.json")
     if not os.path.exists(json_hw_stats):
         raise FileNotFoundError(f"hw_stats.json not found: {json_hw_stats}")
 
     with open(json_hw_stats, "r") as f:
         hw_stats = json.load(f)
+
+    subprocess.run(["rm", "-r", out_dir])
+
+    if sa.parallel:
+        msg_out = f"{sa.msg}\n"
+        if sa.save_sim:
+            msg_out += f"{res.stdout}\n\n"
+        return hw_stats, sa.ret_list, msg_out
 
     return hw_stats
 
@@ -87,8 +113,7 @@ def run_cache_sweep(
     -> None:
 
     test_name = get_test_name(args.bin)
-    sweep_log = f"hw_model_sweep_{args.sweep}_{test_name}.log"
-    out_dir = get_out_dir(test_name)
+    sweep_log = gen_sweep_log_name(args.sweep, test_name)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
@@ -122,10 +147,10 @@ def run_cache_sweep(
                 msg = f"==> SWEEP: " \
                       f"policy: {cpolicy}, set: {cset}, way: {cway} <=="
                 sa = sim_args(
-                    args=[args.bin] + arg_sets + arg_ways + log_arg + bp_act,
+                    bin=args.bin,
+                    args=arg_sets + arg_ways + log_arg + bp_act,
                     msg=msg,
                     sweep_log=sweep_log,
-                    out_dir=out_dir,
                     save_sim=args.save_sim)
                 hw_stats = run_sim(sa)
                 sr[cpolicy][cset][cway] = hw_stats
@@ -224,7 +249,7 @@ def run_cache_sweep(
     # common for HR
     for a in axs_hr:
         a.set_ylabel("Hit Rate [%]")
-        a.set_title(f"{ck} Sweep: {test_name}")
+        a.set_title(f"{ck} Sweep: {test_name} - Hit Rate")
         a.legend(loc="lower right")
         ymin = a.get_ylim()[0]
         if args.plot_hr_thr:
@@ -233,7 +258,7 @@ def run_cache_sweep(
 
     # common for CT
     for a in axs_ct:
-        a.set_title(f"{ck} Sweep: {test_name}")
+        a.set_title(f"{ck} Sweep: {test_name} - Cache to Memory Traffic")
         a.legend(loc="upper right")
         if args.plot_ct_thr:
             ymax = min(args.plot_ct_thr, a.get_ylim()[1])
@@ -269,9 +294,6 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 
     return 1 # can't help you
 
-def within_size(num, size_lim: List[int]) -> bool:
-    return size_lim[0] <= num < size_lim[1]
-
 def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 -> List[List[Tuple[str, Any]]]:
     sk = bp_sweep.keys()
@@ -301,8 +323,7 @@ def run_bp_sweep(
     -> None:
 
     test_name = get_test_name(args.bin)
-    sweep_log = f"sweep_{args.sweep}_{test_name}.log"
-    out_dir = get_out_dir(test_name)
+    sweep_log = gen_sweep_log_name(args.sweep, test_name)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
@@ -359,39 +380,51 @@ def run_bp_sweep(
         if args.track:
             print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
 
-        # TODO: split the bp_params into chunks and run them in parallel
-        # based on the number of workers specified, default to 8?
-        # sync at the end to get the best configs
-        for bpp in bp_params:
-            d = {}
-            for i in range(0,len(bpp),2):
-                d[bpp[i].replace("--", "", 1)] = bpp[i+1]
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            print(f"Running {bp} with {executor._max_workers} processes")
+            # run in parallel
+            futures = {executor.submit(
+                run_sim,
+                sim_args(
+                    bin=args.bin,
+                    args=bpp + log_arg + bp_act,
+                    msg=f"==> SWEEP: {bp} {bpp} <==",
+                    sweep_log=sweep_log,
+                    save_sim=args.save_sim,
+                    parallel=True,
+                    tag="".join(bpp[1::2]), # every even index is a number
+                    ret_list=bpp
+                    )
+                ): bpp for bpp in bp_params
+            }
 
-            msg = f"==> SWEEP: {bp} {d} <=="
-            sa = sim_args(
-                args=[args.bin] + bpp + log_arg + bp_act,
-                msg=msg,
-                sweep_log=sweep_log,
-                out_dir=out_dir,
-                save_sim=args.save_sim)
-            hw_stats = run_sim(sa)
-            # check results
-            bp_size = hw_stats[bpk]['size']
+            # get results as they come in
+            for future in concurrent.futures.as_completed(futures):
+                hw_stats, bpp, msg = future.result()
+                # check results
+                bp_size = hw_stats[bpk]['size']
 
-            # FIXME: should be resolved before running sim instead
-            if bp == "bp_combined" and not within_size(bp_size, SIZE_LIM):
-                continue
+                # FIXME: should be resolved before running sim instead
+                if bp == "bp_combined" and not within_size(bp_size, SIZE_LIM):
+                    continue
 
-            b_pred = hw_stats[bpk]['predicted']
-            b_tot = hw_stats[bpk]['branches']
-            acc = round(b_pred/b_tot*100, 2)
-            if bp_size not in best or acc > best[bp_size]["acc"]:
-                best[bp_size] = {}
-                for k, v in d.items():
-                    best[bp_size][k] = v
-                best[bp_size]["acc"] = acc
-                if bp != "bp_combined":
-                    save_bpp_for_combined[bp][bp_size] = bpp
+                with open(sweep_log, "a") as f:
+                    f.write(msg)
+
+                d = {}
+                for i in range(0,len(bpp),2):
+                    d[bpp[i].replace("--", "", 1)] = bpp[i+1]
+
+                b_pred = hw_stats[bpk]['predicted']
+                b_tot = hw_stats[bpk]['branches']
+                acc = round(b_pred/b_tot*100, 2)
+                if bp_size not in best or acc > best[bp_size]["acc"]:
+                    best[bp_size] = {}
+                    for k, v in d.items():
+                        best[bp_size][k] = v
+                    best[bp_size]["acc"] = acc
+                    if bp != "bp_combined":
+                        save_bpp_for_combined[bp][bp_size] = bpp
 
         # sort the best dict by accuracy
         sr_best[bp] = dict(
@@ -414,9 +447,6 @@ def run_bp_sweep(
             prev_bin = bin
 
         sr_bin[bp] = best_binned
-        #save_for_combined_best[bp] = {}
-        #for k, v in best_binned.items():
-        #    save_for_combined_best[bp][k] = v["bpp"]
 
     sr_bin_out = sweep_log.replace(".log", "_binned.json")
     sr_best_out = sweep_log.replace(".log", "_best.json")
@@ -507,13 +537,8 @@ def run_main(args: argparse.Namespace) -> None:
     elif "bp" in args.sweep:
          run_bp_sweep(args, sweep_params, log_arg)
 
-    out_dir = get_out_dir(get_test_name(args.bin))
-    if os.path.exists(out_dir):
-        # remove the out dir (has only the last run anyway)
-        subprocess.run(["rm", "-r", out_dir])
-
 if __name__ == "__main__":
     if not os.path.exists(SIM):
-        raise FileNotFoundError(f"Simulator no found at: {SIM}")
+        raise FileNotFoundError(f"Simulator not found at: {SIM}")
     args = parse_args()
     run_main(args)
