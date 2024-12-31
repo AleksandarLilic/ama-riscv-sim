@@ -4,6 +4,8 @@ import os
 import subprocess
 import json
 import argparse
+import re
+import concurrent.futures
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
@@ -26,10 +28,23 @@ SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 PARAMS_DEF = os.path.join(reporoot, "script", "hw_model_sweep_params.json")
 PASS_STRING = "    0x051e tohost   : 0x00000001"
 INDENT = "  "
+FIG_SIZE = (12, 10)
 
 def get_test_name(bin: str) -> str:
     test_name = bin.split("/")
     return "_".join(test_name[-2:]).replace(".bin", "")
+
+def get_out_dir(test_name: str) -> str:
+    return f"out_{test_name}"
+
+def reformat_json(json_data, indent=4, max_depth=2):
+    dumped_json = json.dumps(json_data, indent=indent)
+    deeper_indent = " " * (indent * (max_depth + 1))
+    parent_indent = " " * (indent * max_depth)
+    out_json = re.sub(rf"\n{deeper_indent}", " ", dumped_json)
+    out_json = re.sub(rf"\n{parent_indent}}},", " },", out_json)
+    out_json = re.sub(rf"\n{parent_indent}}}", " }", out_json)
+    return out_json
 
 @dataclass
 class sim_args:
@@ -73,7 +88,7 @@ def run_cache_sweep(
 
     test_name = get_test_name(args.bin)
     sweep_log = f"hw_model_sweep_{args.sweep}_{test_name}.log"
-    out_dir = f"out_{test_name}"
+    out_dir = get_out_dir(test_name)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
@@ -125,7 +140,7 @@ def run_cache_sweep(
                     print(INDENT * 3,
                           f"Ways: {cway}, HR: {hr:.2f}%, Size: {size} B")
 
-    sweep_results = sweep_log.replace(".log", "_results.json")
+    sweep_results = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
         with open(sweep_results, "r") as f:
             sr = json.load(f)
@@ -135,7 +150,7 @@ def run_cache_sweep(
 
     axs_hr = []
     # plot HR wrt num of ways
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
             hit_rate = np.array(
@@ -148,7 +163,7 @@ def run_cache_sweep(
     axs_hr.append(ax)
 
     # plot HR wrt cache size (excl tag & metadata)
-    fig, ax = plt.subplots(figsize=(12, 10))
+    fig, ax = plt.subplots(figsize=FIG_SIZE)
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
             hit_rate = np.array(
@@ -169,7 +184,7 @@ def run_cache_sweep(
         if cache == "icache" and direction == "writes":
             continue # icache has no writes
         # plot CT mem wrt num of ways
-        fig, ax = plt.subplots(figsize=(12, 10))
+        fig, ax = plt.subplots(figsize=FIG_SIZE)
         for cpolicy, pe in sr.items():
             for cset, se in pe.items():
                 ct_mem_read = np.array(
@@ -187,7 +202,7 @@ def run_cache_sweep(
         axs_ct.append(ax)
 
         # plot CT mem wrt cache size (excl tag & metadata)
-        fig, ax = plt.subplots(figsize=(12, 10))
+        fig, ax = plt.subplots(figsize=FIG_SIZE)
         for cpolicy, pe in sr.items():
             for cset, se in pe.items():
                 ct_mem_read = np.array(
@@ -282,13 +297,14 @@ def run_bp_sweep(
     -> None:
 
     test_name = get_test_name(args.bin)
-    sweep_log = f"hw_model_sweep_{args.sweep}_{test_name}.log"
-    out_dir = f"out_{test_name}"
+    sweep_log = f"sweep_{args.sweep}_{test_name}.log"
+    out_dir = get_out_dir(test_name)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
     bpk = args.sweep.capitalize() # bp key in the hw_stats dict
-    sr = {} # sweep results dict
+    sr_bin = {}
+    sr_best = {}
 
     MAX_SIZE = int(sweep_params["common_settings"]["max_size"])
     if "size_bins" in sweep_params["common_settings"]:
@@ -297,9 +313,7 @@ def run_bp_sweep(
         # create bins as powers of 2 from 1 to MAX_SIZE
         bins = [2**i for i in range(0, int(np.log2(MAX_SIZE))+1)]
 
-    # TODO: each predictor sweep can be run in parallel, sync before writing res
-    save_for_combined = {} # save for combined predictor
-    #save_for_combined_best = {} # too restrictive atm
+    save_bpp_for_combined = {}
     for bp in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading previous stats
@@ -313,13 +327,8 @@ def run_bp_sweep(
             bpc_params = gen_bp_sweep_params(bp, bpc, MAX_SIZE)
             bp1 = sweep_params[bp]['predictors'][0]
             bp2 = sweep_params[bp]['predictors'][1]
-
-            # if exhaustive, use all the params
-            bp1_params = save_for_combined[bp1]
-            bp2_params = save_for_combined[bp2]
-            # else, use the best params
-            #bp1_params = save_for_combined_best[bp1]
-            #bp2_params = save_for_combined_best[bp2]
+            bp1_params = save_bpp_for_combined[bp1]
+            bp2_params = save_bpp_for_combined[bp2]
 
             bp_params_list = [
                 bp1_params[bp1_k] + bp2_params[bp2_k]
@@ -338,11 +347,15 @@ def run_bp_sweep(
                 m.extend(bp2_arg)
             bp_params = merged
         else:
-            save_for_combined[bp] = {}
+            save_bpp_for_combined[bp] = {}
             bp_params = gen_bp_sweep_params(bp, sweep_params[bp], MAX_SIZE)
 
         if args.track:
             print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
+
+        # TODO: split the bp_params into chunks and run them in parallel
+        # based on the number of workers specified, default to 8?
+        # sync at the end to get the best configs
         for bpp in bp_params:
             d = {}
             for i in range(0,len(bpp),2):
@@ -358,6 +371,11 @@ def run_bp_sweep(
             hw_stats = run_sim(sa)
             # check results
             bp_size = hw_stats[bpk]['size']
+
+            # FIXME: only for combined, should be resolved before running sim
+            if bp_size > MAX_SIZE:
+                continue
+
             b_pred = hw_stats[bpk]['predicted']
             b_tot = hw_stats[bpk]['branches']
             acc = round(b_pred/b_tot*100, 2)
@@ -366,9 +384,16 @@ def run_bp_sweep(
                 for k, v in d.items():
                     best[bp_size][k] = v
                 best[bp_size]["acc"] = acc
-                #best[bp_size]["bpp"] = bpp
                 if bp != "bp_combined":
-                    save_for_combined[bp][bp_size] = bpp
+                    save_bpp_for_combined[bp][bp_size] = bpp
+
+        # sort the best dict by accuracy
+        sr_best[bp] = dict(
+            sorted(best.items(), key=lambda x: x[1]["acc"], reverse=True))
+        # get the top N configs
+        sr_best[bp] = dict(list(sr_best[bp].items())[:args.bp_top_num])
+        # sort the best dict by size
+        sr_best[bp] = dict(sorted(sr_best[bp].items(), key=lambda x: x[0]))
 
         # for each bin, find the best config for accuracy
         prev_bin = 0
@@ -378,51 +403,65 @@ def run_bp_sweep(
                 if bp_size < bin and bp_size >= prev_bin:
                     if (bin not in best_binned or \
                         d["acc"] > best_binned[bin]["acc"]):
-                        best_binned[bin] = d
+                        best_binned[bin] = d.copy() # so size is not added to og
                         best_binned[bin]["size"] = bp_size
             prev_bin = bin
 
-        # sort the best dict by accuracy
-        #sr[bp] = dict(sorted(best.items(), key=lambda x: x[1]["acc"]))
-        sr[bp] = best_binned
+        sr_bin[bp] = best_binned
         #save_for_combined_best[bp] = {}
         #for k, v in best_binned.items():
         #    save_for_combined_best[bp][k] = v["bpp"]
 
-    sweep_results = sweep_log.replace(".log", "_results.json")
+    sr_bin_out = sweep_log.replace(".log", "_binned.json")
+    sr_best_out = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
-        with open(sweep_results, "r") as f:
-            sr = json.load(f)
+        with open(sr_bin_out, "r") as f:
+            sr_bin = json.load(f)
+        with open(sr_best_out, "r") as f:
+            sr_best = json.load(f)
     elif args.save_stats:
-        with open(sweep_results, "w") as f:
-            json.dump(sr, f)
+        with open(sr_bin_out, "w") as f:
+            f.write(reformat_json(sr_bin))
+        with open(sr_best_out, "w") as f:
+            f.write(reformat_json(sr_best))
 
     # plot accuracy wrt size
-    fig, ax = plt.subplots(figsize=(12, 10))
-    for bp, entry in sr.items():
-        # if bp is static, use hline instead
-        if "static" in bp:
-            fk = list(entry.keys())[0] # first key
-            ax.axhline(y=entry[fk]["acc"], color="r", linestyle="--",
-                        label=f"{bp}, accuracy: {entry[fk]['acc']}%")
-            continue
-        sizes = [entry[s]["size"] for s in entry.keys()]
-        accs = [entry[s]["acc"] for s in entry.keys()]
-        ax.plot(sizes, accs, label=f"{bp}", marker="o", lw=1)
+    axs = []
+    for sr in [sr_bin, sr_best]:
+        fig, ax = plt.subplots(figsize=FIG_SIZE)
+        for bp, entry in sr.items():
+            if "static" in bp:
+                fk = list(entry.keys())[0] # first key
+                ax.axhline(y=entry[fk]["acc"], color="r", linestyle="--",
+                           label=f"{bp}, accuracy: {entry[fk]['acc']}%")
+                continue
 
-    ax.set_xlim(0, MAX_SIZE)
-    ax.set_xlabel("Size (B)")
-    ax.set_xticks(bins)
-    ax.set_xticklabels(ax.get_xticks(), rotation=45)
-    ax.set_ylabel("Accuracy [%]")
-    ax.set_title(f"{bpk} Sweep: {test_name}")
-    ax.legend(loc="lower right")
-    ax.grid(True)
-    ax.margins(x=0.02)
-    ymin = ax.get_ylim()[0]
-    if args.plot_acc_thr:
-        ymin = max(args.plot_acc_thr, ymin)
-    ax.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
+            accs = [entry[s]["acc"] for s in entry.keys()]
+            if sr == sr_bin: # bins are keys, sizes stored separately
+                sizes = [entry[s]["size"] for s in entry.keys()]
+                title_add = "best per size bin"
+                ax.plot(sizes, accs, label=f"{bp}", marker="o", lw=1)
+            else: # sizes are keys
+                sizes = [int(s) for s in entry.keys()] # chars when load_stats
+                title_add = f"top {args.bp_top_num} for accuracy"
+                ax.scatter(sizes, accs, label=f"{bp}", marker="o", s=40)
+
+        ax.set_title(f"{bpk} Sweep: {test_name} - {title_add}")
+        axs.append(ax)
+
+    for a in axs:
+        a.set_xlim(0, MAX_SIZE)
+        a.set_xlabel("Size (B)")
+        a.set_xticks(bins)
+        a.set_xticklabels(a.get_xticks(), rotation=45)
+        a.set_ylabel("Accuracy [%]")
+        a.legend(loc="lower right")
+        a.grid(True)
+        a.margins(x=0.02)
+        ymin = a.get_ylim()[0]
+        if args.plot_acc_thr:
+            ymin = max(args.plot_acc_thr, ymin)
+        a.set_ylim(ymin, 100.1)
 
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
@@ -438,6 +477,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to keep based only on accuracy")
 
     return parser.parse_args()
 
@@ -461,7 +501,7 @@ def run_main(args: argparse.Namespace) -> None:
     elif "bp" in args.sweep:
          run_bp_sweep(args, sweep_params, log_arg)
 
-    out_dir = f"out_{get_test_name(args.bin)}"
+    out_dir = get_out_dir(get_test_name(args.bin))
     if os.path.exists(out_dir):
         # remove the out dir (has only the last run anyway)
         subprocess.run(["rm", "-r", out_dir])
