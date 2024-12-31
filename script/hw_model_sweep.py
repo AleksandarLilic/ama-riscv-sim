@@ -381,7 +381,7 @@ def run_bp_sweep(
             print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
 
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            print(f"Running {bp} with {executor._max_workers} processes")
+            #print(f"Running {bp} with {executor._max_workers} processes")
             # run in parallel
             futures = {executor.submit(
                 run_sim,
@@ -398,33 +398,33 @@ def run_bp_sweep(
                 ): bpp for bpp in bp_params
             }
 
-            # get results as they come in
-            for future in concurrent.futures.as_completed(futures):
-                hw_stats, bpp, msg = future.result()
-                # check results
-                bp_size = hw_stats[bpk]['size']
+        # get results as they come in
+        for future in concurrent.futures.as_completed(futures):
+            hw_stats, bpp, msg = future.result()
+            # check results
+            bp_size = hw_stats[bpk]['size']
 
-                # FIXME: should be resolved before running sim instead
-                if bp == "bp_combined" and not within_size(bp_size, SIZE_LIM):
-                    continue
+            # FIXME: should be resolved before running sim instead
+            if bp == "bp_combined" and not within_size(bp_size, SIZE_LIM):
+                continue
 
-                with open(sweep_log, "a") as f:
-                    f.write(msg)
+            with open(sweep_log, "a") as f:
+                f.write(msg)
 
-                d = {}
-                for i in range(0,len(bpp),2):
-                    d[bpp[i].replace("--", "", 1)] = bpp[i+1]
+            d = {}
+            for i in range(0,len(bpp),2):
+                d[bpp[i].replace("--", "", 1)] = bpp[i+1]
 
-                b_pred = hw_stats[bpk]['predicted']
-                b_tot = hw_stats[bpk]['branches']
-                acc = round(b_pred/b_tot*100, 2)
-                if bp_size not in best or acc > best[bp_size]["acc"]:
-                    best[bp_size] = {}
-                    for k, v in d.items():
-                        best[bp_size][k] = v
-                    best[bp_size]["acc"] = acc
-                    if bp != "bp_combined":
-                        save_bpp_for_combined[bp][bp_size] = bpp
+            b_pred = hw_stats[bpk]['predicted']
+            b_tot = hw_stats[bpk]['branches']
+            acc = round(b_pred/b_tot*100, 2)
+            if bp_size not in best or acc > best[bp_size]["acc"]:
+                best[bp_size] = {}
+                for k, v in d.items():
+                    best[bp_size][k] = v
+                best[bp_size]["acc"] = acc
+                if bp != "bp_combined":
+                    save_bpp_for_combined[bp][bp_size] = bpp
 
         # sort the best dict by accuracy
         sr_best[bp] = dict(
