@@ -23,11 +23,16 @@
 #define RESOLVE_ARG(str, map) \
     resolve_arg(str, result[str].as<std::string>(), map)
 
-std::string gen_log_path(const std::string& test_bin_path) {
+std::string gen_log_path(
+    const std::string& test_bin_path,
+    const std::string& out_dir_tag) {
+
     std::filesystem::path p(test_bin_path);
     std::string last_directory = p.parent_path().filename().string();
     std::string binary_name = p.stem().string();
-    std::string path_out = "out_" + last_directory + "_" + binary_name + "/";
+    std::string path_out = "out_" + last_directory + "_" + binary_name;
+    if (!out_dir_tag.empty()) path_out += "_" + out_dir_tag;
+    path_out = path_out + "/";
     if (!std::filesystem::exists(path_out) &&
         !std::filesystem::create_directory(path_out)) {
         std::cerr << "Failed to create directory: " << path_out << std::endl;
@@ -143,6 +148,7 @@ void show_help(const cxxopts::Options& options) {
 int main(int argc, char* argv[]) {
     cfg_t cfg;
     std::string test_bin;
+    std::string out_dir_tag;
     cxxopts::Options options(argv[0], "ama-riscv-sim");
     options.set_width(116);
     hw_cfg_t hw_cfg;
@@ -162,6 +168,8 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
         ("dump_all_regs", "Dump all registers at the end of simulation",
          cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
+        ("out_dir_tag", "Tag (suffix) for output directory",
+         cxxopts::value<std::string>()->default_value(""))
 
         #ifdef ENABLE_DASM
         ("dump_state", "Dump state after each executed instruction",
@@ -186,11 +194,14 @@ int main(int argc, char* argv[]) {
          gen_help_list(bp_names_map) + "\n ",
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_active))
         ("bp_combined_p1",
-         "First branch predictor for combined predictor.\nOptions: " +
+         "First branch predictor for combined predictor. Counters will be "
+         "weakly biased towards this predictor (impacts warm-up period)\n"
+         "Options: " +
          gen_help_list(bpc_names_map) + "\n ",
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p1))
         ("bp_combined_p2",
-         "Second branch predictor for combined predictor.\nOptions: " +
+         "Second branch predictor for combined predictor.\n"
+         "Options: " +
          gen_help_list(bpc_names_map) + "\n ",
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p2))
         // supported predictors configurations
@@ -266,6 +277,7 @@ int main(int argc, char* argv[]) {
 
     try {
         test_bin = result["path"].as<std::string>();
+        out_dir_tag = result["out_dir_tag"].as<std::string>();
         cfg.log_pc.start = TO_HEX(result["log_pc_start"]);
         cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
         cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
@@ -328,7 +340,7 @@ int main(int argc, char* argv[]) {
 
     TRY_CATCH({
         memory mem(test_bin, hw_cfg);
-        core rv32(&mem, gen_log_path(test_bin), cfg, hw_cfg);
+        core rv32(&mem, gen_log_path(test_bin, out_dir_tag), cfg, hw_cfg);
         rv32.exec();
     });
 
