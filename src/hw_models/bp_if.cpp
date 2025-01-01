@@ -129,6 +129,7 @@ void bp_if::show_stats(std::string log_path) {
         std::array<uint32_t, num_predictors> pred;
         for (uint8_t i = 0; i < num_predictors; i++) {
             pred[i] = predictors[i]->get_predicted_stats(pc);
+            if (predictors[i] == &ideal_bp) continue;
             if (pred[i] > pred[idx_best]) idx_best = i;
         }
 
