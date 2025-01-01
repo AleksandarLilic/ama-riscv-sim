@@ -74,11 +74,16 @@ endif
 
 build_common: $(COMMON_OBJS)
 
+COMPILE_COMMON = @$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+
 $(COMMON_BUILD_DIR)/%.o: %.c %.h
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+	$(COMPILE_COMMON)
+
+$(COMMON_BUILD_DIR)/%.o: %.c
+	$(COMPILE_COMMON)
 
 $(COMMON_BUILD_DIR)/%.o: %.S
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+	$(COMPILE_COMMON)
 
 clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map

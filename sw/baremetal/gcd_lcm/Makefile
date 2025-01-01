@@ -6,4 +6,6 @@ TARGET := n_$(N_NAME)
 CFLAGS += -D$(N_IN) -DLOOPS=$(LOOPS)
 GCC_OPTS += -O3 -flto
 
+all: $(TARGET).elf
+
 include ../Makefile.inc
