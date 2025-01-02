@@ -9,25 +9,21 @@ CFLAGS := -I../
 
 TARGETS := $(addsuffix .elf, $(TYPES))
 
-all: setup main.S clean_setup $(TARGETS)
+all: $(TARGETS)
+
+codegen: main.S
+clean_codegen: clean_aapg
 
 main.S: $(CONFIG_FILE)
+	@aapg setup 2> /dev/null
 	aapg gen --arch $(AAPG_ARCH) --config_file $(CONFIG_FILE) --seed $(SEED) --asm_name $(basename $@) 2> /dev/null
 	@mv work/asm/$(basename $@).S $@
 	@sed -i 's/$(basename $@)_template.S/aapg_common.h/' $@
+	@rm -rf work
 
-setup:
-	@aapg setup 2> /dev/null
-
-clean_src:
+clean_aapg:
 	rm -rf main.S
 
-clean_setup:
-	rm -rf work
-
-clean_aapg: clean_src
-	@$(MAKE) -f $(MAKEFILE_INC) clean --no-print-directory
-
-.PHONY: setup clean_setup clean_src clean_aapg
+.PHONY: setup clean_aapg
 
 include $(MAKEFILE_INC)

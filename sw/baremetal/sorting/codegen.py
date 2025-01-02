@@ -29,24 +29,24 @@ random.seed(0)
 for key,value in NUM.items():
     def_check = "#if " if key == "uint8_t" else "#elif "
     code.append(def_check + "defined(NF_" + \
-                value["nf_in"].__name__.upper() + ")")
+                value["nf"].__name__.upper() + ")")
 
-    if "float" in value["nf_in"].__name__:
+    if "float" in value["nf"].__name__:
         typ_min = value["min"]
         typ_max = value["max"]
-        ctypes = FP_C_MAP[value["nf_in"]]
+        ctypes = FP_C_MAP[value["nf"]]
     else:
-        typ_min = np.iinfo(value["nf_in"]).min
-        typ_max = np.iinfo(value["nf_in"]).max
-        ctypes = value["nf_in"].__name__ + "_t"
+        typ_min = np.iinfo(value["nf"]).min
+        typ_max = np.iinfo(value["nf"]).max
+        ctypes = value["nf"].__name__ + "_t"
 
     code.append("#define NF_IN " + ctypes)
 
-    value['a'] = rnd_gen(typ_min, typ_max, arr_len, value["nf_in"])
+    value['a'] = rnd_gen(typ_min, typ_max, arr_len, value["nf"])
     value['ref'] = np.sort(value['a'])
 
     suffix = "ULL" if key == "uint64_t" else ""
-    code.append(np2c_arr('a', value['a'], "in", suffix))
-    code.append(np2c_arr('ref', value['ref'], "in", suffix) + "\n")
+    code.append(np2c_arr('a', value['a'], "NF_IN", suffix))
+    code.append(np2c_arr('ref', value['ref'], "NF_IN", suffix) + "\n")
 
 finish_gen(code, OUT)

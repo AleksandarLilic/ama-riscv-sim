@@ -29,6 +29,9 @@ CFLAGS += $(MATH_LIB_FLAGS)
 
 all: add sub mul div
 
+codegen: headers
+clean_codegen: clean_headers
+
 add: $(TARGETS_ADD)
 sub: $(TARGETS_SUB)
 mul: $(TARGETS_MUL)

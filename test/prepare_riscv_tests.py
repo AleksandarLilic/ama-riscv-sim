@@ -11,6 +11,8 @@ TEST_DIR = os.path.join(GIT_ROOT, 'sw/baremetal')
 ISA_TEST_DIR = os.path.join(GIT_ROOT, 'sw/riscv-isa-tests')
 WORK_DIR = os.getcwd()
 
+CODEGEN_APPS = ["aapg_static", "sorting", "vector_ew_basic"]
+
 def file_exists(filename):
     if not os.path.exists(filename):
         raise argparse.ArgumentTypeError(f"File '{filename}' not found")
@@ -42,10 +44,14 @@ def build_test(test):
     directory, entry = test
     test_list, test_opts = entry if len(entry) == 2 else (entry, [])
     test_dir = os.path.join(TEST_DIR, directory)
-    run_make(["make", "clean"], cwd=test_dir)
+    run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
     if args.clean_only:
         return
-    make_all = test_list == ["all"]
+    # if any of the CODEGEN_APPS is in the test directory, run codegen first
+    if any(app in test_dir for app in CODEGEN_APPS):
+        run_make(["make", "clean_codegen"], cwd=test_dir)
+        run_make(["make", "codegen"], cwd=test_dir)
+    make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j", "build_common"]
     run_make(make_cmd, cwd=test_dir)

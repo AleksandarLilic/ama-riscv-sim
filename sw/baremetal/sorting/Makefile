@@ -25,6 +25,9 @@ CFLAGS := -DLOOPS=$(LOOPS)
 
 all: bubble insertion selection merge quick heap
 
+codegen: headers
+clean_codegen: clean_headers
+
 bubble: $(TARGETS_BUBBLE)
 insertion: $(TARGETS_INSERTION)
 selection: $(TARGETS_SELECTION)
