@@ -12,7 +12,7 @@ core::core(
     , prof(log_path)
     #endif
     #ifdef ENABLE_HW_PROF
-    , bp("Bpred", hw_cfg)
+    , bp("bpred", hw_cfg)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
 {

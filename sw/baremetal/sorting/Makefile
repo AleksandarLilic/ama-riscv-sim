@@ -2,6 +2,7 @@ TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
 #LENGTHS := tiny small medium large
 LENGTHS := small large
 ALGS := bubble insertion selection merge quick heap
+LOOPS := 1
 
 TARGETS_BUBBLE := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 1, $(ALGS))_, $(TYPES))))
 TARGETS_INSERTION := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 2, $(ALGS))_, $(TYPES))))

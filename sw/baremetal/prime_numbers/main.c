@@ -58,7 +58,9 @@ void main() {
     SET_N
     SET_EXP
     for (uint32_t i = 0; i < LOOPS; i++) {
+        LOG_START;
         sieve_of_eratosthenes(n, expected);
+        LOG_STOP;
     }
     pass();
 }

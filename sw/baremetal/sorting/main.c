@@ -200,11 +200,13 @@ void main(void) {
     for (uint32_t i = 0; i < LOOP_COUNT; i++) {
         uint32_t n = sizeof(a)/sizeof(a[0]);
 
+        LOG_START;
         #if defined(ALG_MERGE) || defined(ALG_QUICK)
         FUNC_NAME(a, 0, n-1);
         #else
         FUNC_NAME(a, n);
         #endif
+        LOG_STOP;
 
         asm(".global check");
         asm("check:");

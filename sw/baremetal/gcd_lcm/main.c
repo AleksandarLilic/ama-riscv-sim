@@ -23,7 +23,9 @@ void main() {
     SET_B
     SET_EXP
     for (uint32_t i = 0; i < LOOPS; i++) {
+        LOG_START;
         uint64_t result = lcm(a, b);
+        LOG_STOP;
         if (result != expected){
             write_mismatch(result, expected, 1);
             fail();

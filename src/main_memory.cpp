@@ -7,8 +7,8 @@ main_memory::main_memory(
         dev(size)
         #ifdef ENABLE_HW_PROF
         ,
-        icache(hw_cfg.icache_sets, hw_cfg.icache_ways, "Icache", this),
-        dcache(hw_cfg.dcache_sets, hw_cfg.dcache_ways, "Dcache", this)
+        icache(hw_cfg.icache_sets, hw_cfg.icache_ways, "icache", this),
+        dcache(hw_cfg.dcache_sets, hw_cfg.dcache_ways, "dcache", this)
         #endif
 {
     burn(test_bin);
@@ -47,7 +47,7 @@ uint32_t main_memory::rd_inst(uint32_t addr) {
     if (inst_ic != inst) {
         std::cerr << "ERROR: Instruction cache and memory mismatch."
                   << " Address: 0x" << std::hex << addr
-                  << " Icache: 0x" << inst_ic
+                  << " icache: 0x" << inst_ic
                   << " Memory: 0x" << inst
                   << std::endl;
         icache.dump();
@@ -77,7 +77,7 @@ uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
     if (data_dc != data) {
         std::cerr << "ERROR: Data cache and memory mismatch."
                   << " Address: 0x" << std::hex << addr
-                  << " Dcache: 0x" << data_dc
+                  << " dcache: 0x" << data_dc
                   << " Memory: 0x" << data
                   << std::endl;
         dcache.dump();
@@ -120,7 +120,7 @@ void main_memory::wr_line(uint32_t addr,
         if (mem_data != cache_data) {
             std::cerr << "ERROR: Data cache and memory mismatch."
                       << " Address: 0x" << std::hex << addr+i
-                      << " Dcache: 0x" << cache_data
+                      << " dcache: 0x" << cache_data
                       << " Memory: 0x" << mem_data
                       << std::endl;
             dcache.dump();

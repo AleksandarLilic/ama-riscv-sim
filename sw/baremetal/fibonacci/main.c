@@ -31,7 +31,9 @@ void main() {
     SET_N
     SET_EXP
     for (uint32_t i = 0; i < LOOPS; i++) {
+        LOG_START;
         uint32_t result = fib(n);
+        LOG_STOP;
 
         if (result != expected){
             write_mismatch(result, expected, 1);
