@@ -208,6 +208,8 @@ def run_cache_sweep(
                     ret_list=[cpolicy, cset, cway]
                 )
                 size, hr, _, msg = run_workloads(wp)
+                if hr == None:
+                    continue
                 with open(sweep_log, "a") as f:
                     f.write(msg)
                 sr[cpolicy][cset][cway] = {"hr": hr, "size": size}
