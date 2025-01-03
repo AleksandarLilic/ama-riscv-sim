@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from itertools import product
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List
+from run_analysis import is_notebook
 
 def get_reporoot():
     try:
@@ -27,7 +28,8 @@ reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 PARAMS_DEF = os.path.join(reporoot, "script", "hw_model_sweep_params.json")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
-PASS_STRING = "    0x051e tohost   : 0x00000001"
+#PASS_STRING = "    0x051e tohost   : 0x00000001"
+PASS_STRING = "    0x051e (tohost): 0x1"
 INDENT = "  "
 FIG_SIZE = (12, 10)
 
@@ -56,6 +58,15 @@ def reformat_json(json_data, max_depth=2, indent=4):
     out_json = re.sub(rf"\n{parent_indent}}},", " },", out_json)
     out_json = re.sub(rf"\n{parent_indent}}}", " }", out_json)
     return out_json
+
+def convert_keys_to_int(obj):
+    if isinstance(obj, dict):
+        return {int(k) if k.isdigit() else k: convert_keys_to_int(v)
+                for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_keys_to_int(i) for i in obj]
+    else:
+        return obj
 
 def run_sim(cmd: List) -> Dict[str, Any]:
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -91,6 +102,7 @@ def run_workloads(wp: workload_params):
     elif cache_sweep:
         agg_hr = [] # aggregate hit rate across all workloads
         cache_size = None
+        cache_ct = []
 
     msg_out = f"{wp.msg}\n"
     for workload in wp.workloads:
@@ -145,6 +157,11 @@ def run_workloads(wp: workload_params):
                 agg_hr = []
                 break
             agg_hr.append(hr)
+            if len(wp.workloads) == 1:
+                cache_ct.append(hw_stats[wp.sweep]['ct_core']['reads'])
+                cache_ct.append(hw_stats[wp.sweep]['ct_core']['writes'])
+                cache_ct.append(hw_stats[wp.sweep]['ct_mem']['reads'])
+                cache_ct.append(hw_stats[wp.sweep]['ct_mem']['writes'])
 
     if bp_sweep:
         avg_acc = None
@@ -156,7 +173,7 @@ def run_workloads(wp: workload_params):
         avg_hr = None
         if len(agg_hr) > 0:
             avg_hr = round(sum(agg_hr)/len(agg_hr), 2)
-        return cache_size, avg_hr, wp.ret_list, msg_out
+        return cache_size, avg_hr, cache_ct, wp.ret_list, msg_out
 
 def run_cache_sweep(
     args: argparse.Namespace,
@@ -207,12 +224,17 @@ def run_cache_sweep(
                     tag=f"{cpolicy}_{cset}_{cway}",
                     ret_list=[cpolicy, cset, cway]
                 )
-                size, hr, _, msg = run_workloads(wp)
+                size, hr, ct, _, msg = run_workloads(wp)
                 if hr == None:
                     continue
                 with open(sweep_log, "a") as f:
                     f.write(msg)
-                sr[cpolicy][cset][cway] = {"hr": hr, "size": size}
+                sr[cpolicy][cset][cway] = {
+                    "hr": hr,
+                    "size": size,
+                    "ct_core": {"reads": ct[0], "writes": ct[1]},
+                    "ct_mem": {"reads": ct[2], "writes": ct[3]}
+                }
                 if args.track:
                     print(INDENT * 3,
                           f"Ways: {cway}, HR: {hr:.2f}%, Size: {size} B")
@@ -220,7 +242,7 @@ def run_cache_sweep(
     sweep_results = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
         with open(sweep_results, "r") as f:
-            sr = json.load(f)
+            sr = convert_keys_to_int(json.load(f))
     elif args.save_stats:
         with open(sweep_results, "w") as f:
             f.write(reformat_json(sr, max_depth=3))
@@ -261,8 +283,7 @@ def run_cache_sweep(
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
-                        [se[way][ck]["ct_mem"][direction]
-                        for way in se.keys()])
+                        [se[way]["ct_mem"][direction]for way in se.keys()])
                     ax.plot(se.keys(), ct_mem_read,
                             label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
             ax.set_xlabel("Ways")
@@ -270,7 +291,7 @@ def run_cache_sweep(
             ax.set_ylabel(
                 f"Cache to Memory Traffic - {direction.capitalize()} (B)")
             fk = list(se.keys())[0] # first key
-            ct_core = se[fk][ck]["ct_core"][direction]
+            ct_core = se[fk]["ct_core"][direction]
             ax.axhline(y=ct_core,color="r", linestyle="--",
                     label=f"Core to Cache Traffic = {ct_core} B")
             axs_ct.append(ax)
@@ -280,11 +301,9 @@ def run_cache_sweep(
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
-                        [se[way][ck]["ct_mem"][direction]
-                        for way in se.keys()])
+                        [se[way]["ct_mem"][direction]for way in se.keys()])
                     sizes = np.array(
-                        [se[way][ck]["size"]["data"]
-                        for way in se.keys()])
+                        [se[way]["size"]for way in se.keys()])
                     ax.plot(sizes, ct_mem_read,
                             label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
             ax.set_xlabel("Size (B)")
@@ -496,9 +515,9 @@ def run_bp_sweep(
     sr_best_out = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
         with open(sr_bin_out, "r") as f:
-            sr_bin = json.load(f)
+            sr_bin = convert_keys_to_int(json.load(f))
         with open(sr_best_out, "r") as f:
-            sr_best = json.load(f)
+            sr_best = convert_keys_to_int(json.load(f))
     elif args.save_stats:
         with open(sr_bin_out, "w") as f:
             f.write(reformat_json(sr_bin))
@@ -532,7 +551,7 @@ def run_bp_sweep(
                 title_add = "best per size bin"
                 ax.plot(sizes, accs, label=label, marker="o", lw=1)
             else: # sizes are keys
-                sizes = [int(s) for s in entry.keys()] # chars when load_stats
+                sizes = entry.keys()
                 title_add = f"top {args.bp_top_num} for accuracy"
                 ax.scatter(sizes, accs, label=label, marker="o", s=40)
 
@@ -552,6 +571,11 @@ def run_bp_sweep(
         if args.plot_acc_thr:
             ymin = max(args.plot_acc_thr, ymin)
         a.set_ylim(ymin, 100.1)
+
+    plt.show(block=False)
+    if not is_notebook():
+        input("Press Enter to close all plots...")
+        plt.close('all')
 
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]

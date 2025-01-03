@@ -99,6 +99,13 @@ inst_mem_bd = {
     MEM_S : ["Store", colors["blue_light2"]],
 }
 
+def is_notebook():
+    try:
+        from IPython import get_ipython
+        return get_ipython() is not None
+    except ImportError:
+        return False
+
 def get_base_int_addr(addr) -> int:
     return int(addr,16) - int(BASE_ADDR)
 
@@ -486,7 +493,7 @@ plt.Axes:
         #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
         if (start < ymin) or (start > ymax and end > ymax):
             continue
-        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5)
+        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5, lw=0.4)
         ax.text(symbol_pos, start,
                 f" ^ {v['symbol_text']}", color='k',
                 fontsize=9, ha='left', va='center',
@@ -496,7 +503,7 @@ plt.Axes:
     # add line for the last symbol, if any
     if symbols:
         # ends after last dmem entry, FIXME: should be the size of last inst
-        ax.axhline(y=end+2, color='k', linestyle='-', alpha=0.5)
+        ax.axhline(y=end+2, color='k', linestyle='-', alpha=0.5, lw=0.4)
 
     return ax
 
@@ -826,9 +833,10 @@ def run_main(args) -> None:
         figs_dict = {"inst": fig}
 
     if not args.silent:
-        plt.show()
-    for name, fig in fig_arr:
-        plt.close(fig)
+        plt.show(block=False)
+        if not is_notebook():
+            input("Press Enter to close all plots...")
+    plt.close('all')
 
     if args.save_csv:
         df.to_csv(args_log.replace(ext, "_out.csv"), index=False)
