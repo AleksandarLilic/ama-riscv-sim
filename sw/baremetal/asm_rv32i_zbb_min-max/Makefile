@@ -1,5 +1,5 @@
 TARGET := basic
-CFLAGS := -DLOOP_COUNT=1u
+CFLAGS := -DLOOPS=1u
 # no Zbb, instructions are used with .insn
 MARCH := rv32i_zicsr
 COMMON_OBJ_NAMES = crt0.o

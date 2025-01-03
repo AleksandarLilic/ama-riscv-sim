@@ -10,7 +10,7 @@ main:
     li x5, 0 # override spike
 
     li x4, 0 # loop var
-    li x5, LOOP_COUNT # loop end
+    li x5, LOOPS # loop end
 
 loop:
     li x24, 0

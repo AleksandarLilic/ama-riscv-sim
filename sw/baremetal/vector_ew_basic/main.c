@@ -60,14 +60,16 @@ _Static_assert(0, "No operation defined");
 #define EXPAND_CONCAT(a, b) CONCAT(a, b)
 #define FUNC EXPAND_CONCAT(FUNC_PREFIX, FUNC_NAME)
 
-#define LOOP_COUNT 1u
+#ifndef LOOPS
+#define LOOPS 1u
+#endif
 
 void set_c() {
     for (size_t i = 0; i < ARR_LEN; i++) c[i] = 0;
 }
 
 void main(void) {
-    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+    for (uint32_t i = 0; i < LOOPS; i++) {
         set_c();
 
         asm(".global compute");

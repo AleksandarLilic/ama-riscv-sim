@@ -12,7 +12,9 @@
 _Static_assert(0, "No array length defined or unsupported length specified");
 #endif
 
-#define LOOP_COUNT 1u
+#ifndef LOOPS
+#define LOOPS 1u
+#endif
 
 void swap(NF_IN* a, NF_IN* b) {
     NF_IN t = *a;
@@ -197,7 +199,7 @@ _Static_assert(0, "No algorithm defined");
 #endif
 
 void main(void) {
-    for (uint32_t i = 0; i < LOOP_COUNT; i++) {
+    for (uint32_t i = 0; i < LOOPS; i++) {
         uint32_t n = sizeof(a)/sizeof(a[0]);
 
         LOG_START;

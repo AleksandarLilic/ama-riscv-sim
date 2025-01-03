@@ -1,5 +1,5 @@
 TARGET := basic
-CFLAGS := -DLOOP_COUNT=1u
+CFLAGS := -DLOOPS=1u
 MARCH := rv32im_zicsr
 COMMON_OBJ_NAMES = crt0.o
 
