@@ -31,7 +31,9 @@ APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 #PASS_STRING = "    0x051e tohost   : 0x00000001"
 PASS_STRING = "    0x051e (tohost): 0x1"
 INDENT = "  "
-FIG_SIZE = (12, 10)
+FIG_SIZE = (16, 8)
+MK = "o"
+LW = 1
 
 def get_test_name(app: str) -> str:
     test_name = app.split("/")
@@ -67,6 +69,12 @@ def convert_keys_to_int(obj):
         return [convert_keys_to_int(i) for i in obj]
     else:
         return obj
+
+def create_plot(title: str, sweep_name: str) -> Tuple:
+    fig, axs = plt.subplots(
+        ncols=2, nrows=1, figsize=FIG_SIZE, constrained_layout=True)
+    fig.suptitle(f"{title} sweep for {sweep_name}")
+    return fig, axs
 
 def run_sim(cmd: List) -> Dict[str, Any]:
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -189,6 +197,7 @@ def run_cache_sweep(
     MAX_SIZE = int(sweep_params["max_size"])
     XTICKS = [2**i for i in range(int(np.log2(CACHE_LINE_BYTES)),
                                   int(np.log2(MAX_SIZE))+1)]
+    XLABELS = [f"{x//1024}K" if x >= 1024 else x for x in XTICKS]
 
     ck = args.sweep # cache key in the hw_stats dict
     sr = {} # sweep results dict
@@ -229,12 +238,12 @@ def run_cache_sweep(
                     continue
                 with open(sweep_log, "a") as f:
                     f.write(msg)
-                sr[cpolicy][cset][cway] = {
-                    "hr": hr,
-                    "size": size,
-                    "ct_core": {"reads": ct[0], "writes": ct[1]},
-                    "ct_mem": {"reads": ct[2], "writes": ct[3]}
-                }
+                sr[cpolicy][cset][cway] = { "hr": hr, "size": size }
+                if ct: # only for single workload sweeps
+                    sr[cpolicy][cset][cway]["ct_core"] = {
+                        "reads": ct[0], "writes": ct[1]}
+                    sr[cpolicy][cset][cway]["ct_mem"] = {
+                        "reads": ct[2], "writes": ct[3]}
                 if args.track:
                     print(INDENT * 3,
                           f"Ways: {cway}, HR: {hr:.2f}%, Size: {size} B")
@@ -247,78 +256,79 @@ def run_cache_sweep(
         with open(sweep_results, "w") as f:
             f.write(reformat_json(sr, max_depth=3))
 
-    axs_hr = []
+    lbl = lambda x, y: f"{x}, sets: {y}"
     # plot HR wrt num of ways
-    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    _, axs_hr = create_plot(ck.capitalize(), f"{sweep_name} - Hit Rate")
+    ax = axs_hr[0]
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             ax.plot(se.keys(), hit_rate,
-                    label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
+                    label=lbl(cpolicy, cset), marker=MK, lw=LW)
     ax.set_xlabel("Ways")
     ax.set_xticks(sweep_params["ways"])
-    axs_hr.append(ax)
+    ax.set_title(f"vs Number of Ways")
 
     # plot HR wrt cache size (excl tag & metadata)
-    fig, ax = plt.subplots(figsize=FIG_SIZE)
+    ax = axs_hr[1]
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             sizes = np.array([se[way]["size"] for way in se.keys()])
-            ax.plot(sizes, hit_rate,
-                    label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
-    ax.set_xlabel("Size (B)")
+            ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset), marker=MK, lw=LW)
+    ax.set_xlabel("Size [B]")
     ax.set_xticks(XTICKS)
-    ax.set_xticklabels(ax.get_xticks(), rotation=45)
-    axs_hr.append(ax)
+    ax.set_xticklabels(XLABELS, rotation=45)
+    ax.set_title(f"vs Size")
 
     axs_ct = []
     # ct meaningless for workload sweeps
     if len(workloads) == 1:
+        ctmt = "Cache to Memory Traffic"
+        ctct = "Core to Cache Traffic"
         for direction in ["reads", "writes"]:
             if ck == "icache" and direction == "writes":
                 continue # icache has no writes
             # plot CT mem wrt num of ways
-            fig, ax = plt.subplots(figsize=FIG_SIZE)
+            _, axs_d = create_plot(
+                ck.capitalize(),
+                f"{sweep_name} - {ctmt} {direction.capitalize()}")
+            ax = axs_d[0]
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
                     ax.plot(se.keys(), ct_mem_read,
-                            label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
+                            label=lbl(cpolicy, cset), marker=MK, lw=LW)
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
-            ax.set_ylabel(
-                f"Cache to Memory Traffic - {direction.capitalize()} (B)")
             fk = list(se.keys())[0] # first key
             ct_core = se[fk]["ct_core"][direction]
             ax.axhline(y=ct_core,color="r", linestyle="--",
-                    label=f"Core to Cache Traffic = {ct_core} B")
+                       label=f"{ctct} = {ct_core} B")
+            ax.set_title(f"vs Number of Ways")
             axs_ct.append(ax)
 
             # plot CT mem wrt cache size (excl tag & metadata)
-            fig, ax = plt.subplots(figsize=FIG_SIZE)
+            ax = axs_d[1]
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
-                    sizes = np.array(
-                        [se[way]["size"]for way in se.keys()])
+                    sizes = np.array([se[way]["size"]for way in se.keys()])
                     ax.plot(sizes, ct_mem_read,
-                            label=f"{cpolicy} sets: {cset}", marker="o", lw=1)
-            ax.set_xlabel("Size (B)")
+                            label=lbl(cpolicy, cset), marker=MK, lw=LW)
+            ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
-            ax.set_xticklabels(ax.get_xticks(), rotation=45)
-            ax.set_ylabel(
-                f"Cache to Memory Traffic - {direction.capitalize()} (B)")
+            ax.set_xticklabels(XLABELS, rotation=45)
             ax.axhline(y=ct_core,color="r", linestyle="--",
-                    label=f"Core to Cache Traffic = {ct_core} B")
+                       label=f"{ctct} = {ct_core} B")
+            ax.set_title(f"vs Size")
             axs_ct.append(ax)
 
     # common for HR
     for a in axs_hr:
         a.set_ylabel("Hit Rate [%]")
-        a.set_title(f"{ck} sweep: {sweep_name} - Hit Rate")
         a.legend(loc="lower right")
         ymin = a.get_ylim()[0]
         if args.plot_hr_thr:
@@ -327,16 +337,21 @@ def run_cache_sweep(
 
     # common for CT
     for a in axs_ct:
-        a.set_title(f"{ck} sweep: {sweep_name} - Cache to Memory Traffic")
         a.legend(loc="upper right")
+        a.set_ylabel(f"Traffic [B]")
         if args.plot_ct_thr:
             ymax = min(args.plot_ct_thr, a.get_ylim()[1])
             a.set_ylim(0, ymax)
 
     # common for all plots
-    for a in axs_hr + axs_ct:
+    for a in list(axs_hr) + axs_ct:
         a.grid(True)
         a.margins(x=0.02)
+
+    plt.show(block=False)
+    if not is_notebook():
+        input("Press Enter to close all plots...")
+        plt.close('all')
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
@@ -525,9 +540,8 @@ def run_bp_sweep(
             f.write(reformat_json(sr_best))
 
     # plot accuracy wrt size
-    axs = []
-    for sr in [sr_bin, sr_best]:
-        fig, ax = plt.subplots(figsize=FIG_SIZE)
+    _, axs = create_plot(bpk.capitalize(), sweep_name)
+    for sr,ax in zip([sr_bin, sr_best], axs):
         for bp, entry in sr.items():
             if len(entry.keys()) == 0: # below thr limit for all available sizes
                 continue
@@ -548,15 +562,14 @@ def run_bp_sweep(
             accs = [entry[s]["acc"] for s in entry.keys()]
             if sr == sr_bin: # bins are keys, sizes stored separately
                 sizes = [entry[s]["size"] for s in entry.keys()]
-                title_add = "best per size bin"
-                ax.plot(sizes, accs, label=label, marker="o", lw=1)
+                title_add = "Best per bin size"
+                ax.plot(sizes, accs, label=label, marker=MK, lw=LW)
             else: # sizes are keys
                 sizes = entry.keys()
-                title_add = f"top {args.bp_top_num} for accuracy"
-                ax.scatter(sizes, accs, label=label, marker="o", s=40)
+                title_add = f"Top {args.bp_top_num} for accuracy"
+                ax.scatter(sizes, accs, label=label, marker=MK, s=40)
 
-        ax.set_title(f"{bpk} sweep: {sweep_name} - {title_add}")
-        axs.append(ax)
+        ax.set_title(title_add)
 
     for a in axs:
         a.set_xlim(SIZE_LIM)
