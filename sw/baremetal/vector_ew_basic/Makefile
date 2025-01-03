@@ -1,5 +1,6 @@
 TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
 OPS := add sub mul div
+LOOPS := 1
 
 TARGETS_ADD := $(addsuffix .elf, $(addprefix $(word 1, $(OPS))_, $(TYPES)))
 TARGETS_SUB := $(addsuffix .elf, $(addprefix $(word 2, $(OPS))_, $(TYPES)))
