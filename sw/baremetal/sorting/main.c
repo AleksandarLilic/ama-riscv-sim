@@ -199,21 +199,24 @@ _Static_assert(0, "No algorithm defined");
 #endif
 
 void main(void) {
+    NF_IN work_a [ARR_LEN];
     for (uint32_t i = 0; i < LOOPS; i++) {
-        uint32_t n = sizeof(a)/sizeof(a[0]);
+        // copy the test array to work array
+        for (uint32_t j = 0; j < ARR_LEN; j++) work_a[j] = a[j];
+        uint32_t n = sizeof(work_a)/sizeof(work_a[0]);
 
         LOG_START;
         #if defined(ALG_MERGE) || defined(ALG_QUICK)
-        FUNC_NAME(a, 0, n-1);
+        FUNC_NAME(work_a, 0, n-1);
         #else
-        FUNC_NAME(a, n);
+        FUNC_NAME(work_a, n);
         #endif
         LOG_STOP;
 
         asm(".global check");
         asm("check:");
         for (uint32_t j = 0; j < ARR_LEN; j++) {
-            if (a[j] != ref[j]) {
+            if (work_a[j] != ref[j]) {
                 write_mismatch(a[j], ref[j], j+1); // +1 to avoid writing 0
                 fail();
             }
