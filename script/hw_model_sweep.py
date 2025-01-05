@@ -18,7 +18,7 @@ def get_reporoot():
         repo_root = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
             stderr=subprocess.STDOUT
-        ).strip().decode('utf-8')
+        ).strip().decode("utf-8")
         return repo_root
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.output.decode('utf-8')}")
@@ -46,7 +46,7 @@ def gen_sweep_log_name(sweep: str, workloads: List) -> str:
     if len(workloads) > 1:
         sweep_name = "workload_sweep"
     else:
-        sweep_name = get_test_name(workloads[0]['app'])
+        sweep_name = get_test_name(workloads[0]["app"])
     return sweep_name, f"sweep_{sweep}_{sweep_name}.log"
 
 def within_size(num, size_lim: List[int]) -> bool:
@@ -140,12 +140,12 @@ def run_workloads(wp: workload_params):
 
         if bp_sweep:
             if bp_size is None: # bp, and therefore size, is constant
-                bp_size = hw_stats[wp.sweep]['size']
+                bp_size = hw_stats[wp.sweep]["size"]
             app_thr_acc = 0 # per app threshold, if any
             if "thr" in workload:
                 app_thr_acc = workload["thr"]["thr_bpred_acc"]
-            b_pred = hw_stats[wp.sweep]['predicted']
-            b_tot = hw_stats[wp.sweep]['branches']
+            b_pred = hw_stats[wp.sweep]["predicted"]
+            b_tot = hw_stats[wp.sweep]["branches"]
             acc = round(b_pred/b_tot*100, 2)
             if acc < app_thr_acc and not wp.ignore_thr:
                 agg_acc = []
@@ -154,22 +154,22 @@ def run_workloads(wp: workload_params):
 
         elif cache_sweep:
             if cache_size is None:
-                cache_size = hw_stats[wp.sweep]['size']['data']
+                cache_size = hw_stats[wp.sweep]["size"]["data"]
             app_thr_hr = 0
             if "thr" in workload:
                 app_thr_hr = workload["thr"][f"thr_{wp.sweep}_hr"]
-            hits = hw_stats[wp.sweep]['hits']
-            accesses = hw_stats[wp.sweep]['accesses']
+            hits = hw_stats[wp.sweep]["hits"]
+            accesses = hw_stats[wp.sweep]["accesses"]
             hr = round(hits/accesses*100, 2)
             if hr < app_thr_hr and not wp.ignore_thr:
                 agg_hr = []
                 break
             agg_hr.append(hr)
             if len(wp.workloads) == 1:
-                cache_ct.append(hw_stats[wp.sweep]['ct_core']['reads'])
-                cache_ct.append(hw_stats[wp.sweep]['ct_core']['writes'])
-                cache_ct.append(hw_stats[wp.sweep]['ct_mem']['reads'])
-                cache_ct.append(hw_stats[wp.sweep]['ct_mem']['writes'])
+                cache_ct.append(hw_stats[wp.sweep]["ct_core"]["reads"])
+                cache_ct.append(hw_stats[wp.sweep]["ct_core"]["writes"])
+                cache_ct.append(hw_stats[wp.sweep]["ct_mem"]["reads"])
+                cache_ct.append(hw_stats[wp.sweep]["ct_mem"]["writes"])
 
     if bp_sweep:
         avg_acc = None
@@ -348,10 +348,11 @@ def run_cache_sweep(
         a.grid(True)
         a.margins(x=0.02)
 
-    plt.show(block=False)
-    if not is_notebook():
-        input("Press Enter to close all plots...")
-        plt.close('all')
+    if not args.silent:
+        plt.show(block=False)
+        if not is_notebook():
+            input("Press Enter to close all plots...")
+    plt.close("all")
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
@@ -439,8 +440,8 @@ def run_bp_sweep(
         if bp == "bp_combined":
             bpc = sweep_params[bp]
             bpc_sizes, bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
-            bp1 = sweep_params[bp]['predictors'][0]
-            bp2 = sweep_params[bp]['predictors'][1]
+            bp1 = sweep_params[bp]["predictors"][0]
+            bp2 = sweep_params[bp]["predictors"][1]
             bp1_params = save_bpp_for_combined[bp1]
             bp2_params = save_bpp_for_combined[bp2]
 
@@ -508,7 +509,7 @@ def run_bp_sweep(
         sr_best[bp] = dict(list(sr_best[bp].items())[:args.bp_top_num])
         # sort again in ascending order (more intuitive)
         sr_best[bp] = dict(
-            sorted(sr_best[bp].items(), key=lambda x: x[1]['acc']))
+            sorted(sr_best[bp].items(), key=lambda x: x[1]["acc"]))
         # sort the best dict by size
         #sr_best[bp] = dict(sorted(sr_best[bp].items(), key=lambda x: x[0]))
 
@@ -549,8 +550,8 @@ def run_bp_sweep(
             fmt = lambda x: x.replace("bp_", "", 1)
             label = fmt(bp)
             if bp == "bp_combined":
-                bp1 = fmt(sweep_params[bp]['predictors'][0])
-                bp2 = fmt(sweep_params[bp]['predictors'][1])
+                bp1 = fmt(sweep_params[bp]["predictors"][0])
+                bp2 = fmt(sweep_params[bp]["predictors"][1])
                 label = f"{label}\n{bp1} & {bp2}"
 
             if "static" in bp:
@@ -585,20 +586,22 @@ def run_bp_sweep(
             ymin = max(args.plot_acc_thr, ymin)
         a.set_ylim(ymin, 100.1)
 
-    plt.show(block=False)
-    if not is_notebook():
-        input("Press Enter to close all plots...")
-        plt.close('all')
+    if not args.silent:
+        plt.show(block=False)
+        if not is_notebook():
+            input("Press Enter to close all plots...")
+    plt.close("all")
 
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
     parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given app")
-    parser.add_argument("--sweep", choices=SWEEP_CHOICES, help="Select the hardware model to sweep", required=True)
-    parser.add_argument("--params", type=str, default=PARAMS_DEF, help="Path to the hardware model sweep params file")
+    parser.add_argument("-s", "--sweep", choices=SWEEP_CHOICES, help="Select the hardware model to sweep", required=True)
+    parser.add_argument("-p", "--params", type=str, default=PARAMS_DEF, help="Path to the hardware model sweep params file")
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
     parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Ignores --save_stats")
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
+    parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
