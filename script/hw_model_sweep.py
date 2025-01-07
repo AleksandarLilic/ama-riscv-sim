@@ -31,7 +31,7 @@ APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 #PASS_STRING = "    0x051e tohost   : 0x00000001"
 PASS_STRING = "    0x051e (tohost): 0x1"
 INDENT = "  "
-FIG_SIZE = (16, 8)
+FIG_SIZE = (8, 8)
 MK = "o"
 LW = 1
 
@@ -70,10 +70,13 @@ def convert_keys_to_int(obj):
     else:
         return obj
 
-def create_plot(title: str, sweep_name: str) -> Tuple:
+def create_plot(title: str, sweep_name: str, ncols=2, nrows=1) -> Tuple:
+    fs = [FIG_SIZE[0]*ncols, FIG_SIZE[1]*nrows]
     fig, axs = plt.subplots(
-        ncols=2, nrows=1, figsize=FIG_SIZE, constrained_layout=True)
+        ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True)
     fig.suptitle(f"{title} sweep for {sweep_name}")
+    if ncols == 1 and nrows == 1:
+        axs = [axs]
     return fig, axs
 
 def run_sim(cmd: List) -> Dict[str, Any]:
@@ -186,9 +189,11 @@ def run_workloads(wp: workload_params):
 def run_cache_sweep(
     args: argparse.Namespace,
     workloads: List[str],
-    sweep_params: Dict[str, Any]) \
+    sweep_params: Dict[str, Any],
+    best_params: List[List[Tuple[str, Any]]] = None) \
     -> None:
 
+    running_best = (best_params != None)
     sweep_name, sweep_log = gen_sweep_log_name(args.sweep, workloads)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
@@ -201,7 +206,7 @@ def run_cache_sweep(
 
     ck = args.sweep # cache key in the hw_stats dict
     sr = {} # sweep results dict
-    bp_act =  ["--bp_active", "none"] # so there is no interference on caches
+    bp_act =  ["--bp_active", "none"] # so there is no impact on caches
     for cpolicy in sweep_params["policies"]:
         if args.load_stats:
             break # skip the sweep if loading previous stats
@@ -256,9 +261,11 @@ def run_cache_sweep(
         with open(sweep_results, "w") as f:
             f.write(reformat_json(sr, max_depth=3))
 
-    lbl = lambda x, y: f"{x}, sets: {y}"
     # plot HR wrt num of ways
-    _, axs_hr = create_plot(ck.capitalize(), f"{sweep_name} - Hit Rate")
+    lbl = lambda x, y: f"{x}, sets: {y}"
+    nrows = 3 if len(workloads) == 1 else 1
+    _, axs = create_plot(ck.capitalize(), f"{sweep_name}", nrows=nrows)
+    axs_hr = axs[0] if len(workloads) == 1 else axs
     ax = axs_hr[0]
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
@@ -267,7 +274,7 @@ def run_cache_sweep(
                     label=lbl(cpolicy, cset), marker=MK, lw=LW)
     ax.set_xlabel("Ways")
     ax.set_xticks(sweep_params["ways"])
-    ax.set_title(f"vs Number of Ways")
+    ax.set_title(f"Hit Rate vs Number of Ways")
 
     # plot HR wrt cache size (excl tag & metadata)
     ax = axs_hr[1]
@@ -279,20 +286,17 @@ def run_cache_sweep(
     ax.set_xlabel("Size [B]")
     ax.set_xticks(XTICKS)
     ax.set_xticklabels(XLABELS, rotation=45)
-    ax.set_title(f"vs Size")
+    ax.set_title(f"Hit Rate vs Size")
 
     axs_ct = []
     # ct meaningless for workload sweeps
     if len(workloads) == 1:
         ctmt = "Cache to Memory Traffic"
         ctct = "Core to Cache Traffic"
-        for direction in ["reads", "writes"]:
+        for axs_d,direction in zip(axs[1:], ["reads", "writes"]):
             if ck == "icache" and direction == "writes":
                 continue # icache has no writes
             # plot CT mem wrt num of ways
-            _, axs_d = create_plot(
-                ck.capitalize(),
-                f"{sweep_name} - {ctmt} {direction.capitalize()}")
             ax = axs_d[0]
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
@@ -306,7 +310,7 @@ def run_cache_sweep(
             ct_core = se[fk]["ct_core"][direction]
             ax.axhline(y=ct_core,color="r", linestyle="--",
                        label=f"{ctct} = {ct_core} B")
-            ax.set_title(f"vs Number of Ways")
+            ax.set_title(f"{ctmt} {direction.capitalize()} vs Number of Ways")
             axs_ct.append(ax)
 
             # plot CT mem wrt cache size (excl tag & metadata)
@@ -323,7 +327,7 @@ def run_cache_sweep(
             ax.set_xticklabels(XLABELS, rotation=45)
             ax.axhline(y=ct_core,color="r", linestyle="--",
                        label=f"{ctct} = {ct_core} B")
-            ax.set_title(f"vs Size")
+            ax.set_title(f"{ctmt} {direction.capitalize()} vs Size")
             axs_ct.append(ax)
 
     # common for HR
@@ -333,7 +337,7 @@ def run_cache_sweep(
         ymin = a.get_ylim()[0]
         if args.plot_hr_thr:
             ymin = max(args.plot_hr_thr, ymin)
-        a.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
+        a.set_ylim(ymin, 100.2) # make room for 100% markers to be fully visible
 
     # common for CT
     for a in axs_ct:
@@ -348,11 +352,7 @@ def run_cache_sweep(
         a.grid(True)
         a.margins(x=0.02)
 
-    if not args.silent:
-        plt.show(block=False)
-        if not is_notebook():
-            input("Press Enter to close all plots...")
-    plt.close("all")
+    return sr
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
@@ -405,12 +405,38 @@ def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 
     return sizes, cmds
 
+def gen_bp_final_params(sr: Dict) -> List[List[Tuple[str, Any]]]:
+    out = {}
+    for bp, entry in sr.items():
+        if bp == "bp_static":
+            out[bp] = [[]]
+            continue
+        cmds = []
+        #print(f"Best configs for {bp}:")
+        for size, d in entry.items():
+            #print(f"Size: {size} B, Acc: {d['acc']}%")
+            command = []
+            for k, v in d.items():
+                if "bits" not in k:
+                    continue
+                command.append(f"--{k}")
+                command.append(f"{v} ")
+            cmds.append(command)
+        out[bp] = cmds
+
+    if "bp_static" not in out: # in case not in the input sr
+        out["bp_static"] = [[]]
+
+    return out
+
 def run_bp_sweep(
     args: argparse.Namespace,
     workloads: List[str],
-    sweep_params: Dict[str, Any]) \
+    sweep_params: Dict[str, Any],
+    best_params: List[List[Tuple[str, Any]]] = None) \
     -> None:
 
+    running_best = (best_params != None)
     sweep_name, sweep_log = gen_sweep_log_name(args.sweep, workloads)
     if os.path.exists(sweep_log) and not args.load_stats:
         os.remove(sweep_log)
@@ -437,7 +463,12 @@ def run_bp_sweep(
 
         best = {}
         bp_act =  ["--bp_active", bp.replace("bp_", "", 1)]
-        if bp == "bp_combined":
+
+        if running_best:
+            bp_params = best_params[bp]
+
+        # sweep runs
+        elif bp == "bp_combined":
             bpc = sweep_params[bp]
             bpc_sizes, bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
             bp1 = sweep_params[bp]["predictors"][0]
@@ -499,7 +530,7 @@ def run_bp_sweep(
                 for k, v in d.items():
                     best[bp_size][k] = v
                 best[bp_size]["acc"] = acc
-                if bp != "bp_combined":
+                if bp != "bp_combined" and not running_best:
                     save_bpp_for_combined[bp][bp_size] = bpp
 
         # sort the best dict by accuracy
@@ -541,7 +572,8 @@ def run_bp_sweep(
             f.write(reformat_json(sr_best))
 
     # plot accuracy wrt size
-    _, axs = create_plot(bpk.capitalize(), sweep_name)
+    ncols = 1 if running_best else 2
+    _, axs = create_plot(bpk.capitalize(), sweep_name, ncols)
     for sr,ax in zip([sr_bin, sr_best], axs):
         for bp, entry in sr.items():
             if len(entry.keys()) == 0: # below thr limit for all available sizes
@@ -581,16 +613,12 @@ def run_bp_sweep(
         a.legend(loc="upper left")
         a.grid(True)
         a.margins(x=0.02)
-        ymin = a.get_ylim()[0]
+        ymin = a.get_ylim()[0] * 0.99
         if args.plot_acc_thr:
             ymin = max(args.plot_acc_thr, ymin)
-        a.set_ylim(ymin, 100.1)
+        a.set_ylim(ymin, 100.2)
 
-    if not args.silent:
-        plt.show(block=False)
-        if not is_notebook():
-            input("Press Enter to close all plots...")
-    plt.close("all")
+    return sr_bin
 
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
@@ -606,6 +634,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=32, help="Number of top branch predictor configs to keep based only on accuracy")
+    parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
 
     return parser.parse_args()
 
@@ -636,13 +665,36 @@ def run_main(args: argparse.Namespace) -> None:
 
     sweep_params = sweep_dict["hw_params"][args.sweep]
     print(f"Sweep: {args.sweep} with {len(workloads)} workloads")
+
     if "cache" in args.sweep:
-        run_cache_sweep(args, workloads, sweep_params)
-    elif "bp" in args.sweep:
-        run_bp_sweep(args, workloads, sweep_params)
+        sr_best = run_cache_sweep(args, workloads, sweep_params)
+        if args.skip_per_workload or len(workloads) == 1:
+            return
+        for wl in workloads:
+            if args.track:
+                print(f"Sweeping best {args.sweep} configs for {wl['app']}")
+            run_cache_sweep(args, [wl], sweep_params, sr_best)
+        return
+
+    if "bp" in args.sweep:
+        sr_bin = run_bp_sweep(args, workloads, sweep_params)
+        if args.skip_per_workload or len(workloads) == 1:
+            return
+        params = gen_bp_final_params(sr_bin)
+        for wl in workloads:
+            if args.track:
+                print(f"Sweeping best {args.sweep} configs for {wl['app']}")
+            run_bp_sweep(args, [wl], sweep_params, params)
+        return
 
 if __name__ == "__main__":
     if not os.path.exists(SIM):
         raise FileNotFoundError(f"Simulator not found at: {SIM}")
     args = parse_args()
     run_main(args)
+
+    if not args.silent:
+        plt.show(block=False)
+        if not is_notebook():
+            input("Press Enter to close all plots...")
+    plt.close("all")
