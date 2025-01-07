@@ -122,6 +122,7 @@ struct hw_defs_t {
     static constexpr char bp_active[] = "combined";
     static constexpr char bp_combined_p1[] = "static";
     static constexpr char bp_combined_p2[] = "gshare";
+    static constexpr char bp_run_all[] = "false";
     // supported predictors configurations
     static constexpr char bp_bimodal_pc_bits[] = "7";
     static constexpr char bp_bimodal_cnt_bits[] = "3";
@@ -204,6 +205,9 @@ int main(int argc, char* argv[]) {
          "Options: " +
          gen_help_list(bpc_names_map) + "\n ",
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p2))
+        ("bp_run_all", "Run all branch predictors",
+         cxxopts::value<bool>()->default_value(hw_defs_t::bp_run_all))
+
         // supported predictors configurations
         ("bp_bimodal_pc_bits", "Bimodal predictor - PC bits",
          cxxopts::value<std::string>()->
@@ -296,8 +300,10 @@ int main(int argc, char* argv[]) {
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
         hw_cfg.bp_active = RESOLVE_ARG("bp_active", bp_names_map);
+        hw_cfg.bp_active_name = result["bp_active"].as<std::string>();
         hw_cfg.bp_combined_p1 = RESOLVE_ARG("bp_combined_p1", bpc_names_map);
         hw_cfg.bp_combined_p2 = RESOLVE_ARG("bp_combined_p2", bpc_names_map);
+        hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
         // per predictor configurations
         hw_cfg.bp_bimodal_pc_bits = TO_SIZE(result["bp_bimodal_pc_bits"]);
         hw_cfg.bp_bimodal_cnt_bits = TO_SIZE(result["bp_bimodal_cnt_bits"]);
@@ -326,17 +332,18 @@ int main(int argc, char* argv[]) {
     }
 
     // print useful info about the run
-    std::cout << "Running: " << test_bin << std::hex << std::endl;
+    std::cout << "Running: " << test_bin << std::hex << "\n";
     if (cfg.log_pc.start != 0) {
         std::cout << "Logging start pc: 0x" << cfg.log_pc.start << " ";
     }
     if (cfg.log_pc.stop != 0) {
         std::cout << "Logging stop pc: 0x" << cfg.log_pc.stop << " ";
     }
+    std::cout << std::dec;
     if (cfg.log_pc.single_match_num) {
         std::cout << "Logging only match number: " << cfg.log_pc.single_match_num;
     }
-    std::cout << std::dec << std::endl;
+    std::cout << std::endl;
 
     TRY_CATCH({
         memory mem(test_bin, hw_cfg);

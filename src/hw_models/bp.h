@@ -4,10 +4,12 @@
 #include "bp_stats.h"
 
 struct bp_cfg_t {
-    uint8_t pc_bits;
-    uint8_t cnt_bits;
-    uint8_t hist_bits;
-    uint8_t gr_bits;
+    const uint8_t pc_bits;
+    const uint8_t cnt_bits;
+    const uint8_t hist_bits;
+    const uint8_t gr_bits;
+    //const std::string type_name;
+    const char* type_name;
 };
 
 class bp {
@@ -21,8 +23,7 @@ class bp {
         bp_stats_t stats;
 
     public:
-        bp(std::string type_name, bp_cfg_t /* cfg */)
-        : type_name(type_name), stats(type_name) {}
+        bp(bp_cfg_t cfg) : type_name(cfg.type_name), stats(cfg.type_name) {}
 
         virtual ~bp() = default;
 
@@ -37,10 +38,13 @@ class bp {
             stats.eval(pc, correct, b_dir_last);
         }
 
+        // for ideal predictor only
+        virtual void goto_future(uint32_t /* correct_pc */) {};
+
         virtual void dump() = 0;
 
         virtual void show_stats() {
-            std::cout << INDENT << std::left << std::setw(8) << type_name;
+            std::cout << INDENT << std::left << std::setw(14) << type_name;
             std::cout << " (" << std::right << std::setw(5) << size << " B): ";
             stats.show();
             std::cout << std::endl;

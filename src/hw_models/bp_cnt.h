@@ -11,8 +11,13 @@ struct bp_cnt_cfg_t {
         uint8_t cnt_idx_bits;
         uint8_t cnt_bits;
     public:
-        bp_cnt_cfg_t(uint8_t cnt_idx_bits, uint8_t cnt_bits, std::string type_name)
-            : cnt_idx_bits(cnt_idx_bits), cnt_bits(cnt_bits) {
+        bp_cnt_cfg_t(
+            uint8_t cnt_idx_bits,
+            uint8_t cnt_bits,
+            std::string type_name) :
+                cnt_idx_bits(cnt_idx_bits),
+                cnt_bits(cnt_bits)
+        {
             validate_inputs(type_name);
         }
     private:

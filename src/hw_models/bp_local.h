@@ -44,8 +44,8 @@ class bp_local : public bp {
         }
 
     public:
-        bp_local(std::string type_name, bp_cfg_t cfg) :
-            bp(type_name, cfg),
+        bp_local(bp_cfg_t cfg) :
+            bp(cfg),
             pc_bits(validate_pc_bits(cfg.pc_bits)),
             hist_entries_num(1 << pc_bits),
             pc_mask(hist_entries_num - 1),
@@ -53,7 +53,7 @@ class bp_local : public bp {
             hist_bits(cfg.hist_bits),
             cnt_entries_num(1 << hist_bits),
             hist_mask(cnt_entries_num - 1),
-            cnt({hist_bits, cfg.cnt_bits, type_name})
+            cnt({hist_bits, cfg.cnt_bits, cfg.type_name})
         {
             for (auto& e : hist_table) e.hist_pattern = 0;
             size = hist_table.size() * hist_bits;

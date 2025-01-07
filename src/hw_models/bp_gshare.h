@@ -16,15 +16,15 @@ class bp_gshare : public bp {
         uint32_t idx_last;
 
     public:
-        bp_gshare(std::string type_name, bp_cfg_t cfg) :
-            bp(type_name, cfg),
+        bp_gshare(bp_cfg_t cfg) :
+            bp(cfg),
             idx_bits(std::max(cfg.gr_bits, cfg.pc_bits)),
             gr_bits(cfg.gr_bits),
             pc_bits(cfg.pc_bits),
             idx_mask((1 << idx_bits) - 1),
             gr_mask((1 << gr_bits) - 1),
             pc_mask((1 << pc_bits) - 1),
-            cnt({idx_bits, cfg.cnt_bits, type_name}),
+            cnt({idx_bits, cfg.cnt_bits, cfg.type_name}),
             gr(0)
         {
             size = cnt.get_bit_size() + cfg.gr_bits;

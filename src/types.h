@@ -2,14 +2,15 @@
 
 #include <cstdint>
 #include <iostream>
+#include <string>
+#include <fstream>
 #include <iomanip>
 #include <array>
 #include <vector>
-#include <fstream>
-#include <string>
-#include <cmath>
 #include <map>
 #include <chrono>
+#include <cstring>
+#include <cmath>
 
 // Decoder types
 enum class opcode {
@@ -236,9 +237,12 @@ struct hw_cfg_t {
     uint32_t roi_size;
     // branch predictors
     bp_t bp_active;
-    // comvined predictor config
+    std::string bp_active_name;
+    // combined predictor config
     bp_t bp_combined_p1;
     bp_t bp_combined_p2;
+    // optionally, run all predefined predictors
+    bool bp_run_all;
     // branch predictor config
     uint8_t bp_bimodal_pc_bits;
     uint8_t bp_bimodal_cnt_bits;

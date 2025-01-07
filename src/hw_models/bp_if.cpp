@@ -1,50 +1,147 @@
 #include "bp_if.h"
 
-// { pc_bits, cnt_bits, hist_bits, gr_bits }
-#define BP_CFG_NONE { 0, 0, 0, 0}
+// { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
+#define BP_CFG_NONE { 0, 0, 0, 0, hw_cfg.bp_active_name.c_str() }
 #define BP_BIMODAL_CFG { \
-    hw_cfg.bp_bimodal_pc_bits, hw_cfg.bp_bimodal_cnt_bits, 0, 0}
+    hw_cfg.bp_bimodal_pc_bits, hw_cfg.bp_bimodal_cnt_bits, 0, 0, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_LOCAL_CFG { \
     hw_cfg.bp_local_pc_bits, hw_cfg.bp_local_cnt_bits, \
-    hw_cfg.bp_local_hist_bits, 0}
+    hw_cfg.bp_local_hist_bits, 0, hw_cfg.bp_active_name.c_str() }
 #define BP_GLOBAL_CFG { \
-    0, hw_cfg.bp_global_cnt_bits, 0, hw_cfg.bp_global_gr_bits}
+    0, hw_cfg.bp_global_cnt_bits, 0, hw_cfg.bp_global_gr_bits, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_GSELECT_CFG { \
     hw_cfg.bp_gselect_pc_bits, hw_cfg.bp_gselect_cnt_bits, \
-    0, hw_cfg.bp_gselect_gr_bits}
+    0, hw_cfg.bp_gselect_gr_bits, hw_cfg.bp_active_name.c_str() }
 #define BP_GSHARE_CFG { \
     hw_cfg.bp_gshare_pc_bits, hw_cfg.bp_gshare_cnt_bits, \
-    0, hw_cfg.bp_gshare_gr_bits}
+    0, hw_cfg.bp_gshare_gr_bits, hw_cfg.bp_active_name.c_str() }
 #define BP_COMBINED_CFG { \
-    hw_cfg.bp_combined_pc_bits, hw_cfg.bp_combined_cnt_bits, 0, 0}
+    hw_cfg.bp_combined_pc_bits, hw_cfg.bp_combined_cnt_bits, 0, 0, \
+    hw_cfg.bp_active_name.c_str() }
 
 bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
-    bp_name(name), bp_active(hw_cfg.bp_active),
-    bp_combined_p1(hw_cfg.bp_combined_p1),
-    bp_combined_p2(hw_cfg.bp_combined_p2),
-    static_bp("static", BP_CFG_NONE),
-    bimodal_bp("bimodal", BP_BIMODAL_CFG),
-    local_bp("local", BP_LOCAL_CFG),
-    global_bp("global", BP_GLOBAL_CFG),
-    gselect_bp("gselect", BP_GSELECT_CFG),
-    gshare_bp("gshare", BP_GSHARE_CFG),
-    ideal_bp("_ideal_", BP_CFG_NONE),
-    none_bp("none", BP_CFG_NONE),
-    combined_bp("combined", BP_COMBINED_CFG, {bp_combined_p1, bp_combined_p2})
+    bp_name(name),
+    bp_active_type(hw_cfg.bp_active),
+    bp_combined_p1_type(hw_cfg.bp_combined_p1),
+    bp_combined_p2_type(hw_cfg.bp_combined_p2),
+    bp_run_all(hw_cfg.bp_run_all)
     {
-        predictors[TO_U8(bp_t::sttc)] = &static_bp;
-        predictors[TO_U8(bp_t::bimodal)] = &bimodal_bp;
-        predictors[TO_U8(bp_t::local)] = &local_bp;
-        predictors[TO_U8(bp_t::global)] = &global_bp;
-        predictors[TO_U8(bp_t::gselect)] = &gselect_bp;
-        predictors[TO_U8(bp_t::gshare)] = &gshare_bp;
-        predictors[TO_U8(bp_t::ideal)] = &ideal_bp;
-        predictors[TO_U8(bp_t::none)] = &none_bp;
-        predictors[TO_U8(bp_t::combined)] = &combined_bp;
+        active_bp = create_predictor(bp_active_type, hw_cfg);
 
-        combined_bp.add_size(predictors[TO_U8(bp_combined_p1)]->get_size());
-        combined_bp.add_size(predictors[TO_U8(bp_combined_p2)]->get_size());
+        if (!bp_run_all) return;
+
+        for (size_t i = 0; i < arch_bp_defs.size(); i++) {
+            all_predictors.push_back(
+                create_predictor(arch_bp_defs[i].type, arch_bp_defs[i].cfg));
+            if (arch_bp_defs[i].type == bp_t::ideal) {
+                ideal_bp = dynamic_cast<bp_ideal*>(all_predictors[i].get());
+            }
+        }
+
+        for (size_t i = 0; i < arch_bpc_defs.size(); i++) {
+            all_predictors.push_back(create_predictor(arch_bpc_defs[i]));
+        }
+}
+
+std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, hw_cfg_t hw_cfg) {
+    std::unique_ptr<bp> bp_out, bp1, bp2;
+    switch (bp_type) {
+        case bp_t::sttc:
+            bp_out = std::make_unique<bp_static, bp_cfg_t>(BP_CFG_NONE);
+            break;
+        case bp_t::bimodal:
+            bp_out = std::make_unique<bp_bimodal, bp_cfg_t>(BP_BIMODAL_CFG);
+            break;
+        case bp_t::local:
+            bp_out = std::make_unique<bp_local, bp_cfg_t>(BP_LOCAL_CFG);
+            break;
+        case bp_t::global:
+            bp_out = std::make_unique<bp_global, bp_cfg_t>(BP_GLOBAL_CFG);
+            break;
+        case bp_t::gselect:
+            bp_out = std::make_unique<bp_gselect, bp_cfg_t>(BP_GSELECT_CFG);
+            break;
+        case bp_t::gshare:
+            bp_out = std::make_unique<bp_gshare, bp_cfg_t>(BP_GSHARE_CFG);
+            break;
+        case bp_t::ideal:
+            bp_out = std::make_unique<bp_ideal, bp_cfg_t>(BP_CFG_NONE);
+            break;
+        case bp_t::none:
+            bp_out = std::make_unique<bp_none, bp_cfg_t>(BP_CFG_NONE);
+            break;
+        case bp_t::combined:
+            bp1 = create_predictor(bp_combined_p1_type, hw_cfg);
+            bp2 = create_predictor(bp_combined_p2_type, hw_cfg);
+            bp_out = std::make_unique<
+                bp_combined,
+                bp_cfg_t,
+                std::array<std::unique_ptr<bp>, 2>>
+                (
+                    BP_COMBINED_CFG,
+                    {std::move(bp1), std::move(bp2)}
+                );
+            break;
+        default:
+            throw std::runtime_error("Unknown branch predictor");
     }
+    return bp_out;
+}
+
+std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, bp_cfg_t bp_cfg) {
+    // cast to an array for function with the array arg
+    std::array<bp_def_t, 3> t = {{
+        {bp_type, bp_cfg},
+        {{}, {}},
+        {{}, {}},
+    }};
+    return create_predictor(t);
+}
+
+std::unique_ptr<bp> bp_if::create_predictor(std::array<bp_def_t, 3> bp_defs) {
+    auto bp_type = bp_defs[0].type;
+    auto bp_cfg = bp_defs[0].cfg;
+    std::unique_ptr<bp> bp_out;
+    std::array<std::unique_ptr<bp>, 2> bps; // only for combined
+    switch (bp_type) {
+        case bp_t::sttc:
+            bp_out = std::make_unique<bp_static>(bp_cfg);
+            break;
+        case bp_t::bimodal:
+            bp_out = std::make_unique<bp_bimodal>(bp_cfg);
+            break;
+        case bp_t::local:
+            bp_out = std::make_unique<bp_local>(bp_cfg);
+            break;
+        case bp_t::global:
+            bp_out = std::make_unique<bp_global>(bp_cfg);
+            break;
+        case bp_t::gselect:
+            bp_out = std::make_unique<bp_gselect>(bp_cfg);
+            break;
+        case bp_t::gshare:
+            bp_out = std::make_unique<bp_gshare>(bp_cfg);
+            break;
+        case bp_t::ideal:
+            bp_out = std::make_unique<bp_ideal>(bp_cfg);
+            break;
+        case bp_t::none:
+            bp_out = std::make_unique<bp_none>(bp_cfg);
+            break;
+        case bp_t::combined:
+            bps = {
+                create_predictor(bp_defs[1].type, bp_defs[1].cfg),
+                create_predictor(bp_defs[2].type, bp_defs[2].cfg)
+            };
+            bp_out = std::make_unique<bp_combined>(bp_cfg, std::move(bps));
+            break;
+        default:
+            throw std::runtime_error("Unknown branch predictor");
+    }
+    return bp_out;
+}
 
 uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
     uint32_t target_pc = TO_U32(TO_I32(pc) + offset);
@@ -54,33 +151,21 @@ uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
             bi_program_stats[pc] = {dir, 0, 0, {}};
         }
     }
-
-    std::array<uint32_t, num_predictors> predicted_pcs;
-    for (uint8_t i = 0; i < predictors.size() - 1; i++) {
-        predicted_pcs[i] = predictors[i]->predict(target_pc, pc);
-    }
-    bp_t bp_sel = combined_bp.select(pc);
-    uint32_t combined_bp_predicted_pc = predicted_pcs[TO_U8(bp_sel)];
-    combined_bp.store_prediction(combined_bp_predicted_pc);
-    combined_bp.store_direction(target_pc, pc);
-    predicted_pcs[TO_U8(bp_t::combined)] = combined_bp_predicted_pc;
-    return predicted_pcs[TO_U8(bp_active)];
+    for (auto& p : all_predictors) p->predict(target_pc, pc);
+    return active_bp->predict(target_pc, pc);
 }
 
 void bp_if::update(uint32_t pc, uint32_t next_pc) {
     bool taken = next_pc != pc + 4;
+    active_bp->eval_and_update(taken, next_pc);
+    for (auto& p : all_predictors) p->eval_and_update(taken, next_pc);
 
-    // internal states always updated
-    std::array<bool, num_predictors> correct;
-    for (uint8_t i = 0; i < predictors.size() - 1; i++) {
-        correct[i] = predictors[i]->eval_and_update(taken, next_pc);
-    }
-    combined_bp.update(correct[TO_U8(bp_combined_p1)], correct[TO_U8(bp_combined_p2)]);
-
-    // but only update stats if profiling is active
+    // only update stats if profiling is active
     if (!prof_active) return;
+
     update_stats(pc, taken);
-    for (auto& p : predictors) { p->update_stats(pc, next_pc); }
+    active_bp->update_stats(pc, next_pc);
+    for (auto& p : all_predictors) p->update_stats(pc, next_pc);
 }
 
 void bp_if::update_stats(uint32_t pc, bool taken) {
@@ -91,56 +176,62 @@ void bp_if::update_stats(uint32_t pc, bool taken) {
 }
 
 void bp_if::finish(std::string log_path) {
-    for (auto& p : predictors) { p->summarize_stats(); }
+    for (auto& p : all_predictors) p->summarize_stats();
+    active_bp->summarize_stats();
     show_stats(log_path);
 }
 
+std::string bp_if::find_run_length(const std::vector<bool>& pattern) {
+    // summarize taken/not pattern, e.g. 1110011 makes a string "3T 2N 2T"
+    std::string pattern_str;
+    uint32_t count = 1;
+    for (uint32_t i = 1; i < pattern.size(); i++) {
+        if (pattern[i] == pattern[i - 1]) {
+            count++;
+        } else {
+            pattern_str += std::to_string(count) +
+                           (pattern[i - 1] ? "T " : "N ");
+            count = 1;
+        }
+    }
+    // add the direction of the last pattern
+    pattern_str += std::to_string(count) + (pattern.back() ? "T" : "N");
+    return pattern_str;
+}
+
 void bp_if::show_stats(std::string log_path) {
+    std::cout << "Branch stats: unique branches: " << bi_program_stats.size()
+              << std::endl;
+    // show all, but mark the active one (driving the icache)
+    std::cout << bp_name << " (active: " << active_bp->type_name << ")"
+              << std::endl;
+
+    all_predictors.insert(all_predictors.begin(), std::move(active_bp));
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
     bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%";
-    for (auto& p : predictors) { bcsv << ",P_" << p->type_name; }
-    for (auto& p : predictors) { bcsv << ",P_" << p->type_name << "%"; }
+    for (auto& p : all_predictors) bcsv << ",P_" << p->type_name;
+    for (auto& p : all_predictors) bcsv << ",P_" << p->type_name << "%";
     //bcsv << ",P_Bimodal_idx,P_Local_idx";
-    bcsv << ",Best,P_best,P_best%"
-         << ",Pattern" << std::endl;
+    bcsv << ",Best,P_best,P_best%,Pattern" << std::endl;
 
     for (auto& [pc, stats] : bi_program_stats) {
-        // summarize taken/not pattern, e.g. 1110011 makes a string "3T 2N 2T"
-        std::string pattern_str;
-        uint32_t count = 1;
-        for (uint32_t i = 1; i < stats.pattern.size(); i++) {
-            if (stats.pattern[i] == stats.pattern[i - 1]) {
-                count++;
-            } else {
-                pattern_str += std::to_string(count) +
-                               (stats.pattern[i - 1] ? "T " : "N ");
-                count = 1;
-            }
-        }
-        // add the direction of the last pattern
-        pattern_str += std::to_string(count) +
-                       (stats.pattern.back() ? "T" : "N");
-
-        float_t taken_ratio =
-            (TO_F32(stats.taken) / TO_F32(stats.total)) * 100;
-
-        size_t idx_best = TO_U8(bp_t::sttc); // defaults to the simplest one
-        std::array<uint32_t, num_predictors> pred;
-        for (uint8_t i = 0; i < num_predictors; i++) {
-            pred[i] = predictors[i]->get_predicted_stats(pc);
-            if (predictors[i] == &ideal_bp) continue;
+        float_t branches_total = TO_F32(stats.total);
+        size_t idx_best = 0; // defaults to first, the active_bp
+        std::vector<uint32_t> pred;
+        std::vector<float_t> acc;
+        for (uint8_t i = 0; i < all_predictors.size(); i++) {
+            pred.push_back(all_predictors[i]->get_predicted_stats(pc));
+            acc.push_back((TO_F32(pred[i])/branches_total)*100);
+            if (all_predictors[i].get() == ideal_bp) continue;
             if (pred[i] > pred[idx_best]) idx_best = i;
         }
 
-        std::array<float_t, num_predictors> acc;
-        for (uint8_t i = 0; i < num_predictors; i++) {
-            acc[i] = (TO_F32(pred[i]) / TO_F32(stats.total)) * 100;
-        }
-
-        std::string best_name = predictors[idx_best]->type_name;
+        std::string best_name = all_predictors[idx_best]->type_name;
         uint32_t best_p = pred[idx_best];
         float_t best_acc = acc[idx_best];
+        float_t taken_ratio = (TO_F32(stats.taken)/branches_total)*100;
+        std::string pattern_str = find_run_length(stats.pattern);
 
         bcsv << std::hex << pc << std::dec
              << std::fixed << std::setprecision(1)
@@ -149,8 +240,8 @@ void bp_if::show_stats(std::string log_path) {
              << "," << stats.total - stats.taken
              << "," << stats.total
              << "," << taken_ratio;
-        for (auto& p : pred) { bcsv << "," << p; };
-        for (auto& a : acc) { bcsv << "," << a; };
+        for (auto& p : pred) bcsv << "," << p;
+        for (auto& a : acc) bcsv << "," << a;
         bcsv << "," << best_name
              << "," << best_p
              << "," << best_acc;
@@ -158,19 +249,16 @@ void bp_if::show_stats(std::string log_path) {
         //     << "," << TO_U32(local_bp.get_idx(pc));
         bcsv << "," << pattern_str << std::endl;
     }
+    bcsv.close();
 
-    uint32_t branches = bi_program_stats.size();
-    std::cout << "Branch stats: unique branches: " << branches << std::endl;
-    // show all, but mark the active one (driving the icache)
-    std::cout << bp_name << " (active: ";
-    std::cout << predictors[TO_U8(bp_active)]->type_name << ")" << std::endl;
-
-    for (auto& p : predictors) { p->show_stats(); }
+    for (auto& p : all_predictors) p->show_stats();
+    active_bp = std::move(all_predictors[0]); // restore active_bp
+    all_predictors.erase(all_predictors.begin());
     return;
     std::cout << "  Predictors internal state:" << std::endl;
-    for (auto& p : predictors) { p->dump(); }
+    for (auto& p : all_predictors) p->dump();
 }
 
 void bp_if::log_stats(std::ofstream& log_file) {
-    predictors[TO_U8(bp_active)]->log_stats(bp_name, log_file);
+    active_bp->log_stats(bp_name, log_file);
 }

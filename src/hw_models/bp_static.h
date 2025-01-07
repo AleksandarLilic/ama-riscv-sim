@@ -4,7 +4,7 @@
 
 class bp_static : public bp {
     public:
-        bp_static(std::string type_name, bp_cfg_t cfg) : bp(type_name, cfg) {
+        bp_static(bp_cfg_t cfg) : bp(cfg) {
             size = 0;
         }
 

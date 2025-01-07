@@ -4,7 +4,7 @@
 
 class bp_none : public bp {
     public:
-        bp_none(std::string type_name, bp_cfg_t cfg) : bp(type_name, cfg) {
+        bp_none(bp_cfg_t cfg) : bp(cfg) {
             size = 0;
         }
 
