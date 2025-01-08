@@ -263,7 +263,8 @@ def run_cache_sweep(
 
     # plot HR wrt num of ways
     lbl = lambda x, y: f"{x}, sets: {y}"
-    nrows = 3 if len(workloads) == 1 else 1
+    max_nrows = 3 if ck == "dcache" else 2
+    nrows = max_nrows if len(workloads) == 1 else 1
     _, axs = create_plot(ck.capitalize(), f"{sweep_name}", nrows=nrows)
     axs_hr = axs[0] if len(workloads) == 1 else axs
     ax = axs_hr[0]
@@ -298,6 +299,15 @@ def run_cache_sweep(
                 continue # icache has no writes
             # plot CT mem wrt num of ways
             ax = axs_d[0]
+            fk = list(se.keys())[0] # first key
+            ct_core = se[fk]["ct_core"][direction]
+            prefix = ["", "K", "M", "G"]
+            ct_core_s = int(ct_core)
+            while ct_core_s > 1024:
+                ct_core_s = round(ct_core_s/1024,2)
+                prefix.pop(0)
+            ct_core_str = f"{ct_core_s} {prefix[0]}B"
+
             for cpolicy, pe in sr.items():
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
@@ -306,10 +316,12 @@ def run_cache_sweep(
                             label=lbl(cpolicy, cset), marker=MK, lw=LW)
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
-            fk = list(se.keys())[0] # first key
-            ct_core = se[fk]["ct_core"][direction]
-            ax.axhline(y=ct_core,color="r", linestyle="--",
-                       label=f"{ctct} = {ct_core} B")
+            y_ct = ct_core
+            if args.plot_skip_ct_thr and ax.get_ylim()[1] < ct_core:
+                y_ct = np.nan
+            scale_ax(ax)
+            ax.axhline(y=y_ct, color="r", linestyle="--",
+                       label=f"{ctct} = {ct_core_str}")
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Number of Ways")
             axs_ct.append(ax)
 
@@ -325,8 +337,9 @@ def run_cache_sweep(
             ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
             ax.set_xticklabels(XLABELS, rotation=45)
-            ax.axhline(y=ct_core,color="r", linestyle="--",
-                       label=f"{ctct} = {ct_core} B")
+            scale_ax(ax)
+            ax.axhline(y=y_ct, color="r", linestyle="--",
+                       label=f"{ctct} = {ct_core_str}")
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Size")
             axs_ct.append(ax)
 
@@ -334,10 +347,10 @@ def run_cache_sweep(
     for a in axs_hr:
         a.set_ylabel("Hit Rate [%]")
         a.legend(loc="lower right")
-        ymin = a.get_ylim()[0]
+        ymin = min(a.get_ylim()[0], 99)
         if args.plot_hr_thr:
             ymin = max(args.plot_hr_thr, ymin)
-        a.set_ylim(ymin, 100.2) # make room for 100% markers to be fully visible
+        a.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
 
     # common for CT
     for a in axs_ct:
@@ -353,6 +366,36 @@ def run_cache_sweep(
         a.margins(x=0.02)
 
     return sr
+
+def scale_ax(ax):
+    yticks = ax.get_yticks()
+    while yticks[0] < 0: # remove negative if present
+        yticks = yticks[1:]
+
+    y_min, y_max = min(yticks), max(yticks)
+    y_range = y_max - y_min
+
+    if y_range < 1024:
+        unit = ''
+        scale = 1
+    elif y_range < 1024**2:
+        unit = 'K'
+        scale = 1024
+    else:
+        unit = 'M'
+        scale = 1024**2
+
+    y_maxn = (2 ** (int(np.ceil(np.log2(y_max))))) / scale
+    yticks_out = np.arange(0, y_maxn + 1, y_maxn/8)
+    while (yticks_out[-1] * scale) > y_max: # remove until it matches the og max
+        yticks_out = yticks_out[:-1]
+
+    inc_precision = (yticks_out[-1] < 8)
+    ax.set_yticks(yticks_out * scale)
+    if inc_precision:
+        ax.set_yticklabels([f"{round(tick,1)}{unit}" for tick in yticks_out])
+    else:
+        ax.set_yticklabels([f"{int(tick)}{unit}" for tick in yticks_out])
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
@@ -497,7 +540,9 @@ def run_bp_sweep(
         if args.track:
             print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        mw = min(MAX_WORKERS, args.max_workers)
+        print(f"Running sweep with {mw} workers (max: {MAX_WORKERS})")
+        with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
             futures = {
                 executor.submit(
                     run_workloads,
@@ -616,10 +661,11 @@ def run_bp_sweep(
         ymin = a.get_ylim()[0] * 0.99
         if args.plot_acc_thr:
             ymin = max(args.plot_acc_thr, ymin)
-        a.set_ylim(ymin, 100.2)
+        a.set_ylim(ymin, 100.1)
 
     return sr_bin
 
+MAX_WORKERS = int(os.cpu_count())
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
     parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given app")
@@ -632,9 +678,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
+    parser.add_argument("--plot_skip_ct_thr", action="store_true", help="Skip setting the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=32, help="Number of top branch predictor configs to keep based only on accuracy")
     parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
+    parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of workers")
 
     return parser.parse_args()
 
