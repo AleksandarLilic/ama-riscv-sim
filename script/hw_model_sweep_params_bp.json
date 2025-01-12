@@ -17,8 +17,8 @@
         "sorting": [["merge_int32_large",
                      "quick_int32_large",
                      "heap_int32_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
-        "dhrystone": [["dhrystone"],      {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10 --log_pc_start 11d80 --log_pc_stop 11e50"}],
-        "coremark": [["coremark"],        {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 4 --log_pc_start 11574 --log_pc_stop 115b0"}],
+        "dhrystone": [["dhrystone"],      {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10 --log_pc_start 11d90 --log_pc_stop 11e60"}],
+        "coremark": [["coremark"],        {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 4 --log_pc_start 11568 --log_pc_stop 115a4"}],
         "fibonacci": [["n_18"],           {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
         "gcd_lcm": [["n_large"],          {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}]
     }
