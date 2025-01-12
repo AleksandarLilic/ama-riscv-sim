@@ -27,6 +27,8 @@ profiler::profiler(std::string log_path) {
     prof_g_arr[TO_U32(opc_g::i_ori)] = {"ori", 0};
     prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
     prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
+    prof_g_arr[TO_U32(opc_g::i_mret)] = {"mret", 0};
+    prof_g_arr[TO_U32(opc_g::i_wfi)] = {"wfi", 0};
 
     prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
     prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
@@ -315,8 +317,8 @@ void profiler::log_to_file() {
     float_t sa_perc_load = 0.0;
     float_t sa_perc_store = 0.0;
     if (cnt.mem) sa_perc = 100.0 * sa_cnt / cnt.mem;
-    if (cnt.load) sa_perc_load = 100.0 * sa_cnt_load / cnt.load;
-    if (cnt.store) sa_perc_store = 100.0 * sa_cnt_store / cnt.store;
+    if (cnt.load) sa_perc_load = 100.0 * sa_cnt_load / cnt.mem;
+    if (cnt.store) sa_perc_store = 100.0 * sa_cnt_store / cnt.mem;
     std::cout << "Profiler Stack: peak usage: " << min_sp << " B, Accesses: "
               << sa_cnt << "(" << sa_perc << "%) - L/S: "
               << sa_cnt_load << "/" << sa_cnt_store

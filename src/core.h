@@ -3,6 +3,7 @@
 #include "defines.h"
 #include "memory.h"
 #include "inst_parser.h"
+#include "trap.h"
 #ifdef ENABLE_PROF
 #include "profiler.h"
 #include "profiler_fusion.h"
@@ -11,7 +12,7 @@
 #include "bp_if.h"
 #endif
 
-class core{
+class core {
     public:
         core() = delete;
         core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg);
@@ -39,19 +40,21 @@ class core{
     private:
         void write_rf(uint32_t reg, uint32_t data) { if (reg) rf[reg] = data; }
         void write_rf_pair(uint32_t reg, reg_pair rp) {
-            if (reg == 31)
-                throw std::runtime_error("write_rf_pair: reg == 31");
+            if (reg == 31) tu.e_hardware_error("Write to x31");
             if (reg) {
                 rf[reg] = rp.a;
                 rf[reg + 1] = rp.b;
             }
         }
         void write_csr(uint16_t addr, uint32_t data) {
-            if (csr.at(addr).perm == csr_perm_t::ro)
-                illegal("CSR write attempt to RO CSR", 4);
-            if (csr.at(addr).perm == csr_perm_t::warl_unimp)
-                return;
+            if (csr.at(addr).perm == csr_perm_t::ro) {
+                tu.e_illegal_inst("CSR write attempt to RO CSR", 4);
+            }
+            if (csr.at(addr).perm == csr_perm_t::warl_unimp) return;
             csr.at(addr).value = data;
+            // FIXME: find a better way to handle RO bits in otherwise RW CSRs
+            // MPP always in machine mode (0x3)
+            if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
         }
         void cntr_update();
         void log_and_prof(bool enable);
@@ -69,8 +72,6 @@ class core{
         void system();
         void misc_mem();
         void custom_ext();
-        void unsupported(const std::string &msg);
-        void illegal(const std::string &msg, uint32_t memw);
         // void reset();
 
         // instruction parsing
@@ -323,6 +324,14 @@ class core{
         // C extension - system
         void c_ebreak();
 
+        // exceptions
+        void e_unsupported_inst(const std::string &msg);
+        void exception_illegal(const std::string &msg, uint32_t memw);
+        void exception_env(const std::string &msg, uint32_t code);
+
+        // interrupts
+        // TODO
+
         #ifdef ENABLE_HW_PROF
         void log_hw_stats();
         #endif
@@ -336,8 +345,10 @@ class core{
         uint32_t inst;
         uint64_t inst_cnt;
         uint64_t inst_cnt_csr;
+        trap tu;
         uint8_t rf_names_idx;
         uint8_t rf_names_w;
+        uint8_t csr_names_w;
         bool dump_all_regs;
         std::string log_path;
         logging_pc_t logging_pc;
@@ -349,7 +360,7 @@ class core{
         #endif
 
         std::map<uint16_t, CSR> csr;
-        static constexpr std::array<CSR_entry, 17> supported_csrs = {{
+        static constexpr std::array<CSR_entry, 24> supported_csrs = {{
             {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
 
             // Machine Information Registers
@@ -359,10 +370,17 @@ class core{
             {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
 
             // Machine Trap Setup
+            {CSR_MSTATUS, "mstatus", csr_perm_t::rw, 0x1800}, // mpp = 3
             {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
+            {CSR_MIE, "mie", csr_perm_t::rw, 0u},
+            {CSR_MTVEC, "mtvec", csr_perm_t::rw, 0u},
 
             // Machine Trap Handling
             {CSR_MSCRATCH, "mscratch", csr_perm_t::rw, 0u},
+            {CSR_MEPC, "mepc", csr_perm_t::rw, 0u},
+            {CSR_MCAUSE, "mcause", csr_perm_t::rw, 0u},
+            {CSR_MTVAL, "mtval", csr_perm_t::rw, 0u},
+            {CSR_MIP, "mip", csr_perm_t::rw, 0u},
 
             // Machine Counter/Timers
             {CSR_MCYCLE, "mcycle", csr_perm_t::rw, 0u},

@@ -104,6 +104,9 @@
 // Instructions
 #define INST_ECALL 0x73
 #define INST_EBREAK 0x100073
+#define INST_MRET 0x30200073
+#define INST_SRET 0x10200073
+#define INST_WFI 0x10500073
 #define INST_FENCE_I 0x100F
 #define INST_NOP 0x13
 #define INST_C_NOP 0x1
@@ -119,16 +122,16 @@
 #define CSR_MIMPID 0xF13 // MRO
 #define CSR_MHARTID 0xF14 // MRO
 // Machine Trap Setup
-//#define CSR_MSTATUS 0x300 // MRW
+#define CSR_MSTATUS 0x300 // MRW
 #define CSR_MISA 0x301 // MRW
-//#define CSR_MIE 0x304 // MRW
-//#define CSR_MTVEC 0x305 // MRW
+#define CSR_MIE 0x304 // MRW
+#define CSR_MTVEC 0x305 // MRW
 // Machine Trap Handling
 #define CSR_MSCRATCH 0x340 // MRW
-//#define CSR_MEPC 0x341 // MRW
-//#define CSR_MCAUSE 0x342 // MRW
-//#define CSR_MTVAL 0x343 // MRW
-//#define CSR_MIP 0x344 // MRW
+#define CSR_MEPC 0x341 // MRW
+#define CSR_MCAUSE 0x342 // MRW
+#define CSR_MTVAL 0x343 // MRW
+#define CSR_MIP 0x344 // MRW
 // Machine Counter/Timers
 #define CSR_MCYCLE 0XB00 // MRW
 #define CSR_MINSTRET 0XB02 // MRW
@@ -143,6 +146,23 @@
 #define CSR_CYCLEH 0xC80 // URO
 #define CSR_TIMEH 0xC81 // URO
 #define CSR_INSTRETH 0xC82 // URO
+
+// MCAUSE bits
+#define MCAUSE_INST_ADDR_MISALIGNED 0X0
+#define MCAUSE_INST_ACCESS_FAULT 0X1
+#define MCAUSE_ILLEGAL_INST 0X2
+#define MCAUSE_BREAKPOINT 0X3
+#define MCAUSE_LOAD_ADDR_MISALIGNED 0X4
+#define MCAUSE_LOAD_ACCESS_FAULT 0X5
+#define MCAUSE_STORE_ADDR_MISALIGNED 0X6
+#define MCAUSE_STORE_ACCESS_FAULT 0X7
+#define MCAUSE_MACHINE_ECALL 0XB // 11
+//#define MCAUSE_SOFTWARE_CHECK 0x12 // 18
+#define MCAUSE_HARDWARE_ERROR 0x13 // 19
+
+// MSTATUS bits
+#define MSTATUS_MIE 0x8
+#define MSTATUS_MPIE 0x80
 
 // Macros
 #define CASE_DECODER(op) \
@@ -184,7 +204,9 @@
 
 #define CASE_LOAD(op) \
     case TO_U8(load_op_t::op_##op): \
-        write_rf(ip.rd(), load_##op((rf[ip.rs1()] + ip.imm_i()))); \
+        loaded = load_##op(rf[ip.rs1()] + ip.imm_i()); \
+        if (tu.is_trapped()) return; \
+        write_rf(ip.rd(), loaded); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
@@ -193,6 +215,7 @@
 #define CASE_STORE(op) \
     case TO_U8(store_op_t::op_##op): \
         store_##op(rf[ip.rs1()]+ip.imm_s(), rf[ip.rs2()]); \
+        if (tu.is_trapped()) return; \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RS1_RS2 \
@@ -261,45 +284,20 @@
 
 #define W_CSR(expr) write_csr(ip.csr_addr(), expr)
 
-#define MEM_OUT_OF_RANGE(addr, reason) \
-    do { \
-        std::stringstream ss; \
-        ss << MEM_ADDR_FORMAT(address); \
-        std::string hex_addr = ss.str(); \
-        throw std::runtime_error("Address " + hex_addr + \
-                                 " out of range: " + reason); \
-    } while(0);
-
-//#define CHECK_ADDRESS(address, align)
-
-#define CHECK_ADDRESS(address, align) \
-    do { \
-        bool address_out_of_range = (address >= MEM_SIZE + UART0_SIZE); \
-        bool address_unaligned = ((address % 4u) + align > 4u); \
-        if (address_out_of_range || address_unaligned) { \
-            if (address_out_of_range) { \
-                std::cerr << "ERROR: Address out of range: 0x" \
-                          << std::hex << address << std::dec << " (" \
-                          << align << "B)" << std::endl; \
-            } \
-            else { \
-                std::cerr << "ERROR: Unaligned access at address: 0x" \
-                          << std::hex << address \
-                          << std::dec << "; for: " << align << " bytes" \
-                          << std::endl; \
-            } \
-        } \
-    } while(0);
+#define SIM_ERROR std::cerr << "SIM RUNTIME ERROR: "
+#define SIM_WARNING std::cout << "SIM RUNTIME WARNING: "
+#define SIM_TRAP std::cout << "SIM INFO: Instruction trapped: "
+#define DASM_TRAP dasm.asm_ss << "Instruction trapped: "
 
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr \
                                  << std::dec
 
 #define INST_FORMAT(inst, n) \
-    std::setw(n) << std::setfill('0') << std::hex << inst << std::dec
+    std::setw((n)) << std::setfill('0') << std::hex << inst << std::dec
 
-#define FORMAT_INST(inst, n) \
-    MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT(inst, n)
+#define FORMAT_INST(pc, inst, n) \
+    MEM_ADDR_FORMAT(pc) << ": " << INST_FORMAT((inst), n)
 
 #define FHEXZ(val, w) \
     "0x" << std::setw(w) << std::setfill('0') << std::hex << val << std::dec
@@ -316,10 +314,11 @@
 
 // Format CSR print
 #define CSRF(it) \
-    std::hex << "0x" << std::right << std::setw(4) << std::setfill('0') \
-             << it->first << " (" << it->second.name << ")" \
-             << ": 0x" << std::left << std::setw(8) << std::setfill(' ') \
-             << it->second.value << std::dec
+    std::hex << "0x" << std::setw(4) << std::setfill('0') << it->first << " " \
+             << std::left << std::setw(csr_names_w) << std::setfill(' ') \
+             << it->second.name << ": 0x" \
+             << std::right << std::setw(8) << std::setfill('0') \
+             << it->second.value << std::dec << std::setfill(' ')
 
 #ifdef ENABLE_DASM
 // FIXME: need to differentiate names between macros that redirect to dasm and

@@ -186,11 +186,13 @@ void cache::update_lru(uint32_t index, uint32_t way) {
     active_lru_cnt = 0;
 }
 
-scp_status_t cache::update_scp(scp_mode_t scp_mode, cache_line_t& line,
-                           uint32_t index){
+scp_status_t cache::update_scp(
+    scp_mode_t scp_mode, cache_line_t& line,uint32_t index) {
     if (scp_mode == scp_mode_t::m_none) return scp_status_t::success;
     if (scp_mode == scp_mode_t::m_lcl) return convert_to_scp(line, index);
     else if (scp_mode == scp_mode_t::m_rel) return release_scp(line);
+    // TODO: exception code 24: custom use - unknown scp mode
+    // else tu.e_hardware_error("Unknown SCP mode");
     else throw std::runtime_error("Unknown SCP mode.");
 }
 

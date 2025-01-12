@@ -8,7 +8,7 @@
 
 #include "../src/defines.h"
 
-#define CHECK_PASS "0x051e (tohost): 0x1"
+#define CHECK_PASS "0x051e tohost   : 0x00000001"
 #define SIM_BIN "../src/ama-riscv-sim "
 
 struct cmd_setup {
@@ -111,11 +111,12 @@ TEST_F(sim_test, bin_file_oversized) {
     for (int i = 0; i <= MEM_SIZE+1; i++)
         test_bin << "0";
     test_bin.close();
-    ASSERT_TRUE(check_error("oversized.bin",
-                            "File size is greater than memory size.")
+    ASSERT_TRUE(
+        check_error("oversized.bin", "File size is greater than memory size.")
     );
 }
 
+/* FIXME: needs to be handled with traps now
 #define UI_MSG(x) \
     "Unsupported instruction: <" x "> at 1000c: " + gen_hex_str(arr[3])
 
@@ -207,3 +208,4 @@ TEST_F(sim_test, unsupported_misc_mem) {
     write_bin(filename);
     ASSERT_TRUE(check_error(filename, UI_MSG("misc_mem")));
 }
+*/

@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "main_memory.h"
+#include "trap.h"
 
 #ifdef UART_ENABLE
 #include "uart.h"
@@ -21,14 +22,22 @@ class memory {
         #endif
         dev *dev_ptr;
         std::array<mem_entry, 2> mem_map;
+        trap *tu;
+        #ifdef ENABLE_DASM
+        dasm_str* dasm;
+        #endif
 
     private:
         void mem_dump(uint32_t start, uint32_t end);
-        uint32_t set_addr(uint32_t address);
+        uint32_t set_addr(uint32_t address, access_t access, uint32_t size);
 
     public:
         memory() = delete;
         memory(std::string test_bin, hw_cfg_t hw_cfg);
+        void trap_setup(trap* tu) { this->tu = tu; }
+        #ifdef ENABLE_DASM
+        void set_dasm(dasm_str* d) { dasm = d; }
+        #endif
         uint32_t rd_inst(uint32_t address);
         uint32_t rd(uint32_t address, uint32_t size);
         void wr(uint32_t address, uint32_t data, uint32_t size);

@@ -5,8 +5,10 @@ core::core(
     std::string log_path,
     cfg_t cfg,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
-        running(false), mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
+        running(false),
+        mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
         inst_cnt(0), inst_cnt_csr(0),
+        tu(&csr, &pc, &inst),
         log_path(log_path), logging_pc(cfg.log_pc), logging(false)
     #ifdef ENABLE_PROF
     , prof(log_path)
@@ -21,9 +23,17 @@ core::core(
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
     dump_all_regs = cfg.dump_all_regs;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
+    mem->trap_setup(&tu);
+    #ifdef ENABLE_DASM
+    mem->set_dasm(&dasm);
+    tu.set_dasm(&dasm);
+    #endif
     // initialize CSRs
-    for (const auto &c : supported_csrs)
+    csr_names_w = 0;
+    for (const auto &c : supported_csrs) {
         csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
+        csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
+    }
 }
 
 void core::exec() {
@@ -34,13 +44,14 @@ void core::exec() {
 
     #ifdef ENABLE_PROF
     prof.active = false;
+    prof_fusion.active = false;
     #endif
 
     running = true;
     start_time = std::chrono::high_resolution_clock::now();
     run_time = start_time;
     #ifdef UART_ENABLE
-    std::cout << "=== UART START ===" << std::endl;
+    std::cout << "=== UART START ===" << "\n";
     #endif
     while (running) exec_inst();
     cntr_update(); // so that all instructions since last CSR access are counted
@@ -55,6 +66,7 @@ void core::log_and_prof([[maybe_unused]] bool enable) {
     #endif
     #ifdef ENABLE_PROF
     prof.active = enable;
+    prof_fusion.active = enable;
     #endif
     #ifdef ENABLE_HW_PROF
     logging = enable;
@@ -64,12 +76,14 @@ void core::log_and_prof([[maybe_unused]] bool enable) {
 }
 
 void core::exec_inst() {
+    tu.clear_trap();
     if (logging_pc.should_start(pc)) log_and_prof(true);
     else if (logging_pc.should_stop(pc)) log_and_prof(false);
 
     inst_fetch();
     uint32_t op_c = ip.copcode();
     if (op_c != 0x3) {
+        #ifdef RV32C
         INST_W(4);
         inst = inst & 0xffff;
         ip.inst = inst;
@@ -77,8 +91,11 @@ void core::exec_inst() {
             case 0x0: c0(); break;
             case 0x1: c1(); break;
             case 0x2: c2(); break;
-            default: unsupported("op_c unreachable");
+            default: tu.e_unsupported_inst("op_c unreachable");
         }
+        #else // !RV32C
+            tu.e_unsupported_inst("RV32C unsupported");
+        #endif
     } else {
         INST_W(8);
         switch (ip.opcode()) {
@@ -94,9 +111,51 @@ void core::exec_inst() {
             CASE_DECODER(system)
             CASE_DECODER(misc_mem)
             CASE_DECODER(custom_ext)
-            default: unsupported("opcode");
+            default: tu.e_unsupported_inst("opcode");
         }
     }
+
+    #ifdef ENABLE_DASM
+    #ifdef DPI
+    // always log dasm for DPI
+    dasm.asm_str = dasm.asm_ss.str();
+    dasm.asm_ss.str("");
+    if (tu.is_trapped()) return;
+
+    #else // !DPI
+    if (logging) {
+        dasm.asm_str = dasm.asm_ss.str();
+        dasm.asm_ss.str("");
+        if (tu.is_trapped()) {
+            log_ofstream << dasm.asm_str << "\n";
+            return;
+        }
+        log_ofstream << "(" << std::setw(8) << std::setfill(' ')
+                     << logging_pc.inst_cnt << ") "
+                     << FORMAT_INST(pc, inst, inst_w) << " "
+                     << dasm.asm_str << "\n";
+
+        if (logging_pc.dump_state) {
+            log_ofstream << dump_state(csr_updated) << "\n";
+            csr_updated = false;
+        }
+
+        logging_pc.inst_cnt++;
+    }
+
+    // FIXME: prevent writing in the first place if logging is not active
+    dasm.asm_ss.str("");
+    if (tu.is_trapped()) return;
+    #endif
+
+    #elif defined(ENABLE_HW_PROF)
+    if (tu.is_trapped()) return;
+    // enable logging in case only HW_PROF is enabled
+    if (logging) logging_pc.inst_cnt++;
+
+    #else // !ENABLE_DASM && !ENABLE_HW_PROF
+    if (tu.is_trapped()) return;
+    #endif
 
     #ifdef ENABLE_PROF
     if (prof.active) {
@@ -107,35 +166,7 @@ void core::exec_inst() {
     }
     #endif
 
-    #ifdef ENABLE_DASM
-    #ifdef DPI
-    // always log the for DPI
-    dasm.asm_str = dasm.asm_ss.str();
-    dasm.asm_ss.str("");
-
-    #else // !DPI
-    if (logging) {
-        dasm.asm_str = dasm.asm_ss.str();
-        log_ofstream << "(" << std::setw(8) << std::setfill(' ')
-                     << logging_pc.inst_cnt << ") "
-                     << FORMAT_INST(inst, inst_w) << " "
-                     << dasm.asm_str << std::endl;
-
-
-        if (logging_pc.dump_state) {
-            log_ofstream << dump_state(csr_updated) << std::endl;
-            csr_updated = false;
-        }
-        logging_pc.inst_cnt++;
-    }
-    #endif
-    dasm.asm_ss.str(""); // FIXME: prevent writing if logging is not active
-
-    #elif defined(ENABLE_HW_PROF)
-    // enable logging in case only HW_PROF is enabled
-    if (logging) logging_pc.inst_cnt++;
-    #endif
-
+    // next inst
     pc = next_pc;
     inst_cnt++;
 }
@@ -176,7 +207,7 @@ void core::al_reg() {
                 CASE_ALU_REG_OP(xor)
                 CASE_ALU_REG_OP(or)
                 CASE_ALU_REG_OP(and)
-                default: unsupported("al_reg_rv32i");
+                default: tu.e_unsupported_inst("al_reg_rv32i"); return;
             }
             break;
         case 0x01: // rv32m
@@ -189,7 +220,7 @@ void core::al_reg() {
                 CASE_ALU_REG_MUL_OP(divu)
                 CASE_ALU_REG_MUL_OP(rem)
                 CASE_ALU_REG_MUL_OP(remu)
-                default: unsupported("al_reg_rv32m");
+                default: tu.e_unsupported_inst("al_reg_rv32m"); return;
             }
             break;
         case 0x05: // rv32 zbb
@@ -198,10 +229,10 @@ void core::al_reg() {
                 CASE_ALU_REG_ZBB_OP(maxu)
                 CASE_ALU_REG_ZBB_OP(min)
                 CASE_ALU_REG_ZBB_OP(minu)
-                default: unsupported("al_reg_rv32_zbb");
+                default: tu.e_unsupported_inst("al_reg_rv32_zbb"); return;
             }
             break;
-        default: unsupported("al_reg");
+        default: tu.e_unsupported_inst("al_reg"); return;
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -224,7 +255,7 @@ void core::al_imm() {
         CASE_ALU_IMM_OP(xori)
         CASE_ALU_IMM_OP(ori)
         CASE_ALU_IMM_OP(andi)
-        default: unsupported("al_imm");
+        default: tu.e_unsupported_inst("al_imm"); return;
     }
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -241,16 +272,17 @@ void core::al_imm() {
 }
 
 void core::load() {
-    #ifdef ENABLE_PROF
+    #if defined(ENABLE_PROF) or defined(ENABLE_DASM)
     uint32_t rs1 = rf[ip.rs1()];
     #endif
+    uint32_t loaded;
     switch (ip.funct3()) {
         CASE_LOAD(lb)
         CASE_LOAD(lh)
         CASE_LOAD(lw)
         CASE_LOAD(lbu)
         CASE_LOAD(lhu)
-        default: unsupported("load");
+        default: tu.e_unsupported_inst("load"); return;
     }
     #ifdef ENABLE_PROF
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
@@ -269,7 +301,7 @@ void core::store() {
         CASE_STORE(sb)
         CASE_STORE(sh)
         CASE_STORE(sw)
-        default: unsupported("store");
+        default: tu.e_unsupported_inst("store");
     }
     #ifdef ENABLE_PROF
     prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
@@ -291,8 +323,16 @@ void core::branch() {
         CASE_BRANCH(bge)
         CASE_BRANCH(bltu)
         CASE_BRANCH(bgeu)
-        default: unsupported("branch");
+        default: tu.e_unsupported_inst("branch");
     }
+
+    #ifndef RV32C
+    bool address_unaligned = (next_pc % 4 != 0);
+    if (address_unaligned) {
+        tu.e_inst_addr_misaligned(next_pc, "branch unaligned access");
+        return;
+    }
+    #endif
 
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_OP_RS1 << "," << DASM_OP_RS2 << ","
@@ -320,8 +360,15 @@ void core::branch() {
 }
 
 void core::jalr() {
-    if (ip.funct3() != 0) unsupported("jalr");
+    if (ip.funct3() != 0) tu.e_unsupported_inst("jalr, funct3 != 0");
     next_pc = (rf[ip.rs1()] + ip.imm_i()) & 0xFFFFFFFE;
+    #ifndef RV32C
+    bool address_unaligned = (next_pc % 4 != 0);
+    if (address_unaligned) {
+        tu.e_inst_addr_misaligned(next_pc, "jalr unaligned access");
+        return;
+    }
+    #endif
     write_rf(ip.rd(), pc + 4);
     DASM_OP(jalr)
     PROF_J(jalr)
@@ -335,6 +382,13 @@ void core::jalr() {
 void core::jal() {
     write_rf(ip.rd(), pc + 4);
     next_pc = pc + ip.imm_j();
+    #ifndef RV32C
+    bool address_unaligned = (next_pc % 4 != 0);
+    if (address_unaligned) {
+        tu.e_inst_addr_misaligned(next_pc, "jal unaligned access");
+        return;
+    }
+    #endif
     DASM_OP(jal)
     PROF_J(jal)
     PROF_RD
@@ -369,24 +423,33 @@ void core::auipc() {
 }
 
 void core::system() {
-    if (inst == INST_ECALL) {
-        running = false;
-        DASM_OP(ecall)
-        PROF_G(ecall)
-        #ifdef ENABLE_DASM
-        dasm.asm_ss << dasm.op;
-        #endif
-    }
-    else if (inst == INST_EBREAK) {
-        running = false;
-        DASM_OP(ebreak)
-        PROF_G(ebreak)
-        #ifdef ENABLE_DASM
-        dasm.asm_ss << dasm.op;
-        #endif
-    } else {
+    uint32_t funct3 = ip.funct3();
+    if (funct3) {
         csr_access();
         next_pc = pc + 4;
+    } else { // (funct3 == 0) -> system instructions
+        switch (inst) {
+            case INST_ECALL:
+                tu.e_env("ECALL", MCAUSE_MACHINE_ECALL);
+                return;
+            case INST_EBREAK:
+                tu.e_env("EBREAK", MCAUSE_BREAKPOINT);
+                return;
+            case INST_MRET:
+                // restore previous interrupt enable bit state
+                csr.at(CSR_MSTATUS).value =
+                    (csr.at(CSR_MSTATUS).value & ~MSTATUS_MIE) |
+                    ((csr.at(CSR_MSTATUS).value & MSTATUS_MPIE) >> 4);
+                // restore pc
+                next_pc = csr[CSR_MEPC].value;
+                DASM_OP(mret)
+                PROF_G(mret)
+                break;
+            default: tu.e_unsupported_inst("system");
+        }
+        #ifdef ENABLE_DASM
+        dasm.asm_ss << dasm.op;
+        #endif
     }
 }
 
@@ -396,20 +459,17 @@ void core::misc_mem() {
         next_pc = pc + 4;
         DASM_OP(fence.i)
         PROF_G(fence_i)
-        #ifdef ENABLE_DASM
-        dasm.asm_ss << dasm.op;
-        #endif
     } else if (ip.funct3() == 0) {
         // nop
         next_pc = pc + 4;
         DASM_OP(fence)
         PROF_G(fence)
-        #ifdef ENABLE_DASM
-        dasm.asm_ss << dasm.op;
-        #endif
     } else {
-        unsupported("misc_mem");
+        tu.e_unsupported_inst("misc_mem");
     }
+    #ifdef ENABLE_DASM
+    dasm.asm_ss << dasm.op;
+    #endif
 }
 
 // Custom extension
@@ -429,7 +489,7 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(dot16)
             CASE_ALU_CUSTOM_OP(dot8)
             CASE_ALU_CUSTOM_OP(dot4)
-            default : unsupported("custom extension - arith");
+            default : tu.e_unsupported_inst("custom extension - arith");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
@@ -451,7 +511,7 @@ void core::custom_ext() {
             CASE_MEM_CUSTOM_OP(unpk4u)
             CASE_MEM_CUSTOM_OP(unpk2)
             CASE_MEM_CUSTOM_OP(unpk2u)
-            default: unsupported("custom extension - memory");
+            default: tu.e_unsupported_inst("custom extension - memory");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1;
@@ -462,14 +522,14 @@ void core::custom_ext() {
         switch (funct7) {
             CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
-            default : unsupported("custom extension - hint");
+            default : tu.e_unsupported_inst("custom extension - hint");
         }
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
         #endif
     } else {
-        unsupported("custom extension");
+        tu.e_unsupported_inst("custom extension");
     }
     next_pc = pc + 4;
 }
@@ -725,9 +785,12 @@ void core::csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
-        std::cerr << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3)
-                  << std::endl;
-        throw std::runtime_error("Unsupported CSR");
+        // FIXME
+        #ifdef ENABLE_DASM
+        DASM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3);
+        #endif
+        SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3)
+                 << "\n";
     } else {
         // using temp in case rd and rs1 are the same register
         uint32_t init_val_rs1 = rf[ip.rs1()];
@@ -740,15 +803,18 @@ void core::csr_access() {
             CASE_CSR_I(rwi)
             CASE_CSR_I(rsi)
             CASE_CSR_I(rci)
-            default: unsupported("sys");
+            default: tu.e_unsupported_inst("sys");
         }
         if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
     #ifdef ENABLE_DASM
+    bool imm_type = (ip.funct3() & 0x4);
     DASM_RD_UPDATE;
-    if (ip.rd()) dasm.asm_ss << "; ";
-    DASM_ALIGN;
-    dasm.asm_ss << CSRF(it);
+    if (ip.rs1() || imm_type) {
+        if (ip.rd()) dasm.asm_ss << "; ";
+        DASM_ALIGN;
+        dasm.asm_ss << CSRF(it);
+    }
     if (logging_pc.dump_state) csr_updated = true;
     #endif
 }
@@ -783,7 +849,7 @@ void core::c0() {
         case 0x0: c_addi4spn(); break;
         case 0x2: c_lw(); break;
         case 0x6: c_sw(); break;
-        default: unsupported("c0");
+        default: tu.e_unsupported_inst("c0");
     }
 }
 
@@ -815,7 +881,7 @@ void core::c1() {
                         case 0x8d: c_xor(); break;
                         case 0x8e: c_or(); break;
                         case 0x8f: c_and(); break;
-                        default: unsupported("c1:0x4:0x3");
+                        default: tu.e_unsupported_inst("c1:0x4:0x3");
                     }
                     break;
             }
@@ -823,7 +889,7 @@ void core::c1() {
         case 0x5: c_j(); break;
         case 0x6: c_beqz(); break;
         case 0x7: c_bnez(); break;
-        default: unsupported("c1");
+        default: tu.e_unsupported_inst("c1");
     }
 }
 
@@ -833,6 +899,7 @@ void core::c2() {
     switch (funct3) {
         case 0x0: c_slli(); break;
         case 0x2: c_lwsp(); break;
+        case 0x6: c_swsp(); break;
         case 0x4:
             switch (funct4) {
                 case 0x8:
@@ -844,11 +911,10 @@ void core::c2() {
                     else if (ip.crs2() == 0x0) c_jalr();
                     else c_add();
                 break;
-                default: unsupported("unreachable");
+                default: tu.e_unsupported_inst("unreachable");
             }
             break;
-        case 0x6: c_swsp(); break;
-        default: unsupported("c2");
+        default: tu.e_unsupported_inst("c2");
     }
 }
 
@@ -876,7 +942,7 @@ void core::c_li() {
 }
 
 void core::c_lui() {
-    if (ip.imm_c_lui() == 0) illegal("c.lui (imm=0)", 4);
+    if (ip.imm_c_lui() == 0) tu.e_illegal_inst("c.lui (imm=0)", 4);
     write_rf(ip.rd(), ip.imm_c_lui());
     DASM_OP(c.lui)
     PROF_G(c_lui)
@@ -898,7 +964,7 @@ void core::c_nop() {
 }
 
 void core::c_addi16sp() {
-    if (ip.imm_c_16sp() == 0) illegal("c.addi16sp (imm=0)", 4);
+    if (ip.imm_c_16sp() == 0) tu.e_illegal_inst("c.addi16sp (imm=0)", 4);
     write_rf(2, al_addi(rf[2], ip.imm_c_16sp()));
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
@@ -987,8 +1053,8 @@ void core::c_sub() {
 }
 
 void core::c_addi4spn() {
-    if (ip.imm_c_4spn() == 0) illegal("c.addi4spn (imm=0)", 4);
-    if (inst == 0) illegal("c.inst == 0", 4);
+    if (ip.imm_c_4spn() == 0) tu.e_illegal_inst("c.addi4spn (imm=0)", 4);
+    if (inst == 0) tu.e_illegal_inst("c.inst == 0", 4);
     write_rf(ip.cregl(), al_addi(rf[2], ip.imm_c_4spn()));
     DASM_OP(c.addi4spn)
     PROF_G(c_addi4spn)
@@ -1039,7 +1105,9 @@ void core::c_add() {
 // C extension - memory operations
 void core::c_lw() {
     uint32_t rs1 = rf[ip.cregh()];
-    write_rf(ip.cregl(), mem->rd(rs1 + ip.imm_c_mem(), 4u));
+    uint32_t loaded = mem->rd(rs1 + ip.imm_c_mem(), 4u);
+    if (tu.is_trapped()) return;
+    write_rf(ip.cregl(), loaded);
     DASM_OP(c.lw)
     PROF_G(c_lw)
     #ifdef ENABLE_PROF
@@ -1056,7 +1124,9 @@ void core::c_lw() {
 }
 
 void core::c_lwsp() {
-    write_rf(ip.rd(), mem->rd(rf[2] + ip.imm_c_lwsp(), 4u));
+    uint32_t loaded = mem->rd(rf[2] + ip.imm_c_lwsp(), 4u);
+    if (tu.is_trapped()) return;
+    write_rf(ip.rd(), loaded);
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
     #ifdef ENABLE_PROF
@@ -1074,6 +1144,7 @@ void core::c_lwsp() {
 
 void core::c_sw() {
     mem->wr(rf[ip.cregh()] + ip.imm_c_mem(), rf[ip.cregl()], 4u);
+    if (tu.is_trapped()) return;
     DASM_OP(c.sw)
     PROF_G(c_sw)
     #ifdef ENABLE_PROF
@@ -1090,6 +1161,7 @@ void core::c_sw() {
 
 void core::c_swsp() {
     mem->wr(rf[2] + ip.imm_c_swsp(), rf[ip.crs2()], 4u);
+    if (tu.is_trapped()) return;
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
     #ifdef ENABLE_PROF
@@ -1157,7 +1229,7 @@ void core::c_jal() {
 
 void core::c_jr() {
     // rs1 in position of rd
-    if (ip.rd() == 0x0) illegal("c.jr (rd=0)", 4);
+    if (ip.rd() == 0x0) tu.e_illegal_inst("c.jr (rd=0)", 4);
     next_pc = rf[ip.rd()];
     DASM_OP(c.jr)
     PROF_J(c_jr)
@@ -1188,18 +1260,6 @@ void core::c_ebreak() {
     #endif
 }
 
-void core::unsupported(const std::string &msg) {
-    std::cerr << "Unsupported instruction: <" << msg << "> at "
-              << FORMAT_INST(inst, 8) << std::endl;
-    throw std::runtime_error("Unsupported instruction");
-}
-
-void core::illegal(const std::string &msg, uint32_t memw) {
-    std::cerr << "Illegal instruction: <" << msg << "> "
-              << FORMAT_INST(inst, memw) << std::endl;
-    throw std::runtime_error("Illegal instruction");
-}
-
 // HW stats
 #ifdef ENABLE_HW_PROF
 void core::log_hw_stats() {
@@ -1217,42 +1277,44 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_ENABLE
-    std::cout << "=== UART END ===\n" << std::endl;
+    std::cout << "=== UART END ===\n" << "\n";
     #endif
     uint32_t tohost = csr.at(CSR_TOHOST).value;
     if (tohost != 1) {
-        std::cout << "Failed test ID: " << (tohost >> 1) << std::endl;
+        std::cout << "Failed test ID: " << (tohost >> 1);
+        std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
-              << ", logged: " << logging_pc.inst_cnt << std::endl;
-    if (dump_all_regs) std::cout << dump_state(true) << std::endl;
-    else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << std::endl;
+              << ", logged: " << logging_pc.inst_cnt << "\n";
+    if (dump_all_regs) std::cout << dump_state(true) << "\n";
+    else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
 
     #ifdef CHECK_LOG
     // open file for check log
     std::ofstream file;
     file.open("sim.check");
-    file << std::dec << inst_cnt << std::endl;
-    for(uint32_t i = 0; i < 32; i++) file << FHEXZ(rf[i], 8) << std::endl;
-    file << "0x" << MEM_ADDR_FORMAT(pc) << std::endl;
-    file << FHEXZ(csr.at(CSR_TOHOST).value, 8) << std::endl;
+    file << std::dec << inst_cnt << "\n";
+    for(uint32_t i = 0; i < 32; i++) file << FHEXZ(rf[i], 8) << "\n";
+    file << "0x" << MEM_ADDR_FORMAT(pc) << "\n";
+    file << FHEXZ(csr.at(CSR_TOHOST).value, 8) << "\n";
     file.close();
     #endif
 }
 
 std::string core::dump_state(bool dump_csr) {
     std::ostringstream state;
-    state << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << std::endl;
+    state << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
     for(uint32_t i = 0; i < 32; i+=4){
         state << INDENT;
         for(uint32_t j = 0; j < 4; j++) {
             state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]) << "   ";
         }
-        state << std::endl;
+        state << "\n";
     }
     if (dump_csr) {
-        for (auto it = csr.begin(); it != csr.end(); it++)
-            state << INDENT << CSRF(it) << std::endl;
+        for (auto it = csr.begin(); it != csr.end(); it++) {
+            state << INDENT << CSRF(it) << "\n";
+        }
     }
 
     return state.str();

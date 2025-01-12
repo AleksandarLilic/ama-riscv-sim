@@ -36,6 +36,8 @@ enum class opc_g {
     i_ecall, i_ebreak,
     // hints
     i_hint,
+    // trap
+    i_mret, i_wfi,
 
     // custom al
     i_add16, i_add8, i_sub16, i_sub8,

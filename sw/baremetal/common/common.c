@@ -1,8 +1,6 @@
 #include "common.h"
 
-// void test_end(); // defined in crt0.S
-
-void write_mismatch(uint32_t res, uint32_t ref, uint8_t idx) {
+void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx) {
     asm volatile("add x29, x0, %0"
                  :
                  : "r"(res));
@@ -21,14 +19,12 @@ void write_csr_status() {
 void pass() {
     asm volatile("li " TOSTR(TESTNUM_REG) ", 1");
     write_csr_status();
-    test_end();
 }
 
 void fail() {
     asm volatile("sll " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
     asm volatile("or " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
     write_csr_status();
-    test_end();
 }
 
 void send_byte_uart0(char byte) {
@@ -68,4 +64,16 @@ uint32_t clock_ticks() {
     uint32_t clock_ticks;
     asm volatile("csrr %0, cycle" : "=r"(clock_ticks));
     return clock_ticks;
+}
+
+void trap_handler(unsigned int mcause, void *mepc, void *sp) {
+    // can't handle exceptions, just exit
+    if (mcause < 0x80000000) {
+        write_mismatch(0, 0, 1000 + mcause);
+        fail();
+    }
+    // TODO: handle interrupts when supported, fail for now with different code
+    write_mismatch(0, 0, 2000 + mcause);
+    fail();
+    return;
 }

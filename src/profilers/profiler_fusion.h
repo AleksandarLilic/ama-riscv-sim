@@ -31,6 +31,9 @@ struct inst_opt {
 
 class profiler_fusion {
     public:
+        bool active;
+
+    public:
         profiler_fusion() : current_state(state::START) {}
         void attack(inst_opt opt);
         void finish();

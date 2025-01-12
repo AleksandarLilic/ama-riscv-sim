@@ -30,7 +30,7 @@
 #endif
 
 void test_end();
-void write_mismatch(uint32_t res, uint32_t ref, uint8_t idx);
+void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx);
 void write_csr_status();
 void pass();
 void fail();
@@ -41,5 +41,6 @@ int mini_printf(const char* format, ...);
 uint32_t time_us();
 uint32_t clock_ticks();
 void _putchar(char character); // tiny printf implementation
+void trap_handler(unsigned int mcause, void *mepc, void *sp);
 
 #endif

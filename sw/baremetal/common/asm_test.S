@@ -44,8 +44,7 @@
     nop; \
     nop; \
     nop; \
-    nop; \
-    ecall;
+    nop
 
 #define PASS \
     li x28, 0x1; \
@@ -53,5 +52,4 @@
     nop; \
     nop; \
     nop; \
-    nop; \
-    ecall;
+    nop

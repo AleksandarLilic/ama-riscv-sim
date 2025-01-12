@@ -22,6 +22,7 @@ INC := -I. -I./profilers -I./hw_models -I./external/cxxopts/include
 
 USER_DEFINES =
 DEFINES := -DENABLE_DASM
+#DEFINES += -DRV32C
 #DEFINES += -DUART_INPUT_ENABLE
 
 all: $(TARGET)

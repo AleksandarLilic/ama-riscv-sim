@@ -1,6 +1,7 @@
 #include "profiler_fusion.h"
 
 void profiler_fusion::attack(inst_opt opt) {
+    if (!active) return;
     this->opt = opt;
     do transition();
     while (current_state != state::START);
