@@ -149,6 +149,8 @@ def run_workloads(wp: workload_params):
                 app_thr_acc = workload["thr"]["thr_bpred_acc"]
             b_pred = hw_stats[wp.sweep]["predicted"]
             b_tot = hw_stats[wp.sweep]["branches"]
+            if b_tot == 0:
+                raise RuntimeError(f"No branches logged for {app}")
             acc = round(b_pred/b_tot*100, 2)
             if acc < app_thr_acc and not wp.ignore_thr:
                 agg_acc = []
@@ -163,6 +165,8 @@ def run_workloads(wp: workload_params):
                 app_thr_hr = workload["thr"][f"thr_{wp.sweep}_hr"]
             hits = hw_stats[wp.sweep]["hits"]
             accesses = hw_stats[wp.sweep]["accesses"]
+            if accesses == 0:
+                raise RuntimeError(f"No cache accesses logged for {app}")
             hr = round(hits/accesses*100, 2)
             if hr < app_thr_hr and not wp.ignore_thr:
                 agg_hr = []
@@ -210,13 +214,13 @@ def run_cache_sweep(
     for cpolicy in sweep_params["policies"]:
         if args.load_stats:
             break # skip the sweep if loading previous stats
-        if args.track:
+        if args.track and not running_best:
             print(INDENT, f"Policy: {cpolicy}")
         # only LRU is supported atm
         sr[cpolicy] = {}
 
         for cset in sweep_params["sets"]:
-            if args.track:
+            if args.track and not running_best:
                 print(INDENT * 2, f"Sets: {cset}")
             arg_sets = [f"--{ck}_sets", str(cset)]
             sr[cpolicy][cset] = {}
@@ -249,7 +253,7 @@ def run_cache_sweep(
                         "reads": ct[0], "writes": ct[1]}
                     sr[cpolicy][cset][cway]["ct_mem"] = {
                         "reads": ct[2], "writes": ct[3]}
-                if args.track:
+                if args.track and not running_best:
                     print(INDENT * 3,
                           f"Ways: {cway}, HR: {hr:.2f}%, Size: {size} B")
 
@@ -319,7 +323,7 @@ def run_cache_sweep(
             y_ct = ct_core
             if args.plot_skip_ct_thr and ax.get_ylim()[1] < ct_core:
                 y_ct = np.nan
-            scale_ax(ax)
+            scale_ax_for_ct(ax)
             ax.axhline(y=y_ct, color="r", linestyle="--",
                        label=f"{ctct} = {ct_core_str}")
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Number of Ways")
@@ -337,7 +341,7 @@ def run_cache_sweep(
             ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
             ax.set_xticklabels(XLABELS, rotation=45)
-            scale_ax(ax)
+            scale_ax_for_ct(ax)
             ax.axhline(y=y_ct, color="r", linestyle="--",
                        label=f"{ctct} = {ct_core_str}")
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Size")
@@ -367,7 +371,7 @@ def run_cache_sweep(
 
     return sr
 
-def scale_ax(ax):
+def scale_ax_for_ct(ax):
     yticks = ax.get_yticks()
     while yticks[0] < 0: # remove negative if present
         yticks = yticks[1:]
@@ -498,32 +502,45 @@ def run_bp_sweep(
                 in range(SIZE_LIM[0].bit_length(), SIZE_LIM[1].bit_length()+1)]
 
     save_bpp_for_combined = {}
-    for bp in sweep_params.keys():
+    save_bpp_for_combined_e = {}
+    for bp_handle in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading previous stats
-        if bp == "common_settings":
+        if bp_handle == "common_settings":
             continue
 
         best = {}
+        bp = bp_handle.split("-")[0]
         bp_act =  ["--bp_active", bp.replace("bp_", "", 1)]
 
         if running_best:
-            bp_params = best_params[bp]
+            bp_params = best_params[bp_handle]
 
         # sweep runs
         elif bp == "bp_combined":
-            bpc = sweep_params[bp]
+            bpc = sweep_params[bp_handle]
             bpc_sizes, bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
-            bp1 = sweep_params[bp]["predictors"][0]
-            bp2 = sweep_params[bp]["predictors"][1]
-            bp1_params = save_bpp_for_combined[bp1]
-            bp2_params = save_bpp_for_combined[bp2]
+            bp1 = bpc["predictors"][0]
+            bp2 = bpc["predictors"][1]
+
+            if bpc["exhaustive"][0]:
+                bp1_p_all = save_bpp_for_combined_e[bp1]
+            else:
+                bp1_params = save_bpp_for_combined[bp1]
+                # split into two lists: keys(sizes) and values(params)
+                bp1_p_all = [[k, v] for k, v in bp1_params.items()]
+
+            if bpc["exhaustive"][1]:
+                bp2_p_all = save_bpp_for_combined_e[bp2]
+            else:
+                bp2_params = save_bpp_for_combined[bp2]
+                bp2_p_all = [[k, v] for k, v in bp2_params.items()]
 
             bp_params_list = [
-                bp1_params[bp1_k] + bp2_params[bp2_k] + bpc_p
-                for bp1_k, bp2_k, (bpc_s, bpc_p)
-                in product(bp1_params, bp2_params, zip(bpc_sizes, bpc_params))
-                if within_size(bp1_k + bp2_k + bpc_s, SIZE_LIM) # keys are sizes
+                bp1_p + bp2_p + bpc_p
+                for (bp1_s, bp1_p), (bp2_s, bp2_p), (bpc_s, bpc_p)
+                in product(bp1_p_all, bp2_p_all, zip(bpc_sizes, bpc_params))
+                if within_size(bp1_s + bp2_s + bpc_s, SIZE_LIM)
             ]
 
             bp1_arg = [f"--bp_combined_p1", bp1.replace("bp_", "", 1)]
@@ -533,15 +550,22 @@ def run_bp_sweep(
                 m.extend(bp1_arg)
                 m.extend(bp2_arg)
             bp_params = bp_params_list
+
         else:
-            save_bpp_for_combined[bp] = {}
-            _, bp_params = gen_bp_sweep_params(bp, sweep_params[bp], SIZE_LIM)
+            save_bpp_for_combined[bp_handle] = {}
+            save_bpp_for_combined_e[bp_handle] = []
+            _, bp_params = gen_bp_sweep_params(
+                bp, sweep_params[bp_handle], SIZE_LIM)
 
-        if args.track:
-            print(INDENT, f"BP: {bp}, configs: {len(bp_params)}")
+        idx_c = 1
+        PROG_BAT = 4 # progress batches
+        if args.track and not running_best:
+            print(INDENT,
+                  f"BP: {bp_handle}, configs: {len(bp_params)}, progress: ",
+                  end="")
+            idx_c = (len(bp_params) // PROG_BAT) + 1
 
-        mw = min(MAX_WORKERS, args.max_workers)
-        print(f"Running sweep with {mw} workers (max: {MAX_WORKERS})")
+        mw = args.max_workers
         with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
             futures = {
                 executor.submit(
@@ -550,7 +574,7 @@ def run_bp_sweep(
                         workloads=workloads,
                         sweep=bpk,
                         args=bpp + bp_act,
-                        msg=f"==> SWEEP: {bp} {bpp} <==",
+                        msg=f"==> SWEEP: {bp_handle} {bpp} <==",
                         save_sim=args.save_sim,
                         ignore_thr=(bp == "bp_static"),
                         tag="".join(bpp[1::2]), # every even index is a number
@@ -559,49 +583,69 @@ def run_bp_sweep(
                 ): bpp for bpp in bp_params
             }
 
-        # get results as they come in
-        for future in concurrent.futures.as_completed(futures):
-            bp_size, acc, bpp, msg = future.result()
-            with open(sweep_log, "a") as f:
-                f.write(msg)
-            if acc == None:
-                continue
-            d = {}
-            for i in range(0,len(bpp),2):
-                d[bpp[i].replace("--", "", 1)] = bpp[i+1]
-            if (bp_size not in best or acc > best[bp_size]["acc"]) or \
-                bp == "bp_static":
-                best[bp_size] = {}
-                for k, v in d.items():
-                    best[bp_size][k] = v
-                best[bp_size]["acc"] = acc
-                if bp != "bp_combined" and not running_best:
-                    save_bpp_for_combined[bp][bp_size] = bpp
+            # get results as they come in
+            cnt = 0
+            for future in concurrent.futures.as_completed(futures):
+                bp_size, acc, bpp, msg = future.result()
 
+                cnt += 1
+                if args.track and cnt % idx_c == 0 and not running_best:
+                    print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
+                with open(sweep_log, "a") as f:
+                    f.write(msg)
+
+                if bp != "bp_combined" and not running_best:
+                    save_bpp_for_combined_e[bp_handle].append([bp_size, bpp])
+                if acc == None:
+                    continue
+
+                d = {}
+                for i in range(0,len(bpp),2):
+                    d[bpp[i].replace("--", "", 1)] = bpp[i+1]
+                if (bp_size not in best or acc > best[bp_size]["acc"]) or \
+                    bp == "bp_static":
+                    best[bp_size] = {}
+                    for k, v in d.items():
+                        best[bp_size][k] = v
+                    best[bp_size]["acc"] = acc
+                    if bp != "bp_combined" and not running_best:
+                        save_bpp_for_combined[bp_handle][bp_size] = bpp
+
+        if args.track and not running_best:
+            print(f"{PROG_BAT}/{PROG_BAT}. Done.")
         # sort the best dict by accuracy
-        sr_best[bp] = dict(
+        sr_best[bp_handle] = dict(
             sorted(best.items(), key=lambda x: x[1]["acc"], reverse=True))
+        # take only if above the threshold for accuracy
+        sr_best_thr = dict(
+            filter(lambda x: x[1]["acc"] >= args.bp_top_thr,
+                   sr_best[bp_handle].items()))
         # get the top N configs
-        sr_best[bp] = dict(list(sr_best[bp].items())[:args.bp_top_num])
+        sr_best_num = dict(
+            list(sr_best[bp_handle].items())[:args.bp_top_num])
+        # merge the two dicts
+        sr_best[bp_handle] = {**sr_best_thr, **sr_best_num}
         # sort again in ascending order (more intuitive)
-        sr_best[bp] = dict(
-            sorted(sr_best[bp].items(), key=lambda x: x[1]["acc"]))
+        sr_best[bp_handle] = dict(
+            sorted(sr_best[bp_handle].items(), key=lambda x: x[1]["acc"]))
+
         # sort the best dict by size
-        #sr_best[bp] = dict(sorted(sr_best[bp].items(), key=lambda x: x[0]))
+        #sr_best[bp_handle] = dict(
+        #    sorted(sr_best[bp_handle].items(), key=lambda x: x[0]))
 
         # for each bin, find the best config for accuracy
         prev_bin = 0
         best_binned = {}
         for bin in bins:
             for bp_size, d in best.items():
-                if bp_size < bin and bp_size >= prev_bin:
+                if bp_size <= bin and bp_size >= prev_bin:
                     if (bin not in best_binned or \
                         d["acc"] > best_binned[bin]["acc"]):
                         best_binned[bin] = d.copy() # so size is not added to og
                         best_binned[bin]["size"] = bp_size
             prev_bin = bin
 
-        sr_bin[bp] = best_binned
+        sr_bin[bp_handle] = best_binned
 
     sr_bin_out = sweep_log.replace(".log", "_binned.json")
     sr_best_out = sweep_log.replace(".log", "_best.json")
@@ -620,18 +664,19 @@ def run_bp_sweep(
     ncols = 1 if running_best else 2
     _, axs = create_plot(bpk.capitalize(), sweep_name, ncols)
     for sr,ax in zip([sr_bin, sr_best], axs):
-        for bp, entry in sr.items():
+        title_add = ""
+        for bp_h,entry in sr.items():
             if len(entry.keys()) == 0: # below thr limit for all available sizes
                 continue
 
             fmt = lambda x: x.replace("bp_", "", 1)
-            label = fmt(bp)
-            if bp == "bp_combined":
-                bp1 = fmt(sweep_params[bp]["predictors"][0])
-                bp2 = fmt(sweep_params[bp]["predictors"][1])
+            label = fmt(bp_h)
+            if "bp_combined" in bp_h:
+                bp1 = fmt(sweep_params[bp_h]["predictors"][0])
+                bp2 = fmt(sweep_params[bp_h]["predictors"][1])
                 label = f"{label}\n{bp1} & {bp2}"
 
-            if "static" in bp:
+            if "static" in bp_h:
                 fk = list(entry.keys())[0] # first key
                 ax.axhline(y=entry[fk]["acc"], color="r", linestyle="--",
                            label=f"{label} ({entry[fk]['acc']:.0f}%)")
@@ -644,7 +689,8 @@ def run_bp_sweep(
                 ax.plot(sizes, accs, label=label, marker=MK, lw=LW)
             else: # sizes are keys
                 sizes = entry.keys()
-                title_add = f"Top {args.bp_top_num} for accuracy"
+                title_add = f"Best {args.bp_top_num} " \
+                            f"and all above {args.bp_top_thr}%"
                 ax.scatter(sizes, accs, label=label, marker=MK, s=40)
 
         ax.set_title(title_add)
@@ -680,7 +726,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_skip_ct_thr", action="store_true", help="Skip setting the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
-    parser.add_argument("--bp_top_num", type=int, default=32, help="Number of top branch predictor configs to keep based only on accuracy")
+    parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
+    parser.add_argument("--bp_top_thr", type=int, default=90, help="Accuracy threshold for the best branch predictor configs to always include")
     parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of workers")
 
@@ -739,6 +786,10 @@ if __name__ == "__main__":
     if not os.path.exists(SIM):
         raise FileNotFoundError(f"Simulator not found at: {SIM}")
     args = parse_args()
+    if not args.load_stats:
+        args.max_workers = min(MAX_WORKERS, args.max_workers)
+        #print(f"Running sweep with {args.max_workers} workers"
+        #      f"(max: {MAX_WORKERS})")
     run_main(args)
 
     if not args.silent:

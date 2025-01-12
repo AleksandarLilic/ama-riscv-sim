@@ -1,0 +1,25 @@
+{
+    "hw_params": {
+        "bpred": {
+            "bp_static":  {},
+            "bp_bimodal": { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],                                                                       "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_local":   { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "hist_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_global":  {                                                                     "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_gselect": { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_gshare":  { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-1": {"predictors": ["bp_static", "bp_gshare"],  "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-2": {"predictors": ["bp_static", "bp_gselect"], "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-3": {"predictors": ["bp_bimodal", "bp_gshare"], "exhaustive": [1, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "common_settings": { "min_size": 4, "max_size": 96, "size_bins": [4, 8, 16, 24, 32, 48, 64, 96]}
+        }
+    },
+    "workloads": {
+        "sorting": [["merge_int32_large",
+                     "quick_int32_large",
+                     "heap_int32_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
+        "dhrystone": [["dhrystone"],      {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10 --log_pc_start 11d80 --log_pc_stop 11e50"}],
+        "coremark": [["coremark"],        {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 4 --log_pc_start 11574 --log_pc_stop 115b0"}],
+        "fibonacci": [["n_18"],           {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
+        "gcd_lcm": [["n_large"],          {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}]
+    }
+}

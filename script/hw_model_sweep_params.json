@@ -9,18 +9,23 @@
             "bp_global":  {                                                                     "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
             "bp_gselect": { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
             "bp_gshare":  { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_combined": {"predictors": ["bp_static", "bp_gshare"], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-1": {"predictors": ["bp_static", "bp_gshare"],  "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-2": {"predictors": ["bp_static", "bp_gselect"], "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
             "common_settings": { "min_size": 4, "max_size": 96, "size_bins": [4, 8, 16, 24, 32, 48, 64, 96]}
         }
     },
     "workloads": {
-        "sorting": [["insertion_int32_large", "selection_int32_large", "merge_int32_large", "quick_int32_large", "heap_int32_large"],
-                                      {"thr_icache_hr": 80, "thr_dcache_hr": 80, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
-        "dhrystone": [["dhrystone"],  {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_start 11db0 --log_pc_stop 11e80 --log_pc_single_match 10"}],
-        "fibonacci": [["n_18"],       {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
-        "prime_numbers": [["n_3000"], {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
-        "gcd_lcm": [["n_large"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
-        "factorial": [["n_20"],       {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
-        "mlp": [["w8a8"],             {"thr_icache_hr": 90, "thr_dcache_hr": 85, "thr_bpred_acc": 80}, {"sim_args": ""}]
+        "sorting": [["insertion_int32_large",
+                     "selection_int32_large",
+                     "merge_int32_large",
+                     "quick_int32_large",
+                     "heap_int32_large"], {"thr_icache_hr": 80, "thr_dcache_hr": 80, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
+        "dhrystone": [["dhrystone"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10 --log_pc_start 11d80 --log_pc_stop 11e50 "}],
+        "coremark": [["coremark"],        {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 4 --log_pc_start 11574 --log_pc_stop 115b0"}],
+        "fibonacci": [["n_18"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
+        "prime_numbers": [["n_3000"],     {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
+        "gcd_lcm": [["n_large"],          {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
+        "factorial": [["n_20"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 10"}],
+        "mlp": [["w8a8"],                 {"thr_icache_hr": 90, "thr_dcache_hr": 85, "thr_bpred_acc": 80}, {"sim_args": ""}]
     }
 }
