@@ -25,7 +25,7 @@ void swap(NF_IN* a, NF_IN* b) {
 #if defined(ALG_BUBBLE)
 #include <stdbool.h>
 #define FUNC_NAME bubble_sort
-void FUNC_NAME(NF_IN a[], int n) {
+void FUNC_NAME(NF_IN a[], uint32_t n) {
     bool swapped;
     for (uint32_t i = 0; i < n-1; i++) {
         swapped = false;
@@ -43,9 +43,10 @@ void FUNC_NAME(NF_IN a[], int n) {
 
 #elif defined(ALG_INSERTION)
 #define FUNC_NAME insertion_sort
-void FUNC_NAME(NF_IN a[], int n) {
+void FUNC_NAME(NF_IN a[], uint32_t n) {
     NF_IN key;
-    int32_t j, i;
+    uint32_t i;
+    int32_t j;
     for (i = 1; i < n; i++) {
         key = a[i];
         j = i - 1;
@@ -59,8 +60,8 @@ void FUNC_NAME(NF_IN a[], int n) {
 
 #elif defined(ALG_SELECTION)
 #define FUNC_NAME selection_sort
-void FUNC_NAME(NF_IN arr[], int n) {
-    int i, j, min_idx;
+void FUNC_NAME(NF_IN arr[], uint32_t n) {
+    uint32_t i, j, min_idx;
     for (i = 0; i < n-1; i++) {
         min_idx = i;
         for (j = i+1; j < n; j++)
@@ -192,6 +193,23 @@ void heapsort(NF_IN arr[], uint32_t n) {
         // call max heapify on the reduced heap
         heapify(arr, i, 0);
     }
+}
+
+#elif defined(ALG_QUICKER)
+#define FUNC_NAME quickersort
+#include <stdlib.h>
+
+int compare(const void *p, const void *q) {
+    NF_IN x = *(const NF_IN *)p;
+    NF_IN y = *(const NF_IN *)q;
+
+    if (x < y) return -1; // return -1 for ascending, 1 for descending
+    else if (x > y) return 1; // return 1 for ascending, -1 for descending
+    return 0;
+}
+
+void FUNC_NAME(NF_IN arr[], uint32_t n) {
+    qsort(arr, n, sizeof(NF_IN), compare);
 }
 
 #else

@@ -1,7 +1,7 @@
 TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
 #LENGTHS := tiny small medium large
 LENGTHS := small large
-ALGS := bubble insertion selection merge quick heap
+ALGS := bubble insertion selection merge quick heap quicker
 LOOPS := 1
 
 TARGETS_BUBBLE := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 1, $(ALGS))_, $(TYPES))))
@@ -10,6 +10,7 @@ TARGETS_SELECTION := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addpr
 TARGETS_MERGE := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 4, $(ALGS))_, $(TYPES))))
 TARGETS_QUICK := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 5, $(ALGS))_, $(TYPES))))
 TARGETS_HEAP := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 6, $(ALGS))_, $(TYPES))))
+TARGETS_QUICKER := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(addprefix $(word 7, $(ALGS))_, $(TYPES))))
 
 TEST_DEFINES := $(foreach t,$(TYPES), \
                 $(foreach l,$(LENGTHS), \
@@ -22,9 +23,10 @@ PYVER := python3
 CODEGEN_PY := codegen.py
 
 OPT := -O3 -flto
+LIBS += -lc
 CFLAGS := -DLOOPS=$(LOOPS)
 
-all: bubble insertion selection merge quick heap
+all: bubble insertion selection merge quick heap quicker
 
 codegen: headers
 clean_codegen: clean_headers
@@ -35,6 +37,7 @@ selection: $(TARGETS_SELECTION)
 merge: $(TARGETS_MERGE)
 quick: $(TARGETS_QUICK)
 heap: $(TARGETS_HEAP)
+quicker: $(TARGETS_QUICKER)
 
 headers: $(HEADERS)
 
