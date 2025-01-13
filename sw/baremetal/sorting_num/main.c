@@ -36,8 +36,7 @@ void FUNC_NAME(NF_IN a[], uint32_t n) {
                 swapped = true;
             }
         }
-        if (!swapped)
-            break;
+        if (!swapped) break;
     }
 }
 
@@ -64,10 +63,9 @@ void FUNC_NAME(NF_IN arr[], uint32_t n) {
     uint32_t i, j, min_idx;
     for (i = 0; i < n-1; i++) {
         min_idx = i;
-        for (j = i+1; j < n; j++)
-            if (arr[j] < arr[min_idx])
-                min_idx = j;
-
+        for (j = i+1; j < n; j++) {
+            if (arr[j] < arr[min_idx]) min_idx = j;
+        }
         swap(&arr[min_idx], &arr[i]);
     }
 }
@@ -81,10 +79,8 @@ void merge(NF_IN arr[], uint32_t l, uint32_t m, uint32_t r) {
     NF_IN L[n1], R[n2]; // temp arrays
 
     // copy data to temp arrays L[] and R[]
-    for (i = 0; i < n1; i++)
-        L[i] = arr[l + i];
-    for (j = 0; j < n2; j++)
-        R[j] = arr[m + 1 + j];
+    for (i = 0; i < n1; i++) L[i] = arr[l + i];
+    for (j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
 
     // merge the temp arrays back into arr[l..r]
     i = 0; // initial index of first subarray
@@ -166,12 +162,10 @@ void heapify(NF_IN arr[], int32_t n, int32_t i) {
     int32_t right = 2 * i + 2;
 
     // if left child is larger than root
-    if (left < n && arr[left] > arr[largest])
-        largest = left;
+    if (left < n && arr[left] > arr[largest]) largest = left;
 
     // if right child is larger than largest so far
-    if (right < n && arr[right] > arr[largest])
-        largest = right;
+    if (right < n && arr[right] > arr[largest]) largest = right;
 
     // if largest is not root
     if (largest != i) {
@@ -183,8 +177,7 @@ void heapify(NF_IN arr[], int32_t n, int32_t i) {
 
 void heapsort(NF_IN arr[], uint32_t n) {
     // build heap (rearrange array)
-    for (int32_t i = n / 2 - 1; i >= 0; i--)
-        heapify(arr, n, i);
+    for (int32_t i = n / 2 - 1; i >= 0; i--) heapify(arr, n, i);
 
     // one by one extract an element from heap
     for (int32_t i = n - 1; i > 0; i--) {
