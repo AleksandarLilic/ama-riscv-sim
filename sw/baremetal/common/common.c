@@ -1,38 +1,12 @@
 #include "common.h"
 
-void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx) {
-    asm volatile("add x29, x0, %0"
-                 :
-                 : "r"(res));
-    asm volatile("add x30, x0, %0"
-                 :
-                 : "r"(ref));
-    asm volatile("add x28, x0, %0"
-                 :
-                 : "r"(idx));
-}
-
-void write_csr_status() {
-    asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG));
-}
-
-void pass() {
-    asm volatile("li " TOSTR(TESTNUM_REG) ", 1");
-    write_csr_status();
-}
-
-void fail() {
-    asm volatile("sll " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
-    asm volatile("or " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
-    write_csr_status();
-}
-
 void send_byte_uart0(char byte) {
     while (!UART0_TX_READY);
     UART0->tx_data = byte;
 }
 
-int _write(int fd, char *ptr, int len) {
+int _write(int fd, char* ptr, int len) {
+    (void)fd;
     int count = len;
     while (count-- > 0) {
         send_byte_uart0(*ptr);
@@ -41,9 +15,10 @@ int _write(int fd, char *ptr, int len) {
     return len;
 }
 
-int __puts_uart(char *s, int len, void *buf) {
-	_write( 0, s, len );
-	return len;
+int __puts_uart(char *s, int len, void* buf) {
+    (void)buf;
+    _write(0, s, len);
+    return len;
 }
 
 int mini_printf(const char* format, ...) {
@@ -54,19 +29,57 @@ int mini_printf(const char* format, ...) {
     return count;
 }
 
-uint32_t time_us() {
-    uint32_t time_us;
-    asm volatile("csrr %0, time" : "=r"(time_us));
-    return time_us;
+uint64_t get_cpu_time() {
+    uint32_t time, timeh, timeh2;
+    read64_t time_us;
+    while (1) {
+        timeh = read_csr(CSR_TIMEH);
+        time = read_csr(CSR_TIME);
+        timeh2 = read_csr(CSR_TIMEH);
+        if (timeh == timeh2) {
+            time_us.u32[0] = time;
+            time_us.u32[1] = timeh;
+            break;
+        }
+    }
+    return time_us.u64;
 }
 
-uint32_t clock_ticks() {
-    uint32_t clock_ticks;
-    asm volatile("csrr %0, cycle" : "=r"(clock_ticks));
-    return clock_ticks;
+uint64_t get_cpu_cycles() {
+    uint32_t cycles, cyclesh, cyclesh2;
+    read64_t cycles_out;
+    while (1) {
+        cyclesh = read_csr(CSR_CYCLEH);
+        cycles = read_csr(CSR_CYCLE);
+        cyclesh2 = read_csr(CSR_CYCLEH);
+        if (cyclesh == cyclesh2) {
+            cycles_out.u32[0] = cycles;
+            cycles_out.u32[1] = cyclesh;
+            break;
+        }
+    }
+    return cycles_out.u64;
 }
 
-void trap_handler(unsigned int mcause, void *mepc, void *sp) {
+uint64_t get_cpu_instret() {
+    uint32_t instret, instreth, instreth2;
+    read64_t instret_out;
+    while (1) {
+        instreth = read_csr(CSR_MINSTRETH);
+        instret = read_csr(CSR_MINSTRET);
+        instreth2 = read_csr(CSR_MINSTRETH);
+        if (instreth == instreth2) {
+            instret_out.u32[0] = instret;
+            instret_out.u32[1] = instreth;
+            break;
+        }
+    }
+    return instret_out.u64;
+}
+
+void trap_handler(unsigned int mcause, void* mepc, void* sp) {
+    (void)mepc;
+    (void)sp;
     // can't handle exceptions, just exit
     if (mcause < 0x80000000) {
         write_mismatch(0, 0, 1000 + mcause);

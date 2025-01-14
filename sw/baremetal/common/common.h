@@ -29,18 +29,58 @@
 // TODO: same as above for scp.rel
 #endif
 
-void test_end();
-void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx);
-void write_csr_status();
-void pass();
-void fail();
+// custom data types
+typedef union {
+    uint64_t u64;
+    uint32_t u32[2];
+} read64_t;
+
+// functions
+inline __attribute__ ((always_inline))
+void write_csr(const uint32_t csr_addr, uint32_t data) {
+    asm volatile("csrw %[a], %[d]" : : [a] "r" (csr_addr), [d] "r" (data));
+}
+
+inline __attribute__ ((always_inline))
+uint32_t read_csr(const uint32_t csr_addr) {
+    uint32_t data;
+    asm volatile("csrr %[d], %[a]" : [d] "=r" (data) : [a] "i" (csr_addr));
+    return data;
+}
+
+inline __attribute__ ((always_inline))
+void write_tohost_testnum() {
+    asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG));
+}
+
+inline __attribute__ ((always_inline))
+void pass() {
+    asm volatile("li " TOSTR(TESTNUM_REG) ", 1");
+    write_tohost_testnum();
+}
+
+inline __attribute__ ((always_inline))
+void fail() {
+    asm volatile("sll " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
+    asm volatile("or " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
+    write_tohost_testnum();
+}
+
+inline __attribute__ ((always_inline))
+void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx) {
+    asm volatile("add " TOSTR(TESTNUM_REG) ", x0, %0" : : "r"(idx));
+    asm volatile("add x29, x0, %0" : : "r"(res));
+    asm volatile("add x30, x0, %0" : : "r"(ref));
+}
+
+// function prototypes
 void send_byte_uart0(char byte);
-int _write(int fd, char *ptr, int len);
-int __puts_uart(char *s, int len, void *buf);
+int _write(int fd, char* ptr, int len);
+int __puts_uart(char* s, int len, void *buf);
 int mini_printf(const char* format, ...);
-uint32_t time_us();
-uint32_t clock_ticks();
-void _putchar(char character); // tiny printf implementation
-void trap_handler(unsigned int mcause, void *mepc, void *sp);
+uint64_t get_cpu_time();
+uint64_t get_cpu_cycles();
+uint64_t get_cpu_instret();
+void trap_handler(unsigned int mcause, void* mepc, void* sp);
 
 #endif

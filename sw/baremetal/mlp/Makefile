@@ -12,8 +12,11 @@ MATH_LIB_FLAGS ?= -DCUSTOM_ISA
 MATH_LIB_FLAGS += -DFORCE_INLINE
 #MATH_LIB_FLAGS += -DSTREAMING
 CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN)
+GCC_OPTS += -Wall -Werror
 
-APP_REQS := model_w8a8_64-64-64-10.h model_w4a8_64-64-64-10.h model_w2a8_64-64-64-10.h
+APP_REQS := model_w8a8_64-64-64-10.h \
+			model_w4a8_64-64-64-10.h \
+			model_w2a8_64-64-64-10.h
 
 model_%.h: model_%.pth
 	python convert_model.py $(basename $@).pth

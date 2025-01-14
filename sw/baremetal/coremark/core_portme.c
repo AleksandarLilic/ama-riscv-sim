@@ -57,8 +57,8 @@ barebones_clock()
    does not occur. If there are issues with the return value overflowing,
    increase this value.
         */
-//#define GETMYTIME(_t)              (*_t = clock_ticks()) // for RTL
-#define GETMYTIME(_t)              (*_t = time_us()) // for sim or RTL
+//#define GETMYTIME(_t)              (*_t = get_cpu_cycles()) // for RTL
+#define GETMYTIME(_t)              (*_t = get_cpu_time()) // for sim or RTL
 #define MYTIMEDIFF(fin, ini)       ((fin) - (ini))
 #define TIMER_RES_DIVIDER          1
 #define SAMPLE_TIME_IMPLEMENTATION 1

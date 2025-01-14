@@ -11,5 +11,8 @@ void main(void) {
         // convert to uppercase and send back
         UART0->tx_data = received_byte - OFFSET;
     }
+    // newline at the end
+    while (!UART0_TX_READY);
+    UART0->tx_data = '\n';
     pass();
 }

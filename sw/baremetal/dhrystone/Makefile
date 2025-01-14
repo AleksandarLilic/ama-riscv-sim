@@ -7,6 +7,7 @@ CFLAGS += -DDHRY_ITERS=$(DHRY_ITERS)
 CFLAGS += -D_USE_NEWLIB
 CFLAGS += -DTIME -DNOENUM -Wno-implicit -fno-builtin-printf
 CFLAGS += -fno-common -falign-functions=4 -fno-inline
+CFLAGS += -Wno-array-bounds # FIXME: complains about UART, should be fixed there
 
 all: $(TARGET).elf
 

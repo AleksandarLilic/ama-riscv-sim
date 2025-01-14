@@ -72,9 +72,9 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
     }
 }
 
-uint32_t run_inference(uint8_t* input_img) {
+uint32_t run_inference(int8_t* input_img) {
     int32_t layer_out[64];
-    uint8_t layer_in[64];
+    int8_t layer_in[64];
 
     #ifdef CUSTOM_ISA
     //#pragma GCC unroll 4 // force if gcc doesn't unroll

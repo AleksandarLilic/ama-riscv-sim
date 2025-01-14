@@ -46,7 +46,7 @@ uint32_t uart::rd(uint32_t address, uint32_t size) {
 
 void uart::uart_stdin(uart_baud_rate baud_rate) {
     // assuming 10 bits per character for 8N1
-    auto delay = std::chrono::microseconds(1'000'000 * 10 / (int)baud_rate);
+    auto delay = std::chrono::microseconds(1'000'000 * 10 / TO_I32(baud_rate));
     {
         std::lock_guard<std::mutex> lock(mtx);
         uart_in_ready = true;

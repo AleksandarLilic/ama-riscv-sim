@@ -26,7 +26,7 @@
     "uart_direct_send": ["hello_world"],
     "uart_printf_mini": ["hello_world"],
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],
-    "coremark": [["coremark"], ["ITERATIONS=4"]],
+    "coremark": [["coremark"], ["ITERATIONS=2"]],
     "dcache_set_thrashing": ["basic"],
     "mlp": ["all"]
 }

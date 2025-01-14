@@ -1,13 +1,12 @@
 
 REPO_ROOT := $(shell git rev-parse --show-toplevel)
 
-# set up for gcc14
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
-# if not set in test's Makefile, default to all object files
-COMMON_OBJ_NAMES ?= crt0.o common.o common_math.o mini-printf.o
+# if not set in test's Makefile, default to all object files w/o newlib
+COMMON_OBJ_NAMES ?= crt0.o common.o common_math.o mini-printf.o # newlib_defs.o
 COMMON_SRC_PATH := $(REPO_ROOT)/sw/baremetal/common
 COMMON_BUILD_DIR := ./common_build
 COMMON_OBJS = $(addprefix $(COMMON_BUILD_DIR)/, $(COMMON_OBJ_NAMES))
@@ -30,11 +29,14 @@ USER_DEFINES =
 MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
 #MARCH ?= rv32i_zicsr
 MABI ?= ilp32
-GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany
-GCC_OPTS += -static -fno-pic
-GCC_OPTS += -fvisibility=hidden -ffreestanding -nostdlib -nostartfiles -g
+GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany -static -fno-pic
+GCC_OPTS += -msmall-data-limit=8
+#GCC_OPTS += -fvisibility=hidden
+GCC_OPTS += -ffreestanding -ffunction-sections -fdata-sections
+GCC_OPTS += -nostdlib -nostartfiles -g
 #GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
+GCC_OPTS += -Wl,--gc-sections
 GCC_OPTS += -Wl,--no-warn-rwx-segments
 #GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
@@ -63,7 +65,8 @@ endif
 
 # run with HEX=1 to generate hex file for RTL simulation
 %.elf: $(SRCS) $(INCS) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) -I$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) -I$(INC)\
+		$(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
 	@if [ "$(HEX)" = "1" ]; then \
@@ -74,7 +77,12 @@ endif
 
 build_common: $(COMMON_OBJS)
 
-COMPILE_COMMON = @$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) -c $< -o $@ $(USER_DEFINES)
+COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
+COMMON_FLAGS += -Werror -pedantic
+
+COMPILE_COMMON = \
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) -c $< -o $@ \
+	$(USER_DEFINES)
 
 $(COMMON_BUILD_DIR)/%.o: %.c %.h
 	$(COMPILE_COMMON)

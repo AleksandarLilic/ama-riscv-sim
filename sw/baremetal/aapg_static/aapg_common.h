@@ -4,7 +4,7 @@
 .macro pre_program_macro
 .endm
 .macro post_program_macro
-j pass
+    csrwi 0x51e, 0x1
 .endm
 
 .macro pre_branch_macro

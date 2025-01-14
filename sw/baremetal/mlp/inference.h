@@ -14,10 +14,4 @@
 //_Static_assert(0, "Unsupported model selected");
 #endif
 
-static uint32_t relu_norm(
-    int32_t* input, int8_t* output, uint32_t n_input, bool get_idx);
-
-static void fc_layer(int8_t* activations, const int8_t* weights,
-                     int32_t* output, uint32_t n_input, uint32_t n_output);
-
-uint32_t run_inference(uint8_t* input_img);
+uint32_t run_inference(int8_t* input_img);

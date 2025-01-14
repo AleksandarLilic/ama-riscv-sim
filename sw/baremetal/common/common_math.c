@@ -66,8 +66,8 @@ void _simd_add_int16(
     size_t len_s2 = (len >> 1) << 1;
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c_slice = add16(a_slice, b_slice);
         *(int32_t*)(c + k) = c_slice;
     }
@@ -83,8 +83,8 @@ void _simd_add_int8(
     size_t len_s4 = (len >> 2) << 2;
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c_slice = add8(a_slice, b_slice);
         *(int32_t*)(c + k) = c_slice;
     }
@@ -100,8 +100,8 @@ void _simd_sub_int16(
     size_t len_s2 = (len >> 1) << 1;
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c_slice = sub16(a_slice, b_slice);
         *(int32_t*)(c + k) = c_slice;
     }
@@ -117,8 +117,8 @@ void _simd_sub_int8(
     size_t len_s4 = (len >> 2) << 2;
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c_slice = sub8(a_slice, b_slice);
         *(int32_t*)(c + k) = c_slice;
     }
@@ -133,8 +133,8 @@ void _simd_mul_int16(
     const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
     size_t len_s2 = (len >> 1) << 1;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         register int32_t c_slice_1 asm("t5");
         register int32_t c_slice_2 asm("t6");
         asm volatile(
@@ -157,8 +157,8 @@ void _simd_mul_int8(
     const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         register int32_t c_slice_1 asm("t5");
         register int32_t c_slice_2 asm("t6");
         asm volatile(
@@ -181,8 +181,8 @@ void _simd_mul_uint16(
     const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
     size_t len_s2 = (len >> 1) << 1;
     for (size_t k = 0; k < len_s2; k += 2) {
-        uint32_t a_slice = *(uint32_t*)(a + k);
-        uint32_t b_slice = *(uint32_t*)(b + k);
+        const uint32_t a_slice = *(const uint32_t*)(a + k);
+        const uint32_t b_slice = *(const uint32_t*)(b + k);
         register uint32_t c_slice_1 asm("t5");
         register uint32_t c_slice_2 asm("t6");
         asm volatile(
@@ -205,8 +205,8 @@ void _simd_mul_uint8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        uint32_t a_slice = *(uint32_t*)(a + k);
-        uint32_t b_slice = *(uint32_t*)(b + k);
+        const uint32_t a_slice = *(const uint32_t*)(a + k);
+        const uint32_t b_slice = *(const uint32_t*)(b + k);
         register uint32_t c_slice_1 asm("t5");
         register uint32_t c_slice_2 asm("t6");
         asm volatile(
@@ -230,8 +230,8 @@ int32_t _simd_dot_product_int16(
     int32_t c = 0;
     size_t len_s2 = (len >> 1) << 1;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c += dot16(a_slice, b_slice);
     }
     size_t rem = len - len_s2;
@@ -253,8 +253,8 @@ int32_t _simd_dot_product_int8(
 
         #pragma GCC unroll 4
         for (size_t i = 0; i < 4; i++) {
-            a_arr[i] = *(int32_t*)(a + k + i * 4);
-            b_arr[i] = *(int32_t*)(b + k + i * 4);
+            const a_arr[i] = *(const int32_t*)(a + k + i * 4);
+            const b_arr[i] = *(const int32_t*)(b + k + i * 4);
         }
         asm volatile (
             "dot8 %[p1], %[a0], %[b0];"
@@ -283,8 +283,8 @@ int32_t _simd_dot_product_int8(
         size_t start = len_s16;
         size_t end = len_s16 + len_s4;
         for (size_t i = start; i < end; i += 4) {
-            int32_t a_slice = *(int32_t*)(a + i);
-            int32_t b_slice = *(int32_t*)(b + i);
+            const int32_t a_slice = *(const int32_t*)(a + i);
+            const int32_t b_slice = *(const int32_t*)(b + i);
             c += dot8(a_slice, b_slice);
         }
     }
@@ -303,8 +303,8 @@ int32_t _simd_dot_product_int8(
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c += dot8(a_slice, b_slice);
     }
     size_t rem = len - len_s4;
@@ -322,8 +322,8 @@ int32_t _simd_dot_product_int4(
     size_t len_bytes = len >> 1; // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         c += dot4(a_slice, b_slice);
     }
     size_t rem = len_bytes - len_s4;
@@ -348,9 +348,9 @@ int32_t _simd_dot_product_int16_int8(
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
         int32_t p1, p2;
-        int32_t b_slice = *(int32_t*)(b + k);
-        int32_t a_slice_1 = *(int32_t*)(a + k);
-        int32_t a_slice_2 = *(int32_t*)(a + k + 2);
+        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int32_t a_slice_1 = *(const int32_t*)(a + k);
+        const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
         asm (
             "unpk8 "TOSTR(RD_1)", %[b];"
             // x30 (RD_1) = 2 lower halves, x31 (RDP_1) = 2 upper halves
@@ -377,12 +377,12 @@ int32_t _simd_dot_product_int16_int4(
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t p1, p2, p3, p4;
-        int32_t b_slice = *(int32_t*)(b + (k >> 1));
-        int32_t a_slice_1 = *(int32_t*)(a + k);
-        int32_t a_slice_2 = *(int32_t*)(a + k + 2);
-        int32_t a_slice_3 = *(int32_t*)(a + k + 4);
-        int32_t a_slice_4 = *(int32_t*)(a + k + 6);
+        int32_t p1, p2;
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
+        const int32_t a_slice_1 = *(const int32_t*)(a + k);
+        const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
+        const int32_t a_slice_3 = *(const int32_t*)(a + k + 4);
+        const int32_t a_slice_4 = *(const int32_t*)(a + k + 6);
         asm (
             "unpk4 "TOSTR(RD_1)", %[b];" // nibbles to bytes
             "unpk8 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low bytes to halfwords
@@ -423,9 +423,9 @@ int32_t _simd_dot_product_int8_int4(
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
         int32_t p1, p2;
-        int32_t b_slice = *(int32_t*)(b + (k >> 1));
-        int32_t a_slice_1 = *(int32_t*)(a + k);
-        int32_t a_slice_2 = *(int32_t*)(a + k + 4);
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
+        const int32_t a_slice_1 = *(const int32_t*)(a + k);
+        const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
         asm (
             "unpk4 "TOSTR(RD_1)", %[b];"
             "dot8 %[p1], %[a1], "TOSTR(RD_1)";"
@@ -457,12 +457,12 @@ int32_t _simd_dot_product_int8_int2(
     int32_t c = 0;
     size_t len_s16 = (len >> 4) << 4;
     for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t p1, p2, p3, p4;
-        int32_t b_slice = *(int32_t*)(b + (k >> 2));
-        int32_t a_slice_1 = *(int32_t*)(a + k);
-        int32_t a_slice_2 = *(int32_t*)(a + k + 4);
-        int32_t a_slice_3 = *(int32_t*)(a + k + 8);
-        int32_t a_slice_4 = *(int32_t*)(a + k + 12);
+        int32_t p1, p2;
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 2));
+        const int32_t a_slice_1 = *(const int32_t*)(a + k);
+        const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
+        const int32_t a_slice_3 = *(const int32_t*)(a + k + 8);
+        const int32_t a_slice_4 = *(const int32_t*)(a + k + 12);
         asm (
             "unpk2 "TOSTR(RD_1)", %[b];" // crumbs to nibbles
             "unpk4 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low nibbles to bytes
@@ -509,8 +509,8 @@ void add_int16(
     size_t len_s2 = (len >> 1) << 1;
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         int16_t a_half, b_half;
         int32_t c_halves[2];
         for (size_t i = 0; i < 2; i++) {
@@ -537,8 +537,8 @@ void add_int8(
     size_t len_s4 = (len >> 2) << 2;
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         int8_t a_byte, b_byte;
         int32_t c_bytes[4];
         for (size_t i = 0; i < 4; i++) {
@@ -564,8 +564,8 @@ void sub_int16(
     size_t len_s2 = (len >> 1) << 1;
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         int16_t a_half, b_half;
         int32_t c_halves[2];
         for (size_t i = 0; i < 2; i++) {
@@ -592,8 +592,8 @@ void sub_int8(
     size_t len_s4 = (len >> 2) << 2;
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         int8_t a_byte, b_byte;
         int32_t c_bytes[4];
         for (size_t i = 0; i < 4; i++) {
@@ -618,8 +618,8 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
     int32_t c = 0;
     size_t len_s2 = (len >> 1) << 1;
     for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         // Loop through each half in the 32-bit slice
         int16_t a_half, b_half;
         for (size_t i = 0; i < 2; i++) {
@@ -642,8 +642,8 @@ int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         // Loop through each byte in the 32-bit slice
         int8_t a_byte, b_byte;
         for (size_t i = 0; i < 4; i++) {
@@ -667,8 +667,8 @@ int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     size_t len_bytes = len >> 1; // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(int32_t*)(a + k);
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t a_slice = *(const int32_t*)(a + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         // Loop through each nibble in the 32-bit slice
         int8_t a_nibble, b_nibble;
         for (size_t i = 0; i < 8; i++) {
@@ -700,9 +700,9 @@ int32_t dot_product_int16_int8(
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t b_slice = *(int32_t*)(b + k);
+        const int32_t b_slice = *(const int32_t*)(b + k);
         for (size_t j = 0; j < 4; j += 2) {
-            int32_t a_slice = *(int32_t*)(a + k + 2 - j); // MSB first
+            const int32_t a_slice = *(const int32_t*)(a + k + 2 - j);//MSB first
             int8_t b_byte;
             int16_t a_half;
             for (size_t i = 0; i < 2; i++) {
@@ -727,9 +727,9 @@ int32_t dot_product_int16_int4(
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t b_slice = *(int32_t*)(b + (k >> 1));
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
         for (size_t j = 0; j < 8; j += 2) {
-            int32_t a_slice = *(int32_t*)(a + k + 6 - j); // MSB first
+            const int32_t a_slice = *(const int32_t*)(a + k + 6 - j);
             int8_t b_nibble;
             int16_t a_half;
             for (size_t i = 0; i < 2; i++) {
@@ -760,9 +760,9 @@ int32_t dot_product_int8_int4(
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t b_slice = *(int32_t*)(b + (k >> 1));
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
         for (size_t j = 0; j < 8; j += 4) {
-            int32_t a_slice = *(int32_t*)(a + k + 4 - j); // MSB first
+            const int32_t a_slice = *(const int32_t*)(a + k + 4 - j);
             int8_t b_nibble;
             int8_t a_byte;
             for (size_t i = 0; i < 4; i++) {
@@ -793,9 +793,9 @@ int32_t dot_product_int8_int2(
     int32_t c = 0;
     size_t len_s16 = (len >> 4) << 4;
     for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t b_slice = *(int32_t*)(b + (k >> 2));
+        const int32_t b_slice = *(const int32_t*)(b + (k >> 2));
         for (size_t j = 0; j < 16; j += 4) {
-            int32_t a_slice = *(int32_t*)(a + k + 12 - j); // MSB first
+            const int32_t a_slice = *(const int32_t*)(a + k + 12 - j);
             int8_t b_crumb;
             int8_t a_byte;
             for (size_t i = 0; i < 4; i++) {
