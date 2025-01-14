@@ -121,6 +121,7 @@
 #define CSR_MARCHID 0xF12 // MRO
 #define CSR_MIMPID 0xF13 // MRO
 #define CSR_MHARTID 0xF14 // MRO
+#define CSR_MCONFIGPTR 0xF15 // MRO
 // Machine Trap Setup
 #define CSR_MSTATUS 0x300 // MRW
 #define CSR_MISA 0x301 // MRW

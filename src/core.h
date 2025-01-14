@@ -324,11 +324,6 @@ class core {
         // C extension - system
         void c_ebreak();
 
-        // exceptions
-        void e_unsupported_inst(const std::string &msg);
-        void exception_illegal(const std::string &msg, uint32_t memw);
-        void exception_env(const std::string &msg, uint32_t code);
-
         // interrupts
         // TODO
 
@@ -360,7 +355,7 @@ class core {
         #endif
 
         std::map<uint16_t, CSR> csr;
-        static constexpr std::array<CSR_entry, 24> supported_csrs = {{
+        static constexpr std::array<CSR_entry, 25> supported_csrs = {{
             {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
 
             // Machine Information Registers
@@ -368,6 +363,7 @@ class core {
             {CSR_MARCHID, "marchid", csr_perm_t::warl_unimp, 0u},
             {CSR_MIMPID, "mimpid", csr_perm_t::warl_unimp, 0u},
             {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
+            {CSR_MCONFIGPTR, "mconfigptr", csr_perm_t::ro, 0u},
 
             // Machine Trap Setup
             {CSR_MSTATUS, "mstatus", csr_perm_t::rw, 0x1800}, // mpp = 3

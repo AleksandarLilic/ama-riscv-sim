@@ -93,6 +93,11 @@ mhartid_read:
     TEST_INC
     bne x26, x0, fail # mhartid is 0, only one hart
 
+mconfigptr_read:
+    csrr x26, CSR_MCONFIGPTR
+    TEST_INC
+    bne x26, x0, fail # mconfigptr is 0 when not implemented
+
 misa_read:
     csrr x26, CSR_MISA
     TEST_INC
