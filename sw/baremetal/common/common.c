@@ -31,7 +31,7 @@ int mini_printf(const char* format, ...) {
 
 uint64_t get_cpu_time() {
     uint32_t time, timeh, timeh2;
-    read64_t time_us;
+    sliced64_t time_us;
     while (1) {
         timeh = read_csr(CSR_TIMEH);
         time = read_csr(CSR_TIME);
@@ -47,11 +47,11 @@ uint64_t get_cpu_time() {
 
 uint64_t get_cpu_cycles() {
     uint32_t cycles, cyclesh, cyclesh2;
-    read64_t cycles_out;
+    sliced64_t cycles_out;
     while (1) {
-        cyclesh = read_csr(CSR_CYCLEH);
-        cycles = read_csr(CSR_CYCLE);
-        cyclesh2 = read_csr(CSR_CYCLEH);
+        cyclesh = read_csr(CSR_MCYCLEH);
+        cycles = read_csr(CSR_MCYCLE);
+        cyclesh2 = read_csr(CSR_MCYCLEH);
         if (cyclesh == cyclesh2) {
             cycles_out.u32[0] = cycles;
             cycles_out.u32[1] = cyclesh;
@@ -63,7 +63,7 @@ uint64_t get_cpu_cycles() {
 
 uint64_t get_cpu_instret() {
     uint32_t instret, instreth, instreth2;
-    read64_t instret_out;
+    sliced64_t instret_out;
     while (1) {
         instreth = read_csr(CSR_MINSTRETH);
         instret = read_csr(CSR_MINSTRET);
@@ -75,6 +75,18 @@ uint64_t get_cpu_instret() {
         }
     }
     return instret_out.u64;
+}
+
+void set_cpu_cycles(uint64_t value) {
+    sliced64_t cycles = { .u64 = value };
+    write_csr(CSR_MCYCLE, cycles.u32[0]);
+    write_csr(CSR_MCYCLEH, cycles.u32[1]);
+}
+
+void set_cpu_instret(uint64_t value) {
+    sliced64_t instret = { .u64 = value };
+    write_csr(CSR_MINSTRET, instret.u32[0]);
+    write_csr(CSR_MINSTRETH, instret.u32[1]);
 }
 
 void trap_handler(unsigned int mcause, void* mepc, void* sp) {

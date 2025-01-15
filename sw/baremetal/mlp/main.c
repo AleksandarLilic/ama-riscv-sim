@@ -10,25 +10,22 @@ int8_t input_img_1[] __attribute__((aligned(64))) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 void main(void) {
     // read both clk and time, though only one can be used for known fixed freq
-    uint32_t start_clk = get_cpu_cycles();
+    set_cpu_cycles(0);
     uint32_t start_time = get_cpu_time();
     LOG_START;
     uint32_t predicted = run_inference(input_img_0);
     LOG_STOP;
-    uint32_t end_clk = get_cpu_cycles();
+    uint32_t clks = get_cpu_cycles();
     uint32_t end_time = get_cpu_time();
-
-    uint32_t clk_diff = end_clk - start_clk;
     uint32_t time_diff = (end_time - start_time) / 1000;
     printf("Predicted: %d (label: %d); "
            "Performance: cycles: %d, time: %d ms, Inf/s: %d\n",
-           predicted, label_0, clk_diff, time_diff, (1000 / time_diff));
+           predicted, label_0, clks, time_diff, (1000 / time_diff));
 
     // assumed model is accurate for the provided input
     if (predicted != label_0) {
         write_mismatch(predicted, label_0, 1);
         fail();
     }
-
     pass();
 }

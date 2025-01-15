@@ -33,12 +33,20 @@
 typedef union {
     uint64_t u64;
     uint32_t u32[2];
-} read64_t;
+    uint16_t u16[4];
+    uint8_t u8[8];
+} sliced64_t;
+
+typedef union {
+    uint32_t u32;
+    uint16_t u16[2];
+    uint8_t u8[4];
+} sliced32_t;
 
 // functions
 inline __attribute__ ((always_inline))
 void write_csr(const uint32_t csr_addr, uint32_t data) {
-    asm volatile("csrw %[a], %[d]" : : [a] "r" (csr_addr), [d] "r" (data));
+    asm volatile("csrw %[a], %[d]" : : [a] "i" (csr_addr), [d] "r" (data));
 }
 
 inline __attribute__ ((always_inline))
@@ -81,6 +89,8 @@ int mini_printf(const char* format, ...);
 uint64_t get_cpu_time();
 uint64_t get_cpu_cycles();
 uint64_t get_cpu_instret();
+void set_cpu_cycles(uint64_t value);
+void set_cpu_instret(uint64_t value);
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 
 #endif
