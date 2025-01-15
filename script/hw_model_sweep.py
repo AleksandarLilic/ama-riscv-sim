@@ -28,7 +28,7 @@ reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 PARAMS_DEF = os.path.join(reporoot, "script", "hw_model_sweep_params.json")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
-PASS_STRING = "    0x051e tohost   : 0x00000001"
+PASS_STRING = "    0x051e tohost    : 0x00000001"
 INDENT = "  "
 FIG_SIZE = (8, 8)
 MK = "o"
@@ -72,7 +72,8 @@ def convert_keys_to_int(obj):
 def create_plot(title: str, sweep_name: str, ncols=2, nrows=1) -> Tuple:
     fs = [FIG_SIZE[0]*ncols, FIG_SIZE[1]*nrows]
     fig, axs = plt.subplots(
-        ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True)
+        ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True,
+        num=sweep_name)
     fig.suptitle(f"{title} sweep for {sweep_name}")
     if ncols == 1 and nrows == 1:
         axs = [axs]
@@ -322,9 +323,9 @@ def run_cache_sweep(
             y_ct = ct_core
             if args.plot_skip_ct_thr and ax.get_ylim()[1] < ct_core:
                 y_ct = np.nan
-            scale_ax_for_ct(ax)
             ax.axhline(y=y_ct, color="r", linestyle="--",
                        label=f"{ctct} = {ct_core_str}")
+            scale_ax_for_ct(ax)
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Number of Ways")
             axs_ct.append(ax)
 
@@ -340,9 +341,9 @@ def run_cache_sweep(
             ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
             ax.set_xticklabels(XLABELS, rotation=45)
-            scale_ax_for_ct(ax)
             ax.axhline(y=y_ct, color="r", linestyle="--",
                        label=f"{ctct} = {ct_core_str}")
+            scale_ax_for_ct(ax)
             ax.set_title(f"{ctmt} {direction.capitalize()} vs Size")
             axs_ct.append(ax)
 

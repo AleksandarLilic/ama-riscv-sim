@@ -14,12 +14,14 @@
         }
     },
     "workloads": {
-        "sorting": [["merge_int32_large",
-                     "quick_int32_large",
-                     "heap_int32_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
-        "dhrystone": [["dhrystone"],      {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 1159c --log_pc_stop 11670"}],
-        "coremark": [["coremark"],        {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115a8 --log_pc_stop 115e4"}],
-        "fibonacci": [["n_18"],           {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}],
-        "gcd_lcm": [["n_large"],          {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}]
+        "sorting_num": [
+            ["merge_int32_large",
+             "quick_int32_large",
+             "heap_int32_large",
+             "quicker_int32_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
+        "dhrystone": [["dhrystone"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 1159c --log_pc_stop 11670"}],
+        "coremark": [["coremark"],   {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115a8 --log_pc_stop 115e4"}],
+        "fibonacci": [["n_18"],      {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}],
+        "gcd_lcm": [["n_large"],     {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}]
     }
 }

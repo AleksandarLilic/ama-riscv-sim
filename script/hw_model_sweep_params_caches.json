@@ -1,20 +1,22 @@
 {
     "hw_params": {
-        "icache": { "sets": [1, 2, 4, 8, 16], "ways": [1, 2, 4, 6, 8, 10, 12, 14, 16, 24, 32], "policies": ["LRU"], "max_size": 4096},
-        "dcache": { "sets": [1, 2, 4, 8, 16], "ways": [1, 2, 4, 6, 8, 10, 12, 14, 16, 24, 32], "policies": ["LRU"], "max_size": 4096}
+        "icache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8, 10, 12, 16], "policies": ["LRU"], "max_size": 4096},
+        "dcache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8, 10, 12, 16], "policies": ["LRU"], "max_size": 4096}
     },
     "workloads": {
-        "sorting": [["insertion_int32_large",
-                     "selection_int32_large",
-                     "merge_int32_large",
-                     "quick_int32_large",
-                     "heap_int32_large"], {"thr_icache_hr": 80, "thr_dcache_hr": 80}, {"sim_args": "--log_pc_single_match 2"}],
-        "dhrystone": [["dhrystone"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 1159c --log_pc_stop 11670"}],
-        "coremark": [["coremark"],        {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115a8 --log_pc_stop 115e4"}],
-        "fibonacci": [["n_18"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
-        "prime_numbers": [["n_3000"],     {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
-        "gcd_lcm": [["n_large"],          {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
-        "factorial": [["n_20"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
-        "mlp": [["w8a8"],                 {"thr_icache_hr": 90, "thr_dcache_hr": 85}, {"sim_args": ""}]
+        "sorting_num": [
+            ["insertion_int32_large",
+             "selection_int32_large",
+             "merge_int32_large",
+             "quick_int32_large",
+             "heap_int32_large",
+             "quicker_int32_large"],  {"thr_icache_hr": 80, "thr_dcache_hr": 80, "thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
+        "dhrystone": [["dhrystone"],  {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 1159c --log_pc_stop 11670"}],
+        "coremark": [["coremark"],    {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115a8 --log_pc_stop 115e4"}],
+        "fibonacci": [["n_18"],       {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
+        "prime_numbers": [["n_3000"], {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
+        "gcd_lcm": [["n_large"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
+        "factorial": [["n_20"],       {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}],
+        "mlp": [["w8a8"],             {"thr_icache_hr": 90, "thr_dcache_hr": 85}, {"sim_args": ""}]
     }
 }
