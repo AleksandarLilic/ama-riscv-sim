@@ -23,6 +23,7 @@
     "dot_product": ["all"],
     "dot_product_unaligned_len_even": ["all"],
     "sorting_num": [["all"], ["LOOPS=2"]],
+    "sorting_str": [["all"], ["LOOPS=2"]],
     "uart_direct_send": ["hello_world"],
     "uart_printf_mini": ["hello_world"],
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],

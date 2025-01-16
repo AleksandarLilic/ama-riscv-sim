@@ -75,7 +75,7 @@ hex_gen = ["HEX=1"] if args.hex else ["HEX=0"]
 #with concurrent.futures.ProcessPoolExecutor() as executor:
 with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = {executor.submit(build_test,item): item for item in tests.items()}
-    print(f"Building with {executor._max_workers} threads")
+    print(f"Building RISC-V tests with {executor._max_workers} threads")
     for future in concurrent.futures.as_completed(futures):
         test_item = futures[future]
         out_txt.extend(future.result()) # aggregate all bin files
@@ -101,6 +101,6 @@ if args.clean_only:
 
 os.chdir(WORK_DIR)
 all_out_txt = isa_out_txt + out_txt
-print(f"Total tests prepared: {len(all_out_txt)}")
+print(f"Total RISC-V tests prepared: {len(all_out_txt)}")
 with open("gtest_testlist.txt", 'w') as f:
     f.write("\n".join(all_out_txt))

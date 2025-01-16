@@ -7,9 +7,14 @@ def np2c_type(nf):
         return FP_C_MAP[nf]
     return nf.__name__ + "_t"
 
-def np2c_arr(var, arr, nf="NF", suffix=""):
-    return f"{nf} " + var + f"[ARR_LEN]" + \
-            " = {" + f"{suffix}, ".join([f"{x}" for x in arr]) + suffix + "};"
+def np2c_arr(var, arr, nf="NF", suffix="", str_type=False):
+    if str_type:
+        arr_out = [f"\"{x}\"" for x in arr]
+    else:
+        arr_out = [f"{x}" for x in arr]
+
+    return f"{nf} " + var + f"[ARR_LEN]" + " = {" + \
+        f"{suffix}, ".join(arr_out) + suffix + "};"
 
 NUM = {
     "uint8_t": {"off_add": 2, "off_sub": 2, "off_mul": 1, "nf": np.uint8},
@@ -33,11 +38,12 @@ def rnd_gen(min, max, len, dtype):
     return np.array([random.uniform(min, max) for _ in range(len)],
                     dtype=dtype)
 
-def finish_gen(code, OUT):
-    code.append('#else')
-    code.append('_Static_assert(0, "NF not defined");')
-    code.append('#endif\n')
+def finish_gen(code, header, add_assert=True):
+    if add_assert:
+        code.append('#else')
+        code.append('_Static_assert(0, "NF not defined");')
+        code.append('#endif\n')
 
-    with open(OUT, "w") as f:
+    with open(header, "w") as f:
         f.write("\n".join(code))
-        print(f"Generated {OUT}")
+        print(f"Generated {header}")
