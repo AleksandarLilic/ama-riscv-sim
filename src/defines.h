@@ -5,7 +5,7 @@
 // default defines
 #ifndef DPI
 #define UART_ENABLE // some tests require UART, will wait for ready indefinitely
-#define ENABLE_PROF
+#define ENABLE_PROF // disable for 'hw_model_sweep.py' - faster and not needed
 #define ENABLE_HW_PROF
 #endif
 

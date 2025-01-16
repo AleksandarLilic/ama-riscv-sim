@@ -243,6 +243,7 @@ struct hw_cfg_t {
     bp_t bp_combined_p2;
     // optionally, run all predefined predictors
     bool bp_run_all;
+    bool bp_dump_csv;
     // branch predictor config
     uint8_t bp_bimodal_pc_bits;
     uint8_t bp_bimodal_cnt_bits;

@@ -26,7 +26,8 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     bp_active_type(hw_cfg.bp_active),
     bp_combined_p1_type(hw_cfg.bp_combined_p1),
     bp_combined_p2_type(hw_cfg.bp_combined_p2),
-    bp_run_all(hw_cfg.bp_run_all)
+    bp_run_all(hw_cfg.bp_run_all),
+    to_dump_csv(hw_cfg.bp_dump_csv)
     {
         active_bp = create_predictor(bp_active_type, hw_cfg);
 
@@ -181,24 +182,6 @@ void bp_if::finish(std::string log_path) {
     show_stats(log_path);
 }
 
-std::string bp_if::find_run_length(const std::vector<bool>& pattern) {
-    // summarize taken/not pattern, e.g. 1110011 makes a string "3T 2N 2T"
-    std::string pattern_str;
-    uint32_t count = 1;
-    for (uint32_t i = 1; i < pattern.size(); i++) {
-        if (pattern[i] == pattern[i - 1]) {
-            count++;
-        } else {
-            pattern_str += std::to_string(count) +
-                           (pattern[i - 1] ? "T " : "N ");
-            count = 1;
-        }
-    }
-    // add the direction of the last pattern
-    pattern_str += std::to_string(count) + (pattern.back() ? "T" : "N");
-    return pattern_str;
-}
-
 void bp_if::show_stats(std::string log_path) {
     std::cout << "Branch stats: unique branches: " << bi_program_stats.size()
               << std::endl;
@@ -207,6 +190,16 @@ void bp_if::show_stats(std::string log_path) {
               << std::endl;
 
     all_predictors.insert(all_predictors.begin(), std::move(active_bp));
+    if (to_dump_csv) dump_csv(log_path);
+    for (auto& p : all_predictors) p->show_stats();
+    active_bp = std::move(all_predictors[0]); // restore active_bp
+    all_predictors.erase(all_predictors.begin()); // remove invalid pointer
+    return;
+    std::cout << "  Predictors internal state:" << std::endl;
+    for (auto& p : all_predictors) p->dump();
+}
+
+void bp_if::dump_csv(std::string log_path) {
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
     bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%";
@@ -250,13 +243,24 @@ void bp_if::show_stats(std::string log_path) {
         bcsv << "," << pattern_str << std::endl;
     }
     bcsv.close();
+}
 
-    for (auto& p : all_predictors) p->show_stats();
-    active_bp = std::move(all_predictors[0]); // restore active_bp
-    all_predictors.erase(all_predictors.begin());
-    return;
-    std::cout << "  Predictors internal state:" << std::endl;
-    for (auto& p : all_predictors) p->dump();
+std::string bp_if::find_run_length(const std::vector<bool>& pattern) {
+    // summarize taken/not pattern, e.g. 1110011 makes a string "3T 2N 2T"
+    std::string pattern_str;
+    uint32_t count = 1;
+    for (uint32_t i = 1; i < pattern.size(); i++) {
+        if (pattern[i] == pattern[i - 1]) {
+            count++;
+        } else {
+            pattern_str += std::to_string(count) +
+                           (pattern[i - 1] ? "T " : "N ");
+            count = 1;
+        }
+    }
+    // add the direction of the last pattern
+    pattern_str += std::to_string(count) + (pattern.back() ? "T" : "N");
+    return pattern_str;
 }
 
 void bp_if::log_stats(std::ofstream& log_file) {

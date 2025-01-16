@@ -123,6 +123,7 @@ struct hw_defs_t {
     static constexpr char bp_combined_p1[] = "static";
     static constexpr char bp_combined_p2[] = "gshare";
     static constexpr char bp_run_all[] = "false";
+    static constexpr char bp_dump_csv[] = "false";
     // supported predictors configurations
     static constexpr char bp_bimodal_pc_bits[] = "7";
     static constexpr char bp_bimodal_cnt_bits[] = "3";
@@ -207,6 +208,8 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p2))
         ("bp_run_all", "Run all branch predictors",
          cxxopts::value<bool>()->default_value(hw_defs_t::bp_run_all))
+        ("bp_dump_csv", "Dump branch predictor stats to CSV",
+         cxxopts::value<bool>()->default_value(hw_defs_t::bp_dump_csv))
 
         // supported predictors configurations
         ("bp_bimodal_pc_bits", "Bimodal predictor - PC bits",
@@ -304,6 +307,7 @@ int main(int argc, char* argv[]) {
         hw_cfg.bp_combined_p1 = RESOLVE_ARG("bp_combined_p1", bpc_names_map);
         hw_cfg.bp_combined_p2 = RESOLVE_ARG("bp_combined_p2", bpc_names_map);
         hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
+        hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);
         // per predictor configurations
         hw_cfg.bp_bimodal_pc_bits = TO_SIZE(result["bp_bimodal_pc_bits"]);
         hw_cfg.bp_bimodal_cnt_bits = TO_SIZE(result["bp_bimodal_cnt_bits"]);

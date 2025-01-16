@@ -29,6 +29,7 @@ class bp_if {
         bp_ideal* ideal_bp;
         std::vector<std::unique_ptr<bp>> all_predictors;
         std::map<uint32_t, bi_program_stats_t> bi_program_stats;
+        bool to_dump_csv = false;
 
     public:
         bp_if() = delete;
@@ -53,6 +54,7 @@ class bp_if {
         void show_stats(std::string log_path);
         void update_stats(uint32_t pc, bool taken);
         std::string find_run_length(const std::vector<bool>& pattern);
+        void dump_csv(std::string log_path);
 
     private:
         // predefined branch predictors
