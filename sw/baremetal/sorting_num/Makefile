@@ -1,4 +1,5 @@
-TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
+#TYPES := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
+TYPES := int8 int16 uint32 int32 int64 float32
 #LENGTHS := tiny small medium large
 LENGTHS := small large
 ALGS := bubble insertion selection merge quick heap quicker
