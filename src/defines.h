@@ -32,7 +32,7 @@
 //#define MEM_SIZE 16384
 #define MEM_SIZE 32768
 //#define MEM_SIZE 65536
-#define UART0_SIZE 12 // 3 32-bit registers
+#define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
 
 // HW models
 #define CACHE_MODE_PERF 0 // tags and stats

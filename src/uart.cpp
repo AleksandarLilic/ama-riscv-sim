@@ -3,6 +3,7 @@
 uart::uart(size_t size) :
     dev(size)
 {
+    std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
     #ifdef UART_INPUT_ENABLE
     uart_running = true;

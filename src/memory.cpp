@@ -3,14 +3,16 @@
 memory::memory(
     std::string test_bin,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
+        // create devices
         mm(MEM_SIZE, test_bin, hw_cfg),
         #ifdef UART_ENABLE
-        uart0(UART0_SIZE),
+        uart0(UART_SIZE),
         #endif
+        // put devices in memory map
         mem_map {{
             {BASE_ADDR, MEM_SIZE, &mm},
             #ifdef UART_ENABLE
-            {BASE_ADDR + MEM_SIZE, UART0_SIZE, &uart0}
+            {BASE_ADDR + MEM_SIZE, UART_SIZE, &uart0}
             #endif
         }}
  {
@@ -25,7 +27,7 @@ uint32_t memory::set_addr(uint32_t address, access_t access, uint32_t size) {
     }
 
     for (auto &entry : mem_map) {
-        if (address < entry.base + entry.size) {
+        if (entry.base <= address && address < entry.base + entry.size) {
             dev_ptr = entry.ptr;
             address -= entry.base;
             dev_set = true;
@@ -34,7 +36,8 @@ uint32_t memory::set_addr(uint32_t address, access_t access, uint32_t size) {
     }
 
     if (!dev_set) {
-        tu->e_dmem_access_fault(address, "above max address", access);
+        tu->e_dmem_access_fault(
+            address, "undefined region or above max address", access);
         return 0;
     }
 
