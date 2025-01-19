@@ -2,7 +2,8 @@ CXX := g++
 CXXFLAGS := -g -std=gnu++17
 GTEST_LIBS := -lgtest -lgtest_main -pthread
 LDFLAGS := -lgcov
-SIM_FLAGS := DEFINES="-DTEST_BUILD" USER_DEFINES=--coverage LDFLAGS=-lgcov
+SIM_FLAGS := DEFINES="-DTEST_BUILD -DRV32C"
+SIM_FLAGS += USER_DEFINES=--coverage LDFLAGS=-lgcov
 TEST := ama-riscv-sim_test
 SOURCES := test.cpp
 PYVER := python3

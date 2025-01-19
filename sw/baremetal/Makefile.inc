@@ -15,12 +15,13 @@ vpath %.c $(COMMON_SRC_PATH)
 vpath %.h $(COMMON_SRC_PATH)
 vpath %.S $(COMMON_SRC_PATH)
 
-C_SRCS := $(wildcard *.c)
-S_SRCS := $(wildcard *.S)
+C_SRCS += $(wildcard *.c)
+S_SRCS += $(wildcard *.S)
 LD_SRC := $(COMMON_SRC_PATH)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS)
-INC += $(COMMON_SRC_PATH)
-INCS := $(wildcard $(addsuffix /*.h, $(INC)))
+INC_PATHS += $(COMMON_SRC_PATH)
+INC_H := $(wildcard $(addsuffix /*.h, $(INC_PATHS)))
+INC := $(addprefix -I, $(INC_PATHS))
 LIBS += -lgcc
 USER_DEFINES =
 
@@ -29,15 +30,15 @@ USER_DEFINES =
 MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
 #MARCH ?= rv32i_zicsr
 MABI ?= ilp32
-GCC_OPTS += -march=$(MARCH) -mabi=${MABI} -mcmodel=medany -static -fno-pic
-GCC_OPTS += -msmall-data-limit=8
+GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany -static -fno-pic
+GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
+GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
 #GCC_OPTS += -fvisibility=hidden
-GCC_OPTS += -ffreestanding -ffunction-sections -fdata-sections
-GCC_OPTS += -nostdlib -nostartfiles -g
 #GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--gc-sections
 GCC_OPTS += -Wl,--no-warn-rwx-segments
+#GCC_OPTS += -Wl,--noinhibit-exec
 #GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
 
@@ -64,8 +65,8 @@ ifeq ($(HEX), 1)
 endif
 
 # run with HEX=1 to generate hex file for RTL simulation
-%.elf: $(SRCS) $(INCS) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) -I$(INC)\
+%.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
+	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) $(INC) \
 		$(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
 	@$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
@@ -73,7 +74,7 @@ endif
 		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
 	fi
 	@echo "Generated $@"
-	@$(RV_GNU)-size $@
+	@$(RV_GNU)-size -G $@
 
 build_common: $(COMMON_OBJS)
 
