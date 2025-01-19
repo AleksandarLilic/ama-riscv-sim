@@ -1,6 +1,8 @@
 # checkers/logs
 *.check
 *.log
+sweep_*_best.json
+sweep_*_binned.json
 
 # test files
 test/out_*/

@@ -13,4 +13,7 @@ local/
 baremetal/*/test_array*h
 baremetal/aapg_static/*/main.S
 
-NN/data/*
+baremetal/mlp/model*.h
+
+# dev dir
+NN
