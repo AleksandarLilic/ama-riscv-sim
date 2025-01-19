@@ -9,6 +9,9 @@
 #include "mem_map.h"
 #include "mini-printf.h"
 
+#define UART0_TX_READY (UART0->ctrl & 0x1)
+#define UART0_RX_VALID (UART0->ctrl & 0x2)
+
 #ifndef FORCE_NEWLIB_PRINTF
 // not exactly the same as libc printf, but close enough for the purpose
 #define printf mini_printf
