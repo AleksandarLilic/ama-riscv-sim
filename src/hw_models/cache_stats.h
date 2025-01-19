@@ -61,6 +61,22 @@ struct cache_traffic_t {
     uint32_t reads; // bytes
     uint32_t writes;
     cache_traffic_t() : reads(0), writes(0) {}
+    std::string to_string() const {
+        float rd = TO_F32(reads);
+        float wr = TO_F32(writes);
+        std::string suffixes[] = {"B", "KB", "MB", "GB", "TB"};
+        size_t idx = 0;
+        while (rd >= 1024 || wr >= 1024) {
+            rd /= 1024;
+            wr /= 1024;
+            idx++;
+        }
+        size_t prec = (std::max(rd, wr) < 10) ? 1 : 0;
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(prec)
+            << rd << "/" << wr << " " << suffixes[idx];
+        return oss.str();
+    }
 };
 
 struct cache_stats_t {
@@ -113,15 +129,15 @@ struct cache_stats_t {
             float_t hit_rate = 0.0;
             if (accesses > 0) hit_rate = TO_F32(hits) / TO_F32(accesses) * 100;
             std::cout << "A: " << accesses
-                    << ", H: " << hits
-                    << ", M: " << misses
-                    << ", E: " << evicts
-                    << ", WB: " << writebacks
-                    << ", HR: " << std::fixed << std::setprecision(2)
-                    << hit_rate << "%"
-                    << "; CT (R/W): "
-                    << "core " << ct_core.reads << "/"<< ct_core.writes << " B"
-                    << ", mem " << ct_mem.reads << "/" << ct_mem.writes << " B";
+                      << ", H: " << hits
+                      << ", M: " << misses
+                      << ", E: " << evicts
+                      << ", WB: " << writebacks
+                      << ", HR: " << std::fixed << std::setprecision(2)
+                      << hit_rate << "%"
+                      << "; CT (R/W): "
+                      << "core " << ct_core.to_string()
+                      << ", mem " << ct_mem.to_string();
         }
         void log(std::ofstream& log_file) const {
             log_file << CACHE_STATS_JSON_ENTRY(this);

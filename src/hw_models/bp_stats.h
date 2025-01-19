@@ -13,7 +13,7 @@
     << ", \"mispredicted_bwd\": " << stat_struct->mispredicted_bwd
 
 // branch instruction stats
-struct bi_program_stats_t {
+struct bi_app_stats_t {
     b_dir_t dir;
     uint32_t taken;
     uint32_t total;

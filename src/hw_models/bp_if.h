@@ -28,7 +28,7 @@ class bp_if {
         std::unique_ptr<bp> active_bp;
         bp_ideal* ideal_bp;
         std::vector<std::unique_ptr<bp>> all_predictors;
-        std::map<uint32_t, bi_program_stats_t> bi_program_stats;
+        std::map<uint32_t, bi_app_stats_t> bi_app_stats;
         bool to_dump_csv = false;
 
     public:
@@ -52,7 +52,7 @@ class bp_if {
 
     private:
         void show_stats(std::string log_path);
-        void update_stats(uint32_t pc, bool taken);
+        void update_app_stats(uint32_t pc, bool taken);
         std::string find_run_length(const std::vector<bool>& pattern);
         void dump_csv(std::string log_path);
 

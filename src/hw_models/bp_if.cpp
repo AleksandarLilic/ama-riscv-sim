@@ -148,8 +148,8 @@ uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
     uint32_t target_pc = TO_U32(TO_I32(pc) + offset);
     b_dir_t dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
     if (prof_active) {
-        if (bi_program_stats.find(pc) == bi_program_stats.end()) {
-            bi_program_stats[pc] = {dir, 0, 0, {}};
+        if (bi_app_stats.find(pc) == bi_app_stats.end()) {
+            bi_app_stats[pc] = {dir, 0, 0, {}};
         }
     }
     for (auto& p : all_predictors) p->predict(target_pc, pc);
@@ -164,13 +164,14 @@ void bp_if::update(uint32_t pc, uint32_t next_pc) {
     // only update stats if profiling is active
     if (!prof_active) return;
 
-    update_stats(pc, taken);
     active_bp->update_stats(pc, next_pc);
     for (auto& p : all_predictors) p->update_stats(pc, next_pc);
+    // no need to update app stats if csv is not dumped at the end
+    if (to_dump_csv) update_app_stats(pc, taken);
 }
 
-void bp_if::update_stats(uint32_t pc, bool taken) {
-    bi_program_stats_t* ptr = &bi_program_stats[pc];
+void bp_if::update_app_stats(uint32_t pc, bool taken) {
+    bi_app_stats_t* ptr = &bi_app_stats[pc];
     ptr->taken += taken;
     ptr->total++;
     ptr->pattern.push_back(taken);
@@ -183,7 +184,7 @@ void bp_if::finish(std::string log_path) {
 }
 
 void bp_if::show_stats(std::string log_path) {
-    std::cout << "Branch stats: unique branches: " << bi_program_stats.size()
+    std::cout << "Branch stats: unique branches: " << bi_app_stats.size()
               << std::endl;
     // show all, but mark the active one (driving the icache)
     std::cout << bp_name << " (active: " << active_bp->type_name << ")"
@@ -208,7 +209,7 @@ void bp_if::dump_csv(std::string log_path) {
     //bcsv << ",P_Bimodal_idx,P_Local_idx";
     bcsv << ",Best,P_best,P_best%,Pattern" << std::endl;
 
-    for (auto& [pc, stats] : bi_program_stats) {
+    for (auto& [pc, stats] : bi_app_stats) {
         float_t branches_total = TO_F32(stats.total);
         size_t idx_best = 0; // defaults to first, the active_bp
         std::vector<uint32_t> pred;
