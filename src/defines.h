@@ -30,8 +30,8 @@
 #define ADDR_BITS 17 // 128KB address space
 #define MEM_ADDR_BITWIDTH 5 // digits in hex printout
 //#define MEM_SIZE 16384
-#define MEM_SIZE 32768
-//#define MEM_SIZE 65536
+//#define MEM_SIZE 32768
+#define MEM_SIZE 65536
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
 
 // HW models

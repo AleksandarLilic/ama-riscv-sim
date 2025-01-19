@@ -108,7 +108,7 @@ TEST_F(sim_test, bin_file_not_found) {
 TEST_F(sim_test, bin_file_oversized) {
     // generate dummy bin file larger than MEM_SIZE
     std::ofstream test_bin("oversized.bin", std::ios::binary);
-    for (int i = 0; i <= MEM_SIZE+1; i++)
+    for (int i = 0; i <= MEM_SIZE+2; i++)
         test_bin << "0";
     test_bin.close();
     ASSERT_TRUE(

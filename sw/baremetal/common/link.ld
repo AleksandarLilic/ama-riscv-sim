@@ -3,7 +3,7 @@ ENTRY( _start )
 
 MEMORY
 {
-    ram (rwx) : ORIGIN = 0x10000, LENGTH = 32K
+    ram (rwx) : ORIGIN = 0x10000, LENGTH = 64K
     peripherals (rw) : ORIGIN = ORIGIN(ram) + LENGTH(ram), LENGTH = 12
 }
 
@@ -53,5 +53,4 @@ SECTIONS
 
     _end = .;
     __stack_top = ORIGIN(ram) + LENGTH(ram);
-    __uart0_base = ORIGIN(peripherals);
 }

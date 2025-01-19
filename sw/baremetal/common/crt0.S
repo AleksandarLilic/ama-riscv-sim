@@ -44,10 +44,10 @@ _start:
     .option push
     .option norelax
     la gp, __global_pointer$
-    .option pop
     la sp, __stack_top
     la a0, __bss_start
     la a1, __BSS_END__
+    .option pop
 
 clear_bss_w: # word at a time
     addi a2, a0, 4
