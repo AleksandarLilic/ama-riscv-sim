@@ -15,6 +15,7 @@
 // branch instruction stats
 struct bi_app_stats_t {
     b_dir_t dir;
+    uint8_t funct3;
     uint32_t taken;
     uint32_t total;
     std::vector<bool> pattern;

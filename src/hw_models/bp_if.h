@@ -35,7 +35,7 @@ class bp_if {
         bp_if() = delete;
         bp_if(std::string name, hw_cfg_t hw_cfg);
         void profiling(bool enable) { prof_active = enable; }
-        uint32_t predict(uint32_t pc, int32_t offset);
+        uint32_t predict(uint32_t pc, int32_t offset, uint32_t funct3);
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
         void finish(std::string log_path);

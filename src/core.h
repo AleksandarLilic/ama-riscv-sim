@@ -411,7 +411,7 @@ class core {
         #endif
 
         // register names
-        static constexpr std::array<std::array<const char*, 2>, 32>
+        static constexpr std::array<std::array<std::string_view, 2>, 32>
         rf_names = {{
             {{"x0", "zero"}}, // hard-wired zero
             {{"x1", "ra"}},   // return address

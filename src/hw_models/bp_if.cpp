@@ -144,12 +144,12 @@ std::unique_ptr<bp> bp_if::create_predictor(std::array<bp_def_t, 3> bp_defs) {
     return bp_out;
 }
 
-uint32_t bp_if::predict(uint32_t pc, int32_t offset) {
+uint32_t bp_if::predict(uint32_t pc, int32_t offset, uint32_t funct3) {
     uint32_t target_pc = TO_U32(TO_I32(pc) + offset);
     b_dir_t dir = (target_pc > pc) ? b_dir_t::forward : b_dir_t::backward;
     if (prof_active) {
         if (bi_app_stats.find(pc) == bi_app_stats.end()) {
-            bi_app_stats[pc] = {dir, 0, 0, {}};
+            bi_app_stats[pc] = {dir, TO_U8(funct3), 0, 0, {}};
         }
     }
     for (auto& p : all_predictors) p->predict(target_pc, pc);
@@ -201,9 +201,11 @@ void bp_if::show_stats(std::string log_path) {
 }
 
 void bp_if::dump_csv(std::string log_path) {
+    std::array<std::string_view, 8> constexpr funct3_mn = {
+        "beq", "bne", "na", "na", "blt", "bge", "bltu", "bgeu" };
     std::ofstream bcsv;
     bcsv.open(log_path + "branches.csv");
-    bcsv << "PC,Direction,Taken,Not_Taken,All,Taken%";
+    bcsv << "PC,Direction,Funct3,Funct3_mn,Taken,Not_Taken,All,Taken%";
     for (auto& p : all_predictors) bcsv << ",P_" << p->type_name;
     for (auto& p : all_predictors) bcsv << ",P_" << p->type_name << "%";
     //bcsv << ",P_Bimodal_idx,P_Local_idx";
@@ -230,6 +232,8 @@ void bp_if::dump_csv(std::string log_path) {
         bcsv << std::hex << pc << std::dec
              << std::fixed << std::setprecision(1)
              << "," << (stats.dir == b_dir_t::forward ? "F" : "B")
+             << "," << TO_U32(stats.funct3)
+             << "," << funct3_mn[stats.funct3]
              << "," << stats.taken
              << "," << stats.total - stats.taken
              << "," << stats.total
