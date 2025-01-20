@@ -2,6 +2,9 @@
 
 // { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
 #define BP_CFG_NONE { 0, 0, 0, 0, hw_cfg.bp_active_name.c_str() }
+// reuse cnt bits as method for static
+#define BP_CFG_STATIC { \
+    0, TO_U8(hw_cfg.bp_static_method), 0, 0, hw_cfg.bp_active_name.c_str() }
 #define BP_BIMODAL_CFG { \
     hw_cfg.bp_bimodal_pc_bits, hw_cfg.bp_bimodal_cnt_bits, 0, 0, \
     hw_cfg.bp_active_name.c_str() }
@@ -50,7 +53,7 @@ std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, hw_cfg_t hw_cfg) {
     std::unique_ptr<bp> bp_out, bp1, bp2;
     switch (bp_type) {
         case bp_t::sttc:
-            bp_out = std::make_unique<bp_static, bp_cfg_t>(BP_CFG_NONE);
+            bp_out = std::make_unique<bp_static, bp_cfg_t>(BP_CFG_STATIC);
             break;
         case bp_t::bimodal:
             bp_out = std::make_unique<bp_bimodal, bp_cfg_t>(BP_BIMODAL_CFG);
@@ -196,7 +199,8 @@ void bp_if::show_stats(std::string log_path) {
     active_bp = std::move(all_predictors[0]); // restore active_bp
     all_predictors.erase(all_predictors.begin()); // remove invalid pointer
     return;
-    std::cout << "  Predictors internal state:" << std::endl;
+    std::cout << "Predictors internal state:" << std::endl;
+    active_bp->dump();
     for (auto& p : all_predictors) p->dump();
 }
 

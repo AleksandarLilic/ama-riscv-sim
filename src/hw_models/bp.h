@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "bp_stats.h"
+#include "bp_cnt.h"
 
 struct bp_cfg_t {
     const uint8_t pc_bits;
@@ -15,6 +16,7 @@ struct bp_cfg_t {
 class bp {
     public:
         const std::string type_name;
+        bp_cnt* cnt_ptr = nullptr;
 
     protected:
         uint32_t predicted_pc;
@@ -41,7 +43,12 @@ class bp {
         // for ideal predictor only
         virtual void goto_future(uint32_t /* correct_pc */) {};
 
-        virtual void dump() = 0;
+        virtual void dump() {
+            if (cnt_ptr == nullptr) return;
+            std::cout << INDENT << type_name << ": " << std::endl;
+            cnt_ptr->dump();
+            std::cout << std::dec << std::endl;
+        }
 
         virtual void show_stats() {
             std::cout << INDENT << std::left << std::setw(14) << type_name;

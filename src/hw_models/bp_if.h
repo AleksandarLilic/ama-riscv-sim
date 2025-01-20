@@ -59,8 +59,13 @@ class bp_if {
     private:
         // predefined branch predictors
         // { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
-        static constexpr std::array<bp_def_t, 13> arch_bp_defs = {{
-            {bp_t::sttc, bp_cfg_t{ 0, 0, 0, 0, "d_static" }},
+        static constexpr std::array<bp_def_t, 15> arch_bp_defs = {{
+            {bp_t::sttc,
+             bp_cfg_t{ 0, TO_U8(bp_sttc_t::at), 0, 0, "d_static_at" }},
+            {bp_t::sttc,
+             bp_cfg_t{ 0, TO_U8(bp_sttc_t::ant), 0, 0, "d_static_ant" }},
+            {bp_t::sttc,
+             bp_cfg_t{ 0, TO_U8(bp_sttc_t::btfn), 0, 0, "d_static_btfn" }},
             {bp_t::none, bp_cfg_t{ 0, 0, 0, 0, "d_none" }},
             {bp_t::ideal, bp_cfg_t{ 0, 0, 0, 0, "d_ideal_" }},
             {bp_t::bimodal, bp_cfg_t{ 7, 3, 0, 0, "d_bimodal_v1" }},

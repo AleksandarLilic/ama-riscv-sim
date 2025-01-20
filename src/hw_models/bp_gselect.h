@@ -29,6 +29,7 @@ class bp_gselect : public bp {
         {
             size = cnt.get_bit_size() + cfg.gr_bits;
             size = (size + 8) >> 3; // to bytes, round up
+            cnt_ptr = &cnt;
         }
 
         virtual uint32_t get_idx(uint32_t pc, uint32_t gr) {
@@ -47,11 +48,5 @@ class bp_gselect : public bp {
             cnt.update(taken, idx_last);
             gr = ((gr << 1) | taken) & gr_mask;
             return (next_pc == predicted_pc);
-        }
-
-        virtual void dump() override {
-            std::cout << "    " << type_name << ": " << std::endl;
-            cnt.dump();
-            std::cout << std::dec << std::endl;
         }
 };

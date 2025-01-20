@@ -21,6 +21,7 @@ class bp_global : public bp {
         {
             size = cnt.get_bit_size() + idx_bits;
             size = (size + 8) >> 3; // to bytes, round up
+            cnt_ptr = &cnt;
         }
 
         uint32_t get_idx(uint32_t gr) { return gr & idx_mask; }
@@ -34,11 +35,5 @@ class bp_global : public bp {
             cnt.update(taken, idx_last);
             gr = ((gr << 1) | taken) & idx_mask;
             return (next_pc == predicted_pc);
-        }
-
-        virtual void dump() override {
-            std::cout << "    " << type_name << ": " << std::endl;
-            cnt.dump();
-            std::cout << std::dec << std::endl;
         }
 };

@@ -57,6 +57,7 @@ class bp_cnt {
         const uint8_t thr_taken;
         const uint32_t bit_size;
         std::vector<uint8_t> cnt_table;
+        std::vector<uint32_t> cnt_table_accesses;
 
     public:
         bp_cnt(bp_cnt_cfg_t cfg) :
@@ -66,9 +67,9 @@ class bp_cnt {
             cnt_max((1 << cnt_bits) - 1),
             thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1),
             bit_size(cnt_entries_num * cnt_bits),
-            cnt_table(cnt_entries_num)
+            cnt_table(cnt_entries_num, thr_taken),
+            cnt_table_accesses(cnt_entries_num, 0)
         {
-            for (auto& e : cnt_table) e = thr_taken;
         }
 
         uint32_t get_bit_size() { return bit_size; }
@@ -79,6 +80,7 @@ class bp_cnt {
         // for single predictor
         void update(bool taken, uint32_t idx) {
             uint8_t& cnt_entry = cnt_table[idx];
+            cnt_table_accesses[idx]++;
             if (taken) {
                 if (cnt_entry < cnt_max) cnt_entry++;
             } else {
@@ -89,6 +91,7 @@ class bp_cnt {
         // for combined predictor
         void update(bool p0c, bool p1c, uint32_t idx) {
             uint8_t& cnt_entry = cnt_table[idx];
+            cnt_table_accesses[idx]++;
             if (p0c != p1c) {
                 if (p0c) {
                     if (cnt_entry < cnt_max) cnt_entry++;
@@ -99,9 +102,13 @@ class bp_cnt {
         }
 
         void dump() {
-            std::cout << "      counters: ";
+            // TODO: should be stored as csv or similar
+            std::cout << INDENT << INDENT << "counter accesses:\n";
             for (size_t i = 0; i < cnt_entries_num; i++) {
-                std::cout << "[" << i << "]=" << TO_U32(cnt_table[i]) << " ";
+                std::cout << INDENT << INDENT << INDENT << "[0x"
+                          << std::hex << std::setw(3) << std::setfill('0')
+                          << i << "] = " << std::dec << cnt_table_accesses[i]
+                          << "\n";
             }
         }
 };

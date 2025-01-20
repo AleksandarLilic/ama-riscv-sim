@@ -55,8 +55,12 @@ class bp_combined : public bp {
         }
 
         virtual void dump() override {
-            std::cout << "    " << type_name << ": " << std::endl;
+            std::cout << INDENT << type_name << ": " << std::endl;
             cnt.dump();
+            std::cout << INDENT << "bp 1: ";
+            bpsn[0]->dump();
+            std::cout << INDENT << "bp 2: ";
+            bpsn[1]->dump();
             std::cout << std::dec << std::endl;
         }
 };

@@ -159,6 +159,7 @@ enum class speculative_t { enter, exit_commit, exit_flush };
 enum class b_dir_t { backward, forward};
 enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
                  ideal, none, combined, _count };
+enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
 // dasm
 struct dasm_str {
@@ -245,6 +246,7 @@ struct hw_cfg_t {
     bool bp_run_all;
     bool bp_dump_csv;
     // branch predictor config
+    bp_sttc_t bp_static_method;
     uint8_t bp_bimodal_pc_bits;
     uint8_t bp_bimodal_cnt_bits;
     uint8_t bp_local_pc_bits;

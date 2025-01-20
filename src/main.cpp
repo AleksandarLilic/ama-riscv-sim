@@ -74,6 +74,13 @@ const std::unordered_map<std::string, rf_names_t> rf_names_map = {
 };
 
 #ifdef ENABLE_HW_PROF
+// allowed options for static predictor methods
+const std::unordered_map<std::string, bp_sttc_t> bp_static_map = {
+    {"at", bp_sttc_t::at},
+    {"ant", bp_sttc_t::ant},
+    {"btfn", bp_sttc_t::btfn}
+};
+
 // all available branch predictors
 const std::unordered_map<std::string, bp_t> bp_names_map = {
     {"static", bp_t::sttc},
@@ -125,6 +132,7 @@ struct hw_defs_t {
     static constexpr char bp_run_all[] = "false";
     static constexpr char bp_dump_csv[] = "false";
     // supported predictors configurations
+    static constexpr char bp_static_method[] = "btfn";
     static constexpr char bp_bimodal_pc_bits[] = "7";
     static constexpr char bp_bimodal_cnt_bits[] = "3";
     static constexpr char bp_local_pc_bits[] = "5";
@@ -212,6 +220,11 @@ int main(int argc, char* argv[]) {
          cxxopts::value<bool>()->default_value(hw_defs_t::bp_dump_csv))
 
         // supported predictors configurations
+        ("bp_static_method",
+         "Static predictor - method. \nOptions: " +
+         gen_help_list(bp_static_map),
+         cxxopts::value<std::string>()->
+            default_value(hw_defs_t::bp_static_method))
         ("bp_bimodal_pc_bits", "Bimodal predictor - PC bits",
          cxxopts::value<std::string>()->
             default_value(hw_defs_t::bp_bimodal_pc_bits))
@@ -309,6 +322,7 @@ int main(int argc, char* argv[]) {
         hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
         hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);
         // per predictor configurations
+        hw_cfg.bp_static_method = RESOLVE_ARG("bp_static_method",bp_static_map);
         hw_cfg.bp_bimodal_pc_bits = TO_SIZE(result["bp_bimodal_pc_bits"]);
         hw_cfg.bp_bimodal_cnt_bits = TO_SIZE(result["bp_bimodal_cnt_bits"]);
         hw_cfg.bp_local_pc_bits = TO_SIZE(result["bp_local_pc_bits"]);

@@ -59,6 +59,7 @@ class bp_local : public bp {
             size = hist_table.size() * hist_bits;
             size += cnt.get_bit_size();
             size = (size + 8) >> 3; // to bytes, round up
+            cnt_ptr = &cnt;
         }
 
         uint32_t get_idx(uint32_t pc) { return (pc >> 2) & pc_mask; }
@@ -77,7 +78,7 @@ class bp_local : public bp {
         }
 
         virtual void dump() override {
-            std::cout << "    " << type_name << ": " << std::endl;
+            std::cout << INDENT << type_name << ": " << std::endl;
             std::cout << "      history: ";
             for (auto& local_entry : hist_table) {
                 std::cout << std::hex << TO_U32(local_entry.hist_pattern) <<" ";

@@ -23,6 +23,7 @@ class bp_bimodal : public bp {
             cnt({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
         {
             size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
+            cnt_ptr = &cnt;
         }
 
         uint32_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
@@ -35,11 +36,5 @@ class bp_bimodal : public bp {
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             cnt.update(taken, idx_last);
             return (next_pc == predicted_pc);
-        }
-
-        virtual void dump() override {
-            std::cout << "    " << type_name << ": " << std::endl;
-            cnt.dump();
-            std::cout << std::dec << std::endl;
         }
 };
