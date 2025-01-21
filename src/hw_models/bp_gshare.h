@@ -11,6 +11,7 @@ class bp_gshare : public bp {
         const uint32_t idx_mask;
         const uint32_t gr_mask;
         const uint32_t pc_mask;
+        const uint32_t gr_offset;
         bp_cnt cnt;
         uint32_t gr; // global register
         uint32_t idx_last;
@@ -24,6 +25,7 @@ class bp_gshare : public bp {
             idx_mask((1 << idx_bits) - 1),
             gr_mask((1 << gr_bits) - 1),
             pc_mask((1 << pc_bits) - 1),
+            gr_offset(pc_bits > gr_bits ? pc_bits - gr_bits : 0),
             cnt({idx_bits, cfg.cnt_bits, cfg.type_name}),
             gr(0)
         {
@@ -35,10 +37,10 @@ class bp_gshare : public bp {
         virtual uint32_t get_idx(uint32_t pc, uint32_t gr) {
             uint32_t pc_part = (pc >> 2) & pc_mask;
             uint32_t gr_part = gr & gr_mask;
-            // xor, fit within the mask length
-            // TODO: XORs from the rightmost bits, add a switch for other pos?
-            // applicable only if unequal lengths of pc and gr slices
-            return (pc_part ^ gr_part) & idx_mask;
+            // xor with top PC bits, fit within the mask length
+            // TODO: slide XORs bits L/R?
+            // applicable only if unequal number of pc and gr bits
+            return (pc_part ^ (gr_part << gr_offset)) & idx_mask;
         }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
