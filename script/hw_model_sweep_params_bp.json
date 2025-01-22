@@ -1,28 +1,54 @@
 {
     "hw_params": {
         "bpred": {
-            "bp_static":  {},
-            "bp_bimodal": { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],                                                                       "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_local":   { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "hist_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_global":  {                                                                     "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_gselect": { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_gshare":  { "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_combined-1": {"predictors": ["bp_static", "bp_gshare"],  "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_combined-2": {"predictors": ["bp_static", "bp_gselect"], "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
-            "bp_combined-3": {"predictors": ["bp_bimodal", "bp_gshare"], "exhaustive": [1, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
-            "common_settings": { "min_size": 4, "max_size": 96, "size_bins": [4, 8, 16, 24, 32, 48, 64, 96]}
+            "bp_static":  {"method": ["at", "ant", "btfn"]},
+            "bp_bimodal": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],                                                                       "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_local":   {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "hist_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_global":  {                                                                    "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "gr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-1": {"predictors": ["bp_static", "bp_gshare"],  "exhaustive": [1, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-2": {"predictors": ["bp_static", "bp_gselect"], "exhaustive": [1, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "bp_combined-3": {"predictors": ["bp_bimodal", "bp_gshare"], "exhaustive": [0, 0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "cnt_bits": [1, 2, 3, 4, 5]},
+            "common_settings": { "min_size": 1, "max_size": 80, "size_bins": [2, 4, 8, 16, 24, 32, 48, 64, 80]}
         }
     },
     "workloads": {
+        "embench/aha-mont64": [["bench"],     {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/cubic": [["bench"],          {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/nbody": [["bench"],          {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/nsichneu": [["bench"],       {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/qrduino": [["bench"],        {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/sglib-combined": [["bench"], {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/st": [["bench"],             {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+        "embench/ud": [["bench"],             {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": false}],
+
+        "embench/crc32": [["bench"],          {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/edn": [["bench"],            {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/huffbench": [["bench"],      {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/matmult-int": [["bench"],    {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/md5sum": [["bench"],         {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/minver": [["bench"],         {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/nettle-aes": [["bench"],     {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/nettle-sha256": [["bench"],  {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/picojpeg": [["bench"],       {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/primecount": [["bench"],     {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/slre": [["bench"],           {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/statemate": [["bench"],      {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/tarfind": [["bench"],        {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+        "embench/wikisort": [["bench"],       {"thr_bpred_acc": 60}, {"sim_args": ""}, {"skip_search": true}],
+
+        "dhrystone": [["dhrystone"],       {"thr_bpred_acc": 60}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 115a0 --log_pc_stop 11674"}, {"skip_search": false}],
+        "coremark": [["coremark"],         {"thr_bpred_acc": 60}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115ac --log_pc_stop 115e8"}, {"skip_search": false}],
+
+        "fibonacci": [["n_18"],            {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": true}],
+        "gcd_lcm": [["n_large"],           {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": true}],
+        "mlp": [["w8a8"],                  {"thr_bpred_acc": 80}, {"sim_args": ""},                        {"skip_search": true}],
+        "sorting_str": [["quicker_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}, {"skip_search": true}],
         "sorting_num": [
             ["merge_int32_large",
              "quick_int32_large",
              "heap_int32_large",
-             "quicker_int32_large"],       {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
-        "sorting_str": [["quicker_large"], {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}],
-        "dhrystone": [["dhrystone"],       {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 1159c --log_pc_stop 11670"}],
-        "coremark": [["coremark"],         {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115a8 --log_pc_stop 115e4"}],
-        "fibonacci": [["n_18"],            {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}],
-        "gcd_lcm": [["n_large"],           {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 9"}]
+             "quicker_int32_large"],       {"thr_bpred_acc": 70}, {"sim_args": "--log_pc_single_match 2"}, {"skip_search": true}]
     }
 }

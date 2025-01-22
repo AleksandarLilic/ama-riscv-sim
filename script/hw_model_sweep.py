@@ -26,7 +26,6 @@ def get_reporoot():
 
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
-PARAMS_DEF = os.path.join(reporoot, "script", "hw_model_sweep_params.json")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 PASS_STRING = "    0x051e tohost    : 0x00000001"
 INDENT = "  "
@@ -41,9 +40,12 @@ def get_test_name(app: str) -> str:
 def get_out_dir(test_name: str) -> str:
     return f"out_{test_name}"
 
-def gen_sweep_log_name(sweep: str, workloads: List) -> str:
+def gen_sweep_log_name(sweep: str, workloads: List, only_searched: bool) -> str:
     if len(workloads) > 1:
-        sweep_name = "workload_sweep"
+        if only_searched:
+            sweep_name = "workloads_searched"
+        else:
+            sweep_name = "workloads_all"
     else:
         sweep_name = get_test_name(workloads[0]["app"])
     return sweep_name, f"sweep_{sweep}_{sweep_name}.log"
@@ -404,6 +406,8 @@ def scale_ax_for_ct(ax):
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
 
+    if bp == "static":
+        return 0
     if bp == "bimodal" or bp == "combined":
         cnt_entries = 1 << (params["pc_bits"])
         return (cnt_entries*params["cnt_bits"] + 8) >> 3
@@ -429,7 +433,7 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 -> List[List[Tuple[str, Any]]]:
     sk = bp_sweep.keys()
-    sk = [k for k in sk if "bits" in k] # only keys with 'bits' in the name
+    sk = [k for k in sk if "bits" in k or "method" in k]
 
     bp_args = list(sk)
     # cartesian product of all the params
@@ -455,19 +459,16 @@ def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 def gen_bp_final_params(sr: Dict) -> List[List[Tuple[str, Any]]]:
     out = {}
     for bp, entry in sr.items():
-        if bp == "bp_static":
-            out[bp] = [[]]
-            continue
         cmds = []
         #print(f"Best configs for {bp}:")
         for size, d in entry.items():
             #print(f"Size: {size} B, Acc: {d['acc']}%")
             command = []
             for k, v in d.items():
-                if "bits" not in k:
+                if all(x not in k for x in ["bits", "method", "bp_combined_p"]):
                     continue
                 command.append(f"--{k}")
-                command.append(f"{v} ")
+                command.append(f"{v}")
             cmds.append(command)
         out[bp] = cmds
 
@@ -484,7 +485,10 @@ def run_bp_sweep(
     -> None:
 
     running_best = (best_params != None)
-    sweep_name, sweep_log = gen_sweep_log_name(args.sweep, workloads)
+    multi_wl = len(workloads) > 1
+    running_single_best = running_best and not multi_wl
+    sweep_name, sweep_log = gen_sweep_log_name(
+        args.sweep, workloads, not running_best)
     if os.path.exists(sweep_log) and not args.load_stats:
         os.remove(sweep_log)
 
@@ -559,7 +563,7 @@ def run_bp_sweep(
 
         idx_c = 1
         PROG_BAT = 4 # progress batches
-        if args.track and not running_best:
+        if args.track and not running_single_best:
             print(INDENT,
                   f"BP: {bp_handle}, configs: {len(bp_params)}, progress: ",
                   end="")
@@ -589,7 +593,7 @@ def run_bp_sweep(
                 bp_size, acc, bpp, msg = future.result()
 
                 cnt += 1
-                if args.track and cnt % idx_c == 0 and not running_best:
+                if args.track and cnt % idx_c == 0 and not running_single_best:
                     print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
                 with open(sweep_log, "a") as f:
                     f.write(msg)
@@ -602,8 +606,7 @@ def run_bp_sweep(
                 d = {}
                 for i in range(0,len(bpp),2):
                     d[bpp[i].replace("--", "", 1)] = bpp[i+1]
-                if (bp_size not in best or acc > best[bp_size]["acc"]) or \
-                    bp == "bp_static":
+                if (bp_size not in best or acc > best[bp_size]["acc"]):
                     best[bp_size] = {}
                     for k, v in d.items():
                         best[bp_size][k] = v
@@ -611,7 +614,7 @@ def run_bp_sweep(
                     if bp != "bp_combined" and not running_best:
                         save_bpp_for_combined[bp_handle][bp_size] = bpp
 
-        if args.track and not running_best:
+        if args.track and not running_single_best:
             print(f"{PROG_BAT}/{PROG_BAT}. Done.")
         # sort the best dict by accuracy
         sr_best[bp_handle] = dict(
@@ -634,13 +637,13 @@ def run_bp_sweep(
         #    sorted(sr_best[bp_handle].items(), key=lambda x: x[0]))
 
         # for each bin, find the best config for accuracy
-        prev_bin = 0
+        prev_bin = -1 # 0 valid size for static bp
         best_binned = {}
         for bin in bins:
             for bp_size, d in best.items():
-                if bp_size <= bin and bp_size >= prev_bin:
-                    if (bin not in best_binned or \
-                        d["acc"] > best_binned[bin]["acc"]):
+                if prev_bin < bp_size <= bin:
+                    if ((bin not in best_binned or
+                        d["acc"] > best_binned[bin]["acc"])):
                         best_binned[bin] = d.copy() # so size is not added to og
                         best_binned[bin]["size"] = bp_size
             prev_bin = bin
@@ -678,8 +681,9 @@ def run_bp_sweep(
 
             if "static" in bp_h:
                 fk = list(entry.keys())[0] # first key
+                method = entry[fk]["bp_static_method"]
                 ax.axhline(y=entry[fk]["acc"], color="r", linestyle="--",
-                           label=f"{label} ({entry[fk]['acc']:.0f}%)")
+                           label=f"{label} {method} ({entry[fk]['acc']:.0f}%)")
                 continue
 
             accs = [entry[s]["acc"] for s in entry.keys()]
@@ -716,7 +720,7 @@ def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
     parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given app")
     parser.add_argument("-s", "--sweep", choices=SWEEP_CHOICES, help="Select the hardware model to sweep", required=True)
-    parser.add_argument("-p", "--params", type=str, default=PARAMS_DEF, help="Path to the hardware model sweep params file")
+    parser.add_argument("-p", "--params", type=str, help="Path to the hardware model sweep params file")
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
     parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Ignores --save_stats")
@@ -727,7 +731,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_skip_ct_thr", action="store_true", help="Skip setting the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
-    parser.add_argument("--bp_top_thr", type=int, default=90, help="Accuracy threshold for the best branch predictor configs to always include")
+    parser.add_argument("--bp_top_thr", type=int, default=80, help="Accuracy threshold for the best branch predictor configs to always include")
     parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of workers")
 
@@ -740,7 +744,8 @@ def run_main(args: argparse.Namespace) -> None:
     with open(args.params, "r") as flavor:
         sweep_dict = json.load(flavor)
 
-    workloads = []
+    workloads_all = []
+    workloads_sweep = []
     workloads_dict = sweep_dict["workloads"]
     for wl,flavors in workloads_dict.items():
         for flavor in flavors[0]:
@@ -748,35 +753,39 @@ def run_main(args: argparse.Namespace) -> None:
             if not os.path.exists(binary):
                 raise FileNotFoundError(f"Binary not found at: {binary}")
             else:
+                for_sweep = not flavors[3]['skip_search']
                 wl_args = flavors[2]["sim_args"].split(" ") # args as list
-                workloads.append({
-                    "app": binary,
-                    "thr": flavors[1],
-                    "args": wl_args
-                })
+                e = {"app": binary, "thr": flavors[1], "args": wl_args}
+                workloads_all.append(e)
+                if for_sweep:
+                    workloads_sweep.append(e)
 
-    if len(workloads) == 0:
-        raise FileNotFoundError("No workloads found")
+    if len(workloads_sweep) == 0:
+        raise FileNotFoundError("No workloads found for sweep")
 
     sweep_params = sweep_dict["hw_params"][args.sweep]
-    print(f"Sweep: {args.sweep} with {len(workloads)} workloads")
+    print(f"Sweep: {args.sweep} with {len(workloads_sweep)} workload(s)")
 
     if "cache" in args.sweep:
-        sr_best = run_cache_sweep(args, workloads, sweep_params)
-        if args.skip_per_workload or len(workloads) == 1:
+        sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
+        if args.skip_per_workload or len(workloads_sweep) == 1:
             return
-        for wl in workloads:
+        #print(f"Sweeping best {args.sweep} configs for all workloads")
+        #run_cache_sweep(args, workloads_all, sweep_params, sr_best) TODO: check
+        for wl in workloads_all:
             if args.track:
                 print(f"Sweeping best {args.sweep} configs for {wl['app']}")
             run_cache_sweep(args, [wl], sweep_params, sr_best)
         return
 
     if "bp" in args.sweep:
-        sr_bin = run_bp_sweep(args, workloads, sweep_params)
-        if args.skip_per_workload or len(workloads) == 1:
+        sr_bin = run_bp_sweep(args, workloads_sweep, sweep_params)
+        if args.skip_per_workload or len(workloads_sweep) == 1:
             return
+        print(f"Sweeping best {args.sweep} configs for all workloads")
         params = gen_bp_final_params(sr_bin)
-        for wl in workloads:
+        run_bp_sweep(args, workloads_all, sweep_params, params)
+        for wl in workloads_all:
             if args.track:
                 print(f"Sweeping best {args.sweep} configs for {wl['app']}")
             run_bp_sweep(args, [wl], sweep_params, params)
