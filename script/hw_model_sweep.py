@@ -33,6 +33,8 @@ FIG_SIZE = (8, 8)
 MK = "o"
 LW = 1
 
+CACHE_LINE_BYTES = 64
+
 def get_test_name(app: str) -> str:
     test_name = app.split("/")
     return "_".join(test_name[-2:]).replace(".bin", "")
@@ -200,64 +202,88 @@ def run_cache_sweep(
     -> None:
 
     running_best = (best_params != None)
-    sweep_name, sweep_log = gen_sweep_log_name(args.sweep, workloads)
+    multi_wl = len(workloads) > 1
+    running_single_best = running_best and not multi_wl
+    sweep_name, sweep_log = gen_sweep_log_name(
+        args.sweep, workloads, not running_best)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
-    CACHE_LINE_BYTES = 64
     MAX_SIZE = int(sweep_params["max_size"])
+    SIZE_LIM = [CACHE_LINE_BYTES, MAX_SIZE]
     XTICKS = [2**i for i in range(int(np.log2(CACHE_LINE_BYTES)),
                                   int(np.log2(MAX_SIZE))+1)]
     XLABELS = [f"{x//1024}K" if x >= 1024 else x for x in XTICKS]
 
+    if running_best:
+        cache_params = best_params
+    else:
+        _, cache_params = gen_cache_sweep_params(
+            args.sweep, sweep_params, SIZE_LIM)
+
     ck = args.sweep # cache key in the hw_stats dict
     sr = {} # sweep results dict
-    bp_act =  ["--bp_active", "none"] # so there is no impact on caches
-    for cpolicy in sweep_params["policies"]:
-        if args.load_stats:
-            break # skip the sweep if loading previous stats
-        if args.track and not running_best:
-            print(INDENT, f"Policy: {cpolicy}")
-        # only LRU is supported atm
-        sr[cpolicy] = {}
+    bp_act =  ["--bp_active", "none"] # so there is no impact on the caches
 
-        for cset in sweep_params["sets"]:
-            if args.track and not running_best:
-                print(INDENT * 2, f"Sets: {cset}")
-            arg_sets = [f"--{ck}_sets", str(cset)]
-            sr[cpolicy][cset] = {}
+    idx_c = 1
+    PROG_BAT = 4 # progress batches
+    if args.track and not running_single_best:
+        print(INDENT,
+              f"Cache: {ck}, configs: {len(cache_params)}, progress: ", end="")
+        idx_c = (len(cache_params) // PROG_BAT) + 1
 
-            for cway in sweep_params["ways"]:
-                if cway * cset * CACHE_LINE_BYTES > MAX_SIZE:
-                    continue
-
-                arg_ways = [f"--{ck}_ways", str(cway)]
-                msg = f"==> SWEEP: " \
-                      f"policy: {cpolicy}, set: {cset}, way: {cway} <=="
-                wp = workload_params(
+    mw = args.max_workers
+    with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
+        futures = {
+            executor.submit(
+                run_workloads,
+                workload_params(
                     workloads=workloads,
                     sweep=ck,
-                    args=arg_sets + arg_ways + bp_act,
-                    msg=msg,
+                    args=cp + bp_act,
+                    msg= f"==> SWEEP: {ck} {cp} <==",
                     save_sim=args.save_sim,
                     ignore_thr=False,
-                    tag=f"{cpolicy}_{cset}_{cway}",
-                    ret_list=[cpolicy, cset, cway]
+                    tag="".join(cp[1::2]), # set (1), way (3), policy (5)
+                    ret_list=cp
                 )
-                size, hr, ct, _, msg = run_workloads(wp)
-                if hr == None:
-                    continue
-                with open(sweep_log, "a") as f:
-                    f.write(msg)
-                sr[cpolicy][cset][cway] = { "hr": hr, "size": size }
-                if ct: # only for single workload sweeps
-                    sr[cpolicy][cset][cway]["ct_core"] = {
-                        "reads": ct[0], "writes": ct[1]}
-                    sr[cpolicy][cset][cway]["ct_mem"] = {
-                        "reads": ct[2], "writes": ct[3]}
-                if args.track and not running_best:
-                    print(INDENT * 3,
-                          f"Ways: {cway}, HR: {hr:.2f}%, Size: {size} B")
+            ): cp for cp in cache_params
+        }
+
+        # get results as they come in
+        cnt = 0
+        for future in concurrent.futures.as_completed(futures):
+            size, hr, ct, cp, msg = future.result()
+
+            cnt += 1
+            if args.track and cnt % idx_c == 0 and not running_single_best:
+                print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
+
+            if hr == None:
+                continue
+            with open(sweep_log, "a") as f:
+                f.write(msg)
+            cpolicy, cset, cway = cp[5], int(cp[1]), int(cp[3])
+            if cpolicy not in sr:
+                sr[cpolicy] = {}
+            if cset not in sr[cpolicy]:
+                sr[cpolicy][cset] = {}
+            sr[cpolicy][cset][cway] = { "hr": hr, "size": size }
+            if ct: # only for single workload sweeps
+                sr[cpolicy][cset][cway]["ct_core"] = {
+                    "reads": ct[0], "writes": ct[1]}
+                sr[cpolicy][cset][cway]["ct_mem"] = {
+                    "reads": ct[2], "writes": ct[3]}
+
+    if args.track and not running_single_best:
+        print(f"{PROG_BAT}/{PROG_BAT}. Done.")
+
+    # for each policy, sort by the keys: first sets then ways
+    for cpolicy, pe in sr.items():
+        for cset, se in pe.items():
+            sr[cpolicy][cset] = dict(
+                sorted(se.items(), key=lambda x: x[0]))
+        sr[cpolicy] = dict(sorted(sr[cpolicy].items(), key=lambda x: x[0]))
 
     sweep_results = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
@@ -402,6 +428,50 @@ def scale_ax_for_ct(ax):
         ax.set_yticklabels([f"{round(tick,1)}{unit}" for tick in yticks_out])
     else:
         ax.set_yticklabels([f"{int(tick)}{unit}" for tick in yticks_out])
+
+def get_cache_size(params: Dict[str, Any]) -> int:
+    return params["sets"] * params["ways"] * CACHE_LINE_BYTES
+
+def gen_cache_sweep_params(cache, cache_sweep, size_lim) \
+-> List[List[Tuple[str, Any]]]:
+    sk = cache_sweep.keys()
+    sk = [k for k in sk if "ways" in k or "sets" in k or "policy" in k]
+
+    cache_args = list(sk)
+    # cartesian product of all the params
+    cache_combs = product(*(cache_sweep[cache_arg] for cache_arg in cache_args))
+
+    cmds = []
+    sizes = []
+    for comb in cache_combs:
+        cache_size = get_cache_size(dict(zip(cache_args, comb)))
+        if not within_size(cache_size, size_lim):
+            continue
+        command = []
+        for k, v in zip(cache_args, comb):
+            command.append(f"--{cache}_{k}")
+            command.append(str(v))
+
+        cmds.append(command)
+        sizes.append(cache_size)
+
+    return sizes, cmds
+
+def gen_cache_final_params(cache, sr: Dict) -> List[List[Tuple[str, Any]]]:
+    cmds = []
+    for policy, pe in sr.items():
+        for sets, se in pe.items():
+            for ways, we in se.items():
+                command = []
+                # order is important when evaluating ret from futures
+                command.append(f"--{cache}_sets")
+                command.append(f"{sets}")
+                command.append(f"--{cache}_ways")
+                command.append(f"{ways}")
+                command.append(f"--{cache}_policy")
+                command.append(f"{policy}")
+                cmds.append(command)
+    return cmds
 
 def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
     bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
@@ -719,8 +789,8 @@ MAX_WORKERS = int(os.cpu_count())
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
     parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given app")
-    parser.add_argument("-s", "--sweep", choices=SWEEP_CHOICES, help="Select the hardware model to sweep", required=True)
-    parser.add_argument("-p", "--params", type=str, help="Path to the hardware model sweep params file")
+    parser.add_argument("-s", "--sweep", required=True, choices=SWEEP_CHOICES, help="Select the hardware model to sweep")
+    parser.add_argument("-p", "--params", required=True, help="Path to the hardware model sweep params file")
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
     parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Ignores --save_stats")
@@ -763,33 +833,53 @@ def run_main(args: argparse.Namespace) -> None:
     if len(workloads_sweep) == 0:
         raise FileNotFoundError("No workloads found for sweep")
 
-    sweep_params = sweep_dict["hw_params"][args.sweep]
-    print(f"Sweep: {args.sweep} with {len(workloads_sweep)} workload(s)")
+    single_wl_sweep = len(workloads_sweep) == 1
+    if single_wl_sweep:
+        print(f"Sweep: {args.sweep} for {workloads_sweep[0]['app']}")
+    else:
+        print(f"Sweep: {args.sweep} with {len(workloads_sweep)} workload(s)")
 
+    sweep_params = sweep_dict["hw_params"][args.sweep]
     if "cache" in args.sweep:
         sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
-        if args.skip_per_workload or len(workloads_sweep) == 1:
+        if single_wl_sweep:
             return
-        #print(f"Sweeping best {args.sweep} configs for all workloads")
-        #run_cache_sweep(args, workloads_all, sweep_params, sr_best) TODO: check
+
+        # FIXME: redundant to run all workloads and standalone workloads
+        # as these are the same results, just plotted differently
+        params = gen_cache_final_params(args.sweep, sr_best)
+        if workloads_all != workloads_sweep:
+            print(f"Sweeping best {args.sweep} configs for all workloads")
+            run_cache_sweep(args, workloads_all, sweep_params, params)
+        if args.skip_per_workload:
+            return
+
         for wl in workloads_all:
             if args.track:
                 print(f"Sweeping best {args.sweep} configs for {wl['app']}")
-            run_cache_sweep(args, [wl], sweep_params, sr_best)
+            run_cache_sweep(args, [wl], sweep_params, params)
         return
 
     if "bp" in args.sweep:
         sr_bin = run_bp_sweep(args, workloads_sweep, sweep_params)
-        if args.skip_per_workload or len(workloads_sweep) == 1:
+        if single_wl_sweep:
             return
-        print(f"Sweeping best {args.sweep} configs for all workloads")
+
+        # FIXME: same as above
         params = gen_bp_final_params(sr_bin)
-        run_bp_sweep(args, workloads_all, sweep_params, params)
+        if workloads_all != workloads_sweep:
+            print(f"Sweeping best {args.sweep} configs for all workloads")
+            run_bp_sweep(args, workloads_all, sweep_params, params)
+        if args.skip_per_workload:
+            return
+
         for wl in workloads_all:
             if args.track:
                 print(f"Sweeping best {args.sweep} configs for {wl['app']}")
             run_bp_sweep(args, [wl], sweep_params, params)
         return
+
+    raise ValueError("Unknown sweep type and impossible to reach")
 
 if __name__ == "__main__":
     if not os.path.exists(SIM):
