@@ -66,6 +66,7 @@ class cache {
     private:
         uint32_t sets;
         uint32_t ways;
+        cache_policy_t policy;
         uint32_t index_bits_num;
         uint32_t index_mask;
         uint32_t tag_bits_num;
@@ -86,8 +87,9 @@ class cache {
 
     public:
         cache() = delete;
-        cache(uint32_t sets, uint32_t ways,
-              std::string cache_name, main_memory* mem);
+        cache(
+            uint32_t sets, uint32_t ways, cache_policy_t policy,
+            std::string cache_name, main_memory* mem);
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
         scp_status_t scp_lcl(uint32_t addr);
@@ -109,19 +111,20 @@ class cache {
         void dump() const;
 
     private:
-        void access(uint32_t addr, uint32_t size,
-                    access_t atype, scp_mode_t scp);
+        void access(
+            uint32_t addr, uint32_t size, access_t atype, scp_mode_t scp);
         void update_lru(uint32_t index, uint32_t way);
-        scp_status_t update_scp(scp_mode_t mode, cache_line_t& line,
-                                uint32_t index);
+        scp_status_t update_scp(
+            scp_mode_t mode, cache_line_t& line,uint32_t index);
         scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
         scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
-        void validate_inputs(uint32_t sets, uint32_t ways);
+        void validate_inputs(
+            uint32_t sets, uint32_t ways, cache_policy_t policy);
         #if CACHE_MODE == CACHE_MODE_FUNC
-        void read_from_cache(uint32_t byte_addr, uint32_t size,
-                             cache_line_t& act_line);
-        void write_to_cache(uint32_t byte_addr, uint32_t size,
-                            cache_line_t& act_line);
+        void read_from_cache(
+            uint32_t byte_addr, uint32_t size, cache_line_t& act_line);
+        void write_to_cache(
+            uint32_t byte_addr, uint32_t size, cache_line_t& act_line);
         #endif
 };

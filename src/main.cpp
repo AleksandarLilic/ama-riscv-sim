@@ -33,8 +33,10 @@ std::string gen_log_path(
     std::string path_out = "out_" + last_directory + "_" + binary_name;
     if (!out_dir_tag.empty()) path_out += "_" + out_dir_tag;
     path_out = path_out + "/";
-    if (!std::filesystem::exists(path_out) &&
-        !std::filesystem::create_directory(path_out)) {
+    bool exists = std::filesystem::exists(path_out);
+    if (exists) std::filesystem::remove_all(path_out);
+    bool created = std::filesystem::create_directory(path_out);
+    if (!created) {
         std::cerr << "Failed to create directory: " << path_out << std::endl;
         throw std::runtime_error("Failed to create directory");
     }
@@ -74,6 +76,10 @@ const std::unordered_map<std::string, rf_names_t> rf_names_map = {
 };
 
 #ifdef ENABLE_HW_PROF
+const std::unordered_map<std::string, cache_policy_t> cache_policy_map = {
+    {"lru", cache_policy_t::lru}
+};
+
 // allowed options for static predictor methods
 const std::unordered_map<std::string, bp_sttc_t> bp_static_map = {
     {"at", bp_sttc_t::at},
@@ -122,8 +128,10 @@ struct defs_t {
 struct hw_defs_t {
     static constexpr char icache_sets[] = "1";
     static constexpr char icache_ways[] = "4";
+    static constexpr char icache_policy[] = "lru";
     static constexpr char dcache_sets[] = "1";
     static constexpr char dcache_ways[] = "8";
+    static constexpr char dcache_policy[] = "lru";
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
     static constexpr char bp_active[] = "combined";
@@ -191,10 +199,16 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(hw_defs_t::icache_sets))
         ("icache_ways", "Number of ways in I$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::icache_ways))
+        ("icache_policy", "I$ replacement policy. \nOptions: " +
+         gen_help_list(cache_policy_map),
+         cxxopts::value<std::string>()->default_value(hw_defs_t::icache_policy))
         ("dcache_sets", "Number of sets in D$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_sets))
         ("dcache_ways", "Number of ways in D$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_ways))
+        ("dcache_policy", "D$ replacement policy. \nOptions: " +
+         gen_help_list(cache_policy_map),
+         cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_policy))
         ("roi_start", "D$ Region of interest start address (hex)",
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_start))
         ("roi_size", "D$ Region of interest size",
@@ -311,8 +325,10 @@ int main(int argc, char* argv[]) {
         #ifdef ENABLE_HW_PROF
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
+        hw_cfg.icache_policy = RESOLVE_ARG("icache_policy", cache_policy_map);
         hw_cfg.dcache_sets = TO_SIZE(result["dcache_sets"]);
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
+        hw_cfg.dcache_policy = RESOLVE_ARG("dcache_policy", cache_policy_map);
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
         hw_cfg.bp_active = RESOLVE_ARG("bp_active", bp_names_map);

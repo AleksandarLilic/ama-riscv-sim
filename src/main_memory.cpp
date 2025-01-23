@@ -1,5 +1,10 @@
 #include "main_memory.h"
 
+#define ICACHE_CFG \
+    hw_cfg.icache_sets, hw_cfg.icache_ways, hw_cfg.icache_policy, "icache"
+#define DCACHE_CFG \
+    hw_cfg.dcache_sets, hw_cfg.dcache_ways, hw_cfg.dcache_policy, "dcache"
+
 main_memory::main_memory(
     size_t size,
     std::string test_bin,
@@ -7,8 +12,8 @@ main_memory::main_memory(
         dev(size)
         #ifdef ENABLE_HW_PROF
         ,
-        icache(hw_cfg.icache_sets, hw_cfg.icache_ways, "icache", this),
-        dcache(hw_cfg.dcache_sets, hw_cfg.dcache_ways, "dcache", this)
+        icache(ICACHE_CFG, this),
+        dcache(DCACHE_CFG, this)
         #endif
 {
     burn(test_bin);

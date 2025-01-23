@@ -2,10 +2,18 @@
 #include "main_memory.h"
 
 cache::cache(
-    uint32_t sets, uint32_t ways, std::string cache_name, main_memory* mem) :
-        sets(sets), ways(ways), cache_name(cache_name), mem(mem)
+    uint32_t sets,
+    uint32_t ways,
+    cache_policy_t policy,
+    std::string cache_name,
+    main_memory* mem) :
+        sets(sets),
+        ways(ways),
+        policy(policy),
+        cache_name(cache_name),
+        mem(mem)
     {
-    validate_inputs(sets, ways);
+    validate_inputs(sets, ways, policy);
 
     // first dim is number of sets
     cache_entries.resize(sets);
@@ -219,8 +227,16 @@ scp_status_t cache::release_scp(cache_line_t& line) {
     }
 }
 
-void cache::validate_inputs(uint32_t sets, uint32_t ways) {
+void cache::validate_inputs(
+    uint32_t sets, uint32_t ways, cache_policy_t policy) {
     bool error = false;
+
+    if (policy != cache_policy_t::lru) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": only LRU policy is supported" << std::endl;
+        error = true;
+    }
+
     if (sets == 0) {
         std::cerr << "ERROR: " << cache_name
                   << ": number of sets cannot be 0" << std::endl;
