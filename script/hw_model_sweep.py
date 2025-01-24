@@ -225,65 +225,67 @@ def run_cache_sweep(
     sr = {} # sweep results dict
     bp_act =  ["--bp_active", "none"] # so there is no impact on the caches
 
-    idx_c = 1
-    PROG_BAT = 4 # progress batches
-    if args.track and not running_single_best:
-        print(INDENT,
-              f"Cache: {ck}, configs: {len(cache_params)}, progress: ", end="")
-        idx_c = (len(cache_params) // PROG_BAT) + 1
+    if not args.load_stats:
+        idx_c = 1
+        PROG_BAT = 4 # progress batches
+        if args.track and not running_single_best:
+            print(INDENT,
+                f"Cache: {ck}, configs: {len(cache_params)}, progress: ",
+                end="")
+            idx_c = (len(cache_params) // PROG_BAT) + 1
 
-    mw = args.max_workers
-    with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
-        futures = {
-            executor.submit(
-                run_workloads,
-                workload_params(
-                    workloads=workloads,
-                    sweep=ck,
-                    args=cp + bp_act,
-                    msg= f"==> SWEEP: {ck} {cp} <==",
-                    save_sim=args.save_sim,
-                    ignore_thr=False,
-                    tag="".join(cp[1::2]), # set (1), way (3), policy (5)
-                    ret_list=cp
-                )
-            ): cp for cp in cache_params
-        }
+        mw = args.max_workers
+        with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
+            futures = {
+                executor.submit(
+                    run_workloads,
+                    workload_params(
+                        workloads=workloads,
+                        sweep=ck,
+                        args=cp + bp_act,
+                        msg= f"==> SWEEP: {ck} {cp} <==",
+                        save_sim=args.save_sim,
+                        ignore_thr=False,
+                        tag="".join(cp[1::2]), # set (1), way (3), policy (5)
+                        ret_list=cp
+                    )
+                ): cp for cp in cache_params
+            }
 
-        # get results as they come in
-        cnt = 0
-        for future in concurrent.futures.as_completed(futures):
-            size, hr, ct, cp, msg = future.result()
+            # get results as they come in
+            cnt = 0
+            for future in concurrent.futures.as_completed(futures):
+                size, hr, ct, cp, msg = future.result()
 
-            cnt += 1
-            if args.track and cnt % idx_c == 0 and not running_single_best:
-                print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
+                cnt += 1
+                if args.track and cnt % idx_c == 0 and not running_single_best:
+                    print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
 
-            if hr == None:
-                continue
-            with open(sweep_log, "a") as f:
-                f.write(msg)
-            cpolicy, cset, cway = cp[5], int(cp[1]), int(cp[3])
-            if cpolicy not in sr:
-                sr[cpolicy] = {}
-            if cset not in sr[cpolicy]:
-                sr[cpolicy][cset] = {}
-            sr[cpolicy][cset][cway] = { "hr": hr, "size": size }
-            if ct: # only for single workload sweeps
-                sr[cpolicy][cset][cway]["ct_core"] = {
-                    "reads": ct[0], "writes": ct[1]}
-                sr[cpolicy][cset][cway]["ct_mem"] = {
-                    "reads": ct[2], "writes": ct[3]}
+                if hr == None:
+                    continue
+                with open(sweep_log, "a") as f:
+                    f.write(msg)
+                cpolicy, cset, cway = cp[5], int(cp[1]), int(cp[3])
+                if cpolicy not in sr:
+                    sr[cpolicy] = {}
+                if cset not in sr[cpolicy]:
+                    sr[cpolicy][cset] = {}
+                sr[cpolicy][cset][cway] = { "hr": hr, "size": size }
+                if ct: # only for single workload sweeps
+                    sr[cpolicy][cset][cway]["ct_core"] = {
+                        "reads": ct[0], "writes": ct[1]}
+                    sr[cpolicy][cset][cway]["ct_mem"] = {
+                        "reads": ct[2], "writes": ct[3]}
 
-    if args.track and not running_single_best:
-        print(f"{PROG_BAT}/{PROG_BAT}. Done.")
+        if args.track and not running_single_best:
+            print(f"{PROG_BAT}/{PROG_BAT}. Done.")
 
-    # for each policy, sort by the keys: first sets then ways
-    for cpolicy, pe in sr.items():
-        for cset, se in pe.items():
-            sr[cpolicy][cset] = dict(
-                sorted(se.items(), key=lambda x: x[0]))
-        sr[cpolicy] = dict(sorted(sr[cpolicy].items(), key=lambda x: x[0]))
+        # for each policy, sort by the keys: first sets then ways
+        for cpolicy, pe in sr.items():
+            for cset, se in pe.items():
+                sr[cpolicy][cset] = dict(
+                    sorted(se.items(), key=lambda x: x[0]))
+            sr[cpolicy] = dict(sorted(sr[cpolicy].items(), key=lambda x: x[0]))
 
     sweep_results = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
