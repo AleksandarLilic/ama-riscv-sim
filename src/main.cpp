@@ -24,10 +24,10 @@
     resolve_arg(str, result[str].as<std::string>(), map)
 
 std::string gen_log_path(
-    const std::string& test_bin_path,
+    const std::string& test_elf_path,
     const std::string& out_dir_tag) {
 
-    std::filesystem::path p(test_bin_path);
+    std::filesystem::path p(test_elf_path);
     std::string last_directory = p.parent_path().filename().string();
     std::string binary_name = p.stem().string();
     std::string path_out = "out_" + last_directory + "_" + binary_name;
@@ -165,14 +165,15 @@ void show_help(const cxxopts::Options& options) {
 
 int main(int argc, char* argv[]) {
     cfg_t cfg;
-    std::string test_bin;
+    std::string test_elf;
     std::string out_dir_tag;
     cxxopts::Options options(argv[0], "ama-riscv-sim");
     options.set_width(116);
     hw_cfg_t hw_cfg;
 
     options.add_options()
-        ("p,path", "", cxxopts::value<std::string>())
+        ("p,path", "Path to the ELF file to load",
+         cxxopts::value<std::string>())
         ("log_pc_start", "Start PC (hex) for logging and profiling",
          cxxopts::value<std::string>()->default_value(defs_t::log_pc_start))
         ("log_pc_stop", "Stop PC (hex) for logging and profiling",
@@ -310,7 +311,7 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        test_bin = result["path"].as<std::string>();
+        test_elf = result["path"].as<std::string>();
         out_dir_tag = result["out_dir_tag"].as<std::string>();
         cfg.log_pc.start = TO_HEX(result["log_pc_start"]);
         cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
@@ -366,7 +367,7 @@ int main(int argc, char* argv[]) {
     }
 
     // print useful info about the run
-    std::cout << "Running: " << test_bin << std::hex << "\n";
+    std::cout << "Running: " << test_elf << std::hex << "\n";
     if (cfg.log_pc.start != 0) {
         std::cout << "Logging start pc: 0x" << cfg.log_pc.start << " ";
     }
@@ -380,8 +381,8 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     TRY_CATCH({
-        memory mem(test_bin, hw_cfg);
-        core rv32(&mem, gen_log_path(test_bin, out_dir_tag), cfg, hw_cfg);
+        memory mem(test_elf, hw_cfg);
+        core rv32(&mem, gen_log_path(test_elf, out_dir_tag), cfg, hw_cfg);
         rv32.exec();
     });
 

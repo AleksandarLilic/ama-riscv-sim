@@ -58,10 +58,10 @@ def build_test(test):
     make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
     run_make(make_cmd, cwd=test_dir)
     if make_all:
-        all_bin_files = glob.glob(f"{test_dir}/*.bin")
+        all_elf_files = glob.glob(f"{test_dir}/*.elf")
     else:
-        all_bin_files = [os.path.join(test_dir, f"{t}.bin") for t in test_list]
-    return all_bin_files
+        all_elf_files = [os.path.join(test_dir, f"{t}.elf") for t in test_list]
+    return all_elf_files
 
 args = parse_args()
 with open(args.testlist, 'r') as f:
@@ -78,7 +78,7 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
     print(f"Building RISC-V tests with {executor._max_workers} threads")
     for future in concurrent.futures.as_completed(futures):
         test_item = futures[future]
-        out_txt.extend(future.result()) # aggregate all bin files
+        out_txt.extend(future.result()) # aggregate all elf files
 
 isa_out_txt = []
 if args.isa_tests:
@@ -93,7 +93,7 @@ if args.isa_tests:
                              "MARCH=rv32im_zicsr_zifencei"]) # RV32M
         run_make(make_cmd + ["DIR=riscv-tests/isa/rv32uc/",
                              "MARCH=rv32ic_zicsr_zifencei"]) # RV32C
-        isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.bin")
+        isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.elf")
 
 if args.clean_only:
     print("Cleaning done. Exiting.")

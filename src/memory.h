@@ -33,7 +33,7 @@ class memory {
 
     public:
         memory() = delete;
-        memory(std::string test_bin, hw_cfg_t hw_cfg);
+        memory(std::string test_elf, hw_cfg_t hw_cfg);
         void trap_setup(trap* tu) { this->tu = tu; }
         #ifdef ENABLE_DASM
         void set_dasm(dasm_str* d) { dasm = d; }

@@ -18,7 +18,9 @@ SOURCES += $(wildcard profilers/*.cpp)
 SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC := -I. -I./profilers -I./hw_models -I./external/cxxopts/include
+INC := -I. -I./profilers -I./hw_models
+INC += -I./external/cxxopts/include
+INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 
 USER_DEFINES =
 DEFINES := -DENABLE_DASM

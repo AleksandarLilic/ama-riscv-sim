@@ -1,10 +1,10 @@
 #include "memory.h"
 
 memory::memory(
-    std::string test_bin,
+    std::string test_elf,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         // create devices
-        mm(MEM_SIZE, test_bin, hw_cfg),
+        mm(MEM_SIZE, test_elf, hw_cfg),
         #ifdef UART_ENABLE
         uart0(UART_SIZE),
         #endif

@@ -7,3 +7,6 @@
 [submodule "src/external/cxxopts"]
 	path = src/external/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "src/external/ELFIO"]
+	path = src/external/ELFIO
+	url = https://github.com/serge1/ELFIO.git

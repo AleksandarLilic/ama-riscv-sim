@@ -59,9 +59,9 @@ class sim_test : public ::testing::TestWithParam<std::string> {
         static std::string gen_log_name(const std::string& path) {
             std::filesystem::path p(path);
             std::string last_dir = p.parent_path().filename().string();
-            std::string binary_name = p.stem().string();
+            std::string elf_name = p.stem().string();
             std::replace(last_dir.begin(), last_dir.end(), '-', '_');
-            std::string formatted = last_dir + "_" + binary_name;
+            std::string formatted = last_dir + "_" + elf_name;
             return formatted;
         }
 };
@@ -101,10 +101,11 @@ TEST_F(sim_test, missing_arguments) {
     ASSERT_TRUE(check_error("", "Option 'path' has no value"));
 }
 
-TEST_F(sim_test, bin_file_not_found) {
-    ASSERT_TRUE(check_error("not_found", "BIN failed to open."));
+TEST_F(sim_test, elf_file_not_found) {
+    ASSERT_TRUE(check_error("not_found", "Failed to load ELF file."));
 }
 
+/* FIXME: need to generate oversized elf file
 TEST_F(sim_test, bin_file_oversized) {
     // generate dummy bin file larger than MEM_SIZE
     std::ofstream test_bin("oversized.bin", std::ios::binary);
@@ -115,6 +116,7 @@ TEST_F(sim_test, bin_file_oversized) {
         check_error("oversized.bin", "File size is greater than memory size.")
     );
 }
+*/
 
 /* FIXME: needs to be handled with traps now
 #define UI_MSG(x) \
