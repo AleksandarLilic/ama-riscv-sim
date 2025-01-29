@@ -1,0 +1,148 @@
+
+#include "profiler_perf.h"
+
+profiler_perf::profiler_perf(
+    std::string log_path,
+    std::map<uint32_t, symbol_map_entry_t> symbol_map)
+{
+    this->log_path = log_path;
+    this->symbol_map = symbol_map;
+    // set up symbol tracking
+    symbol_lut.resize(symbol_map.size() + 1); // 0th index is reserved
+    for (const auto &s : symbol_map) {
+        symbol_lut[s.second.idx] = {s.first, s.second.name};
+    }
+    // set up beginning of callstack
+    st.idx_callstack.push_back(symbol_map.at(BASE_ADDR).idx);
+    st.idx_callstack_prev = st.idx_callstack;
+    set_fallthrough_symbol(BASE_ADDR);
+    st.updated = false;
+    callstack_cnt = 0;
+}
+
+bool profiler_perf::finish_inst(uint32_t next_pc) {
+    // handle next instruction symbol change, if any
+    bool fallthrough = (next_pc == st.fallthrough_pc && !st.updated);
+    if (fallthrough) {
+        update_callstack(next_pc);
+        st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+    }
+    // handle counter
+    if (st.updated) callstack_cnt = 0;
+    else inc_callstack_cnt();
+    st.updated = false;
+    // ret
+    if (st.idx_callstack != st.idx_callstack_prev) {
+        st.idx_callstack_prev = st.idx_callstack;
+        return true;
+    }
+    return false;
+}
+
+void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
+    if (taken && (symbol_map.find(next_pc) != symbol_map.end())) {
+        update_callstack(next_pc);
+        st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+    }
+}
+
+void profiler_perf::update_jalr(uint32_t next_pc, bool ret_inst) {
+    if (ret_inst) {
+        update_callstack(next_pc);
+        st.idx_callstack.pop_back();
+        //callstack_empty_check("jalr", next_pc);
+        if (symbol_map.find(next_pc) != symbol_map.end()) {
+            // returns to the next symbol (mostly-assembly thing)
+            st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+        }
+    } else if (symbol_map.find(next_pc) != symbol_map.end()) {
+        update_callstack(next_pc);
+        st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
+    }
+}
+
+void profiler_perf::update_jal(uint32_t next_pc, bool tail_call) {
+    if (symbol_map.find(next_pc) != symbol_map.end()) {
+        update_callstack(next_pc);
+        if (tail_call) {
+            st.idx_callstack.pop_back();
+            //callstack_empty_check("jal", next_pc);
+        }
+        st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
+    }
+}
+
+void profiler_perf::inc_callstack_cnt() {
+    if (active) callstack_cnt++;
+}
+
+void profiler_perf::save_callstack_cnt() {
+    callstack_cnt_map[callstack_to_key()] += callstack_cnt;
+}
+
+void profiler_perf::callstack_empty_check(
+    const std::string& inst, uint32_t next_pc) {
+    if (st.idx_callstack.empty()) {
+        std::cerr << "ERROR: " << inst << ": callstack underflow at"
+                  << std::hex << next_pc << std::dec << std::endl;
+        throw std::runtime_error("callstack underflow");
+    }
+}
+
+void profiler_perf::update_callstack(uint32_t pc) {
+    // finish the current callstack
+    inc_callstack_cnt();
+    save_callstack_cnt();
+    // start new callstack
+    set_fallthrough_symbol(pc);
+    st.updated = true;
+}
+
+void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
+    //bool found = false;
+    for (auto it = symbol_map.begin(); it != symbol_map.end(); it++) {
+        if (it->first == pc) {
+            //found = true;
+            it++;
+            if (it == symbol_map.end()) break; // no next symbol
+            st.fallthrough_pc = it->first;
+        }
+    }
+    //if (!found) {
+    //    std::cerr << "ERROR: set_fallthrough_symbol: symbol at pc "
+    //              << std::hex << pc << " not found" << std::dec << std::endl;
+    //    throw std::runtime_error("set_fallthrough_symbol: symbol not found");
+    //}
+}
+
+std::string profiler_perf::get_callstack_str(std::vector<uint8_t> idx_stack) {
+    std::string stack_str = "";
+    for (const auto &idx : idx_stack) {
+        stack_str += symbol_lut.at(idx).name + ";";
+    }
+    return stack_str;
+}
+
+std::string profiler_perf::callstack_to_key() {
+    return std::string(
+        reinterpret_cast<const char*>(st.idx_callstack.data()),
+        st.idx_callstack.size()
+    );
+}
+
+void profiler_perf::log_to_file() {
+    // close last callstack
+    save_callstack_cnt();
+    // dump all counters from callstack_cnt_map to file
+    std::string out = log_path + "callstack_folded.txt";
+    std::ofstream out_file(out);
+    std::vector<uint8_t> callstack_ids;
+    for (const auto &c : callstack_cnt_map) {
+        callstack_ids.clear();
+        callstack_ids.reserve(c.first.size());
+        // demangle the key string
+        for (const auto &id : c.first) callstack_ids.push_back(TO_U8(id));
+        // write to file
+        out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
+    }
+}

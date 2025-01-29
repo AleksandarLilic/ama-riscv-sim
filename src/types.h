@@ -8,6 +8,7 @@
 #include <array>
 #include <vector>
 #include <map>
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <cmath>
@@ -221,6 +222,23 @@ struct logging_pc_t {
             if (pc == stop) return true;
             return false;
         }
+};
+
+struct symbol_map_entry_t {
+    uint8_t idx;
+    std::string name;
+};
+
+struct symbol_lut_entry_t {
+    uint32_t pc;
+    std::string name;
+};
+
+struct symbol_tracking_t {
+    std::vector<uint8_t> idx_callstack;
+    std::vector<uint8_t> idx_callstack_prev;
+    uint32_t fallthrough_pc;
+    bool updated;
 };
 
 struct cfg_t {

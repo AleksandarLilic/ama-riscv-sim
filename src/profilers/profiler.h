@@ -1,9 +1,8 @@
 #pragma once
 
-#include <algorithm>
-#include <cassert>
-
 #include "defines.h"
+
+#include <cassert>
 
 #define PROF_JSON_ENTRY(name, count) \
     "\"" << name << "\"" << ": {\"count\": " << count << "},"
@@ -175,7 +174,7 @@ struct perc_t {
         float_t scp_c = 0.0;
 };
 
-class profiler{
+class profiler {
     public:
         trace_entry te;
         bool active;

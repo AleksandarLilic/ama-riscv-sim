@@ -12,6 +12,7 @@ core::core(
         log_path(log_path), logging_pc(cfg.log_pc), logging(false)
     #ifdef ENABLE_PROF
     , prof(log_path)
+    , prof_perf(log_path, mem->get_symbol_map())
     #endif
     #ifdef ENABLE_HW_PROF
     , bp("bpred", hw_cfg)
@@ -44,16 +45,21 @@ void core::exec() {
 
     #ifdef ENABLE_PROF
     prof.active = false;
+    prof_perf.active = false;
     prof_fusion.active = false;
     #endif
 
-    running = true;
-    start_time = std::chrono::high_resolution_clock::now();
-    run_time = start_time;
     #ifdef UART_ENABLE
     std::cout << "=== UART START ===" << "\n";
     #endif
+
+    // start the core
+    start_time = std::chrono::high_resolution_clock::now();
+    run_time = start_time;
+    running = true;
     while (running) exec_inst();
+
+    // wrap up
     cntr_update(); // so that all instructions since last CSR access are counted
     finish(true);
     return;
@@ -64,10 +70,16 @@ void core::log_and_prof([[maybe_unused]] bool enable) {
     logging = enable;
     dasm.asm_ss.str(""); // clear the string stream on start/stop
     #endif
+
     #ifdef ENABLE_PROF
     prof.active = enable;
+    prof_perf.active = enable;
     prof_fusion.active = enable;
+    #ifdef ENABLE_DASM
+    if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
     #endif
+    #endif
+
     #ifdef ENABLE_HW_PROF
     logging = enable;
     bp.profiling(enable);
@@ -130,8 +142,9 @@ void core::exec_inst() {
             log_ofstream << dasm.asm_str << "\n";
             return;
         }
-        log_ofstream << "(" << std::setw(8) << std::setfill(' ')
-                     << logging_pc.inst_cnt << ") "
+        logging_pc.inst_cnt++;
+        log_ofstream << INDENT << std::setw(5) << std::setfill(' ')
+                     << logging_pc.inst_cnt << ": "
                      << FORMAT_INST(pc, inst, inst_w) << " "
                      << dasm.asm_str << "\n";
 
@@ -139,8 +152,6 @@ void core::exec_inst() {
             log_ofstream << dump_state(csr_updated) << "\n";
             csr_updated = false;
         }
-
-        logging_pc.inst_cnt++;
     }
 
     // FIXME: prevent writing in the first place if logging is not active
@@ -164,6 +175,12 @@ void core::exec_inst() {
         prof.te.inst_size = TO_U32(inst_w>>1);
         prof.new_inst(inst);
     }
+    [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
+    #ifdef ENABLE_DASM
+    if (log_symbol && logging) {
+        log_ofstream << prof_perf.get_callstack_str() << "\n";
+    }
+    #endif
     #endif
 
     // next inst
@@ -180,6 +197,7 @@ void core::finish(bool dump_regs) {
     #ifdef ENABLE_PROF
     prof_fusion.finish();
     prof.finish();
+    prof_perf.finish();
     #endif
     #ifdef ENABLE_HW_PROF
     bp.finish(log_path);
@@ -315,6 +333,7 @@ void core::store() {
 }
 
 void core::branch() {
+    [[maybe_unused]] bool taken; // unused if built without ENABLE_PROF
     next_pc = pc + 4; // updated in CASE_BRANCH if taken
     switch (ip.funct3()) {
         CASE_BRANCH(beq)
@@ -332,6 +351,10 @@ void core::branch() {
         tu.e_inst_addr_misaligned(next_pc, "branch unaligned access");
         return;
     }
+    #endif
+
+    #ifdef ENABLE_PROF
+    prof_perf.update_branch(next_pc, taken);
     #endif
 
     #ifdef ENABLE_DASM
@@ -373,6 +396,12 @@ void core::jalr() {
     DASM_OP(jalr)
     PROF_J(jalr)
     PROF_RD_RS1
+
+    #ifdef ENABLE_PROF
+    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
+    prof_perf.update_jalr(next_pc, ret_inst);
+    #endif
+
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
@@ -392,6 +421,12 @@ void core::jal() {
     DASM_OP(jal)
     PROF_J(jal)
     PROF_RD
+
+    #ifdef ENABLE_PROF
+    bool tail_call = (ip.rd() == 0);
+    prof_perf.update_jal(next_pc, tail_call);
+    #endif
+
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << std::hex << pc + TO_I32(ip.imm_j()) << std::dec;
     DASM_RD_UPDATE;
@@ -1209,6 +1244,9 @@ void core::c_j() {
     next_pc = pc + ip.imm_c_j();
     DASM_OP(c.j)
     PROF_J(c_j)
+    #ifdef ENABLE_PROF
+    prof_perf.update_jal(next_pc, true);
+    #endif
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
@@ -1220,6 +1258,9 @@ void core::c_jal() {
     write_rf(1, pc + 2);
     DASM_OP(c.jal)
     PROF_J(c_jal)
+    #ifdef ENABLE_PROF
+    prof_perf.update_jal(next_pc, false);
+    #endif
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
@@ -1233,6 +1274,10 @@ void core::c_jr() {
     next_pc = rf[ip.rd()];
     DASM_OP(c.jr)
     PROF_J(c_jr)
+    #ifdef ENABLE_PROF
+    bool ret_inst = (inst == INST_C_RET);
+    prof_perf.update_jalr(next_pc, ret_inst);
+    #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD;
     #endif
@@ -1244,6 +1289,9 @@ void core::c_jalr() {
     write_rf(1, pc + 2);
     DASM_OP(c.jalr)
     PROF_J(c_jalr)
+    #ifdef ENABLE_PROF
+    prof_perf.update_jalr(next_pc, false);
+    #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD;
     DASM_RD_UPDATE_P(1);

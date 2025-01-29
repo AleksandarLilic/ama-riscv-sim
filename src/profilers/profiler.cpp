@@ -184,7 +184,7 @@ void profiler::log_to_file() {
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
         if (i.name != "") {
-            ofs << PROF_JSON_ENTRY(i.name, i.count) << std::endl;
+            ofs << PROF_JSON_ENTRY(i.name, i.count) << "\n";
             cnt.inst += i.count;
         }
     }
@@ -192,14 +192,13 @@ void profiler::log_to_file() {
     for (const auto &e : prof_j_arr) {
         ofs << PROF_JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
                                  e.count_not_taken, e.count_not_taken_fwd);
-        ofs << std::endl;
+        ofs << "\n";
         cnt.inst += e.count_taken + e.count_not_taken;
     }
 
     uint32_t min_sp = BASE_ADDR + MEM_SIZE;
     for (const auto& t : trace) {
-        if (t.sp != 0 && t.sp < min_sp)
-            min_sp = t.sp;
+        if (t.sp != 0 && t.sp < min_sp) min_sp = t.sp;
     }
     min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
@@ -271,44 +270,44 @@ void profiler::log_to_file() {
               << "Inst: " << cnt.inst
               << " - 32/16-bit: " << cnt.inst - comp_cnt << "/" << comp_cnt
               << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "Control:"
               << " B: " << cnt.branch << "(" << perc.branch << "%),"
               << " J: " << cnt.jump << "(" << perc.jump << "%),"
               << " NOP: " << cnt.nop << "(" << perc.nop << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "Memory:"
               << " MEM: " << cnt.mem << "(" << perc.mem << "%)"
               << " - L/S: " << cnt.load << "/" << cnt.store
               << "(" << perc.load << "%/" << perc.store << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "Compute: "
               << " A&L: " << cnt.al << "(" << perc.al << "%),"
               << " MUL: " << cnt.mul << "(" << perc.mul << "%),"
               << " DIV: " << cnt.div << "(" << perc.div << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "Bitmanip:"
               << " Zbb: " << cnt.zbb << "(" << perc.zbb << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "SIMD:"
               << " A&L: " << cnt.al_c << "(" << perc.al_c << "%),"
               << " MUL: " << cnt.mul_c << "(" << perc.mul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
               << " UNPK: " << cnt.unpk_c << "(" << perc.unpk_c << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT << "Hints:"
               << " SCP: " << cnt.scp_c << "(" << perc.scp_c << "%)"
-              << std::endl;
+              << "\n";
 
     std::cout << INDENT
               << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
-              << std::endl;
+              << "\n";
 
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();
@@ -323,7 +322,7 @@ void profiler::log_to_file() {
               << sa_cnt << "(" << sa_perc << "%) - L/S: "
               << sa_cnt_load << "/" << sa_cnt_store
               << "(" << sa_perc_load << "%/" << sa_perc_store << "%)"
-              << std::endl;
+              << "\n";
 
     // only expected to fail if core has instruction which is not supported
     // by the profiler - should be addressed when adding new instructions

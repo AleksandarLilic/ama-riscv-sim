@@ -10,3 +10,6 @@
 [submodule "src/external/ELFIO"]
 	path = src/external/ELFIO
 	url = https://github.com/serge1/ELFIO.git
+[submodule "script/FlameGraph"]
+	path = script/FlameGraph
+	url = git@github.com:brendangregg/FlameGraph.git

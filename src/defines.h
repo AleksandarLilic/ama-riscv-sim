@@ -102,14 +102,18 @@
 #define M_IMM_2 TO_U32((0x1)<<2)
 
 // Instructions
-#define INST_ECALL 0x73
-#define INST_EBREAK 0x100073
+#define INST_ECALL 0x00000073
+#define INST_EBREAK 0x00100073
 #define INST_MRET 0x30200073
 #define INST_SRET 0x10200073
 #define INST_WFI 0x10500073
-#define INST_FENCE_I 0x100F
-#define INST_NOP 0x13
-#define INST_C_NOP 0x1
+#define INST_FENCE_I 0x0000100f
+#define INST_NOP 0x00000013
+#define INST_C_NOP 0x0001
+#define INST_RET 0x00008067 // jalr x0, 0(x1)
+#define INST_C_RET 0x8082 // c.jr x1
+#define INST_RET_X5 0x00028067 // jalr x0, 0(x5)
+//#define INST_RET_X15 0x00078067 // jalr x0, 0(x15)
 #define INST_HINT_LOG_START 0x01002013 // slti x0, x0, 0x10
 #define INST_HINT_LOG_END 0x01102013 // slti x0, x0, 0x11
 
@@ -226,6 +230,7 @@
     case TO_U8(branch_op_t::op_##op): \
         if(branch_##op()) { \
             next_pc = pc + ip.imm_b(); \
+            taken = true; \
             PROF_B_T(op) \
         } else { \
             PROF_B_NT(op, _b) \

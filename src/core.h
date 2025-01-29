@@ -6,6 +6,7 @@
 #include "trap.h"
 #ifdef ENABLE_PROF
 #include "profiler.h"
+#include "profiler_perf.h"
 #include "profiler_fusion.h"
 #endif
 #ifdef ENABLE_HW_PROF
@@ -400,6 +401,7 @@ class core {
 
         #ifdef ENABLE_PROF
         profiler prof;
+        profiler_perf prof_perf;
         profiler_fusion prof_fusion;
         #endif
         #ifdef ENABLE_HW_PROF

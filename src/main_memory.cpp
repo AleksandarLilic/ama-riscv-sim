@@ -50,6 +50,7 @@ void main_memory::burn_elf(std::string test_elf) {
         throw std::runtime_error("Failed to load ELF file.");
     }
 
+    // load segment
     ELFIO::segment* load_seg = nullptr;
     for (const auto& seg : reader.segments) {
         if (seg->get_type() == ELFIO::PT_LOAD) {
@@ -87,6 +88,52 @@ void main_memory::burn_elf(std::string test_elf) {
 
     const char* data = load_seg->get_data();
     std::memcpy(mem.data(), data, size);
+
+    #ifdef ENABLE_PROF
+    // generate symbol map
+    for (size_t i = 0; i < reader.sections.size(); i++) {
+        ELFIO::section* sec = reader.sections[i];
+        if (sec->get_type() == ELFIO::SHT_SYMTAB) {
+            ELFIO::symbol_section_accessor symbols(reader, sec);
+            for (size_t j = 0; j < symbols.get_symbols_num(); j++) {
+                std::string name;
+                ELFIO::Elf64_Addr value = 0;
+                ELFIO::Elf_Xword size  = 0;
+                unsigned char bind = 0;
+                unsigned char type = 0;
+                ELFIO::Elf_Half section_index = 0;
+                unsigned char other = 0;
+                symbols.get_symbol(
+                    j, name, value, size, bind, type, section_index, other);
+
+                if (name == "") continue;
+                if (value < BASE_ADDR) continue;
+                if (name[0] == '$') continue;
+                if (section_index == 7) continue;
+                // overwrites the symbol if it already exists
+                symbol_map[TO_U32(value)] = {0, name};
+            }
+            break;
+        }
+    }
+
+    // TODO: consider increasing the limit
+    if (symbol_map.size() > 255) {
+        std::cerr << "ERROR: Number of symbols is greater than 255."
+                  << " Number of symbols: " << symbol_map.size()
+                  << std::endl;
+        throw std::runtime_error("Number of symbols is greater than 255.");
+    }
+
+    // re-index the symbols
+    uint8_t idx = 1; // 0th index is reserved
+    for (const auto& sym : symbol_map) symbol_map[sym.first].idx = idx++;
+
+    //for (const auto& sym : symbol_map) {
+    //    std::cout << TO_U32(sym.second.idx) << " " << sym.second.name
+    //              << " 0x" << std::hex << sym.first << std::dec << "\n";
+    //}
+    #endif
 }
 
 uint32_t main_memory::rd_inst(uint32_t addr) {

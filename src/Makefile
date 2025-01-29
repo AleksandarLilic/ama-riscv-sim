@@ -4,7 +4,9 @@ CXXFLAGS += -Wcast-qual -Wold-style-cast
 CXXFLAGS += -Wunreachable-code -Wnull-dereference
 CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
+CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
 CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
+#CXXFLAGS += -g -fno-omit-frame-pointer # for perf profiling, but drop -s above
 #CXXFLAGS += -O0 -g # -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 LDFLAGS :=

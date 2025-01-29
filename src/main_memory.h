@@ -11,6 +11,7 @@ class main_memory : public dev {
     private:
         void burn_bin(std::string test_bin);
         void burn_elf(std::string test_elf);
+        std::map<uint32_t, symbol_map_entry_t> symbol_map;
         #ifdef ENABLE_HW_PROF
         cache icache;
         cache dcache;
@@ -19,6 +20,9 @@ class main_memory : public dev {
     public:
         main_memory() = delete;
         main_memory(size_t size, std::string test_elf, hw_cfg_t hw_cfg);
+        std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
+            return symbol_map;
+        }
         uint32_t rd_inst(uint32_t addr);
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
