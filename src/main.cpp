@@ -136,7 +136,7 @@ struct hw_defs_t {
     static constexpr char roi_size[] = "0";
     static constexpr char bp_active[] = "combined";
     static constexpr char bp_combined_p1[] = "static";
-    static constexpr char bp_combined_p2[] = "gshare";
+    static constexpr char bp_combined_p2[] = "gselect";
     static constexpr char bp_run_all[] = "false";
     static constexpr char bp_dump_csv[] = "false";
     // supported predictors configurations
@@ -148,13 +148,13 @@ struct hw_defs_t {
     static constexpr char bp_local_cnt_bits[] = "3";
     static constexpr char bp_global_gr_bits[] = "7";
     static constexpr char bp_global_cnt_bits[] = "3";
-    static constexpr char bp_gselect_pc_bits[] = "1";
+    static constexpr char bp_gselect_pc_bits[] = "2";
     static constexpr char bp_gselect_gr_bits[] = "6";
-    static constexpr char bp_gselect_cnt_bits[] = "3";
+    static constexpr char bp_gselect_cnt_bits[] = "1";
     static constexpr char bp_gshare_pc_bits[] = "8";
     static constexpr char bp_gshare_gr_bits[] = "8";
     static constexpr char bp_gshare_cnt_bits[] = "1";
-    static constexpr char bp_combined_pc_bits[] = "5";
+    static constexpr char bp_combined_pc_bits[] = "6";
     static constexpr char bp_combined_cnt_bits[] = "3";
 };
 #endif
