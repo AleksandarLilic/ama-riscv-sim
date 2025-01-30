@@ -29,7 +29,7 @@ class memory {
 
     private:
         void mem_dump(uint32_t start, uint32_t end);
-        uint32_t set_addr(uint32_t address, access_t access, uint32_t size);
+        uint32_t set_addr(uint32_t address, mem_op_t access, uint32_t size);
 
     public:
         memory() = delete;

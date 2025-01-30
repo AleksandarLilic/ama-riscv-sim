@@ -3,7 +3,7 @@
 #include "defines.h"
 
 #define CACHE_STATS_JSON_ENTRY(stat_struct) \
-    "\"accesses\": " << stat_struct->accesses \
+    "\"references\": " << stat_struct->references \
     << ", \"hits\": " << stat_struct->hits \
     << ", \"misses\": " << stat_struct->misses \
     << ", \"evicts\": " << stat_struct->evicts \
@@ -81,7 +81,7 @@ struct cache_traffic_t {
 
 struct cache_stats_t {
     private:
-        uint32_t accesses;
+        uint32_t references;
         uint32_t hits;
         uint32_t misses;
         uint32_t evicts;
@@ -92,14 +92,14 @@ struct cache_stats_t {
 
     public:
         cache_stats_t() :
-            accesses(0), hits(0), misses(0), evicts(0), writebacks(0),
+            references(0), hits(0), misses(0), evicts(0), writebacks(0),
             ct_core(), ct_mem() {}
 
         void profiling(bool enable) { prof_active = enable; }
-        void access(access_t atype, uint32_t size) {
+        void reference(mem_op_t atype, uint32_t size) {
             if (!prof_active) return;
-            accesses++;
-            if (atype == access_t::read) ct_core.reads += size;
+            references++;
+            if (atype == mem_op_t::read) ct_core.reads += size;
             else ct_core.writes += size;
         }
         void hit() {
@@ -126,15 +126,15 @@ struct cache_stats_t {
 
     public:
         void show() const {
-            float_t hit_rate = 0.0;
-            if (accesses > 0) hit_rate = TO_F32(hits) / TO_F32(accesses) * 100;
-            std::cout << "A: " << accesses
+            float_t hr = 0.0; // hit rate
+            if (references > 0) hr = TO_F32(hits) / TO_F32(references) * 100;
+            std::cout << "R: " << references
                       << ", H: " << hits
                       << ", M: " << misses
                       << ", E: " << evicts
                       << ", WB: " << writebacks
                       << ", HR: " << std::fixed << std::setprecision(2)
-                      << hit_rate << "%"
+                      << hr << "%"
                       << "; CT (R/W): "
                       << "core " << ct_core.to_string()
                       << ", mem " << ct_mem.to_string();

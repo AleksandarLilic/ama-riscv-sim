@@ -28,9 +28,9 @@ class trap {
         void e_env(const std::string &msg, uint32_t code);
         void e_unsupported_csr(const std::string &msg);
         void e_dmem_access_fault(
-            uint32_t address, const std::string &msg, access_t access);
+            uint32_t address, const std::string &msg, mem_op_t access);
         void e_dmem_addr_misaligned(
-            uint32_t address, const std::string &msg, access_t access);
+            uint32_t address, const std::string &msg, mem_op_t access);
         void e_inst_access_fault(
             uint32_t address, const std::string &msg);
         void e_inst_addr_misaligned(

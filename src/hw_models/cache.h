@@ -24,18 +24,18 @@ struct cache_line_t {
         std::array<uint8_t, CACHE_LINE_SIZE> data;
         #endif
     //private:
-        uint32_t access_cnt;
-        //std::array<uint32_t, CACHE_LINE_SIZE> byte_access_cnt;
+        uint32_t reference_cnt;
+        //std::array<uint32_t, CACHE_LINE_SIZE> byte_reference_cnt;
     private:
         bool prof_active = false;
     public:
-        cache_line_t() : metadata(), tag(0), access_cnt(0) {}
+        cache_line_t() : metadata(), tag(0), reference_cnt(0) {}
         void profiling(bool enable) { prof_active = enable; }
-        void access() {
+        void reference() {
             if (!prof_active) return;
-            access_cnt++;
+            reference_cnt++;
             //for (uint32_t i = 0; i < size; i++) {
-            //    byte_access_cnt[(addr + i) & CACHE_BYTE_ADDR_MASK]++;
+            //    byte_reference_cnt[(addr + i) & CACHE_BYTE_ADDR_MASK]++;
             //}
         }
 };
@@ -111,8 +111,8 @@ class cache {
         void dump() const;
 
     private:
-        void access(
-            uint32_t addr, uint32_t size, access_t atype, scp_mode_t scp);
+        void reference(
+            uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
         void update_lru(uint32_t index, uint32_t way);
         scp_status_t update_scp(
             scp_mode_t mode, cache_line_t& line,uint32_t index);

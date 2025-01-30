@@ -19,10 +19,10 @@ memory::memory(
     dev_ptr = nullptr;
  }
 
-uint32_t memory::set_addr(uint32_t address, access_t access, uint32_t size) {
+uint32_t memory::set_addr(uint32_t address, mem_op_t mem_op, uint32_t size) {
     bool dev_set = false;
     if (address < BASE_ADDR) {
-        tu->e_dmem_access_fault(address, "below base address", access);
+        tu->e_dmem_access_fault(address, "below base address", mem_op);
         return 0;
     }
 
@@ -37,13 +37,13 @@ uint32_t memory::set_addr(uint32_t address, access_t access, uint32_t size) {
 
     if (!dev_set) {
         tu->e_dmem_access_fault(
-            address, "undefined region or above max address", access);
+            address, "undefined region or above max address", mem_op);
         return 0;
     }
 
     bool address_unaligned = (address % size != 0);
     if (address_unaligned) {
-        tu->e_dmem_addr_misaligned(address, "unaligned access", access);
+        tu->e_dmem_addr_misaligned(address, "unaligned access", mem_op);
         return 0;
     }
 
@@ -85,13 +85,13 @@ uint32_t memory::rd_inst(uint32_t address) {
 }
 
 uint32_t memory::rd(uint32_t address, uint32_t size) {
-    address = set_addr(address, access_t::read, size);
+    address = set_addr(address, mem_op_t::read, size);
     if (tu->is_trapped()) return 0;
     return dev_ptr->rd(address, size);
 }
 
 void memory::wr(uint32_t address, uint32_t data, uint32_t size) {
-    address = set_addr(address, access_t::write, size);
+    address = set_addr(address, mem_op_t::write, size);
     if (tu->is_trapped()) return;
     dev_ptr->wr(address, data, size);
 }
@@ -108,7 +108,7 @@ void memory::mem_dump(uint32_t start, uint32_t size) {
     for (uint32_t i = aligned_start; i < aligned_start + size + offset; i++) {
         if (i % bytes_per_row == 0) // insert address at the start of each row
             std::cout << std::endl << MEM_ADDR_FORMAT(i) << ": ";
-        addr = set_addr(i, access_t::read, 1u);
+        addr = set_addr(i, mem_op_t::read, 1u);
         std::cout << std::right << std::setw(2) << std::setfill('0')
                   << dev_ptr->rd(addr, 1u) << " ";
         if (i % word_boundary == 3)

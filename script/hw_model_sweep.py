@@ -168,10 +168,10 @@ def run_workloads(wp: workload_params):
             if "thr" in workload:
                 app_thr_hr = workload["thr"][f"thr_{wp.sweep}_hr"]
             hits = hw_stats[wp.sweep]["hits"]
-            accesses = hw_stats[wp.sweep]["accesses"]
-            if accesses == 0:
-                raise RuntimeError(f"No cache accesses logged for {app}")
-            hr = round(hits/accesses*100, 2)
+            references = hw_stats[wp.sweep]["references"]
+            if references == 0:
+                raise RuntimeError(f"No cache references logged for {app}")
+            hr = round(hits/references*100, 2)
             if hr < app_thr_hr and not wp.ignore_thr:
                 agg_hr = []
                 break

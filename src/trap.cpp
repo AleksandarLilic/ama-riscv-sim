@@ -56,12 +56,12 @@ void trap::e_unsupported_csr(const std::string &msg) {
 }
 
 void trap::e_dmem_access_fault(
-    uint32_t address, const std::string &msg, access_t access) {
+    uint32_t address, const std::string &msg, mem_op_t mem_op) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Memory access fault at address <" << FMT_ADDR;
     #endif
     SIM_TRAP << "Memory access fault at address <" << FMT_ADDR << "\n";
-    if (access == access_t::read) {
+    if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ACCESS_FAULT, address);
     } else {
         trap_inst(MCAUSE_STORE_ACCESS_FAULT, address);
@@ -69,12 +69,12 @@ void trap::e_dmem_access_fault(
 }
 
 void trap::e_dmem_addr_misaligned(
-    uint32_t address, const std::string &msg, access_t access) {
+    uint32_t address, const std::string &msg, mem_op_t mem_op) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
     #endif
     SIM_TRAP << "Memory misaligned access at address <" << FMT_ADDR << "\n";
-    if (access == access_t::read) {
+    if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ADDR_MISALIGNED, address);
     } else {
         trap_inst(MCAUSE_STORE_ADDR_MISALIGNED, address);

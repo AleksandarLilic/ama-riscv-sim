@@ -151,7 +151,7 @@ enum class rf_names_t { mode_x, mode_abi };
 
 // caches
 enum class cache_policy_t { lru, _count };
-enum class access_t { read, write };
+enum class mem_op_t { read, write };
 enum class scp_mode_t { m_none, m_lcl, m_rel };
 // success always 0, fail 1 for now, use values >0 for error codes if needed
 enum class scp_status_t { success, fail };
@@ -163,6 +163,21 @@ enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
                  ideal, none, combined, _count };
 enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
+
+// perf events
+enum class perf_event_t {
+    inst_all,
+    inst_branch,
+    inst_mem,
+    inst_simd,
+    #ifdef ENABLE_HW_PROF
+    icache_miss,
+    dcache_miss,
+    bp_mispred,
+    #endif
+    _count
+};
+
 // dasm
 struct dasm_str {
     std::ostringstream asm_ss;

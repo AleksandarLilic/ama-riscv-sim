@@ -82,20 +82,20 @@ class perf:
         hw_ic = self.hw_stats[self.ic_name]
         hw_dc = self.hw_stats[self.dc_name]
         self.ic_stats = {
-            "accesses": hw_ic["accesses"],
+            "references": hw_ic["references"],
             "hits": hw_ic["hits"],
             "misses": hw_ic["misses"],
-            "hit_rate": (hw_ic["hits"] / hw_ic["accesses"]) * 100,
+            "hit_rate": (hw_ic["hits"] / hw_ic["references"]) * 100,
             "sets": hw_ic["size"]["sets"],
             "ways": hw_ic["size"]["ways"],
             "data": hw_ic["size"]["data"]
         }
         self.dc_stats = {
-            "accesses": hw_dc["accesses"],
+            "references": hw_dc["references"],
             "hits": hw_dc["hits"],
             "misses": hw_dc["misses"],
             "writebacks": hw_dc["writebacks"],
-            "hit_rate": (hw_dc["hits"] / hw_dc["accesses"]) * 100,
+            "hit_rate": (hw_dc["hits"] / hw_dc["references"]) * 100,
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
             "data": hw_dc["size"]["data"]
@@ -198,7 +198,7 @@ class perf:
         out = f"{name} " + \
               f"({stats['sets']} sets, {stats['ways']} ways, " + \
               f"{stats['data']}B data): " + \
-              f"Accesses: {stats['accesses']}, " + \
+              f"References: {stats['references']}, " + \
               f"Hits: {stats['hits']}, " + \
               f"Misses: {stats['misses']}, "
         if "writebacks" in stats and stats['writebacks'] > 0:

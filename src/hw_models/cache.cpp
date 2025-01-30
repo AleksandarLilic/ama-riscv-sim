@@ -45,23 +45,23 @@ cache::cache(
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
-    access(addr, size, access_t::read, scp_mode_t::m_none);
+    reference(addr, size, mem_op_t::read, scp_mode_t::m_none);
     return rd_buf;
 }
 
 scp_status_t cache::scp_lcl(uint32_t addr) {
-    access(addr, 0u, access_t::read, scp_mode_t::m_lcl);
+    reference(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
     return scp_status;
 }
 
 scp_status_t cache::scp_rel(uint32_t addr) {
-    access(addr, 0u, access_t::read, scp_mode_t::m_rel);
+    reference(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
     return scp_status;
 }
 
 void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
     wr_buf = data;
-    access(addr, size, access_t::write, scp_mode_t::m_none);
+    reference(addr, size, mem_op_t::write, scp_mode_t::m_none);
 }
 
 void cache::speculative_exec(speculative_t smode) {
@@ -70,12 +70,12 @@ void cache::speculative_exec(speculative_t smode) {
 }
 
 // uses the real address so that the tags are appropriately set
-void cache::access(uint32_t addr, uint32_t size,
-                   access_t atype, scp_mode_t scp_mode) {
-    // don't count access for scp release, no data is accessed
+void cache::reference(uint32_t addr, uint32_t size,
+                      mem_op_t atype, scp_mode_t scp_mode) {
+    // don't count reference for scp release, no data is referenced
     if (scp_mode != scp_mode_t::m_rel) {
-        stats.access(atype, size);
-        if (roi.has(addr)) roi.stats.access(atype, size);
+        stats.reference(atype, size);
+        if (roi.has(addr)) roi.stats.reference(atype, size);
     }
     #if CACHE_MODE == CACHE_MODE_FUNC
     uint32_t byte_addr = addr & CACHE_BYTE_ADDR_MASK;
@@ -92,14 +92,14 @@ void cache::access(uint32_t addr, uint32_t size,
             // don't update lru on release
             if (scp_mode == scp_mode_t::m_rel) return;
             update_lru(index, way);
-            line.access();
+            line.reference();
             stats.hit();
             if (roi.has(addr)) roi.stats.hit();
             #if CACHE_MODE == CACHE_MODE_FUNC
-            if (atype == access_t::write) write_to_cache(byte_addr, size, line);
+            if (atype == mem_op_t::write) write_to_cache(byte_addr, size, line);
             else read_from_cache(byte_addr, size, line);
             #else
-            if (atype == access_t::write) line.metadata.dirty = true;
+            if (atype == mem_op_t::write) line.metadata.dirty = true;
             #endif
             return;
 
@@ -135,17 +135,17 @@ void cache::access(uint32_t addr, uint32_t size,
     }
 
     // bring in the new line requested by the core
-    act_line.access();
+    act_line.reference();
     act_line.tag = tag; // act_line now caching new data
     act_line.metadata.valid = true;
     update_lru(index, target.way_idx); // now the most recently used
     scp_status = update_scp(scp_mode, act_line, index);
     #if CACHE_MODE == CACHE_MODE_FUNC
     act_line.data = mem->rd_line(addr - BASE_ADDR);
-    if (atype == access_t::write) write_to_cache(byte_addr, size, act_line);
+    if (atype == mem_op_t::write) write_to_cache(byte_addr, size, act_line);
     else read_from_cache(byte_addr, size, act_line);
     #else
-    if (atype == access_t::write) act_line.metadata.dirty = true;
+    if (atype == mem_op_t::write) act_line.metadata.dirty = true;
     #endif
 
     #ifdef SCP_BACKDOOR
@@ -163,7 +163,7 @@ void cache::access(uint32_t addr, uint32_t size,
         }
     }
     // release all if the roi is done
-    if (roi.stats.accesses >= 4096) {
+    if (roi.stats.references >= 4096) {
         for (uint32_t set = 0; set < sets; set++) {
             for (uint32_t way = 0; way < ways; way++) {
                 if (cache_entries[set][way].metadata.scp) {
@@ -304,7 +304,7 @@ void cache::show_stats() {
     int32_t n = 0;
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
-            uint32_t cnt = cache_entries[set][way].access_cnt;
+            uint32_t cnt = cache_entries[set][way].reference_cnt;
             n = std::max(n, TO_I32(std::to_string(cnt).size()));
         }
     }
@@ -313,7 +313,7 @@ void cache::show_stats() {
         std::cout << INDENT << "s" << set << ": ";
         for (uint32_t way = 0; way < ways; way++) {
             std::cout << " w" << way << " [" << std::setw(n)
-                      << cache_entries[set][way].access_cnt << "] ";
+                      << cache_entries[set][way].reference_cnt << "] ";
         }
         std::cout << std::endl;
     }
@@ -347,7 +347,7 @@ void cache::dump() const {
                       << " scp: " << line.metadata.scp
                       << " valid: " << line.metadata.valid
                       << " dirty: " << line.metadata.dirty
-                      << " access_cnt: " << line.access_cnt
+                      << " reference_cnt: " << line.reference_cnt
                       << std::endl;
             #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line
