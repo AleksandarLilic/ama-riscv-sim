@@ -12,7 +12,7 @@ core::core(
         log_path(log_path), logging_pc(cfg.log_pc), logging(false)
     #ifdef ENABLE_PROF
     , prof(log_path)
-    , prof_perf(log_path, mem->get_symbol_map())
+    , prof_perf(log_path, mem->get_symbol_map(), cfg.perf_event)
     #endif
     #ifdef ENABLE_HW_PROF
     , bp("bpred", hw_cfg)
@@ -35,6 +35,9 @@ core::core(
         csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
+    #if defined(ENABLE_PROF) && defined(ENABLE_HW_PROF)
+    mem->set_perf_profiler(&prof_perf);
+    #endif
 }
 
 void core::exec() {
@@ -196,8 +199,8 @@ void core::finish(bool dump_regs) {
     if (dump_regs) dump();
     #ifdef ENABLE_PROF
     prof_fusion.finish();
-    prof.finish();
     prof_perf.finish();
+    prof.finish();
     #endif
     #ifdef ENABLE_HW_PROF
     bp.finish(log_path);
@@ -304,6 +307,7 @@ void core::load() {
     }
     #ifdef ENABLE_PROF
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -323,6 +327,7 @@ void core::store() {
     }
     #ifdef ENABLE_PROF
     prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     next_pc = pc + 4;
     #ifdef ENABLE_DASM
@@ -355,6 +360,7 @@ void core::branch() {
 
     #ifdef ENABLE_PROF
     prof_perf.update_branch(next_pc, taken);
+    prof_perf.set_perf_event_flag(perf_event_t::branches);
     #endif
 
     #ifdef ENABLE_DASM
@@ -375,6 +381,9 @@ void core::branch() {
     if (!correct) {
         //mem->speculative_exec(speculative_t::exit_flush);
         inst_resolved = mem->rd_inst(next_pc);
+        #ifdef ENABLE_PROF
+        prof_perf.set_perf_event_flag(perf_event_t::bp_mispredict);
+        #endif
     } else {
         //mem->speculative_exec(speculative_t::exit_commit);
         inst_resolved = inst_speculative;
@@ -526,6 +535,9 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(dot4)
             default : tu.e_unsupported_inst("custom extension - arith");
         }
+        #ifdef ENABLE_PROF
+        prof_perf.set_perf_event_flag(perf_event_t::simd);
+        #endif
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
         DASM_RD_UPDATE;
@@ -548,6 +560,9 @@ void core::custom_ext() {
             CASE_MEM_CUSTOM_OP(unpk2u)
             default: tu.e_unsupported_inst("custom extension - memory");
         }
+        #ifdef ENABLE_PROF
+        prof_perf.set_perf_event_flag(perf_event_t::simd);
+        #endif
         #ifdef ENABLE_DASM
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
@@ -1147,6 +1162,7 @@ void core::c_lw() {
     PROF_G(c_lw)
     #ifdef ENABLE_PROF
     prof.log_stack_access_load((rs1 + ip.imm_c_mem()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
@@ -1166,6 +1182,7 @@ void core::c_lwsp() {
     PROF_G(c_lwsp)
     #ifdef ENABLE_PROF
     prof.log_stack_access_load((rf[2] + ip.imm_c_lwsp()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef ENABLE_DASM
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
@@ -1185,6 +1202,7 @@ void core::c_sw() {
     #ifdef ENABLE_PROF
     prof.log_stack_access_store(
         (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
@@ -1201,6 +1219,7 @@ void core::c_swsp() {
     PROF_G(c_swsp)
     #ifdef ENABLE_PROF
     prof.log_stack_access_store((rf[2] + ip.imm_c_swsp()) > TO_U32(rf[2]));
+    prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef ENABLE_DASM
     dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","

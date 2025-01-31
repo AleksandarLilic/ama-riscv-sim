@@ -61,5 +61,10 @@ class memory {
         void speculative_exec(speculative_t smode) {
             mm.speculative_exec(smode);
         }
+        #ifdef ENABLE_PROF
+        void set_perf_profiler(profiler_perf* prof_perf) {
+            mm.set_perf_profiler(prof_perf);
+        }
+        #endif
         #endif
 };

@@ -43,5 +43,17 @@ class main_memory : public dev {
            dcache.log_stats(log_file);
         }
         void finish() { icache.show_stats(); dcache.show_stats(); }
+        #ifdef ENABLE_PROF
+        void set_perf_profiler(profiler_perf* prof_perf) {
+            icache.set_perf_profiler(
+                prof_perf,
+                perf_event_t::icache_reference,
+                perf_event_t::icache_miss);
+            dcache.set_perf_profiler(
+                prof_perf,
+                perf_event_t::dcache_reference,
+                perf_event_t::dcache_miss);
+        }
+        #endif
         #endif
 };

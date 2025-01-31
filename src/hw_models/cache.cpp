@@ -76,13 +76,16 @@ void cache::reference(uint32_t addr, uint32_t size,
     if (scp_mode != scp_mode_t::m_rel) {
         stats.reference(atype, size);
         if (roi.has(addr)) roi.stats.reference(atype, size);
+        #ifdef ENABLE_PROF
+        prof_perf->set_perf_event_flag(ref_event);
+        #endif
     }
     #if CACHE_MODE == CACHE_MODE_FUNC
     uint32_t byte_addr = addr & CACHE_BYTE_ADDR_MASK;
     #endif
     uint32_t index = (addr >> CACHE_BYTE_ADDR_BITS) & index_mask;
     uint32_t tag = addr >> tag_off;
-    target_t target;
+    victim_t victim_line;
 
     for (uint32_t way = 0; way < ways; way++) {
         auto& line = cache_entries[index][way];
@@ -104,8 +107,9 @@ void cache::reference(uint32_t addr, uint32_t size,
             return;
 
         } else {
-            if (line.metadata.lru_cnt > target.lru_cnt && !line.metadata.scp) {
-                target = {way, line.metadata.lru_cnt};
+            if (line.metadata.lru_cnt > victim_line.lru_cnt &&
+                !line.metadata.scp) {
+                victim_line = {way, line.metadata.lru_cnt};
             }
         }
     }
@@ -118,9 +122,12 @@ void cache::reference(uint32_t addr, uint32_t size,
     // miss, goes to main mem
     stats.miss();
     if (roi.has(addr)) roi.stats.miss();
+    #ifdef ENABLE_PROF
+    prof_perf->set_perf_event_flag(miss_event);
+    #endif
 
     // evict the line
-    auto& act_line = cache_entries[index][target.way_idx]; // line being evicted
+    auto& act_line = cache_entries[index][victim_line.way_idx]; // line being evicted
     if (act_line.metadata.valid) {
         stats.evict(act_line.metadata.dirty);
         if (roi.has(act_line.tag << tag_off)) {
@@ -138,7 +145,7 @@ void cache::reference(uint32_t addr, uint32_t size,
     act_line.reference();
     act_line.tag = tag; // act_line now caching new data
     act_line.metadata.valid = true;
-    update_lru(index, target.way_idx); // now the most recently used
+    update_lru(index, victim_line.way_idx); // now the most recently used
     scp_status = update_scp(scp_mode, act_line, index);
     #if CACHE_MODE == CACHE_MODE_FUNC
     act_line.data = mem->rd_line(addr - BASE_ADDR);

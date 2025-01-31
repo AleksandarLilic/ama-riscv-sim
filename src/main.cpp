@@ -34,7 +34,8 @@ std::string gen_log_path(
     if (!out_dir_tag.empty()) path_out += "_" + out_dir_tag;
     path_out = path_out + "/";
     bool exists = std::filesystem::exists(path_out);
-    if (exists) std::filesystem::remove_all(path_out);
+    //if (exists) std::filesystem::remove_all(path_out);
+    if (exists) return path_out;
     bool created = std::filesystem::create_directory(path_out);
     if (!created) {
         std::cerr << "Failed to create directory: " << path_out << std::endl;
@@ -73,6 +74,20 @@ std::string gen_help_list(const std::unordered_map<std::string, T>& map) {
 const std::unordered_map<std::string, rf_names_t> rf_names_map = {
     {"abi", rf_names_t::mode_abi},
     {"x", rf_names_t::mode_x}
+};
+
+const std::unordered_map<std::string, perf_event_t> perf_event_map = {
+    {"exec", perf_event_t::exec},
+    {"branches", perf_event_t::branches},
+    {"mem", perf_event_t::mem},
+    {"simd", perf_event_t::simd},
+    #ifdef ENABLE_HW_PROF
+    {"icache_reference", perf_event_t::icache_reference},
+    {"icache_miss", perf_event_t::icache_miss},
+    {"dcache_reference", perf_event_t::dcache_reference},
+    {"dcache_miss", perf_event_t::dcache_miss},
+    {"bp_mispredict", perf_event_t::bp_mispredict}
+    #endif
 };
 
 #ifdef ENABLE_HW_PROF
@@ -119,6 +134,7 @@ struct defs_t {
     static constexpr char log_pc_sm[] = "0";
     static constexpr char rf_names[] = "abi";
     static constexpr char dump_all_regs[] = "false";
+    static constexpr char perf_event[] = "exec";
     #ifdef ENABLE_DASM
     static constexpr char dump_state[] = "false";
     #endif
@@ -185,6 +201,10 @@ int main(int argc, char* argv[]) {
          "Register file names used for output. Options: " +
          gen_help_list(rf_names_map),
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
+        ("e,perf_event",
+         "Performance event to track. Options: " +
+         gen_help_list(perf_event_map),
+         cxxopts::value<std::string>()->default_value(defs_t::perf_event))
         ("dump_all_regs", "Dump all registers at the end of simulation",
          cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
         ("out_dir_tag", "Tag (suffix) for output directory",
@@ -317,6 +337,7 @@ int main(int argc, char* argv[]) {
         cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
         cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
+        cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
         cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
 
         #ifdef ENABLE_DASM

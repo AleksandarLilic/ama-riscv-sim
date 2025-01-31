@@ -166,16 +166,42 @@ enum class bp_bits_t { pc, cnt, hist, gr, _count };
 
 // perf events
 enum class perf_event_t {
-    inst_all,
-    inst_branch,
-    inst_mem,
-    inst_simd,
+    exec,
+    branches,
+    mem,
+    //mem_loads,
+    //mem_stores,
+    simd,
     #ifdef ENABLE_HW_PROF
+    //cache_reference, // only applicable for multi-level caches
+    //cache_miss, // only applicable for multi-level caches
+    icache_reference,
     icache_miss,
+    dcache_reference,
     dcache_miss,
-    bp_mispred,
+    bp_mispredict,
     #endif
     _count
+};
+
+static const
+std::array<std::string, static_cast<uint32_t>(perf_event_t::_count)>
+perf_event_names = {
+    "exec",
+    "branches",
+    "mem",
+    //"mem_loads",
+    //"mem_stores",
+    "simd",
+    #ifdef ENABLE_HW_PROF
+    //"cache_reference",
+    //"cache_miss",
+    "icache_reference",
+    "icache_miss",
+    "dcache_reference",
+    "dcache_miss",
+    "bp_mispredict",
+    #endif
 };
 
 // dasm
@@ -259,6 +285,7 @@ struct symbol_tracking_t {
 struct cfg_t {
     logging_pc_t log_pc;
     rf_names_t rf_names;
+    perf_event_t perf_event;
     bool dump_all_regs;
 };
 

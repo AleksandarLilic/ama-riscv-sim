@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "cache_stats.h"
+#include "profiler_perf.h"
 
 #define MAX_CACHE_SETS 1024
 #define MAX_CACHE_WAYS 128
@@ -40,11 +41,11 @@ struct cache_line_t {
         }
 };
 
-struct target_t {
+struct victim_t {
     uint32_t way_idx;
     uint32_t lru_cnt;
-    target_t() : way_idx(0), lru_cnt(0) {}
-    target_t(uint32_t way, uint32_t lru_cnt) : way_idx(way), lru_cnt(lru_cnt) {}
+    victim_t() : way_idx(0), lru_cnt(0) {}
+    victim_t(uint32_t way, uint32_t lru_cnt) : way_idx(way), lru_cnt(lru_cnt) {}
 };
 
 class main_memory; // forward declaration
@@ -84,6 +85,11 @@ class cache {
         scp_status_t scp_status;
         speculative_t smode;
         bool speculative_exec_active; // not used atm
+        #ifdef ENABLE_PROF
+        profiler_perf* prof_perf;
+        perf_event_t ref_event;
+        perf_event_t miss_event;
+        #endif
 
     public:
         cache() = delete;
@@ -103,6 +109,17 @@ class cache {
                 for (auto& line : set) line.profiling(enable);
             }
         }
+        #ifdef ENABLE_PROF
+        void set_perf_profiler(
+            profiler_perf* prof_perf,
+            perf_event_t ref_event,
+            perf_event_t miss_event)
+        {
+            this->prof_perf = prof_perf;
+            this->ref_event = ref_event;
+            this->miss_event = miss_event;
+        }
+        #endif
 
         // stats
         void set_roi(uint32_t start, uint32_t size);

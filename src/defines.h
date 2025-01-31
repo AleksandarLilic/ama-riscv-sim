@@ -1,13 +1,13 @@
 #pragma once
 
-#include "types.h"
-
 // default defines
 #ifndef DPI
 #define UART_ENABLE // some tests require UART, will wait for ready indefinitely
 #define ENABLE_PROF // disable for 'hw_model_sweep.py' - faster and not needed
 #define ENABLE_HW_PROF
 #endif
+
+#include "types.h"
 
 // casts
 #define TO_F64(x) static_cast<double_t>(x)

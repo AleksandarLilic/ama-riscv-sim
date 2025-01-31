@@ -3,10 +3,12 @@
 
 profiler_perf::profiler_perf(
     std::string log_path,
-    std::map<uint32_t, symbol_map_entry_t> symbol_map)
+    std::map<uint32_t, symbol_map_entry_t> symbol_map,
+    perf_event_t perf_event)
 {
     this->log_path = log_path;
     this->symbol_map = symbol_map;
+    this->perf_event = perf_event;
     // set up symbol tracking
     symbol_lut.resize(symbol_map.size() + 1); // 0th index is reserved
     for (const auto &s : symbol_map) {
@@ -73,7 +75,17 @@ void profiler_perf::update_jal(uint32_t next_pc, bool tail_call) {
 }
 
 void profiler_perf::inc_callstack_cnt() {
-    if (active) callstack_cnt++;
+    if (!active) {
+        perf_event_flags[TO_U32(perf_event)] = 0;
+        return;
+    }
+    if (perf_event == perf_event_t::exec) {
+        callstack_cnt++;
+    } else {
+        callstack_cnt += perf_event_flags[TO_U32(perf_event)];
+        // only care about resetting the event being counted, others dc
+        perf_event_flags[TO_U32(perf_event)] = 0;
+    }
 }
 
 void profiler_perf::save_callstack_cnt() {
@@ -134,9 +146,11 @@ void profiler_perf::log_to_file() {
     // close last callstack
     save_callstack_cnt();
     // dump all counters from callstack_cnt_map to file
-    std::string out = log_path + "callstack_folded.txt";
+    std::string out = log_path + "callstack_folded_" +
+                      perf_event_names[TO_U32(perf_event)] + ".txt";
     std::ofstream out_file(out);
     std::vector<uint8_t> callstack_ids;
+    uint64_t total_cnt = 0;
     for (const auto &c : callstack_cnt_map) {
         callstack_ids.clear();
         callstack_ids.reserve(c.first.size());
@@ -144,5 +158,9 @@ void profiler_perf::log_to_file() {
         for (const auto &id : c.first) callstack_ids.push_back(TO_U8(id));
         // write to file
         out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
+        total_cnt += c.second;
     }
+    std::cout << "Profiler Perf: "
+              << "Event: " << perf_event_names[TO_U32(perf_event)]
+              << ", Samples: " << total_cnt << "\n";
 }
