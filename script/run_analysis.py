@@ -10,6 +10,8 @@ from typing import Dict, Any, Tuple, List
 from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
                               LogFormatterSciNotation, MaxNLocator
 
+from utils import is_notebook
+
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ARITH = "ARITH"
 BITMANIP = "BITMANIP"
@@ -27,7 +29,7 @@ MEM_L = "MEM_L"
 
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x10000
-MEM_SIZE = 32768
+MEM_SIZE = 65536
 
 inst_t_mem = {
     MEM_S: ["sb", "sh", "sw", "c.swsp", "c.sw"],
@@ -98,13 +100,6 @@ inst_mem_bd = {
     MEM_L : ["Load", colors["blue_light1"]],
     MEM_S : ["Store", colors["blue_light2"]],
 }
-
-def is_notebook():
-    try:
-        from IPython import get_ipython
-        return get_ipython() is not None
-    except ImportError:
-        return False
 
 def get_base_int_addr(addr) -> int:
     return int(addr,16) - int(BASE_ADDR)

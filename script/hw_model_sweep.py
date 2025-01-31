@@ -11,18 +11,7 @@ import matplotlib.pyplot as plt
 from itertools import product
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List
-from run_analysis import is_notebook
-
-def get_reporoot():
-    try:
-        repo_root = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.STDOUT
-        ).strip().decode("utf-8")
-        return repo_root
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e.output.decode('utf-8')}")
-        return None
+from utils import is_notebook, get_reporoot
 
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
