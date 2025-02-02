@@ -54,6 +54,7 @@ struct cache_size_t {
         }
 };
 
+#define PREC_THR 10
 struct cache_traffic_t {
     // TODO: this needs to be expanded when used with DPI (i.e. timing sim)
     // and should be able to show memory pressure as time series
@@ -71,7 +72,7 @@ struct cache_traffic_t {
             wr /= 1024;
             idx++;
         }
-        size_t prec = (std::max(rd, wr) < 10) ? 1 : 0;
+        size_t prec = ((rd < PREC_THR) || (wr < PREC_THR)) ? 1 : 0;
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(prec)
             << rd << "/" << wr << " " << suffixes[idx];
