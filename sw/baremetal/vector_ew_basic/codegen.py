@@ -51,8 +51,8 @@ for key,value in NUM.items():
 
     code.append("#define NF " + ctype)
 
-    value['a'] = rnd_gen(typ_min, typ_max, ARR_LEN, value["nf"])
-    value['b'] = rnd_gen(typ_min, typ_max, ARR_LEN, value["nf"])
+    value['a'] = rnd_gen_1d_arr(typ_min, typ_max, ARR_LEN, value["nf"])
+    value['b'] = rnd_gen_1d_arr(typ_min, typ_max, ARR_LEN, value["nf"])
 
     # bias for unsigned int subtraction
     if "uint" in key and op.__name__ == "sub":
@@ -90,13 +90,13 @@ for key,value in NUM.items():
     for i in range(ARR_LEN):
         value['ref'][i] = op(value['a'][i], value['b'][i])
 
-    code.append(np2c_arr('a', value['a']))
-    code.append(np2c_arr('b', value['b']))
+    code.append(np2c_1d_arr('a', value['a']))
+    code.append(np2c_1d_arr('b', value['b']))
     if nf_out != value["nf"]:
-        code.append(np2c_arr('c', [0], nf=np2c_type(nf_out)))
-        code.append(np2c_arr('ref', value['ref'], nf=np2c_type(nf_out)) + "\n")
+        code.append(np2c_1d_arr('c', [0], nf=np2c_type(nf_out)))
+        code.append(np2c_1d_arr('ref', value['ref'], nf=np2c_type(nf_out)) + "\n")
     else:
-        code.append(np2c_arr('c', [0]))
-        code.append(np2c_arr('ref', value['ref']) + "\n")
+        code.append(np2c_1d_arr('c', [0]))
+        code.append(np2c_1d_arr('ref', value['ref']) + "\n")
 
 finish_gen(code, OUT)

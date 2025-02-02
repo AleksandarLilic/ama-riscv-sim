@@ -42,11 +42,11 @@ for key,value in NUM.items():
 
     code.append("#define NF_IN " + ctypes)
 
-    value['a'] = rnd_gen(typ_min, typ_max, arr_len, value["nf"])
+    value['a'] = rnd_gen_1d_arr(typ_min, typ_max, arr_len, value["nf"])
     value['ref'] = np.sort(value['a'])
 
     suffix = "ULL" if key == "uint64_t" else ""
-    code.append(np2c_arr('a', value['a'], "NF_IN", suffix))
-    code.append(np2c_arr('ref', value['ref'], "NF_IN", suffix) + "\n")
+    code.append(np2c_1d_arr('a', value['a'], "NF_IN", suffix))
+    code.append(np2c_1d_arr('ref', value['ref'], "NF_IN", suffix) + "\n")
 
 finish_gen(code, OUT)

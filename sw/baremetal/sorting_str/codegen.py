@@ -50,8 +50,8 @@ check_if_words_exist()
 random.seed(1)
 a = generate_words(arr_len)
 ref = sorted(a)
-code.append(np2c_arr('a', a, "char*", "", str_type=True))
-code.append(np2c_arr('ref', ref, "char*", "", str_type=True))
+code.append(np2c_1d_arr('a', a, "char*", "", str_type=True))
+code.append(np2c_1d_arr('ref', ref, "char*", "", str_type=True))
 finish_gen(code, OUT, add_assert=False)
 
 #duplicates = [item for item, count
