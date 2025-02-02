@@ -54,13 +54,13 @@ clear_bss_w: # word at a time
     bgtu a2, a1, clear_bss_b
     sw x0, 0(a0)
     addi a0, a0, 4
-    j clear_bss_w
+    beq x0, x0, clear_bss_w
 
 clear_bss_b: # remaining bytes
     bgeu a0, a1, done_bss # while (!(a0 >= a1))
     sb x0, 0(a0) # *a0 = 0;
     addi a0, a0, 1 # a0++;
-    j clear_bss_b
+    beq x0, x0, clear_bss_b
 
 done_bss:
     #ifdef _USE_NEWLIB
