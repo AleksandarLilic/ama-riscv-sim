@@ -40,6 +40,7 @@ class profiler_perf {
         void callstack_empty_check(const std::string& inst, uint32_t next_pc);
         void update_callstack(uint32_t cr_pc);
         void set_fallthrough_symbol(uint32_t cr_pc);
+        bool symbol_change_on_jump(uint32_t next_pc);
         std::string get_callstack_str(std::vector<uint8_t> idx_stack);
         std::string callstack_to_key();
         void log_to_file();

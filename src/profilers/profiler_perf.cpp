@@ -49,6 +49,8 @@ void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
 }
 
 void profiler_perf::update_jalr(uint32_t next_pc, bool ret_inst) {
+    // also not ret if it doesn't change the symbol
+    ret_inst &= symbol_change_on_jump(next_pc);
     if (ret_inst) {
         update_callstack(next_pc);
         st.idx_callstack.pop_back();
@@ -95,7 +97,7 @@ void profiler_perf::save_callstack_cnt() {
 void profiler_perf::callstack_empty_check(
     const std::string& inst, uint32_t next_pc) {
     if (st.idx_callstack.empty()) {
-        std::cerr << "ERROR: " << inst << ": callstack underflow at"
+        std::cerr << "ERROR: " << inst << ": callstack underflow at "
                   << std::hex << next_pc << std::dec << std::endl;
         throw std::runtime_error("callstack underflow");
     }
@@ -125,6 +127,16 @@ void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
     //              << std::hex << pc << " not found" << std::dec << std::endl;
     //    throw std::runtime_error("set_fallthrough_symbol: symbol not found");
     //}
+}
+
+bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
+    // find to which range does the next_pc belong
+    uint8_t idx = 0;
+    for (const auto &sym : symbol_map) {
+        if (next_pc >= sym.first) idx = sym.second.idx;
+        else break;
+    }
+    return (idx != st.idx_callstack.back());
 }
 
 std::string profiler_perf::get_callstack_str(std::vector<uint8_t> idx_stack) {

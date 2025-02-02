@@ -78,7 +78,7 @@ void core::log_and_prof([[maybe_unused]] bool enable) {
     prof.active = enable;
     prof_perf.active = enable;
     prof_fusion.active = enable;
-    #ifdef ENABLE_DASM
+    #if defined(ENABLE_DASM) && defined(ENABLE_PROF)
     if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
     #endif
     #endif
@@ -179,7 +179,7 @@ void core::exec_inst() {
         prof.new_inst(inst);
     }
     [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
-    #ifdef ENABLE_DASM
+    #if defined(ENABLE_DASM) && defined(ENABLE_PROF)
     if (log_symbol && logging) {
         log_ofstream << prof_perf.get_callstack_str() << "\n";
     }
