@@ -174,6 +174,15 @@ struct perc_t {
         float_t scp_c = 0.0;
 };
 
+struct sparsity_cnt_t {
+    uint64_t total = 0;
+    uint64_t sparse = 0;
+    float_t get_perc() {
+        if (total == 0) return 0.0;
+        return 100.0 * sparse / total;
+    }
+};
+
 class profiler {
     public:
         trace_entry te;
@@ -189,6 +198,7 @@ class profiler {
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_j, TO_U32(opc_j::_count)> prof_j_arr;
         std::array<std::array<uint32_t, 3>, 32> prof_reg_hist = {0};
+        sparsity_cnt_t sparsity_cnt;
 
     public:
         profiler() = delete;
@@ -204,6 +214,11 @@ class profiler {
             if (active) stack_access.storing(in_range);
         }
         void finish() { log_to_file(); }
+        void log_sparsity(bool sparse) {
+            if (!active) return;
+            sparsity_cnt.total++;
+            sparsity_cnt.sparse += sparse;
+        }
 
     private:
         void log_to_file();

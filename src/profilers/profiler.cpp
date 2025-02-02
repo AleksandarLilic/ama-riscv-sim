@@ -309,6 +309,11 @@ void profiler::log_to_file() {
               << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
               << "\n";
 
+    float_t sparsity = sparsity_cnt.get_perc();
+    std::cout << "Profiler Sparsity: total: " << sparsity_cnt.total
+              << ", sparse: " << sparsity_cnt.sparse << "(" << sparsity << "%)"
+              << "\n";
+
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();
     uint64_t sa_cnt_store = stack_access.get_store();

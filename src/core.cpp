@@ -694,6 +694,7 @@ uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
         a >>= 16;
         b >>= 16;
     }
+    prof.log_sparsity(res==0);
     return res;
 }
 
@@ -705,6 +706,7 @@ uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
         a >>= 8;
         b >>= 8;
     }
+    prof.log_sparsity(res==0);
     return res;
 }
 
@@ -716,6 +718,7 @@ uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
         a >>= 4;
         b >>= 4;
     }
+    prof.log_sparsity(res==0);
     return res;
 }
 
