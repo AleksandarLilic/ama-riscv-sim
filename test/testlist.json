@@ -20,6 +20,7 @@
     "vector_ew_al_uint8": ["basic"],
     "vector_ew_mac_uint8": ["basic"],
     "vector_ew_basic": ["all"],
+    "matmul": ["all"],
     "dot_product": ["all"],
     "dot_product_unaligned_len_even": ["all"],
     "sorting_num": [["all"], ["LOOPS=2"]],
