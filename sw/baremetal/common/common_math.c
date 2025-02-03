@@ -253,8 +253,8 @@ int32_t _simd_dot_product_int8(
 
         #pragma GCC unroll 4
         for (size_t i = 0; i < 4; i++) {
-            const a_arr[i] = *(const int32_t*)(a + k + i * 4);
-            const b_arr[i] = *(const int32_t*)(b + k + i * 4);
+            a_arr[i] = *(const int32_t*)(a + k + i * 4);
+            b_arr[i] = *(const int32_t*)(b + k + i * 4);
         }
         asm volatile (
             "dot8 %[p1], %[a0], %[b0];"
