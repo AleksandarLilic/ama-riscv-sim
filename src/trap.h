@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "profiler_perf.h"
 
 class trap {
     private:
@@ -11,6 +12,9 @@ class trap {
         #ifdef ENABLE_DASM
         dasm_str* dasm;
         #endif
+        #ifdef ENABLE_PROF
+        profiler_perf* prof_perf;
+        #endif
 
     public:
         trap() = delete;
@@ -20,6 +24,9 @@ class trap {
         void clear_trap() { inst_trapped = false; }
         #ifdef ENABLE_DASM
         void set_dasm(dasm_str* d) { dasm = d; }
+        #endif
+        #ifdef ENABLE_PROF
+        void set_prof_perf(profiler_perf* p) { prof_perf = p; }
         #endif
 
         // exceptions
@@ -36,6 +43,9 @@ class trap {
         void e_inst_addr_misaligned(
             uint32_t address, const std::string &msg);
         void e_hardware_error(const std::string &msg);
+
+        // interrupts
+        void e_timer_interrupt();
 
     private:
         void trap_inst(uint32_t cause, uint32_t tval);

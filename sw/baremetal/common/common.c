@@ -89,16 +89,27 @@ void set_cpu_instret(uint64_t value) {
     write_csr(CSR_MINSTRETH, instret.u32[1]);
 }
 
-void trap_handler(unsigned int mcause, void* mepc, void* sp) {
+void __attribute__((weak))
+trap_handler(unsigned int mcause, void* mepc, void* sp) {
     (void)mepc;
     (void)sp;
-    // can't handle exceptions, just exit
-    if (mcause < 0x80000000) {
+
+    if (mcause < 0x80000000) { // can't handle exceptions, just exit
         write_mismatch(0, 0, 1000 + mcause);
         fail();
+    } else { // interrupts
+        if (mcause == MCAUSE_MACHINE_TIMER_INT) {
+            timer_interrupt_handler();
+            return;
+        }
+        // other unsupported atm
+        write_mismatch(0, 0, 2000 + mcause);
+        fail();
     }
-    // TODO: handle interrupts when supported, fail for now with different code
-    write_mismatch(0, 0, 2000 + mcause);
-    fail();
     return;
+}
+
+void __attribute__((weak))
+timer_interrupt_handler() {
+    CLINT->mtimecmp += 10000; // 10ms slices
 }

@@ -16,11 +16,12 @@ $(shell mkdir -p $(BDIR))
 
 TARGET := ama-riscv-sim
 SOURCES := $(wildcard *.cpp)
+SOURCES += $(wildcard devices/*.cpp)
 SOURCES += $(wildcard profilers/*.cpp)
 SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC := -I. -I./profilers -I./hw_models
+INC := -I. -I./devices -I./profilers -I./hw_models
 INC += -I./external/cxxopts/include
 INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 

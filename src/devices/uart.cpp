@@ -1,8 +1,6 @@
 #include "uart.h"
 
-uart::uart(size_t size) :
-    dev(size)
-{
+uart::uart() : dev(UART_SIZE) {
     std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
     #ifdef UART_INPUT_ENABLE
@@ -17,8 +15,7 @@ uart::uart(size_t size) :
 uart::~uart() {
     #ifdef UART_INPUT_ENABLE
     uart_running = false;
-    if(uart_thread.joinable())
-        uart_thread.join();
+    if (uart_thread.joinable()) uart_thread.join();
     #endif
 }
 
@@ -34,10 +31,10 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
 
 #ifdef UART_INPUT_ENABLE
 uint32_t uart::rd(uint32_t address, uint32_t size) {
-    if (address < UART_RX_DATA) // reads from status register
-        return dev::rd(address, size);
-
-    if (address == UART_RX_DATA) { // reads from rx_data register with lock
+    // reads from status register
+    if (address < UART_RX_DATA) return dev::rd(address, size);
+    // reads from rx_data register with lock
+    if (address == UART_RX_DATA) {
         std::lock_guard<std::mutex> lock(mtx);
         mem[UART_STATUS] &= ~UART_RX_VALID;
         return dev::rd(address, size);

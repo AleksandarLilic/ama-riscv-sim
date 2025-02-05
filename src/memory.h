@@ -2,10 +2,14 @@
 
 #include "defines.h"
 #include "main_memory.h"
+#include "clint.h"
 #include "trap.h"
 
 #ifdef UART_ENABLE
 #include "uart.h"
+#define MEM_MAP_SIZE 3
+#else
+#define MEM_MAP_SIZE 2
 #endif
 
 struct mem_entry {
@@ -20,8 +24,9 @@ class memory {
         #ifdef UART_ENABLE
         uart uart0;
         #endif
+        clint clint0;
         dev *dev_ptr;
-        std::array<mem_entry, 2> mem_map;
+        std::array<mem_entry, MEM_MAP_SIZE> mem_map;
         trap *tu;
         #ifdef ENABLE_DASM
         dasm_str* dasm;
@@ -37,7 +42,13 @@ class memory {
         std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
             return mm.get_symbol_map();
         }
-        void trap_setup(trap* tu) { this->tu = tu; }
+        void trap_setup(trap* tu) {
+            this->tu = tu;
+            clint0.trap_setup(tu);
+        }
+        uint64_t get_mtime_shadow() { return clint0.get_mtime_shadow(); }
+        void set_mip(uint32_t* csr_mip) { clint0.set_mip(csr_mip); }
+        void update_mtime() { clint0.update_mtime(); }
         #ifdef ENABLE_DASM
         void set_dasm(dasm_str* d) { dasm = d; }
         #endif

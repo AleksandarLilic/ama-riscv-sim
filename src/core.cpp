@@ -24,17 +24,24 @@ core::core(
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
     dump_all_regs = cfg.dump_all_regs;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
+
     mem->trap_setup(&tu);
+    #ifdef ENABLE_PROF
+    tu.set_prof_perf(&prof_perf);
+    #endif
+
     #ifdef ENABLE_DASM
     mem->set_dasm(&dasm);
     tu.set_dasm(&dasm);
     #endif
+
     // initialize CSRs
     csr_names_w = 0;
     for (const auto &c : supported_csrs) {
         csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
+    mem->set_mip(&csr.at(CSR_MIP).value);
     #if defined(ENABLE_PROF) && defined(ENABLE_HW_PROF)
     mem->set_perf_profiler(&prof_perf);
     #endif
@@ -57,8 +64,6 @@ void core::exec() {
     #endif
 
     // start the core
-    start_time = std::chrono::high_resolution_clock::now();
-    run_time = start_time;
     running = true;
     while (running) exec_inst();
 
@@ -95,40 +100,56 @@ void core::exec_inst() {
     if (logging_pc.should_start(pc)) log_and_prof(true);
     else if (logging_pc.should_stop(pc)) log_and_prof(false);
 
-    inst_fetch();
-    uint32_t op_c = ip.copcode();
-    if (op_c != 0x3) {
-        #ifdef RV32C
-        INST_W(4);
-        inst = inst & 0xffff;
-        ip.inst = inst;
-        switch (op_c) {
-            case 0x0: c0(); break;
-            case 0x1: c1(); break;
-            case 0x2: c2(); break;
-            default: tu.e_unsupported_inst("op_c unreachable");
-        }
-        #else // !RV32C
-            tu.e_unsupported_inst("RV32C unsupported");
-        #endif
-    } else {
-        INST_W(8);
-        switch (ip.opcode()) {
-            CASE_DECODER(al_reg)
-            CASE_DECODER(al_imm)
-            CASE_DECODER(load)
-            CASE_DECODER(store)
-            CASE_DECODER(branch)
-            CASE_DECODER(jalr)
-            CASE_DECODER(jal)
-            CASE_DECODER(lui)
-            CASE_DECODER(auipc)
-            CASE_DECODER(system)
-            CASE_DECODER(misc_mem)
-            CASE_DECODER(custom_ext)
-            default: tu.e_unsupported_inst("opcode");
+    // DPI would need to handle this separately based on the simulation time
+    mem->update_mtime();
+    bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE) >> 3;
+    bool mie_MTIE = (csr.at(CSR_MIE).value & MIE_MTIE) >> 7;
+    bool mip_MTIP = (csr.at(CSR_MIP).value & MIP_MTIP) >> 7;
+    if (mstatus_MIE && mie_MTIE && mip_MTIP) {
+        tu.e_timer_interrupt();
+        last_inst_branch = false;
+    }
+
+    if (!tu.is_trapped()) {
+        inst_fetch();
+        uint32_t op_c = ip.copcode();
+        if (op_c != 0x3) {
+            #ifdef RV32C
+            INST_W(4);
+            inst = inst & 0xffff;
+            ip.inst = inst;
+            switch (op_c) {
+                case 0x0: c0(); break;
+                case 0x1: c1(); break;
+                case 0x2: c2(); break;
+                default: tu.e_unsupported_inst("op_c unreachable");
+            }
+            #else // !RV32C
+                tu.e_unsupported_inst("RV32C unsupported");
+            #endif
+        } else {
+            INST_W(8);
+            switch (ip.opcode()) {
+                CASE_DECODER(al_reg)
+                CASE_DECODER(al_imm)
+                CASE_DECODER(load)
+                CASE_DECODER(store)
+                CASE_DECODER(branch)
+                CASE_DECODER(jalr)
+                CASE_DECODER(jal)
+                CASE_DECODER(lui)
+                CASE_DECODER(auipc)
+                CASE_DECODER(system)
+                CASE_DECODER(misc_mem)
+                CASE_DECODER(custom_ext)
+                default: tu.e_unsupported_inst("opcode");
+            }
         }
     }
+
+    #ifdef ENABLE_PROF
+    [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
+    #endif
 
     #ifdef ENABLE_DASM
     #ifdef DPI
@@ -143,6 +164,9 @@ void core::exec_inst() {
         dasm.asm_ss.str("");
         if (tu.is_trapped()) {
             log_ofstream << dasm.asm_str << "\n";
+            if (log_symbol) {
+                log_ofstream << prof_perf.get_callstack_str() << "\n";
+            }
             return;
         }
         logging_pc.inst_cnt++;
@@ -178,8 +202,7 @@ void core::exec_inst() {
         prof.te.inst_size = TO_U32(inst_w>>1);
         prof.new_inst(inst);
     }
-    [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
-    #if defined(ENABLE_DASM) && defined(ENABLE_PROF)
+    #ifdef ENABLE_DASM
     if (log_symbol && logging) {
         log_ofstream << prof_perf.get_callstack_str() << "\n";
     }
@@ -189,6 +212,8 @@ void core::exec_inst() {
     // next inst
     pc = next_pc;
     inst_cnt++;
+    // TODO: --inst_limit
+    //if (inst_cnt == 2000) running = false;
 }
 
 // void core::reset() {
@@ -488,6 +513,7 @@ void core::system() {
                 next_pc = csr[CSR_MEPC].value;
                 DASM_OP(mret)
                 PROF_G(mret)
+                prof_perf.update_jalr(next_pc, true);
                 break;
             default: tu.e_unsupported_inst("system");
         }
@@ -880,10 +906,6 @@ void core::cntr_update() {
     csr.at(CSR_MCYCLEH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
     csr.at(CSR_MINSTRET).value += inst_elapsed & 0xFFFFFFFF;
     csr.at(CSR_MINSTRETH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
-    run_time = std::chrono::high_resolution_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>
-                   (run_time - start_time);
-    mtime = TO_U64(elapsed.count());
     inst_cnt_csr = inst_cnt;
 
     // user mode shadows
@@ -891,8 +913,9 @@ void core::cntr_update() {
     csr.at(CSR_CYCLEH).value = csr.at(CSR_MCYCLEH).value;
     csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
     csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
-    csr.at(CSR_TIME).value = TO_U32(mtime);
-    csr.at(CSR_TIMEH).value = TO_U32(mtime >> 32);
+    uint64_t mtime_shadow = mem->get_mtime_shadow();
+    csr.at(CSR_TIME).value = TO_U32(mtime_shadow);
+    csr.at(CSR_TIMEH).value = TO_U32(mtime_shadow >> 32);
 }
 
 // C extension - decoders
@@ -1373,9 +1396,9 @@ void core::dump() {
 
 std::string core::dump_state(bool dump_csr) {
     std::ostringstream state;
-    state << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
+    state << INDENT << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
     for(uint32_t i = 0; i < 32; i+=4){
-        state << INDENT;
+        state << INDENT << INDENT;
         for(uint32_t j = 0; j < 4; j++) {
             state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]) << "   ";
         }
@@ -1383,7 +1406,7 @@ std::string core::dump_state(bool dump_csr) {
     }
     if (dump_csr) {
         for (auto it = csr.begin(); it != csr.end(); it++) {
-            state << INDENT << CSRF(it) << "\n";
+            state << INDENT << INDENT << CSRF(it) << "\n";
         }
     }
 

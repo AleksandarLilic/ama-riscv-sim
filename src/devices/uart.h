@@ -36,7 +36,7 @@ class uart : public dev {
         std::condition_variable cv;
         #endif
     public:
-        uart(size_t size);
+        uart();
         ~uart();
         void wr(uint32_t address, uint32_t data, uint32_t size) override;
     #ifdef UART_INPUT_ENABLE

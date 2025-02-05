@@ -369,7 +369,7 @@ class core {
             // Machine Trap Setup
             {CSR_MSTATUS, "mstatus", csr_perm_t::rw, 0x1800}, // mpp = 3
             {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
-            {CSR_MIE, "mie", csr_perm_t::rw, 0u},
+            {CSR_MIE, "mie", csr_perm_t::warl, 0u},
             {CSR_MTVEC, "mtvec", csr_perm_t::rw, 0u},
 
             // Machine Trap Handling
@@ -377,7 +377,7 @@ class core {
             {CSR_MEPC, "mepc", csr_perm_t::rw, 0u},
             {CSR_MCAUSE, "mcause", csr_perm_t::rw, 0u},
             {CSR_MTVAL, "mtval", csr_perm_t::rw, 0u},
-            {CSR_MIP, "mip", csr_perm_t::rw, 0u},
+            {CSR_MIP, "mip", csr_perm_t::ro, 0u},
 
             // Machine Counter/Timers
             {CSR_MCYCLE, "mcycle", csr_perm_t::rw, 0u},
@@ -393,11 +393,6 @@ class core {
             {CSR_TIMEH, "timeh", csr_perm_t::ro, 0u},
             {CSR_INSTRETH, "instreth", csr_perm_t::ro, 0u},
         }};
-
-        std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
-        std::chrono::time_point<std::chrono::high_resolution_clock> run_time;
-        // FIXME: mtime should be an actual MMIO put somewhere in the memory map
-        uint64_t mtime;
 
         #ifdef ENABLE_PROF
         profiler prof;

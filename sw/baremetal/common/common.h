@@ -60,6 +60,11 @@ uint32_t read_csr(const uint32_t csr_addr) {
 }
 
 inline __attribute__ ((always_inline))
+void set_csr(const uint32_t csr_addr, uint32_t bits) {
+    asm volatile("csrs %[a], %[d]" : : [a] "i" (csr_addr), [d] "r" (bits));
+}
+
+inline __attribute__ ((always_inline))
 void write_tohost_testnum() {
     asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG));
 }
@@ -95,5 +100,6 @@ uint64_t get_cpu_instret();
 void set_cpu_cycles(uint64_t value);
 void set_cpu_instret(uint64_t value);
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
+void timer_interrupt_handler();
 
 #endif

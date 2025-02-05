@@ -6,14 +6,16 @@ memory::memory(
         // create devices
         mm(MEM_SIZE, test_elf, hw_cfg),
         #ifdef UART_ENABLE
-        uart0(UART_SIZE),
+        uart0(),
         #endif
+        clint0(),
         // put devices in memory map
         mem_map {{
             {BASE_ADDR, MEM_SIZE, &mm},
             #ifdef UART_ENABLE
-            {BASE_ADDR + MEM_SIZE, UART_SIZE, &uart0}
+            {UART0_ADDR, UART_SIZE, &uart0},
             #endif
+            {CLINT_ADDR, CLINT_SIZE, &clint0}
         }}
  {
     dev_ptr = nullptr;

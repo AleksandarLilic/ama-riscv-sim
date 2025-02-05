@@ -32,7 +32,10 @@
 //#define MEM_SIZE 16384
 //#define MEM_SIZE 32768
 #define MEM_SIZE 65536
+#define UART0_ADDR (BASE_ADDR + MEM_SIZE)
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
+#define CLINT_ADDR (BASE_ADDR + MEM_SIZE + 32)
+#define CLINT_SIZE 32 // reserved for 4 64-bit registers
 
 // HW models
 #define CACHE_MODE_PERF 0 // tags and stats
@@ -129,14 +132,14 @@
 // Machine Trap Setup
 #define CSR_MSTATUS 0x300 // MRW
 #define CSR_MISA 0x301 // MRW
-#define CSR_MIE 0x304 // MRW
+#define CSR_MIE 0x304 // MWARL
 #define CSR_MTVEC 0x305 // MRW
 // Machine Trap Handling
 #define CSR_MSCRATCH 0x340 // MRW
 #define CSR_MEPC 0x341 // MRW
 #define CSR_MCAUSE 0x342 // MRW
 #define CSR_MTVAL 0x343 // MRW
-#define CSR_MIP 0x344 // MRW
+#define CSR_MIP 0x344 // MRO
 // Machine Counter/Timers
 #define CSR_MCYCLE 0XB00 // MRW
 #define CSR_MINSTRET 0XB02 // MRW
@@ -152,7 +155,24 @@
 #define CSR_TIMEH 0xC81 // URO
 #define CSR_INSTRETH 0xC82 // URO
 
+// MSTATUS bits
+#define MSTATUS_MIE 0x8
+#define MSTATUS_MPIE 0x80
+
+// MIP bits - machine interrupt pending
+#define MIP_MSIP (1 << 3) // software
+#define MIP_MTIP (1 << 7) // timer
+#define MIP_MEIP (1 << 11) // external
+#define MIP_LCOFIP (1 << 13) // local counter overflow
+
+// MIE bits - machine interrupt enable
+#define MIE_MSIE MIP_MSIP
+#define MIE_MTIE MIP_MTIP
+#define MIE_MEIE MIP_MEIP
+#define MIE_LCOFIE MIP_LCOFIP
+
 // MCAUSE bits
+// exception codes
 #define MCAUSE_INST_ADDR_MISALIGNED 0X0
 #define MCAUSE_INST_ACCESS_FAULT 0X1
 #define MCAUSE_ILLEGAL_INST 0X2
@@ -165,9 +185,11 @@
 //#define MCAUSE_SOFTWARE_CHECK 0x12 // 18
 #define MCAUSE_HARDWARE_ERROR 0x13 // 19
 
-// MSTATUS bits
-#define MSTATUS_MIE 0x8
-#define MSTATUS_MPIE 0x80
+// interrupt codes
+#define MCAUSE_MACHINE_SW_INT ((1 << 31) | MIP_MSIP)
+#define MCAUSE_MACHINE_TIMER_INT ((1 << 31) | MIP_MTIP)
+#define MCAUSE_MACHINE_EXT_INT ((1 << 31) | MIP_MEIP)
+#define MCAUSE_MACHINE_LCOF_INT ((1 << 31) | MIP_LCOFIP)
 
 // Macros
 #define CASE_DECODER(op) \
@@ -290,9 +312,9 @@
 
 #define W_CSR(expr) write_csr(ip.csr_addr(), expr)
 
-#define SIM_ERROR std::cerr << "SIM RUNTIME ERROR: "
-#define SIM_WARNING std::cout << "SIM RUNTIME WARNING: "
-#define SIM_TRAP std::cout << "SIM INFO: Instruction trapped: "
+#define SIM_ERROR std::cerr << "\n >> SIM RUNTIME ERROR: "
+#define SIM_WARNING std::cout << "\n >> SIM RUNTIME WARNING: "
+#define SIM_TRAP std::cout << "\n >> SIM INFO: Instruction trapped: "
 #define DASM_TRAP dasm.asm_ss << "Instruction trapped: "
 
 #define MEM_ADDR_FORMAT(addr) \

@@ -1,6 +1,7 @@
 #include "profiler.h"
 
 profiler::profiler(std::string log_path) {
+    inst = 0;
     inst_cnt_exec = 0;
     rst_te();
     this->log_path = log_path;
@@ -149,14 +150,15 @@ void profiler::new_inst(uint32_t inst) {
 
 void profiler::log_inst(opc_g opc) {
     if (active) {
-        if (inst == INST_NOP)
+        if (inst == INST_NOP) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count++;
-        else if ((inst & 0xFFFF) == INST_C_NOP) // 16-bit inst
+        } else if ((inst & 0xFFFF) == INST_C_NOP) {
             prof_g_arr[TO_U32(opc_g::i_c_nop)].count++;
-        else if (inst == INST_HINT_LOG_START || inst == INST_HINT_LOG_END)
+        } else if (inst == INST_HINT_LOG_START || inst == INST_HINT_LOG_END) {
             prof_g_arr[TO_U32(opc_g::i_hint)].count++;
-        else
+        } else {
             prof_g_arr[TO_U32(opc)].count++;
+        }
     }
 }
 
@@ -164,12 +166,14 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
     if (active) {
         if (taken) {
             prof_j_arr[TO_U32(opc)].count_taken++;
-            if (direction == b_dir_t::forward)
+            if (direction == b_dir_t::forward) {
                 prof_j_arr[TO_U32(opc)].count_taken_fwd++;
+            }
         } else {
             prof_j_arr[TO_U32(opc)].count_not_taken++;
-            if (direction == b_dir_t::forward)
+            if (direction == b_dir_t::forward) {
                 prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
+            }
         }
     }
 }

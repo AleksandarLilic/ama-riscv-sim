@@ -1,6 +1,8 @@
 #include "trap.h"
 
-#define DASM_PTR_TRAP dasm->asm_ss << "Instruction trapped: "
+#define DASM_PTR_TRAP \
+    dasm->asm_ss.str(""); \
+    dasm->asm_ss << "Instruction trapped: "
 #define FMT_P(x) msg << "> @ " << FORMAT_INST(*pc, *inst, x)
 #define FMT FMT_P(8)
 #define FMT_ADDR \
@@ -18,8 +20,12 @@ void trap::trap_inst(uint32_t cause, uint32_t tval) {
     );
     csr->at(CSR_MSTATUS).value &= ~MSTATUS_MIE; // disable interrupts
     *pc = csr->at(CSR_MTVEC).value;
-    std::cout << "Instruction trapped: cause=" << cause << ", tval=" << tval
-              << ", pc=" << std::hex << *pc << std::dec << "\n";
+    #ifdef ENABLE_PROF
+    prof_perf->update_jalr(*pc, false);
+    #endif
+    std::cout << "; cause=" << std::hex << cause
+              << ", tval=" << tval
+              << ", pc="  << *pc << std::dec << "\n";
 }
 
 // exception handling
@@ -27,7 +33,7 @@ void trap::e_unsupported_inst(const std::string &msg) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
     #endif
-    SIM_TRAP << "Unsupported instruction <" << FMT << "\n";
+    SIM_TRAP << "Unsupported instruction <" << FMT;
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
@@ -35,7 +41,7 @@ void trap::e_illegal_inst(const std::string &msg, uint32_t memw) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Illegal instruction <" << FMT_P(memw);
     #endif
-    SIM_TRAP << "Illegal instruction <" << FMT_P(memw) << "\n";
+    SIM_TRAP << "Illegal instruction <" << FMT_P(memw);
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
@@ -43,7 +49,7 @@ void trap::e_env(const std::string &msg, uint32_t code) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << msg;
     #endif
-    SIM_TRAP << msg << "\n";
+    SIM_TRAP << msg;
     trap_inst(code, *inst);
 }
 
@@ -51,7 +57,7 @@ void trap::e_unsupported_csr(const std::string &msg) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
     #endif
-    SIM_TRAP << "Unsupported instruction <" << FMT << "\n";
+    SIM_TRAP << "Unsupported instruction <" << FMT;
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
@@ -60,7 +66,7 @@ void trap::e_dmem_access_fault(
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Memory access fault at address <" << FMT_ADDR;
     #endif
-    SIM_TRAP << "Memory access fault at address <" << FMT_ADDR << "\n";
+    SIM_TRAP << "Memory access fault at address <" << FMT_ADDR;
     if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ACCESS_FAULT, address);
     } else {
@@ -73,7 +79,7 @@ void trap::e_dmem_addr_misaligned(
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
     #endif
-    SIM_TRAP << "Memory misaligned access at address <" << FMT_ADDR << "\n";
+    SIM_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
     if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ADDR_MISALIGNED, address);
     } else {
@@ -86,7 +92,7 @@ void trap::e_inst_access_fault(
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Fetch access fault at address <" << FMT_ADDR;
     #endif
-    SIM_TRAP << "Fetch access fault at " << FMT_ADDR << "\n";
+    SIM_TRAP << "Fetch access fault at " << FMT_ADDR;
     trap_inst(MCAUSE_INST_ACCESS_FAULT, address);
 }
 
@@ -95,7 +101,7 @@ void trap::e_inst_addr_misaligned(
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Fetch misaligned access at " << FMT_ADDR;
     #endif
-    SIM_TRAP << "Fetch misaligned access at " << FMT_ADDR << "\n";
+    SIM_TRAP << "Fetch misaligned access at " << FMT_ADDR;
     trap_inst(MCAUSE_INST_ADDR_MISALIGNED, address);
 }
 
@@ -103,6 +109,15 @@ void trap::e_hardware_error(const std::string &msg) {
     #ifdef ENABLE_DASM
     DASM_PTR_TRAP << "Hardware Error <" << FMT;
     #endif
-    SIM_TRAP << "Hardware Error <" << FMT << "\n";
+    SIM_TRAP << "Hardware Error <" << FMT;
     trap_inst(MCAUSE_HARDWARE_ERROR, *inst);
+}
+
+// interrupt handling
+void trap::e_timer_interrupt() {
+    #ifdef ENABLE_DASM
+    DASM_PTR_TRAP << "Timer interrupt";
+    #endif
+    SIM_TRAP << "Timer interrupt";
+    trap_inst(MCAUSE_MACHINE_TIMER_INT, 0);
 }
