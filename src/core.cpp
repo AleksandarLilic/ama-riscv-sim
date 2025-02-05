@@ -107,7 +107,9 @@ void core::exec_inst() {
     bool mip_MTIP = (csr.at(CSR_MIP).value & MIP_MTIP) >> 7;
     if (mstatus_MIE && mie_MTIE && mip_MTIP) {
         tu.e_timer_interrupt();
+        #ifdef ENABLE_HW_PROF
         last_inst_branch = false;
+        #endif
     }
 
     if (!tu.is_trapped()) {
@@ -164,9 +166,11 @@ void core::exec_inst() {
         dasm.asm_ss.str("");
         if (tu.is_trapped()) {
             log_ofstream << dasm.asm_str << "\n";
+            #ifdef ENABLE_PROF
             if (log_symbol) {
                 log_ofstream << prof_perf.get_callstack_str() << "\n";
             }
+            #endif
             return;
         }
         logging_pc.inst_cnt++;
@@ -206,8 +210,8 @@ void core::exec_inst() {
     if (log_symbol && logging) {
         log_ofstream << prof_perf.get_callstack_str() << "\n";
     }
-    #endif
-    #endif
+    #endif // ENABLE_DASM
+    #endif // ENABLE_PROF
 
     // next inst
     pc = next_pc;
@@ -513,7 +517,9 @@ void core::system() {
                 next_pc = csr[CSR_MEPC].value;
                 DASM_OP(mret)
                 PROF_G(mret)
+                #ifdef ENABLE_PROF
                 prof_perf.update_jalr(next_pc, true);
+                #endif
                 break;
             default: tu.e_unsupported_inst("system");
         }
@@ -720,7 +726,9 @@ uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
         a >>= 16;
         b >>= 16;
     }
+    #ifdef ENABLE_PROF
     prof.log_sparsity(res==0);
+    #endif
     return res;
 }
 
@@ -732,7 +740,9 @@ uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
         a >>= 8;
         b >>= 8;
     }
+    #ifdef ENABLE_PROF
     prof.log_sparsity(res==0);
+    #endif
     return res;
 }
 
@@ -744,7 +754,9 @@ uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
         a >>= 4;
         b >>= 4;
     }
+    #ifdef ENABLE_PROF
     prof.log_sparsity(res==0);
+    #endif
     return res;
 }
 

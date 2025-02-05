@@ -1,7 +1,9 @@
 #pragma once
 
 #include "defines.h"
+#ifdef ENABLE_PROF
 #include "profiler_perf.h"
+#endif
 
 class trap {
     private:
