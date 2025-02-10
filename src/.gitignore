@@ -1,5 +1,5 @@
 # C++ files
-build/
+build*
 ama-riscv-sim
 
 # logs
