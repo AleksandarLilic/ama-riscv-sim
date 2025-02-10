@@ -26,7 +26,7 @@ CACHE_LINE_BYTES = 64
 
 def get_test_name(app: str) -> str:
     test_name = app.split("/")
-    return "_".join(test_name[-2:]).replace(".bin", "")
+    return "_".join(test_name[-2:]).replace(".elf", "")
 
 def get_out_dir(test_name: str) -> str:
     return f"out_{test_name}"
@@ -810,13 +810,13 @@ def run_main(args: argparse.Namespace) -> None:
     workloads_dict = sweep_dict["workloads"]
     for wl,flavors in workloads_dict.items():
         for flavor in flavors[0]:
-            binary = os.path.join(APPS_DIR, wl, f"{flavor}.bin")
-            if not os.path.exists(binary):
-                raise FileNotFoundError(f"Binary not found at: {binary}")
+            elf = os.path.join(APPS_DIR, wl, f"{flavor}.elf")
+            if not os.path.exists(elf):
+                raise FileNotFoundError(f"elf not found at: {elf}")
             else:
                 for_sweep = not flavors[3]['skip_search']
                 wl_args = flavors[2]["sim_args"].split(" ") # args as list
-                e = {"app": binary, "thr": flavors[1], "args": wl_args}
+                e = {"app": elf, "thr": flavors[1], "args": wl_args}
                 workloads_all.append(e)
                 if for_sweep:
                     workloads_sweep.append(e)
