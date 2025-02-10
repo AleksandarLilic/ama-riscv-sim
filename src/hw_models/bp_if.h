@@ -38,7 +38,7 @@ class bp_if {
         uint32_t predict(uint32_t pc, int32_t offset, uint32_t funct3);
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
-        void finish(std::string log_path);
+        void finish(std::string out_dir);
         void ideal(uint32_t correct_pc) {
             if (ideal_bp) ideal_bp->goto_future(correct_pc);
             if (bp_active_type == bp_t::ideal) active_bp->goto_future(correct_pc);
@@ -51,10 +51,10 @@ class bp_if {
         std::unique_ptr<bp> create_predictor(std::array<bp_def_t, 3> bp_defs);
 
     private:
-        void show_stats(std::string log_path);
+        void show_stats(std::string out_dir);
         void update_app_stats(uint32_t pc, bool taken);
         std::string find_run_length(const std::vector<bool>& pattern);
-        void dump_csv(std::string log_path);
+        void dump_csv(std::string out_dir);
 
     private:
         // predefined branch predictors

@@ -5,14 +5,14 @@ memory::memory(
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         // create devices
         mm(MEM_SIZE, test_elf, hw_cfg),
-        #ifdef UART_ENABLE
+        #ifdef UART_EN
         uart0(),
         #endif
         clint0(),
         // put devices in memory map
         mem_map {{
             {BASE_ADDR, MEM_SIZE, &mm},
-            #ifdef UART_ENABLE
+            #ifdef UART_EN
             {UART0_ADDR, UART_SIZE, &uart0},
             #endif
             {CLINT_ADDR, CLINT_SIZE, &clint0}
@@ -53,7 +53,7 @@ uint32_t memory::set_addr(uint32_t address, mem_op_t mem_op, uint32_t size) {
 }
 
 scp_status_t memory::cache_hint(uint32_t address, scp_mode_t scp_mode) {
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     address = address - mem_map[0].base;
     dev_ptr = mem_map[0].ptr;
     main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);

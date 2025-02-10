@@ -2,19 +2,19 @@
 
 core::core(
     memory *mem,
-    std::string log_path,
+    std::string out_dir,
     cfg_t cfg,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         running(false),
         mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
         inst_cnt(0), inst_cnt_csr(0),
         tu(&csr, &pc, &inst),
-        log_path(log_path), logging_pc(cfg.log_pc), logging(false)
-    #ifdef ENABLE_PROF
-    , prof(log_path)
-    , prof_perf(log_path, mem->get_symbol_map(), cfg.perf_event)
+        out_dir(out_dir), prof_pc(cfg.prof_pc), prof_act(false)
+    #ifdef PROFILERS_EN
+    , prof(out_dir)
+    , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event)
     #endif
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     , bp("bpred", hw_cfg)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
@@ -22,17 +22,24 @@ core::core(
     rf[0] = 0;
     rf_names_idx = TO_U8(cfg.rf_names);
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
-    dump_all_regs = cfg.dump_all_regs;
+    end_dump_state = cfg.end_dump_state;
+    log_state = cfg.log_state;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
     mem->trap_setup(&tu);
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
     #endif
 
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     mem->set_dasm(&dasm);
     tu.set_dasm(&dasm);
+    log_always = cfg.log_always;
+    log_act = log_always;
+    #endif
+
+    #ifdef HW_MODELS_EN
+    last_inst_branch = false;
     #endif
 
     // initialize CSRs
@@ -42,24 +49,24 @@ core::core(
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
     mem->set_mip(&csr.at(CSR_MIP).value);
-    #if defined(ENABLE_PROF) && defined(ENABLE_HW_PROF)
+    #if defined(PROFILERS_EN) && defined(HW_MODELS_EN)
     mem->set_perf_profiler(&prof_perf);
     #endif
 }
 
 void core::exec() {
-    #ifdef ENABLE_DASM
-    log_ofstream.open(log_path + "exec.log");
-    logging = false;
-    #endif
-
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.active = false;
     prof_perf.active = false;
     prof_fusion.active = false;
     #endif
 
-    #ifdef UART_ENABLE
+    #ifdef DASM_EN
+    log_ofstream.open(out_dir + "exec.log");
+    prof_act = false;
+    #endif
+
+    #ifdef UART_EN
     std::cout << "=== UART START ===" << "\n";
     #endif
 
@@ -73,23 +80,22 @@ void core::exec() {
     return;
 }
 
-void core::log_and_prof([[maybe_unused]] bool enable) {
-    #ifdef ENABLE_DASM
-    logging = enable;
-    dasm.asm_ss.str(""); // clear the string stream on start/stop
-    #endif
-
-    #ifdef ENABLE_PROF
+void core::prof_state([[maybe_unused]] bool enable) {
+    #ifdef PROFILERS_EN
+    prof_act = enable;
     prof.active = enable;
     prof_perf.active = enable;
     prof_fusion.active = enable;
-    #if defined(ENABLE_DASM) && defined(ENABLE_PROF)
-    if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
-    #endif
     #endif
 
-    #ifdef ENABLE_HW_PROF
-    logging = enable;
+    #ifdef DASM_EN
+    log_act = enable || log_always;
+    dasm.asm_ss.str(""); // clear the string stream on start/stop
+    if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
+    #endif
+
+    #ifdef HW_MODELS_EN
+    prof_act = enable;
     bp.profiling(enable);
     mem->cache_profiling(enable);
     #endif
@@ -97,8 +103,8 @@ void core::log_and_prof([[maybe_unused]] bool enable) {
 
 void core::exec_inst() {
     tu.clear_trap();
-    if (logging_pc.should_start(pc)) log_and_prof(true);
-    else if (logging_pc.should_stop(pc)) log_and_prof(false);
+    if (prof_pc.should_start(pc)) prof_state(true);
+    else if (prof_pc.should_stop(pc)) prof_state(false);
 
     // DPI would need to handle this separately based on the simulation time
     mem->update_mtime();
@@ -107,7 +113,7 @@ void core::exec_inst() {
     bool mip_MTIP = (csr.at(CSR_MIP).value & MIP_MTIP) >> 7;
     if (mstatus_MIE && mie_MTIE && mip_MTIP) {
         tu.e_timer_interrupt();
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         last_inst_branch = false;
         #endif
     }
@@ -127,7 +133,7 @@ void core::exec_inst() {
                 default: tu.e_unsupported_inst("op_c unreachable");
             }
             #else // !RV32C
-                tu.e_unsupported_inst("RV32C unsupported");
+            tu.e_unsupported_inst("RV32C unsupported");
             #endif
         } else {
             INST_W(8);
@@ -149,69 +155,61 @@ void core::exec_inst() {
         }
     }
 
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
     #endif
 
-    #ifdef ENABLE_DASM
-    #ifdef DPI
-    // always log dasm for DPI
+    #if defined(PROFILERS_EN) || defined(HW_MODELS_EN)
+    if (!tu.is_trapped() && (prof_act)) prof_pc.inst_cnt++;
+    #endif
+
+    #ifdef DASM_EN
+    // dasm string always available, logged to the file conditionally
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
-    if (tu.is_trapped()) return;
-
-    #else // !DPI
-    if (logging) {
-        dasm.asm_str = dasm.asm_ss.str();
-        dasm.asm_ss.str("");
+    if (log_act) {
         if (tu.is_trapped()) {
+            // log changed callstack and return
             log_ofstream << dasm.asm_str << "\n";
-            #ifdef ENABLE_PROF
             if (log_symbol) {
                 log_ofstream << prof_perf.get_callstack_str() << "\n";
             }
-            #endif
             return;
         }
-        logging_pc.inst_cnt++;
-        log_ofstream << INDENT << std::setw(5) << std::setfill(' ')
-                     << logging_pc.inst_cnt << ": "
-                     << FORMAT_INST(pc, inst, inst_w) << " "
+        log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
+        if (prof_act) log_ofstream << prof_pc.inst_cnt;
+        else log_ofstream << "";
+        log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
                      << dasm.asm_str << "\n";
 
-        if (logging_pc.dump_state) {
-            log_ofstream << dump_state(csr_updated) << "\n";
+        if (log_state) {
+            log_ofstream << print_state(csr_updated) << "\n";
             csr_updated = false;
         }
     }
-
-    // FIXME: prevent writing in the first place if logging is not active
-    dasm.asm_ss.str("");
-    if (tu.is_trapped()) return;
     #endif
-
-    #elif defined(ENABLE_HW_PROF)
     if (tu.is_trapped()) return;
-    // enable logging in case only HW_PROF is enabled
-    if (logging) logging_pc.inst_cnt++;
 
-    #else // !ENABLE_DASM && !ENABLE_HW_PROF
-    if (tu.is_trapped()) return;
-    #endif
-
-    #ifdef ENABLE_PROF
-    if (prof.active) {
+    #ifdef PROFILERS_EN
+    if (prof_act) {
+        // TODO
+        // #ifdef DPI
+        // prof.te.sample_cnt = get_rtl_clk();
+        // #else
+        // prof.te.sample_cnt = prof_pc.inst_cnt;
+        // #endif
         prof.te.pc = pc - BASE_ADDR;
         prof.te.sp = rf[2];
-        prof.te.inst_size = TO_U32(inst_w>>1);
+        prof.te.inst_size = TO_U32(inst_w >> 1); // hex digits to bytes
         prof.new_inst(inst);
     }
-    #ifdef ENABLE_DASM
-    if (log_symbol && logging) {
+    #endif
+
+    #ifdef DASM_EN
+    if (log_symbol && log_act) {
         log_ofstream << prof_perf.get_callstack_str() << "\n";
     }
-    #endif // ENABLE_DASM
-    #endif // ENABLE_PROF
+    #endif
 
     // next inst
     pc = next_pc;
@@ -226,13 +224,13 @@ void core::exec_inst() {
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_fusion.finish();
     prof_perf.finish();
     prof.finish();
     #endif
-    #ifdef ENABLE_HW_PROF
-    bp.finish(log_path);
+    #ifdef HW_MODELS_EN
+    bp.finish(out_dir);
     mem->cache_finish();
     log_hw_stats();
     #endif
@@ -285,7 +283,7 @@ void core::al_reg() {
         default: tu.e_unsupported_inst("al_reg"); return;
     }
     next_pc = pc + 4;
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
     DASM_RD_UPDATE;
     #endif
@@ -308,7 +306,7 @@ void core::al_imm() {
         default: tu.e_unsupported_inst("al_imm"); return;
     }
     next_pc = pc + 4;
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << DASM_OP_RS1 << ",";
     if (is_shift)
         dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
@@ -322,7 +320,7 @@ void core::al_imm() {
 }
 
 void core::load() {
-    #if defined(ENABLE_PROF) or defined(ENABLE_DASM)
+    #if defined(PROFILERS_EN) or defined(DASM_EN)
     uint32_t rs1 = rf[ip.rs1()];
     #endif
     uint32_t loaded;
@@ -334,12 +332,12 @@ void core::load() {
         CASE_LOAD(lhu)
         default: tu.e_unsupported_inst("load"); return;
     }
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     next_pc = pc + 4;
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
     dasm.asm_ss << " <- mem["
@@ -354,12 +352,12 @@ void core::store() {
         CASE_STORE(sw)
         default: tu.e_unsupported_inst("store");
     }
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     next_pc = pc + 4;
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_OP_RS2 << "," << TO_I32(ip.imm_s())
                 << "(" << DASM_OP_RS1 << ")";
     DASM_MEM_UPDATE;
@@ -367,7 +365,7 @@ void core::store() {
 }
 
 void core::branch() {
-    [[maybe_unused]] bool taken; // unused if built without ENABLE_PROF
+    [[maybe_unused]] bool taken; // unused if built without PROFILERS_EN
     next_pc = pc + 4; // updated in CASE_BRANCH if taken
     switch (ip.funct3()) {
         CASE_BRANCH(beq)
@@ -387,17 +385,17 @@ void core::branch() {
     }
     #endif
 
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_perf.update_branch(next_pc, taken);
     prof_perf.set_perf_event_flag(perf_event_t::branches);
     #endif
 
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_OP_RS1 << "," << DASM_OP_RS2 << ","
                 << std::hex << pc + TO_I32(ip.imm_b()) << std::dec;
     #endif
 
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     last_inst_branch = true;
     bp.ideal(next_pc);
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b(), ip.funct3());
@@ -410,7 +408,7 @@ void core::branch() {
     if (!correct) {
         //mem->speculative_exec(speculative_t::exit_flush);
         inst_resolved = mem->rd_inst(next_pc);
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::bp_mispredict);
         #endif
     } else {
@@ -435,12 +433,12 @@ void core::jalr() {
     PROF_J(jalr)
     PROF_RD_RS1
 
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
     prof_perf.update_jalr(next_pc, ret_inst);
     #endif
 
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
     #endif
@@ -460,12 +458,12 @@ void core::jal() {
     PROF_J(jal)
     PROF_RD
 
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     bool tail_call = (ip.rd() == 0);
     prof_perf.update_jal(next_pc, tail_call);
     #endif
 
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << std::hex << pc + TO_I32(ip.imm_j()) << std::dec;
     DASM_RD_UPDATE;
     #endif
@@ -477,7 +475,7 @@ void core::lui() {
     DASM_OP(lui)
     PROF_G(lui)
     PROF_RD
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
     DASM_RD_UPDATE;
     #endif
@@ -489,7 +487,7 @@ void core::auipc() {
     DASM_OP(auipc)
     PROF_G(auipc)
     PROF_RD
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << ", " << FHEXN((ip.imm_u() >> 12), 5);
     DASM_RD_UPDATE;
     #endif
@@ -517,13 +515,13 @@ void core::system() {
                 next_pc = csr[CSR_MEPC].value;
                 DASM_OP(mret)
                 PROF_G(mret)
-                #ifdef ENABLE_PROF
+                #ifdef PROFILERS_EN
                 prof_perf.update_jalr(next_pc, true);
                 #endif
                 break;
             default: tu.e_unsupported_inst("system");
         }
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         dasm.asm_ss << dasm.op;
         #endif
     }
@@ -543,7 +541,7 @@ void core::misc_mem() {
     } else {
         tu.e_unsupported_inst("misc_mem");
     }
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op;
     #endif
 }
@@ -567,10 +565,10 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(dot4)
             default : tu.e_unsupported_inst("custom extension - arith");
         }
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::simd);
         #endif
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
         DASM_RD_UPDATE;
         bool paired_arith = (funct7 == TO_U8(alu_custom_op_t::op_mul16) ||
@@ -592,10 +590,10 @@ void core::custom_ext() {
             CASE_MEM_CUSTOM_OP(unpk2u)
             default: tu.e_unsupported_inst("custom extension - memory");
         }
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::simd);
         #endif
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
         DASM_RD_UPDATE_PAIR;
@@ -606,7 +604,7 @@ void core::custom_ext() {
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
             default : tu.e_unsupported_inst("custom extension - hint");
         }
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
         #endif
@@ -726,7 +724,7 @@ uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
         a >>= 16;
         b >>= 16;
     }
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
     return res;
@@ -740,7 +738,7 @@ uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
         a >>= 8;
         b >>= 8;
     }
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
     return res;
@@ -754,7 +752,7 @@ uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
         a >>= 4;
         b >>= 4;
     }
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
     return res;
@@ -876,12 +874,10 @@ void core::csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
-        // FIXME
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         DASM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3);
         #endif
-        SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3)
-                 << "\n";
+        SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3) << "\n";
     } else {
         // using temp in case rd and rs1 are the same register
         uint32_t init_val_rs1 = rf[ip.rs1()];
@@ -898,7 +894,7 @@ void core::csr_access() {
         }
         if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     bool imm_type = (ip.funct3() & 0x4);
     DASM_RD_UPDATE;
     if (ip.rs1() || imm_type) {
@@ -906,7 +902,7 @@ void core::csr_access() {
         DASM_ALIGN;
         dasm.asm_ss << CSRF(it);
     }
-    if (logging_pc.dump_state) csr_updated = true;
+    if (log_state) csr_updated = true;
     #endif
 }
 
@@ -1011,7 +1007,7 @@ void core::c_addi() {
     write_rf(ip.rd(), al_addi(rf[ip.rd()], ip.imm_c_arith()));
     DASM_OP(c.addi)
     PROF_G(c_addi)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
     DASM_RD_UPDATE;
     #endif
@@ -1022,7 +1018,7 @@ void core::c_li() {
     write_rf(ip.rd(), ip.imm_c_arith());
     DASM_OP(c.li)
     PROF_G(c_li)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
     DASM_RD_UPDATE;
     #endif
@@ -1034,7 +1030,7 @@ void core::c_lui() {
     write_rf(ip.rd(), ip.imm_c_lui());
     DASM_OP(c.lui)
     PROF_G(c_lui)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << FHEXN((ip.imm_c_lui() >> 12), 5);
     DASM_RD_UPDATE;
     #endif
@@ -1045,7 +1041,7 @@ void core::c_nop() {
     // write_rf(0, al_addi(rf[0], 0));
     DASM_OP(c.nop)
     PROF_G(c_nop)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op;
     #endif
     next_pc = pc + 2;
@@ -1056,7 +1052,7 @@ void core::c_addi16sp() {
     write_rf(2, al_addi(rf[2], ip.imm_c_16sp()));
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_c_16sp());
     DASM_RD_UPDATE_P(2);
     #endif
@@ -1067,7 +1063,7 @@ void core::c_srli() {
     write_rf(ip.cregh(), al_srli(rf[ip.cregh()], ip.imm_c_arith()));
     DASM_OP(c.srli)
     PROF_G(c_srli)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1078,7 +1074,7 @@ void core::c_srai() {
     write_rf(ip.cregh(), al_srai(rf[ip.cregh()], ip.imm_c_arith()));
     DASM_OP(c.srai)
     PROF_G(c_srai)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1089,7 +1085,7 @@ void core::c_andi() {
     write_rf(ip.cregh(), al_andi(rf[ip.cregh()], ip.imm_c_arith()));
     DASM_OP(c.andi)
     PROF_G(c_andi)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1100,7 +1096,7 @@ void core::c_and() {
     write_rf(ip.cregh(), al_and(rf[ip.cregh()], rf[ip.cregl()]));
     DASM_OP(c.and)
     PROF_G(c_and)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1111,7 +1107,7 @@ void core::c_or() {
     write_rf(ip.cregh(), al_or(rf[ip.cregh()], rf[ip.cregl()]));
     DASM_OP(c.or)
     PROF_G(c_or)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1122,7 +1118,7 @@ void core::c_xor() {
     write_rf(ip.cregh(), al_xor(rf[ip.cregh()], rf[ip.cregl()]));
     DASM_OP(c.xor)
     PROF_G(c_xor)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1133,7 +1129,7 @@ void core::c_sub() {
     write_rf(ip.cregh(), al_sub(rf[ip.cregh()], rf[ip.cregl()]));
     DASM_OP(c.sub)
     PROF_G(c_sub)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.cregh());
     #endif
@@ -1146,7 +1142,7 @@ void core::c_addi4spn() {
     write_rf(ip.cregl(), al_addi(rf[2], ip.imm_c_4spn()));
     DASM_OP(c.addi4spn)
     PROF_G(c_addi4spn)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
                 << TO_I32(ip.imm_c_4spn());
     DASM_RD_UPDATE_P(ip.cregl());
@@ -1158,10 +1154,10 @@ void core::c_slli() {
     write_rf(ip.rd(), al_sll(rf[ip.rd()], ip.imm_c_slli()));
     DASM_OP(c.slli)
     PROF_G(c_slli)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_fusion.attack({trigger::slli_lea, inst, mem->rd_inst(pc + 2), true});
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << FHEXN(TO_I32(ip.imm_c_slli()), 2);
     DASM_RD_UPDATE;
     #endif
@@ -1172,7 +1168,7 @@ void core::c_mv() {
     write_rf(ip.rd(), rf[ip.crs2()]);
     DASM_OP(c.mv)
     PROF_G(c_mv)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
     DASM_RD_UPDATE;
     #endif
@@ -1183,7 +1179,7 @@ void core::c_add() {
     write_rf(ip.rd(), al_add(rf[ip.rd()], rf[ip.crs2()]));
     DASM_OP(c.add)
     PROF_G(c_add)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
     DASM_RD_UPDATE;
     #endif
@@ -1198,11 +1194,11 @@ void core::c_lw() {
     write_rf(ip.cregl(), loaded);
     DASM_OP(c.lw)
     PROF_G(c_lw)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.imm_c_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     DASM_RD_UPDATE_P(ip.cregl());
@@ -1218,11 +1214,11 @@ void core::c_lwsp() {
     write_rf(ip.rd(), loaded);
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_load((rf[2] + ip.imm_c_lwsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
                << "(" << rf_names[2][rf_names_idx] << ")";
     DASM_RD_UPDATE;
@@ -1237,12 +1233,12 @@ void core::c_sw() {
     if (tu.is_trapped()) return;
     DASM_OP(c.sw)
     PROF_G(c_sw)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_store(
         (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     DASM_MEM_UPDATE_P(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()], ip.cregl());
@@ -1255,11 +1251,11 @@ void core::c_swsp() {
     if (tu.is_trapped()) return;
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[2] + ip.imm_c_swsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","
                 << TO_I32(ip.imm_c_swsp())
                 << "(" << rf_names[2][rf_names_idx] << ")";
@@ -1278,7 +1274,7 @@ void core::c_beqz() {
         PROF_B_NT(c_beqz, _c_b)
     }
     DASM_OP(c.beqz)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
     #endif
 }
@@ -1292,7 +1288,7 @@ void core::c_bnez() {
         PROF_B_NT(c_beqz, _c_b)
     }
     DASM_OP(c.bnez)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
     #endif
 }
@@ -1301,10 +1297,10 @@ void core::c_j() {
     next_pc = pc + ip.imm_c_j();
     DASM_OP(c.j)
     PROF_J(c_j)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, true);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
     #endif
@@ -1315,10 +1311,10 @@ void core::c_jal() {
     write_rf(1, pc + 2);
     DASM_OP(c.jal)
     PROF_J(c_jal)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, false);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
                 << std::dec;
     DASM_RD_UPDATE_P(1);
@@ -1331,11 +1327,11 @@ void core::c_jr() {
     next_pc = rf[ip.rd()];
     DASM_OP(c.jr)
     PROF_J(c_jr)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     bool ret_inst = (inst == INST_C_RET);
     prof_perf.update_jalr(next_pc, ret_inst);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD;
     #endif
 }
@@ -1346,10 +1342,10 @@ void core::c_jalr() {
     write_rf(1, pc + 2);
     DASM_OP(c.jalr)
     PROF_J(c_jalr)
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, false);
     #endif
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     DASM_OP_RD;
     DASM_RD_UPDATE_P(1);
     #endif
@@ -1360,16 +1356,16 @@ void core::c_ebreak() {
     running = false;
     DASM_OP(c.ebreak)
     PROF_G(c_ebreak)
-    #ifdef ENABLE_DASM
+    #ifdef DASM_EN
     dasm.asm_ss << dasm.op;
     #endif
 }
 
 // HW stats
-#ifdef ENABLE_HW_PROF
+#ifdef HW_MODELS_EN
 void core::log_hw_stats() {
     std::ofstream ofs;
-    ofs.open(log_path + "hw_stats.json");
+    ofs.open(out_dir + "hw_stats.json");
     ofs << "{\n";
     mem->log_cache_stats(ofs);
     bp.log_stats(ofs);
@@ -1381,7 +1377,7 @@ void core::log_hw_stats() {
 
 // Utilities
 void core::dump() {
-    #ifdef UART_ENABLE
+    #ifdef UART_EN
     std::cout << "=== UART END ===\n" << "\n";
     #endif
     uint32_t tohost = csr.at(CSR_TOHOST).value;
@@ -1390,8 +1386,8 @@ void core::dump() {
         std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
-              << ", logged: " << logging_pc.inst_cnt << "\n";
-    if (dump_all_regs) std::cout << dump_state(true) << "\n";
+              << ", logged: " << prof_pc.inst_cnt << "\n";
+    if (end_dump_state) std::cout << print_state(true) << "\n";
     else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
 
     #ifdef CHECK_LOG
@@ -1406,7 +1402,7 @@ void core::dump() {
     #endif
 }
 
-std::string core::dump_state(bool dump_csr) {
+std::string core::print_state(bool dump_csr) {
     std::ostringstream state;
     state << INDENT << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
     for(uint32_t i = 0; i < 32; i+=4){

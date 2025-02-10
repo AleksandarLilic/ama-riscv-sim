@@ -1,10 +1,10 @@
 #include "profiler.h"
 
-profiler::profiler(std::string log_path) {
+profiler::profiler(std::string out_dir) {
     inst = 0;
     inst_cnt_exec = 0;
     rst_te();
-    this->log_path = log_path;
+    this->out_dir = out_dir;
 
     prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
     prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
@@ -184,7 +184,7 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
 
 void profiler::log_to_file() {
     cnt_t cnt;
-    ofs.open(log_path + "inst_profiler.json");
+    ofs.open(out_dir + "inst_profiler.json");
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
         if (i.name != "") {
@@ -211,12 +211,12 @@ void profiler::log_to_file() {
     ofs << "\n}\n";
     ofs.close();
 
-    ofs.open(log_path + "trace.bin", std::ios::binary);
+    ofs.open(out_dir + "trace.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(trace.data()),
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
-    ofs.open(log_path + "reg_hist.bin", std::ios::binary);
+    ofs.open(out_dir + "reg_hist.bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),
              prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
     ofs.close();
@@ -268,6 +268,10 @@ void profiler::log_to_file() {
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
+
+    #ifdef DPI
+    return;
+    #endif
 
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Profiler: "

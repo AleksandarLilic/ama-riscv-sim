@@ -85,7 +85,7 @@ class cache {
         scp_status_t scp_status;
         speculative_t smode;
         bool speculative_exec_active; // not used atm
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         profiler_perf* prof_perf;
         perf_event_t ref_event;
         perf_event_t miss_event;
@@ -109,7 +109,7 @@ class cache {
                 for (auto& line : set) line.profiling(enable);
             }
         }
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         void set_perf_profiler(
             profiler_perf* prof_perf,
             perf_event_t ref_event,

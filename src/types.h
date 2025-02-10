@@ -172,7 +172,7 @@ enum class perf_event_t {
     //mem_loads,
     //mem_stores,
     simd,
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     //cache_reference, // only applicable for multi-level caches
     //cache_miss, // only applicable for multi-level caches
     icache_reference,
@@ -193,7 +193,7 @@ perf_event_names = {
     //"mem_loads",
     //"mem_stores",
     "simd",
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     //"cache_reference",
     //"cache_miss",
     "icache_reference",
@@ -235,12 +235,11 @@ struct CSR_entry {
 };
 
 // CLI options
-struct logging_pc_t {
+struct prof_pc_t {
     public:
         uint32_t start;
         uint32_t stop;
         uint32_t single_match_num;
-        bool dump_state;
         uint64_t inst_cnt;
     private:
         uint32_t current_match = 0;
@@ -283,10 +282,12 @@ struct symbol_tracking_t {
 };
 
 struct cfg_t {
-    logging_pc_t log_pc;
+    prof_pc_t prof_pc;
     rf_names_t rf_names;
     perf_event_t perf_event;
-    bool dump_all_regs;
+    bool log_always;
+    bool log_state;
+    bool end_dump_state;
 };
 
 struct hw_cfg_t {

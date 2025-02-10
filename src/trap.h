@@ -1,7 +1,7 @@
 #pragma once
 
 #include "defines.h"
-#ifdef ENABLE_PROF
+#ifdef PROFILERS_EN
 #include "profiler_perf.h"
 #endif
 
@@ -11,10 +11,10 @@ class trap {
         std::map<uint16_t, CSR>* csr;
         uint32_t* pc;
         uint32_t* inst;
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         dasm_str* dasm;
         #endif
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         profiler_perf* prof_perf;
         #endif
 
@@ -24,10 +24,10 @@ class trap {
             csr(csr), pc(pc), inst(inst) {}
         bool is_trapped() { return inst_trapped; }
         void clear_trap() { inst_trapped = false; }
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         void set_dasm(dasm_str* d) { dasm = d; }
         #endif
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         void set_prof_perf(profiler_perf* p) { prof_perf = p; }
         #endif
 

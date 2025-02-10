@@ -10,14 +10,14 @@ main_memory::main_memory(
     std::string test_elf,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         dev(size)
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         ,
         icache(ICACHE_CFG, this),
         dcache(DCACHE_CFG, this)
         #endif
 {
     burn_elf(test_elf);
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     dcache.set_roi(hw_cfg.roi_start, hw_cfg.roi_size);
     #endif
 }
@@ -89,7 +89,7 @@ void main_memory::burn_elf(std::string test_elf) {
     const char* data = load_seg->get_data();
     std::memcpy(mem.data(), data, size);
 
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     // generate symbol map
     for (size_t i = 0; i < reader.sections.size(); i++) {
         ELFIO::section* sec = reader.sections[i];
@@ -138,7 +138,7 @@ void main_memory::burn_elf(std::string test_elf) {
 
 uint32_t main_memory::rd_inst(uint32_t addr) {
     uint32_t inst = dev::rd(addr, 4);
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
     uint32_t inst_ic = icache.rd(BASE_ADDR + addr, 4);
     if (inst_ic != inst) {
@@ -157,7 +157,7 @@ uint32_t main_memory::rd_inst(uint32_t addr) {
     return inst;
 }
 
-#ifdef ENABLE_HW_PROF
+#ifdef HW_MODELS_EN
 scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
     addr += BASE_ADDR;
     if (scp_mode == scp_mode_t::m_lcl) return dcache.scp_lcl(addr);
@@ -168,7 +168,7 @@ scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
 
 uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
     uint32_t data = dev::rd(addr, size);
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
     uint32_t data_dc = dcache.rd(BASE_ADDR + addr, size);
     if (data_dc != data) {
@@ -188,7 +188,7 @@ uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
 }
 
 void main_memory::wr(uint32_t addr, uint32_t data, uint32_t size) {
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     dcache.wr(BASE_ADDR + addr, data, size);
     #endif
     dev::wr(addr, data, size);

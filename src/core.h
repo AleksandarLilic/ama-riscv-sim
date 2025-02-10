@@ -4,32 +4,34 @@
 #include "memory.h"
 #include "inst_parser.h"
 #include "trap.h"
-#ifdef ENABLE_PROF
+
+#ifdef PROFILERS_EN
 #include "profiler.h"
 #include "profiler_perf.h"
 #include "profiler_fusion.h"
 #endif
-#ifdef ENABLE_HW_PROF
+
+#ifdef HW_MODELS_EN
 #include "bp_if.h"
 #endif
 
 class core {
     public:
         core() = delete;
-        core(memory *mem, std::string log_path, cfg_t cfg, hw_cfg_t hw_cfg);
+        core(memory* mem, std::string out_dir, cfg_t cfg, hw_cfg_t hw_cfg);
         void exec();
         void exec_inst();
         void dump();
-        std::string dump_state(bool dump_csr);
+        std::string print_state(bool dump_csr);
         void finish(bool dump_regs);
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
-        #if defined(ENABLE_DASM) || defined(ENABLE_PROF)
+        #if defined(DASM_EN) || defined(PROFILERS_EN)
         uint8_t inst_w = 8;
         #endif
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         std::string get_inst_asm() { return dasm.asm_str; }
         std::string get_rd_val_str() {
             std::ostringstream ostr;
@@ -58,7 +60,7 @@ class core {
             if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
         }
         void cntr_update();
-        void log_and_prof(bool enable);
+        void prof_state(bool enable);
 
         // instruction decoders
         void al_reg();
@@ -78,7 +80,7 @@ class core {
         // instruction parsing
         inst_parser ip;
         void inst_fetch() {
-            #ifdef ENABLE_HW_PROF
+            #ifdef HW_MODELS_EN
             // if previous inst was branch, use that instead of fetching
             // this prevents cache from logging the same access twice
             if (!last_inst_branch) inst = mem->rd_inst(pc);
@@ -168,7 +170,7 @@ class core {
         // arithmetic and logic immediate operations
         uint32_t al_addi(uint32_t a, uint32_t b) { return al_add(a, b); };
         uint32_t al_slli(uint32_t a, uint32_t b) {
-            #ifdef ENABLE_PROF
+            #ifdef PROFILERS_EN
             prof_fusion.attack(
                 {trigger::slli_lea, inst, mem->rd_inst(pc + 4), false}
             );
@@ -179,10 +181,10 @@ class core {
         uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
         uint32_t al_slti(uint32_t a, uint32_t b) {
             if (inst == INST_HINT_LOG_START) {
-                log_and_prof(logging_pc.should_start());
+                prof_state(prof_pc.should_start());
                 return 0;
             } else if (inst == INST_HINT_LOG_END) {
-                log_and_prof(false);
+                prof_state(false);
                 return 0;
             }
             return al_slt(a, b);
@@ -328,7 +330,7 @@ class core {
         // interrupts
         // TODO
 
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         void log_hw_stats();
         #endif
 
@@ -345,11 +347,14 @@ class core {
         uint8_t rf_names_idx;
         uint8_t rf_names_w;
         uint8_t csr_names_w;
-        bool dump_all_regs;
-        std::string log_path;
-        logging_pc_t logging_pc;
-        bool logging;
-        #ifdef ENABLE_DASM
+        bool end_dump_state;
+        bool log_state;
+        std::string out_dir;
+        prof_pc_t prof_pc;
+        bool prof_act;
+        bool log_act;
+        bool log_always;
+        #ifdef DASM_EN
         std::ofstream log_ofstream;
         bool csr_updated = false;
         dasm_str dasm;
@@ -394,12 +399,12 @@ class core {
             {CSR_INSTRETH, "instreth", csr_perm_t::ro, 0u},
         }};
 
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         profiler prof;
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
         #endif
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         bp_if bp;
         uint32_t inst_speculative;
         uint32_t inst_resolved;

@@ -76,7 +76,7 @@ void cache::reference(uint32_t addr, uint32_t size,
     if (scp_mode != scp_mode_t::m_rel) {
         stats.reference(atype, size);
         if (roi.has(addr)) roi.stats.reference(atype, size);
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         prof_perf->set_perf_event_flag(ref_event);
         #endif
     }
@@ -122,7 +122,7 @@ void cache::reference(uint32_t addr, uint32_t size,
     // miss, goes to main mem
     stats.miss();
     if (roi.has(addr)) roi.stats.miss();
-    #ifdef ENABLE_PROF
+    #ifdef PROFILERS_EN
     prof_perf->set_perf_event_flag(miss_event);
     #endif
 

@@ -2,11 +2,11 @@
 #include "profiler_perf.h"
 
 profiler_perf::profiler_perf(
-    std::string log_path,
+    std::string out_dir,
     std::map<uint32_t, symbol_map_entry_t> symbol_map,
     perf_event_t perf_event)
 {
-    this->log_path = log_path;
+    this->out_dir = out_dir;
     this->symbol_map = symbol_map;
     this->perf_event = perf_event;
     // set up symbol tracking
@@ -139,7 +139,8 @@ bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
     return (idx != st.idx_callstack.back());
 }
 
-std::string profiler_perf::get_callstack_str(std::vector<uint8_t> idx_stack) {
+std::string profiler_perf::get_callstack_str(
+    const std::vector<uint8_t>& idx_stack) {
     std::string stack_str = "";
     for (const auto &idx : idx_stack) {
         stack_str += symbol_lut.at(idx).name + ";";
@@ -158,7 +159,7 @@ void profiler_perf::log_to_file() {
     // close last callstack
     save_callstack_cnt();
     // dump all counters from callstack_cnt_map to file
-    std::string out = log_path + "callstack_folded_" +
+    std::string out = out_dir + "callstack_folded_" +
                       perf_event_names[TO_U32(perf_event)] + ".txt";
     std::ofstream out_file(out);
     std::vector<uint8_t> callstack_ids;

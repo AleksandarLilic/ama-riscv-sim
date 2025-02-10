@@ -5,7 +5,7 @@
 #include "clint.h"
 #include "trap.h"
 
-#ifdef UART_ENABLE
+#ifdef UART_EN
 #include "uart.h"
 #define MEM_MAP_SIZE 3
 #else
@@ -21,14 +21,14 @@ struct mem_entry {
 class memory {
     private:
         main_memory mm;
-        #ifdef UART_ENABLE
+        #ifdef UART_EN
         uart uart0;
         #endif
         clint clint0;
         dev *dev_ptr;
         std::array<mem_entry, MEM_MAP_SIZE> mem_map;
         trap *tu;
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         dasm_str* dasm;
         #endif
 
@@ -49,7 +49,7 @@ class memory {
         uint64_t get_mtime_shadow() { return clint0.get_mtime_shadow(); }
         void set_mip(uint32_t* csr_mip) { clint0.set_mip(csr_mip); }
         void update_mtime() { clint0.update_mtime(); }
-        #ifdef ENABLE_DASM
+        #ifdef DASM_EN
         void set_dasm(dasm_str* d) { dasm = d; }
         #endif
         uint32_t rd_inst(uint32_t address);
@@ -58,7 +58,7 @@ class memory {
         void dump();
         void dump(uint32_t start, uint32_t size);
         scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         // propagating to caches
         void log_cache_stats(std::ofstream& log_file) {
             mm.log_cache_stats(log_file);
@@ -72,7 +72,7 @@ class memory {
         void speculative_exec(speculative_t smode) {
             mm.speculative_exec(smode);
         }
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         void set_perf_profiler(profiler_perf* prof_perf) {
             mm.set_perf_profiler(prof_perf);
         }

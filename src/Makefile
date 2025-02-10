@@ -11,7 +11,7 @@ CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
 #CXXFLAGS += -save-temps
 LDFLAGS :=
 
-BDIR := build
+BDIR ?= build
 $(shell mkdir -p $(BDIR))
 
 TARGET := ama-riscv-sim
@@ -26,11 +26,13 @@ INC += -I./external/cxxopts/include
 INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 
 USER_DEFINES =
-DEFINES := -DENABLE_DASM
+DEFINES := -DDASM_EN
 #DEFINES += -DRV32C
-#DEFINES += -DUART_INPUT_ENABLE
+#DEFINES += -DUART_INPUT_EN
 
 all: $(TARGET)
+
+obj: $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $(BDIR)/$@ $^ $(LDFLAGS)
@@ -45,7 +47,10 @@ $(BDIR)/%.o: %.cpp
 cleanlogs:
 	rm -rf out_*
 
-clean: cleanlogs
-	rm -rf $(BDIR) $(TARGET)
+cleanbuild:
+	rm -rf $(BDIR)
 
-.PHONY: all clean cleanlogs
+clean: cleanlogs cleanbuild
+	rm -rf $(TARGET)
+
+.PHONY: all obj clean cleanlogs cleanbuild

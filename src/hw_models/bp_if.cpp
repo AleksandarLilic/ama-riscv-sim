@@ -180,13 +180,13 @@ void bp_if::update_app_stats(uint32_t pc, bool taken) {
     ptr->pattern.push_back(taken);
 }
 
-void bp_if::finish(std::string log_path) {
+void bp_if::finish(std::string out_dir) {
     for (auto& p : all_predictors) p->summarize_stats();
     active_bp->summarize_stats();
-    show_stats(log_path);
+    show_stats(out_dir);
 }
 
-void bp_if::show_stats(std::string log_path) {
+void bp_if::show_stats(std::string out_dir) {
     std::cout << "Branch stats: unique branches: " << bi_app_stats.size()
               << std::endl;
     // show all, but mark the active one (driving the icache)
@@ -194,7 +194,7 @@ void bp_if::show_stats(std::string log_path) {
               << std::endl;
 
     all_predictors.insert(all_predictors.begin(), std::move(active_bp));
-    if (to_dump_csv) dump_csv(log_path);
+    if (to_dump_csv) dump_csv(out_dir);
     for (auto& p : all_predictors) p->show_stats();
     active_bp = std::move(all_predictors[0]); // restore active_bp
     all_predictors.erase(all_predictors.begin()); // remove invalid pointer
@@ -204,11 +204,11 @@ void bp_if::show_stats(std::string log_path) {
     for (auto& p : all_predictors) p->dump();
 }
 
-void bp_if::dump_csv(std::string log_path) {
+void bp_if::dump_csv(std::string out_dir) {
     std::array<std::string_view, 8> constexpr funct3_mn = {
         "beq", "bne", "na", "na", "blt", "bge", "bltu", "bgeu" };
     std::ofstream bcsv;
-    bcsv.open(log_path + "branches.csv");
+    bcsv.open(out_dir + "branches.csv");
     bcsv << "PC,Direction,Funct3,Funct3_mn,Taken,Not_Taken,All,Taken%";
     for (auto& p : all_predictors) bcsv << ",P_" << p->type_name;
     for (auto& p : all_predictors) bcsv << ",P_" << p->type_name << "%";

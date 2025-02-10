@@ -7,7 +7,7 @@ class profiler_perf {
         bool active;
 
     private:
-        std::string log_path;
+        std::string out_dir;
         symbol_tracking_t st;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
         std::vector<symbol_lut_entry_t> symbol_lut;
@@ -19,12 +19,15 @@ class profiler_perf {
     public:
         profiler_perf() = delete;
         profiler_perf(
-            std::string log_path,
+            std::string out_dir,
             std::map<uint32_t, symbol_map_entry_t> symbol_map,
             perf_event_t perf_event);
         bool finish_inst(uint32_t next_pc);
         std::string get_callstack_str() {
             return get_callstack_str(st.idx_callstack);
+        }
+        std::string get_callstack_top_str() {
+            return get_callstack_str({st.idx_callstack.back()});
         }
         void update_branch(uint32_t next_pc, bool taken);
         void update_jalr(uint32_t next_pc, bool inst_ret);
@@ -41,7 +44,7 @@ class profiler_perf {
         void update_callstack(uint32_t cr_pc);
         void set_fallthrough_symbol(uint32_t cr_pc);
         bool symbol_change_on_jump(uint32_t next_pc);
-        std::string get_callstack_str(std::vector<uint8_t> idx_stack);
+        std::string get_callstack_str(const std::vector<uint8_t>& idx_stack);
         std::string callstack_to_key();
         void log_to_file();
 };

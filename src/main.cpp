@@ -5,6 +5,8 @@
 #include "memory.h"
 #include "core.h"
 
+#include "utils.h"
+
 #ifdef TEST_BUILD
 #define TRY_CATCH(x) \
     try { x; } \
@@ -22,27 +24,6 @@
 
 #define RESOLVE_ARG(str, map) \
     resolve_arg(str, result[str].as<std::string>(), map)
-
-std::string gen_log_path(
-    const std::string& test_elf_path,
-    const std::string& out_dir_tag) {
-
-    std::filesystem::path p(test_elf_path);
-    std::string last_directory = p.parent_path().filename().string();
-    std::string binary_name = p.stem().string();
-    std::string path_out = "out_" + last_directory + "_" + binary_name;
-    if (!out_dir_tag.empty()) path_out += "_" + out_dir_tag;
-    path_out = path_out + "/";
-    bool exists = std::filesystem::exists(path_out);
-    //if (exists) std::filesystem::remove_all(path_out);
-    if (exists) return path_out;
-    bool created = std::filesystem::create_directory(path_out);
-    if (!created) {
-        std::cerr << "Failed to create directory: " << path_out << std::endl;
-        throw std::runtime_error("Failed to create directory");
-    }
-    return path_out;
-}
 
 // handle passed args
 template <typename T>
@@ -81,7 +62,7 @@ const std::unordered_map<std::string, perf_event_t> perf_event_map = {
     {"branches", perf_event_t::branches},
     {"mem", perf_event_t::mem},
     {"simd", perf_event_t::simd},
-    #ifdef ENABLE_HW_PROF
+    #ifdef HW_MODELS_EN
     {"icache_reference", perf_event_t::icache_reference},
     {"icache_miss", perf_event_t::icache_miss},
     {"dcache_reference", perf_event_t::dcache_reference},
@@ -90,7 +71,7 @@ const std::unordered_map<std::string, perf_event_t> perf_event_map = {
     #endif
 };
 
-#ifdef ENABLE_HW_PROF
+#ifdef HW_MODELS_EN
 const std::unordered_map<std::string, cache_policy_t> cache_policy_map = {
     {"lru", cache_policy_t::lru}
 };
@@ -129,18 +110,19 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
 
 // defaults
 struct defs_t {
-    static constexpr char log_pc_start[] = "0";
-    static constexpr char log_pc_stop[] = "0";
-    static constexpr char log_pc_sm[] = "0";
+    static constexpr char prof_pc_start[] = "0";
+    static constexpr char prof_pc_stop[] = "0";
+    static constexpr char prof_pc_sm[] = "0";
     static constexpr char rf_names[] = "abi";
-    static constexpr char dump_all_regs[] = "false";
+    static constexpr char end_dump_state[] = "false";
     static constexpr char perf_event[] = "exec";
-    #ifdef ENABLE_DASM
-    static constexpr char dump_state[] = "false";
+    #ifdef DASM_EN
+    static constexpr char log_always[] = "false";
+    static constexpr char log_state[] = "false";
     #endif
 };
 
-#ifdef ENABLE_HW_PROF
+#ifdef HW_MODELS_EN
 struct hw_defs_t {
     static constexpr char icache_sets[] = "1";
     static constexpr char icache_ways[] = "4";
@@ -190,13 +172,13 @@ int main(int argc, char* argv[]) {
     options.add_options()
         ("p,path", "Path to the ELF file to load",
          cxxopts::value<std::string>())
-        ("log_pc_start", "Start PC (hex) for logging and profiling",
-         cxxopts::value<std::string>()->default_value(defs_t::log_pc_start))
-        ("log_pc_stop", "Stop PC (hex) for logging and profiling",
-         cxxopts::value<std::string>()->default_value(defs_t::log_pc_stop))
-        ("log_pc_single_match",
-         "Log and profile match number (0 for all matches)",
-         cxxopts::value<std::string>()->default_value(defs_t::log_pc_sm))
+        ("prof_pc_start", "Start PC (hex) for profiling",
+         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_start))
+        ("prof_pc_stop", "Stop PC (hex) for profiling",
+         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_stop))
+        ("prof_pc_single_match",
+         "Run profiling only for match number (0 for all matches)",
+         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_sm))
         ("rf_names",
          "Register file names used for output. Options: " +
          gen_help_list(rf_names_map),
@@ -205,17 +187,20 @@ int main(int argc, char* argv[]) {
          "Performance event to track. Options: " +
          gen_help_list(perf_event_map),
          cxxopts::value<std::string>()->default_value(defs_t::perf_event))
-        ("dump_all_regs", "Dump all registers at the end of simulation",
-         cxxopts::value<bool>()->default_value(defs_t::dump_all_regs))
+        ("end_dump_state", "Dump all registers at the end of simulation",
+         cxxopts::value<bool>()->default_value(defs_t::end_dump_state))
         ("out_dir_tag", "Tag (suffix) for output directory",
          cxxopts::value<std::string>()->default_value(""))
 
-        #ifdef ENABLE_DASM
-        ("dump_state", "Dump state after each executed instruction",
-         cxxopts::value<bool>()->default_value(defs_t::dump_state))
+        #ifdef DASM_EN
+        ("log_always",
+         "Always log execution. Otherwise, log during profiling only",
+         cxxopts::value<bool>()->default_value(defs_t::log_always))
+        ("log_state", "Log state after each executed instruction",
+         cxxopts::value<bool>()->default_value(defs_t::log_state))
         #endif
 
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         ("icache_sets", "Number of sets in I$",
          cxxopts::value<std::string>()->default_value(hw_defs_t::icache_sets))
         ("icache_ways", "Number of ways in I$",
@@ -333,18 +318,19 @@ int main(int argc, char* argv[]) {
     try {
         test_elf = result["path"].as<std::string>();
         out_dir_tag = result["out_dir_tag"].as<std::string>();
-        cfg.log_pc.start = TO_HEX(result["log_pc_start"]);
-        cfg.log_pc.stop = TO_HEX(result["log_pc_stop"]);
-        cfg.log_pc.single_match_num = TO_SIZE(result["log_pc_single_match"]);
+        cfg.prof_pc.start = TO_HEX(result["prof_pc_start"]);
+        cfg.prof_pc.stop = TO_HEX(result["prof_pc_stop"]);
+        cfg.prof_pc.single_match_num = TO_SIZE(result["prof_pc_single_match"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
-        cfg.dump_all_regs = TO_BOOL(result["dump_all_regs"]);
+        cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
 
-        #ifdef ENABLE_DASM
-        cfg.log_pc.dump_state = TO_BOOL(result["dump_state"]);
+        #ifdef DASM_EN
+        cfg.log_always = TO_BOOL(result["log_always"]);
+        cfg.log_state = TO_BOOL(result["log_state"]);
         #endif
 
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
         hw_cfg.icache_policy = RESOLVE_ARG("icache_policy", cache_policy_map);
@@ -389,21 +375,25 @@ int main(int argc, char* argv[]) {
 
     // print useful info about the run
     std::cout << "Running: " << test_elf << std::hex << "\n";
-    if (cfg.log_pc.start != 0) {
-        std::cout << "Logging start pc: 0x" << cfg.log_pc.start << " ";
+    if (cfg.prof_pc.start != 0) {
+        std::cout << "Profiling start PC: 0x" << cfg.prof_pc.start << "\n";
     }
-    if (cfg.log_pc.stop != 0) {
-        std::cout << "Logging stop pc: 0x" << cfg.log_pc.stop << " ";
+    if (cfg.prof_pc.stop != 0) {
+        std::cout << "Profiling stop PC:  0x" << cfg.prof_pc.stop << "\n";
     }
     std::cout << std::dec;
-    if (cfg.log_pc.single_match_num) {
-        std::cout << "Logging only match number: " << cfg.log_pc.single_match_num;
+    if (cfg.prof_pc.single_match_num) {
+        std::cout << "Profiling only match number: "
+                  << cfg.prof_pc.single_match_num << "\n";
     }
+    #ifdef DASM_EN
+    if (cfg.log_always) std::cout << "Logging always" << "\n";
+    #endif
     std::cout << std::endl;
 
     TRY_CATCH({
         memory mem(test_elf, hw_cfg);
-        core rv32(&mem, gen_log_path(test_elf, out_dir_tag), cfg, hw_cfg);
+        core rv32(&mem, gen_out_dir(test_elf, out_dir_tag), cfg, hw_cfg);
         rv32.exec();
     });
 

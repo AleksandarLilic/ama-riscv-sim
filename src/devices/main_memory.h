@@ -3,7 +3,7 @@
 #include "defines.h"
 #include "dev.h"
 #include "external/ELFIO/elfio/elfio.hpp"
-#ifdef ENABLE_HW_PROF
+#ifdef HW_MODELS_EN
 #include "cache.h"
 #endif
 
@@ -12,7 +12,7 @@ class main_memory : public dev {
         void burn_bin(std::string test_bin);
         void burn_elf(std::string test_elf);
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         cache icache;
         cache dcache;
         #endif
@@ -28,7 +28,7 @@ class main_memory : public dev {
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
         std::array<uint8_t, CACHE_LINE_SIZE> rd_line(uint32_t addr);
         void wr_line(uint32_t addr, std::array<uint8_t, CACHE_LINE_SIZE> data);
-        #ifdef ENABLE_HW_PROF
+        #ifdef HW_MODELS_EN
         scp_status_t scp(uint32_t addr, scp_mode_t scp_mode);
         void cache_profiling(bool enable) {
             icache.profiling(enable);
@@ -43,7 +43,7 @@ class main_memory : public dev {
            dcache.log_stats(log_file);
         }
         void finish() { icache.show_stats(); dcache.show_stats(); }
-        #ifdef ENABLE_PROF
+        #ifdef PROFILERS_EN
         void set_perf_profiler(profiler_perf* prof_perf) {
             icache.set_perf_profiler(
                 prof_perf,

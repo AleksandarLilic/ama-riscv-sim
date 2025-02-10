@@ -3,7 +3,7 @@
 uart::uart() : dev(UART_SIZE) {
     std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
-    #ifdef UART_INPUT_ENABLE
+    #ifdef UART_INPUT_EN
     uart_running = true;
     uart_in_ready = false;
     uart_thread = std::thread(&uart::uart_stdin, this, uart_baud_rate::_115200);
@@ -13,7 +13,7 @@ uart::uart() : dev(UART_SIZE) {
 }
 
 uart::~uart() {
-    #ifdef UART_INPUT_ENABLE
+    #ifdef UART_INPUT_EN
     uart_running = false;
     if (uart_thread.joinable()) uart_thread.join();
     #endif
@@ -29,7 +29,7 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
     }
 }
 
-#ifdef UART_INPUT_ENABLE
+#ifdef UART_INPUT_EN
 uint32_t uart::rd(uint32_t address, uint32_t size) {
     // reads from status register
     if (address < UART_RX_DATA) return dev::rd(address, size);

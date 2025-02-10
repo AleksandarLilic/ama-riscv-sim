@@ -113,6 +113,7 @@ struct inst_prof_j {
 
 // TODO: add instruction dasm to the profiler as another entry?
 struct trace_entry {
+    //uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
     uint32_t pc;
     uint32_t inst_size;
     uint32_t dmem;
@@ -189,7 +190,7 @@ class profiler {
         bool active;
 
     private:
-        std::string log_path;
+        std::string out_dir;
         std::ofstream ofs;
         uint64_t inst_cnt_exec;
         stack_access_t stack_access;
@@ -202,7 +203,7 @@ class profiler {
 
     public:
         profiler() = delete;
-        profiler(std::string log_path);
+        profiler(std::string out_dir);
         void new_inst(uint32_t inst);
         void log_inst(opc_g opc);
         void log_inst(opc_j opc, bool taken, b_dir_t direction);

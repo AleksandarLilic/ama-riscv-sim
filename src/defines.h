@@ -2,9 +2,15 @@
 
 // default defines
 #ifndef DPI
-#define UART_ENABLE // some tests require UART, will wait for ready indefinitely
-#define ENABLE_PROF // disable for 'hw_model_sweep.py' - faster and not needed
-#define ENABLE_HW_PROF
+#define UART_EN // some tests require UART, will wait for ready indefinitely
+#define PROFILERS_EN // disable for 'hw_model_sweep.py' - faster and not needed
+#define HW_MODELS_EN
+#endif
+
+#ifdef DASM_EN
+#ifndef PROFILERS_EN
+static_assert(0, "dasm requires profilers");
+#endif
 #endif
 
 #include "types.h"
@@ -348,7 +354,7 @@
              << std::right << std::setw(8) << std::setfill('0') \
              << it->second.value << std::dec << std::setfill(' ')
 
-#ifdef ENABLE_DASM
+#ifdef DASM_EN
 // FIXME: need to differentiate names between macros that redirect to dasm and
 // those that are just formatting string or accessing registers
 
@@ -422,14 +428,14 @@
 #define DASM_MEM_UPDATE
 #endif
 
-#if defined(ENABLE_DASM) || defined(ENABLE_PROF)
+#if defined(DASM_EN) || defined(PROFILERS_EN)
 #define INST_W(x) \
     inst_w = x;
 #else
 #define INST_W(x)
 #endif
 
-#ifdef ENABLE_PROF
+#ifdef PROFILERS_EN
 #define PROF_G(op) \
     prof.log_inst(opc_g::i_##op);
 
