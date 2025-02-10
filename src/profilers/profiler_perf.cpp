@@ -173,6 +173,9 @@ void profiler_perf::log_to_file() {
         out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
         total_cnt += c.second;
     }
+    #ifdef DPI
+    return;
+    #endif
     std::cout << "Profiler Perf: "
               << "Event: " << perf_event_names[TO_U32(perf_event)]
               << ", Samples: " << total_cnt << "\n";
