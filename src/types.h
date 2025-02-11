@@ -164,6 +164,41 @@ enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
 enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
 
+// profilers
+enum class profiler_t { inst, timed };
+
+struct clock_source_t {
+    private:
+        uint64_t pr = 0;
+        uint64_t cr = 0;
+        uint64_t diff = 0;
+    public:
+        void update(uint64_t sample) {
+            pr = cr;
+            cr = sample;
+            diff = cr - pr;
+        }
+        uint64_t get_cr() { return cr; }
+        uint64_t get_diff() { return diff; }
+};
+
+struct symbol_map_entry_t {
+    uint8_t idx;
+    std::string name;
+};
+
+struct symbol_lut_entry_t {
+    uint32_t pc;
+    std::string name;
+};
+
+struct symbol_tracking_t {
+    std::vector<uint8_t> idx_callstack;
+    std::vector<uint8_t> idx_callstack_prev;
+    uint32_t fallthrough_pc;
+    bool updated;
+};
+
 // perf events
 enum class perf_event_t {
     exec,
@@ -262,23 +297,6 @@ struct prof_pc_t {
             if (pc == stop) return true;
             return false;
         }
-};
-
-struct symbol_map_entry_t {
-    uint8_t idx;
-    std::string name;
-};
-
-struct symbol_lut_entry_t {
-    uint32_t pc;
-    std::string name;
-};
-
-struct symbol_tracking_t {
-    std::vector<uint8_t> idx_callstack;
-    std::vector<uint8_t> idx_callstack_prev;
-    uint32_t fallthrough_pc;
-    bool updated;
 };
 
 struct cfg_t {

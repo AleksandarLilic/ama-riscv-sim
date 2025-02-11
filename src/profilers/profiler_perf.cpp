@@ -155,7 +155,7 @@ std::string profiler_perf::callstack_to_key() {
     );
 }
 
-void profiler_perf::log_to_file() {
+void profiler_perf::log_to_file_and_print() {
     // close last callstack
     save_callstack_cnt();
     // dump all counters from callstack_cnt_map to file

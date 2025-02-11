@@ -113,17 +113,17 @@ struct inst_prof_j {
 
 // TODO: add instruction dasm to the profiler as another entry?
 struct trace_entry {
-    //uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
+    uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
     uint32_t pc;
-    uint32_t inst_size;
     uint32_t dmem;
-    uint32_t dmem_size;
     uint32_t sp;
+    uint8_t inst_size;
+    uint8_t dmem_size;
 };
 
 struct cnt_t {
     public:
-        uint32_t inst = 0;
+        uint32_t tot = 0;
         uint32_t rest = 0;
         uint32_t nop = 0;
         uint32_t branch = 0;
@@ -144,19 +144,19 @@ struct cnt_t {
     public:
         void find_mem() { mem = load + store; }
         void find_rest() {
-            rest = inst - nop - branch - jump - mem -
+            rest = tot - nop - branch - jump - mem -
                    mul - div - al - zbb -
                    dot_c - al_c - mul_c - unpk_c - scp_c;
         }
         float_t get_perc(uint32_t count) {
-            if (count == 0 || inst == 0) return 0.0;
-            return 100.0 * count / inst;
+            if (count == 0 || tot == 0) return 0.0;
+            return 100.0 * count / tot;
         }
 };
 
 struct perc_t {
     public:
-        float_t inst = 0.0;
+        float_t tot = 0.0;
         float_t rest = 0.0;
         float_t nop = 0.0;
         float_t branch = 0.0;
@@ -191,6 +191,7 @@ class profiler {
 
     private:
         std::string out_dir;
+        profiler_t prof_type;
         std::ofstream ofs;
         uint64_t inst_cnt_exec;
         stack_access_t stack_access;
@@ -203,10 +204,11 @@ class profiler {
 
     public:
         profiler() = delete;
-        profiler(std::string out_dir);
-        void new_inst(uint32_t inst);
-        void log_inst(opc_g opc);
-        void log_inst(opc_j opc, bool taken, b_dir_t direction);
+        profiler(std::string out_dir, profiler_t prof_type);
+        void new_inst(uint32_t inst) { this->inst = inst; }
+        void inst_done();
+        void log_inst(opc_g opc, uint64_t inc);
+        void log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
         void log_stack_access_load(bool in_range) {
             if (active) stack_access.loading(in_range);
@@ -214,7 +216,7 @@ class profiler {
         void log_stack_access_store(bool in_range) {
             if (active) stack_access.storing(in_range);
         }
-        void finish() { log_to_file(); }
+        void finish() { log_to_file_and_print(); }
         void log_sparsity(bool sparse) {
             if (!active) return;
             sparsity_cnt.total++;
@@ -222,8 +224,8 @@ class profiler {
         }
 
     private:
-        void log_to_file();
-        void rst_te() { te = {0, 0, 0, 0, 0}; }
+        void log_to_file_and_print();
+        void rst_te() { te = {0, 0, 0, 0, 0, 0}; }
 
     private:
         // all compressed instructions

@@ -24,11 +24,14 @@ class core {
         void dump();
         std::string print_state(bool dump_csr);
         void finish(bool dump_regs);
+        #ifdef DPI
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
-        #if defined(DASM_EN) || defined(PROFILERS_EN)
+        void update_clk(uint64_t clk) { clk_src.update(clk); }
+        #endif
+        #ifdef PROFILERS_EN
         uint8_t inst_w = 8;
         #endif
         #ifdef DASM_EN
@@ -403,7 +406,12 @@ class core {
         profiler prof;
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
+        #ifdef DPI
+        profiler prof_clk;
+        clock_source_t clk_src;
         #endif
+        #endif
+
         #ifdef HW_MODELS_EN
         bp_if bp;
         uint32_t inst_speculative;

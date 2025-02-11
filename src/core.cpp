@@ -11,8 +11,11 @@ core::core(
         tu(&csr, &pc, &inst),
         out_dir(out_dir), prof_pc(cfg.prof_pc), prof_act(false)
     #ifdef PROFILERS_EN
-    , prof(out_dir)
+    , prof(out_dir, profiler_t::inst)
     , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event)
+    #ifdef DPI
+    , prof_clk(out_dir, profiler_t::timed)
+    #endif
     #endif
     #ifdef HW_MODELS_EN
     , bp("bpred", hw_cfg)
@@ -59,6 +62,9 @@ void core::exec() {
     prof.active = false;
     prof_perf.active = false;
     prof_fusion.active = false;
+    #ifdef DPI
+    prof_clk.active = false;
+    #endif
     #endif
 
     #ifdef DASM_EN
@@ -86,10 +92,13 @@ void core::prof_state([[maybe_unused]] bool enable) {
     prof.active = enable;
     prof_perf.active = enable;
     prof_fusion.active = enable;
+    #ifdef DPI
+    prof_clk.active = enable;
+    #endif
     #endif
 
     #ifdef DASM_EN
-    log_act = enable || log_always;
+    log_act = enable || log_always; // TODO: and --log
     dasm.asm_ss.str(""); // clear the string stream on start/stop
     if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
     #endif
@@ -106,7 +115,7 @@ void core::exec_inst() {
     if (prof_pc.should_start(pc)) prof_state(true);
     else if (prof_pc.should_stop(pc)) prof_state(false);
 
-    // DPI would need to handle this separately based on the simulation time
+    // TODO: DPI needs to handle this separately based on the simulation time
     mem->update_mtime();
     bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE) >> 3;
     bool mie_MTIE = (csr.at(CSR_MIE).value & MIE_MTIE) >> 7;
@@ -120,6 +129,13 @@ void core::exec_inst() {
 
     if (!tu.is_trapped()) {
         inst_fetch();
+        #ifdef PROFILERS_EN
+        prof.new_inst(inst);
+        #ifdef DPI
+        prof_clk.new_inst(inst);
+        #endif
+        #endif
+
         uint32_t op_c = ip.copcode();
         if (op_c != 0x3) {
             #ifdef RV32C
@@ -191,17 +207,18 @@ void core::exec_inst() {
     if (tu.is_trapped()) return;
 
     #ifdef PROFILERS_EN
-    if (prof_act) {
-        // TODO
-        // #ifdef DPI
-        // prof.te.sample_cnt = get_rtl_clk();
-        // #else
-        // prof.te.sample_cnt = prof_pc.inst_cnt;
-        // #endif
+    if (prof_act) {  // TODO: and --profiler_trace
         prof.te.pc = pc - BASE_ADDR;
         prof.te.sp = rf[2];
-        prof.te.inst_size = TO_U32(inst_w >> 1); // hex digits to bytes
-        prof.new_inst(inst);
+        prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
+        prof.te.sample_cnt = prof_pc.inst_cnt;
+        #ifdef DPI
+        // reuse prof.te before instruction finishes
+        prof_clk.te = prof.te;
+        prof_clk.te.sample_cnt = clk_src.get_cr();
+        prof_clk.inst_done();
+        #endif
+        prof.inst_done();
     }
     #endif
 
@@ -211,9 +228,9 @@ void core::exec_inst() {
     }
     #endif
 
-    // next inst
     pc = next_pc;
     inst_cnt++;
+
     // TODO: --inst_limit
     //if (inst_cnt == 2000) running = false;
 }
@@ -228,6 +245,9 @@ void core::finish(bool dump_regs) {
     prof_fusion.finish();
     prof_perf.finish();
     prof.finish();
+    #ifdef DPI
+    prof_clk.finish();
+    #endif
     #endif
     #ifdef HW_MODELS_EN
     bp.finish(out_dir);

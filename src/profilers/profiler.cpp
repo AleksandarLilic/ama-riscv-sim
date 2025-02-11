@@ -1,10 +1,11 @@
 #include "profiler.h"
 
-profiler::profiler(std::string out_dir) {
+profiler::profiler(std::string out_dir, profiler_t prof_type) {
     inst = 0;
     inst_cnt_exec = 0;
     rst_te();
     this->out_dir = out_dir;
+    this->prof_type = prof_type;
 
     prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
     prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
@@ -138,41 +139,39 @@ profiler::profiler(std::string out_dir) {
     prof_j_arr[TO_U32(opc_j::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
 }
 
-void profiler::new_inst(uint32_t inst) {
+void profiler::inst_done() {
     if (active) {
-        this->inst = inst;
         inst_cnt_exec++;
-        // log to trace and reset entry
         trace.push_back(te);
-        rst_te();
+        rst_te(); // in case next instruction doesn't update all fields
     }
 }
 
-void profiler::log_inst(opc_g opc) {
+void profiler::log_inst(opc_g opc, uint64_t inc) {
     if (active) {
         if (inst == INST_NOP) {
-            prof_g_arr[TO_U32(opc_g::i_nop)].count++;
+            prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
         } else if ((inst & 0xFFFF) == INST_C_NOP) {
-            prof_g_arr[TO_U32(opc_g::i_c_nop)].count++;
+            prof_g_arr[TO_U32(opc_g::i_c_nop)].count += inc;
         } else if (inst == INST_HINT_LOG_START || inst == INST_HINT_LOG_END) {
-            prof_g_arr[TO_U32(opc_g::i_hint)].count++;
+            prof_g_arr[TO_U32(opc_g::i_hint)].count += inc;
         } else {
-            prof_g_arr[TO_U32(opc)].count++;
+            prof_g_arr[TO_U32(opc)].count += inc;
         }
     }
 }
 
-void profiler::log_inst(opc_j opc, bool taken, b_dir_t direction) {
+void profiler::log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     if (active) {
         if (taken) {
-            prof_j_arr[TO_U32(opc)].count_taken++;
-            if (direction == b_dir_t::forward) {
-                prof_j_arr[TO_U32(opc)].count_taken_fwd++;
+            prof_j_arr[TO_U32(opc)].count_taken += inc;
+            if (b_dir == b_dir_t::forward) {
+                prof_j_arr[TO_U32(opc)].count_taken_fwd += inc;
             }
         } else {
-            prof_j_arr[TO_U32(opc)].count_not_taken++;
-            if (direction == b_dir_t::forward) {
-                prof_j_arr[TO_U32(opc)].count_not_taken_fwd++;
+            prof_j_arr[TO_U32(opc)].count_not_taken += inc;
+            if (b_dir == b_dir_t::forward) {
+                prof_j_arr[TO_U32(opc)].count_not_taken_fwd += inc;
             }
         }
     }
@@ -182,14 +181,17 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
     if (active) prof_reg_hist[reg][TO_U8(reg_use)]++;
 }
 
-void profiler::log_to_file() {
+void profiler::log_to_file_and_print() {
     cnt_t cnt;
-    ofs.open(out_dir + "inst_profiler.json");
+    std::string pt = "";
+    if (prof_type == profiler_t::timed) pt = "_clk";
+
+    ofs.open(out_dir + "inst_profiler" + pt + ".json");
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
         if (i.name != "") {
             ofs << PROF_JSON_ENTRY(i.name, i.count) << "\n";
-            cnt.inst += i.count;
+            cnt.tot += i.count;
         }
     }
 
@@ -197,7 +199,7 @@ void profiler::log_to_file() {
         ofs << PROF_JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
                                  e.count_not_taken, e.count_not_taken_fwd);
         ofs << "\n";
-        cnt.inst += e.count_taken + e.count_not_taken;
+        cnt.tot += e.count_taken + e.count_not_taken;
     }
 
     uint32_t min_sp = BASE_ADDR + MEM_SIZE;
@@ -207,19 +209,26 @@ void profiler::log_to_file() {
     min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
     ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
-    ofs << "\"_profiled_instructions\": " << cnt.inst;
+    if (prof_type == profiler_t::timed) {
+        ofs << "\"_profiled_cycles\": " << cnt.tot;
+    } else {
+        ofs << "\"_profiled_instructions\": " << cnt.tot;
+    }
     ofs << "\n}\n";
     ofs.close();
 
-    ofs.open(out_dir + "trace.bin", std::ios::binary);
+    ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
     ofs.write(reinterpret_cast<char*>(trace.data()),
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
-    ofs.open(out_dir + "reg_hist.bin", std::ios::binary);
-    ofs.write(reinterpret_cast<char*>(prof_reg_hist.data()),
-             prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
-    ofs.close();
+    if (prof_type == profiler_t::inst) { // same for inst and timed sim
+        ofs.open(out_dir + "reg_hist" +  pt + ".bin", std::ios::binary);
+        ofs.write(
+            reinterpret_cast<char*>(prof_reg_hist.data()),
+            prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
+        ofs.close();
+    }
 
     // compressed inst cnt
     uint32_t comp_cnt = 0;
@@ -275,8 +284,8 @@ void profiler::log_to_file() {
 
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Profiler: "
-              << "Inst: " << cnt.inst
-              << " - 32/16-bit: " << cnt.inst - comp_cnt << "/" << comp_cnt
+              << "Inst: " << cnt.tot
+              << " - 32/16-bit: " << cnt.tot - comp_cnt << "/" << comp_cnt
               << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
               << "\n";
 
@@ -317,10 +326,12 @@ void profiler::log_to_file() {
               << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
               << "\n";
 
-    float_t sparsity = sparsity_cnt.get_perc();
-    std::cout << "Profiler Sparsity: total: " << sparsity_cnt.total
-              << ", sparse: " << sparsity_cnt.sparse << "(" << sparsity << "%)"
-              << "\n";
+    if (prof_type == profiler_t::inst) {
+        float_t sparsity = sparsity_cnt.get_perc();
+        std::cout << "Profiler Sparsity: total: " << sparsity_cnt.total
+                << ", sparse: " << sparsity_cnt.sparse
+                << "(" << sparsity << "%)" << "\n";
+    }
 
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();
@@ -337,7 +348,8 @@ void profiler::log_to_file() {
               << "(" << sa_perc_load << "%/" << sa_perc_store << "%)"
               << "\n";
 
+    if (prof_type == profiler_t::timed) return;
     // only expected to fail if core has instruction which is not supported
     // by the profiler - should be addressed when adding new instructions
-    assert(inst_cnt_exec == cnt.inst && "Profiler: instruction count mismatch");
+    assert(inst_cnt_exec == cnt.tot && "Profiler: instruction count mismatch");
 }

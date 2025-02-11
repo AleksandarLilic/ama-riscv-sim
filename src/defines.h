@@ -9,7 +9,16 @@
 
 #ifdef DASM_EN
 #ifndef PROFILERS_EN
-static_assert(0, "dasm requires profilers");
+static_assert(0, "DASM requires profilers");
+#endif
+#endif
+
+#ifdef DPI
+#ifdef HW_MODELS_EN
+static_assert(0, "can't use HW models in the DPI mode");
+#endif
+#ifndef PROFILERS_EN
+static_assert(0, "DPI requires profilers");
 #endif
 #endif
 
@@ -436,21 +445,46 @@ static_assert(0, "dasm requires profilers");
 #endif
 
 #ifdef PROFILERS_EN
+
+#ifdef DPI
+#define PROF_G_CLK(op) \
+    prof_clk.log_inst(opc_g::i_##op, clk_src.get_diff());
+
+#define PROF_J_CLK(op) \
+    prof_clk.log_inst(opc_j::i_##op, true, b_dir_t(dir), clk_src.get_diff());
+
+#define PROF_B_T_CLK(op) \
+    prof_clk.log_inst(opc_j::i_##op, true, b_dir_t(dir), clk_src.get_diff());
+
+#define PROF_B_NT_CLK(op, b) \
+    prof_clk.log_inst(opc_j::i_##op, false, b_dir_t(dir), clk_src.get_diff());
+
+#else
+#define PROF_G_CLK(op)
+#define PROF_J_CLK(op)
+#define PROF_B_T_CLK(op)
+#define PROF_B_NT_CLK(op, b)
+#endif
+
 #define PROF_G(op) \
-    prof.log_inst(opc_g::i_##op);
+    prof.log_inst(opc_g::i_##op, 1); \
+    PROF_G_CLK(op);
 
 #define PROF_J(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir));
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), 1); \
+    PROF_J_CLK(op);
 
 #define PROF_B_T(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir));
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), 1); \
+    PROF_B_T_CLK(op);
 
 #define PROF_B_NT(op, b) \
     b_dir_t dir = ((pc + ip.imm##b()) > pc) ? b_dir_t::forward : \
                                               b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir));
+    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), 1); \
+    PROF_B_NT_CLK(op, b);
 
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, ip.rd());

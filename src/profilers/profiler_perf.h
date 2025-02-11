@@ -35,7 +35,7 @@ class profiler_perf {
         void set_perf_event_flag(perf_event_t perf_event) {
             perf_event_flags[TO_U32(perf_event)] += 1;
         }
-        void finish() { log_to_file(); }
+        void finish() { log_to_file_and_print(); }
 
     private:
         void inc_callstack_cnt();
@@ -46,5 +46,5 @@ class profiler_perf {
         bool symbol_change_on_jump(uint32_t next_pc);
         std::string get_callstack_str(const std::vector<uint8_t>& idx_stack);
         std::string callstack_to_key();
-        void log_to_file();
+        void log_to_file_and_print();
 };
