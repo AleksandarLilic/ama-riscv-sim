@@ -39,6 +39,7 @@ core::core(
     tu.set_dasm(&dasm);
     log_always = cfg.log_always;
     log_act = log_always;
+    log_ofstream.open(out_dir + "exec.log");
     #endif
 
     #ifdef HW_MODELS_EN
@@ -52,6 +53,7 @@ core::core(
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
     mem->set_mip(&csr.at(CSR_MIP).value);
+
     #if defined(PROFILERS_EN) && defined(HW_MODELS_EN)
     mem->set_perf_profiler(&prof_perf);
     #endif
@@ -59,17 +61,13 @@ core::core(
 
 void core::exec() {
     #ifdef PROFILERS_EN
+    prof_act = false;
     prof.active = false;
     prof_perf.active = false;
     prof_fusion.active = false;
     #ifdef DPI
     prof_clk.active = false;
     #endif
-    #endif
-
-    #ifdef DASM_EN
-    log_ofstream.open(out_dir + "exec.log");
-    prof_act = false;
     #endif
 
     #ifdef UART_EN
@@ -254,6 +252,9 @@ void core::finish(bool dump_regs) {
     mem->cache_finish();
     log_hw_stats();
     #endif
+    #ifdef DASM_EN
+    log_ofstream << std::endl; // flush
+    #endif
 }
 
 // Integer extension
@@ -340,7 +341,7 @@ void core::al_imm() {
 }
 
 void core::load() {
-    #if defined(PROFILERS_EN) or defined(DASM_EN)
+    #ifdef PROFILERS_EN
     uint32_t rs1 = rf[ip.rs1()];
     #endif
     uint32_t loaded;

@@ -33,6 +33,9 @@ class core {
         #endif
         #ifdef PROFILERS_EN
         uint8_t inst_w = 8;
+        std::string get_callstack_top_str() {
+            return prof_perf.get_callstack_top_str();
+        }
         #endif
         #ifdef DASM_EN
         std::string get_inst_asm() { return dasm.asm_str; }
