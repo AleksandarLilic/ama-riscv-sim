@@ -11,11 +11,8 @@ core::core(
         tu(&csr, &pc, &inst),
         out_dir(out_dir), prof_pc(cfg.prof_pc), prof_act(false)
     #ifdef PROFILERS_EN
-    , prof(out_dir, profiler_t::inst)
+    , prof(out_dir, PROF_TYPE)
     , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event)
-    #ifdef DPI
-    , prof_clk(out_dir, profiler_t::timed)
-    #endif
     #endif
     #ifdef HW_MODELS_EN
     , bp("bpred", hw_cfg)
@@ -65,9 +62,6 @@ void core::exec() {
     prof.active = false;
     prof_perf.active = false;
     prof_fusion.active = false;
-    #ifdef DPI
-    prof_clk.active = false;
-    #endif
     #endif
 
     #ifdef UART_EN
@@ -90,9 +84,6 @@ void core::prof_state([[maybe_unused]] bool enable) {
     prof.active = enable;
     prof_perf.active = enable;
     prof_fusion.active = enable;
-    #ifdef DPI
-    prof_clk.active = enable;
-    #endif
     #endif
 
     #ifdef DASM_EN
@@ -129,9 +120,6 @@ void core::exec_inst() {
         inst_fetch();
         #ifdef PROFILERS_EN
         prof.new_inst(inst);
-        #ifdef DPI
-        prof_clk.new_inst(inst);
-        #endif
         #endif
 
         uint32_t op_c = ip.copcode();
@@ -209,12 +197,10 @@ void core::exec_inst() {
         prof.te.pc = pc - BASE_ADDR;
         prof.te.sp = rf[2];
         prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
-        prof.te.sample_cnt = prof_pc.inst_cnt;
         #ifdef DPI
-        // reuse prof.te before instruction finishes
-        prof_clk.te = prof.te;
-        prof_clk.te.sample_cnt = clk_src.get_cr();
-        prof_clk.inst_done();
+        prof.te.sample_cnt = clk_src.get_cr();
+        #else
+        prof.te.sample_cnt = prof_pc.inst_cnt;
         #endif
         prof.inst_done();
     }
@@ -243,9 +229,6 @@ void core::finish(bool dump_regs) {
     prof_fusion.finish();
     prof_perf.finish();
     prof.finish();
-    #ifdef DPI
-    prof_clk.finish();
-    #endif
     #endif
     #ifdef HW_MODELS_EN
     bp.finish(out_dir);

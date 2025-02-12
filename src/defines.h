@@ -450,44 +450,28 @@ static_assert(0, "DPI requires profilers");
 #ifdef PROFILERS_EN
 
 #ifdef DPI
-#define PROF_G_CLK(op) \
-    prof_clk.log_inst(opc_g::i_##op, clk_src.get_diff());
-
-#define PROF_J_CLK(op) \
-    prof_clk.log_inst(opc_j::i_##op, true, b_dir_t(dir), clk_src.get_diff());
-
-#define PROF_B_T_CLK(op) \
-    prof_clk.log_inst(opc_j::i_##op, true, b_dir_t(dir), clk_src.get_diff());
-
-#define PROF_B_NT_CLK(op, b) \
-    prof_clk.log_inst(opc_j::i_##op, false, b_dir_t(dir), clk_src.get_diff());
-
+#define DIFF clk_src.get_diff()
+#define PROF_TYPE profiler_t::timed
 #else
-#define PROF_G_CLK(op)
-#define PROF_J_CLK(op)
-#define PROF_B_T_CLK(op)
-#define PROF_B_NT_CLK(op, b)
+#define DIFF 1
+#define PROF_TYPE profiler_t::inst
 #endif
 
 #define PROF_G(op) \
-    prof.log_inst(opc_g::i_##op, 1); \
-    PROF_G_CLK(op);
+    prof.log_inst(opc_g::i_##op, DIFF);
 
 #define PROF_J(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), 1); \
-    PROF_J_CLK(op);
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF);
 
 #define PROF_B_T(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), 1); \
-    PROF_B_T_CLK(op);
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF);
 
 #define PROF_B_NT(op, b) \
     b_dir_t dir = ((pc + ip.imm##b()) > pc) ? b_dir_t::forward : \
                                               b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), 1); \
-    PROF_B_NT_CLK(op, b);
+    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), DIFF);
 
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, ip.rd());

@@ -410,7 +410,6 @@ class core {
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
         #ifdef DPI
-        profiler prof_clk;
         clock_source_t clk_src;
         #endif
         #endif
