@@ -4,11 +4,13 @@
 profiler_perf::profiler_perf(
     std::string out_dir,
     std::map<uint32_t, symbol_map_entry_t> symbol_map,
-    perf_event_t perf_event)
+    perf_event_t perf_event,
+    profiler_source_t prof_src)
 {
     this->out_dir = out_dir;
     this->symbol_map = symbol_map;
     this->perf_event = perf_event;
+    this->prof_src = prof_src;
     // set up symbol tracking
     symbol_lut.resize(symbol_map.size() + 1); // 0th index is reserved
     for (const auto &s : symbol_map) {
@@ -82,7 +84,7 @@ void profiler_perf::inc_callstack_cnt() {
         return;
     }
     if (perf_event == perf_event_t::exec) {
-        callstack_cnt++;
+        callstack_cnt += DIFF_P;
     } else {
         callstack_cnt += perf_event_flags[TO_U32(perf_event)];
         // only care about resetting the event being counted, others dc
@@ -158,8 +160,11 @@ std::string profiler_perf::callstack_to_key() {
 void profiler_perf::log_to_file_and_print() {
     // close last callstack
     save_callstack_cnt();
+    std::string pt = "";
+    if (prof_src == profiler_source_t::clock) pt = "clk_";
+
     // dump all counters from callstack_cnt_map to file
-    std::string out = out_dir + "callstack_folded_" +
+    std::string out = out_dir + "callstack_folded_" + pt +
                       perf_event_names[TO_U32(perf_event)] + ".txt";
     std::ofstream out_file(out);
     std::vector<uint8_t> callstack_ids;

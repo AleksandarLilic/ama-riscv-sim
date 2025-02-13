@@ -11,8 +11,8 @@ core::core(
         tu(&csr, &pc, &inst),
         out_dir(out_dir), prof_pc(cfg.prof_pc), prof_act(false)
     #ifdef PROFILERS_EN
-    , prof(out_dir, PROF_TYPE)
-    , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event)
+    , prof(out_dir, PROF_SRC)
+    , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
     #ifdef HW_MODELS_EN
     , bp("bpred", hw_cfg)
@@ -29,6 +29,9 @@ core::core(
     mem->trap_setup(&tu);
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
+    #ifdef DPI
+    prof_perf.set_clk_src(&clk_src);
+    #endif
     #endif
 
     #ifdef DASM_EN

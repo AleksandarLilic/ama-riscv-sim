@@ -165,7 +165,7 @@ enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
 
 // profilers
-enum class profiler_t { inst, timed };
+enum class profiler_source_t { inst, clock };
 
 struct clock_source_t {
     private:

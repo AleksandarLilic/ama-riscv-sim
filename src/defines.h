@@ -18,7 +18,7 @@ static_assert(0, "DASM requires profilers");
 
 #ifdef DPI
 #ifdef HW_MODELS_EN
-static_assert(0, "can't use HW models in the DPI mode");
+static_assert(0, "HW models are not allowed in DPI mode");
 #endif
 #ifndef PROFILERS_EN
 static_assert(0, "DPI requires profilers");
@@ -451,10 +451,12 @@ static_assert(0, "DPI requires profilers");
 
 #ifdef DPI
 #define DIFF clk_src.get_diff()
-#define PROF_TYPE profiler_t::timed
+#define DIFF_P clk_src->get_diff()
+#define PROF_SRC profiler_source_t::clock
 #else
 #define DIFF 1
-#define PROF_TYPE profiler_t::inst
+#define DIFF_P 1
+#define PROF_SRC profiler_source_t::inst
 #endif
 
 #define PROF_G(op) \

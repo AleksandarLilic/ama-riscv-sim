@@ -191,7 +191,7 @@ class profiler {
 
     private:
         std::string out_dir;
-        profiler_t prof_type;
+        profiler_source_t prof_src;
         std::ofstream ofs;
         uint64_t inst_cnt_exec;
         stack_access_t stack_access;
@@ -204,7 +204,7 @@ class profiler {
 
     public:
         profiler() = delete;
-        profiler(std::string out_dir, profiler_t prof_type);
+        profiler(std::string out_dir, profiler_source_t prof_src);
         void new_inst(uint32_t inst) { this->inst = inst; }
         void inst_done();
         void log_inst(opc_g opc, uint64_t inc);

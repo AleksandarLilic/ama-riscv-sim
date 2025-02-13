@@ -1,11 +1,11 @@
 #include "profiler.h"
 
-profiler::profiler(std::string out_dir, profiler_t prof_type) {
+profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     inst = 0;
     inst_cnt_exec = 0;
     rst_te();
     this->out_dir = out_dir;
-    this->prof_type = prof_type;
+    this->prof_src = prof_src;
 
     prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
     prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
@@ -184,7 +184,7 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
 void profiler::log_to_file_and_print() {
     cnt_t cnt;
     std::string pt = "";
-    if (prof_type == profiler_t::timed) pt = "_clk";
+    if (prof_src == profiler_source_t::clock) pt = "_clk";
 
     ofs.open(out_dir + "inst_profiler" + pt + ".json");
     ofs << "{\n";
@@ -209,7 +209,7 @@ void profiler::log_to_file_and_print() {
     min_sp = BASE_ADDR + MEM_SIZE - min_sp;
 
     ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
-    if (prof_type == profiler_t::timed) {
+    if (prof_src == profiler_source_t::clock) {
         ofs << "\"_profiled_cycles\": " << cnt.tot;
     } else {
         ofs << "\"_profiled_instructions\": " << cnt.tot;
@@ -222,7 +222,7 @@ void profiler::log_to_file_and_print() {
               trace.size() * sizeof(trace_entry));
     ofs.close();
 
-    if (prof_type == profiler_t::inst) { // same for inst and timed sim
+    if (prof_src == profiler_source_t::inst) { // same for inst and clock sim
         ofs.open(out_dir + "reg_hist" +  pt + ".bin", std::ios::binary);
         ofs.write(
             reinterpret_cast<char*>(prof_reg_hist.data()),
@@ -326,7 +326,7 @@ void profiler::log_to_file_and_print() {
               << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
               << "\n";
 
-    if (prof_type == profiler_t::inst) {
+    if (prof_src == profiler_source_t::inst) {
         float_t sparsity = sparsity_cnt.get_perc();
         std::cout << "Profiler Sparsity: total: " << sparsity_cnt.total
                 << ", sparse: " << sparsity_cnt.sparse
@@ -348,7 +348,7 @@ void profiler::log_to_file_and_print() {
               << "(" << sa_perc_load << "%/" << sa_perc_store << "%)"
               << "\n";
 
-    if (prof_type == profiler_t::timed) return;
+    if (prof_src == profiler_source_t::clock) return;
     // only expected to fail if core has instruction which is not supported
     // by the profiler - should be addressed when adding new instructions
     assert(inst_cnt_exec == cnt.tot && "Profiler: instruction count mismatch");
