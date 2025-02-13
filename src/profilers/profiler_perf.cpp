@@ -83,8 +83,12 @@ void profiler_perf::inc_callstack_cnt() {
         perf_event_flags[TO_U32(perf_event)] = 0;
         return;
     }
-    if (perf_event == perf_event_t::exec) {
-        callstack_cnt += DIFF_P;
+    if (perf_event == perf_event_t::inst) {
+        callstack_cnt += 1;
+    #ifdef DPI
+    } else if (perf_event == perf_event_t::cycles) {
+        callstack_cnt += clk_src->get_diff();
+    #endif
     } else {
         callstack_cnt += perf_event_flags[TO_U32(perf_event)];
         // only care about resetting the event being counted, others dc

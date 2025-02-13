@@ -58,7 +58,7 @@ const std::unordered_map<std::string, rf_names_t> rf_names_map = {
 };
 
 const std::unordered_map<std::string, perf_event_t> perf_event_map = {
-    {"exec", perf_event_t::exec},
+    {"inst", perf_event_t::inst},
     {"branches", perf_event_t::branches},
     {"mem", perf_event_t::mem},
     {"simd", perf_event_t::simd},
@@ -115,7 +115,7 @@ struct defs_t {
     static constexpr char prof_pc_sm[] = "0";
     static constexpr char rf_names[] = "abi";
     static constexpr char end_dump_state[] = "false";
-    static constexpr char perf_event[] = "exec";
+    static constexpr char perf_event[] = "inst";
     #ifdef DASM_EN
     static constexpr char log_always[] = "false";
     static constexpr char log_state[] = "false";

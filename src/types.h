@@ -201,7 +201,10 @@ struct symbol_tracking_t {
 
 // perf events
 enum class perf_event_t {
-    exec,
+    inst,
+    #ifdef DPI
+    cycles,
+    #endif
     branches,
     mem,
     //mem_loads,
@@ -223,6 +226,9 @@ static const
 std::array<std::string, static_cast<uint32_t>(perf_event_t::_count)>
 perf_event_names = {
     "exec",
+    #ifdef DPI
+    "cycles",
+    #endif
     "branches",
     "mem",
     //"mem_loads",

@@ -451,11 +451,9 @@ static_assert(0, "DPI requires profilers");
 
 #ifdef DPI
 #define DIFF clk_src.get_diff()
-#define DIFF_P clk_src->get_diff()
 #define PROF_SRC profiler_source_t::clock
 #else
 #define DIFF 1
-#define DIFF_P 1
 #define PROF_SRC profiler_source_t::inst
 #endif
 
