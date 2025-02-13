@@ -3,10 +3,9 @@
 import os
 import sys
 import subprocess
-from utils import get_reporoot
 
-reporoot = get_reporoot()
-FLAMEGRAPH_PL = os.path.join(reporoot, "script/FlameGraph/flamegraph.pl")
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+FLAMEGRAPH_PL = os.path.join(SCRIPT_PATH, "FlameGraph/flamegraph.pl")
 
 if len(sys.argv) < 2:
     raise ValueError("Usage: ./get_flamegraph.py <folded_stack>")
