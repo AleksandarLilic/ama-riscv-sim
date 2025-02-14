@@ -370,6 +370,8 @@ static_assert(0, "DPI requires profilers");
 // FIXME: need to differentiate names between macros that redirect to dasm and
 // those that are just formatting string or accessing registers
 
+#define LOG_SYMBOL_TO_FILE log_ofstream << prof_perf.get_callstack_str() << "\n"
+
 #define DASM_OP(o) dasm.op = #o;
 
 #define DASM_CSR_REG \
@@ -426,6 +428,7 @@ static_assert(0, "DPI requires profilers");
     DASM_MEM_UPDATE_P(TO_I32(rf[ip.rs1()] + ip.imm_s()), ip.rs2())
 
 #else
+#define LOG_SYMBOL_TO_FILE
 #define DASM_OP(o)
 #define DASM_CSR_REG
 #define DASM_CSR_IMM

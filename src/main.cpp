@@ -117,6 +117,7 @@ struct defs_t {
     static constexpr char end_dump_state[] = "false";
     static constexpr char perf_event[] = "inst";
     #ifdef DASM_EN
+    static constexpr char log[] = "false";
     static constexpr char log_always[] = "false";
     static constexpr char log_state[] = "false";
     #endif
@@ -193,6 +194,9 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(""))
 
         #ifdef DASM_EN
+        ("l,log",
+         "Enable logging",
+         cxxopts::value<bool>()->default_value(defs_t::log))
         ("log_always",
          "Always log execution. Otherwise, log during profiling only",
          cxxopts::value<bool>()->default_value(defs_t::log_always))
@@ -326,6 +330,7 @@ int main(int argc, char* argv[]) {
         cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
 
         #ifdef DASM_EN
+        cfg.log = TO_BOOL(result["log"]);
         cfg.log_always = TO_BOOL(result["log_always"]);
         cfg.log_state = TO_BOOL(result["log_state"]);
         #endif
@@ -387,7 +392,11 @@ int main(int argc, char* argv[]) {
                   << cfg.prof_pc.single_match_num << "\n";
     }
     #ifdef DASM_EN
-    if (cfg.log_always) std::cout << "Logging always" << "\n";
+    if (cfg.log) {
+        std::cout << "Logging enabled";
+        if (cfg.log_always) std::cout << ", Logging always";
+        std::cout << "\n";
+    }
     #endif
     std::cout << std::endl;
 

@@ -23,7 +23,6 @@ core::core(
     rf_names_idx = TO_U8(cfg.rf_names);
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
     end_dump_state = cfg.end_dump_state;
-    log_state = cfg.log_state;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
     mem->trap_setup(&tu);
@@ -37,9 +36,10 @@ core::core(
     #ifdef DASM_EN
     mem->set_dasm(&dasm);
     tu.set_dasm(&dasm);
-    log_always = cfg.log_always;
-    log_act = log_always;
-    log_ofstream.open(out_dir + "exec.log");
+    logf = {cfg.log, cfg.log_always, cfg.log_always, cfg.log_state};
+    logf.activate(false);
+    if (logf.en) log_ofstream.open(out_dir + "exec.log");
+    if (logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
     #ifdef HW_MODELS_EN
@@ -90,9 +90,9 @@ void core::prof_state([[maybe_unused]] bool enable) {
     #endif
 
     #ifdef DASM_EN
-    log_act = enable || log_always; // TODO: and --log
+    logf.activate(enable);
     dasm.asm_ss.str(""); // clear the string stream on start/stop
-    if (enable) log_ofstream << prof_perf.get_callstack_str() << "\n";
+    if (logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
     #ifdef HW_MODELS_EN
@@ -172,22 +172,21 @@ void core::exec_inst() {
     // dasm string always available, logged to the file conditionally
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
-    if (log_act) {
+    if (logf.act) {
         if (tu.is_trapped()) {
             // log changed callstack and return
             log_ofstream << dasm.asm_str << "\n";
-            if (log_symbol) {
-                log_ofstream << prof_perf.get_callstack_str() << "\n";
-            }
+            if (log_symbol) LOG_SYMBOL_TO_FILE;
             return;
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
+        // don't count instructions unless also profiling
         if (prof_act) log_ofstream << prof_pc.inst_cnt;
         else log_ofstream << "";
         log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
                      << dasm.asm_str << "\n";
 
-        if (log_state) {
+        if (logf.state) {
             log_ofstream << print_state(csr_updated) << "\n";
             csr_updated = false;
         }
@@ -210,9 +209,7 @@ void core::exec_inst() {
     #endif
 
     #ifdef DASM_EN
-    if (log_symbol && log_act) {
-        log_ofstream << prof_perf.get_callstack_str() << "\n";
-    }
+    if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
     pc = next_pc;
@@ -315,10 +312,8 @@ void core::al_imm() {
     next_pc = pc + 4;
     #ifdef DASM_EN
     DASM_OP_RD << "," << DASM_OP_RS1 << ",";
-    if (is_shift)
-        dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
-    else
-        dasm.asm_ss << TO_I32(ip.imm_i());
+    if (is_shift) dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
+    else dasm.asm_ss << TO_I32(ip.imm_i());
     DASM_RD_UPDATE;
     if (alu_op_sel == TO_U8(alu_i_op_t::op_addi) && (inst == INST_NOP)) {
         dasm.asm_ss = std::ostringstream("nop");
@@ -909,7 +904,7 @@ void core::csr_access() {
         DASM_ALIGN;
         dasm.asm_ss << CSRF(it);
     }
-    if (log_state) csr_updated = true;
+    if (logf.state) csr_updated = true;
     #endif
 }
 

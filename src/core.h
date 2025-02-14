@@ -354,16 +354,14 @@ class core {
         uint8_t rf_names_w;
         uint8_t csr_names_w;
         bool end_dump_state;
-        bool log_state;
         std::string out_dir;
         prof_pc_t prof_pc;
-        bool prof_act;
-        bool log_act;
-        bool log_always;
+        bool prof_act; // used for both profiling and hw models
         #ifdef DASM_EN
         std::ofstream log_ofstream;
         bool csr_updated = false;
         dasm_str dasm;
+        logging_flags_t logf;
         #endif
 
         std::map<uint16_t, CSR> csr;

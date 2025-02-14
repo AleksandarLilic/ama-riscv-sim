@@ -309,6 +309,7 @@ struct cfg_t {
     prof_pc_t prof_pc;
     rf_names_t rf_names;
     perf_event_t perf_event;
+    bool log;
     bool log_always;
     bool log_state;
     bool end_dump_state;
@@ -350,4 +351,12 @@ struct hw_cfg_t {
     uint8_t bp_gshare_pc_bits;
     uint8_t bp_combined_pc_bits;
     uint8_t bp_combined_cnt_bits;
+};
+
+struct logging_flags_t {
+    bool en;
+    bool act;
+    bool always;
+    bool state;
+    void activate(bool in) { act = en && (in || always); }
 };
