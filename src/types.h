@@ -309,6 +309,7 @@ struct cfg_t {
     prof_pc_t prof_pc;
     rf_names_t rf_names;
     perf_event_t perf_event;
+    bool prof_trace;
     bool log;
     bool log_always;
     bool log_state;

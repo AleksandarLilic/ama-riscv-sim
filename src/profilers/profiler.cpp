@@ -139,9 +139,8 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_j_arr[TO_U32(opc_j::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
 }
 
-void profiler::inst_done() {
+void profiler::add_te() {
     if (active) {
-        inst_cnt_exec++;
         trace.push_back(te);
         rst_te(); // in case next instruction doesn't update all fields
     }
@@ -149,6 +148,7 @@ void profiler::inst_done() {
 
 void profiler::log_inst(opc_g opc, uint64_t inc) {
     if (active) {
+        inst_cnt_exec++;
         if (inst == INST_NOP) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
         } else if ((inst & 0xFFFF) == INST_C_NOP) {
@@ -163,6 +163,7 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
 
 void profiler::log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     if (active) {
+        inst_cnt_exec++;
         if (taken) {
             prof_j_arr[TO_U32(opc)].count_taken += inc;
             if (b_dir == b_dir_t::forward) {
@@ -181,7 +182,7 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
     if (active) prof_reg_hist[reg][TO_U8(reg_use)]++;
 }
 
-void profiler::log_to_file_and_print() {
+void profiler::log_to_file_and_print(bool trace_en) {
     cnt_t cnt;
     std::string pt = "";
     if (prof_src == profiler_source_t::clock) pt = "_clk";
@@ -217,10 +218,12 @@ void profiler::log_to_file_and_print() {
     ofs << "\n}\n";
     ofs.close();
 
-    ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
-    ofs.write(reinterpret_cast<char*>(trace.data()),
-              trace.size() * sizeof(trace_entry));
-    ofs.close();
+    if (trace_en) {
+        ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
+        ofs.write(reinterpret_cast<char*>(trace.data()),
+                trace.size() * sizeof(trace_entry));
+        ofs.close();
+    }
 
     if (prof_src == profiler_source_t::inst) { // same for inst and clock sim
         ofs.open(out_dir + "reg_hist" +  pt + ".bin", std::ios::binary);

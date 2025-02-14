@@ -206,7 +206,7 @@ class profiler {
         profiler() = delete;
         profiler(std::string out_dir, profiler_source_t prof_src);
         void new_inst(uint32_t inst) { this->inst = inst; }
-        void inst_done();
+        void add_te();
         void log_inst(opc_g opc, uint64_t inc);
         void log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
@@ -216,7 +216,7 @@ class profiler {
         void log_stack_access_store(bool in_range) {
             if (active) stack_access.storing(in_range);
         }
-        void finish() { log_to_file_and_print(); }
+        void finish(bool trace_en) { log_to_file_and_print(trace_en); }
         void log_sparsity(bool sparse) {
             if (!active) return;
             sparsity_cnt.total++;
@@ -224,7 +224,7 @@ class profiler {
         }
 
     private:
-        void log_to_file_and_print();
+        void log_to_file_and_print(bool trace_en);
         void rst_te() { te = {0, 0, 0, 0, 0, 0}; }
 
     private:

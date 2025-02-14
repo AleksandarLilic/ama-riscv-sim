@@ -28,6 +28,7 @@ core::core(
     mem->trap_setup(&tu);
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
+    prof_trace = cfg.prof_trace;
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
     #endif
@@ -195,7 +196,7 @@ void core::exec_inst() {
     if (tu.is_trapped()) return;
 
     #ifdef PROFILERS_EN
-    if (prof_act) {  // TODO: and --profiler_trace
+    if (prof_act && prof_trace) {
         prof.te.pc = pc - BASE_ADDR;
         prof.te.sp = rf[2];
         prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
@@ -204,7 +205,7 @@ void core::exec_inst() {
         #else
         prof.te.sample_cnt = prof_pc.inst_cnt;
         #endif
-        prof.inst_done();
+        prof.add_te();
     }
     #endif
 
@@ -228,7 +229,7 @@ void core::finish(bool dump_regs) {
     #ifdef PROFILERS_EN
     prof_fusion.finish();
     prof_perf.finish();
-    prof.finish();
+    prof.finish(prof_trace);
     #endif
     #ifdef HW_MODELS_EN
     bp.finish(out_dir);

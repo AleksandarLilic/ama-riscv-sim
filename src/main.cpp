@@ -110,12 +110,15 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
 
 // defaults
 struct defs_t {
+    static constexpr char rf_names[] = "abi";
+    static constexpr char end_dump_state[] = "false";
+    #ifdef PROFILERS_EN
     static constexpr char prof_pc_start[] = "0";
     static constexpr char prof_pc_stop[] = "0";
     static constexpr char prof_pc_sm[] = "0";
-    static constexpr char rf_names[] = "abi";
-    static constexpr char end_dump_state[] = "false";
+    static constexpr char prof_trace[] = "false";
     static constexpr char perf_event[] = "inst";
+    #endif
     #ifdef DASM_EN
     static constexpr char log[] = "false";
     static constexpr char log_always[] = "false";
@@ -173,6 +176,16 @@ int main(int argc, char* argv[]) {
     options.add_options()
         ("p,path", "Path to the ELF file to load",
          cxxopts::value<std::string>())
+        ("rf_names",
+         "Register file names used for output. Options: " +
+         gen_help_list(rf_names_map),
+         cxxopts::value<std::string>()->default_value(defs_t::rf_names))
+        ("end_dump_state", "Dump all registers at the end of simulation",
+         cxxopts::value<bool>()->default_value(defs_t::end_dump_state))
+        ("out_dir_tag", "Tag (suffix) for output directory",
+         cxxopts::value<std::string>()->default_value(""))
+
+        #ifdef PROFILERS_EN
         ("prof_pc_start", "Start PC (hex) for profiling",
          cxxopts::value<std::string>()->default_value(defs_t::prof_pc_start))
         ("prof_pc_stop", "Stop PC (hex) for profiling",
@@ -180,18 +193,13 @@ int main(int argc, char* argv[]) {
         ("prof_pc_single_match",
          "Run profiling only for match number (0 for all matches)",
          cxxopts::value<std::string>()->default_value(defs_t::prof_pc_sm))
-        ("rf_names",
-         "Register file names used for output. Options: " +
-         gen_help_list(rf_names_map),
-         cxxopts::value<std::string>()->default_value(defs_t::rf_names))
+        ("prof_trace", "Enable profiler trace",
+         cxxopts::value<bool>()->default_value(defs_t::prof_trace))
         ("e,perf_event",
          "Performance event to track. Options: " +
          gen_help_list(perf_event_map),
          cxxopts::value<std::string>()->default_value(defs_t::perf_event))
-        ("end_dump_state", "Dump all registers at the end of simulation",
-         cxxopts::value<bool>()->default_value(defs_t::end_dump_state))
-        ("out_dir_tag", "Tag (suffix) for output directory",
-         cxxopts::value<std::string>()->default_value(""))
+        #endif
 
         #ifdef DASM_EN
         ("l,log",
@@ -321,13 +329,17 @@ int main(int argc, char* argv[]) {
 
     try {
         test_elf = result["path"].as<std::string>();
+        cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
+        cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
+
+        #ifdef PROFILERS_EN
         cfg.prof_pc.start = TO_HEX(result["prof_pc_start"]);
         cfg.prof_pc.stop = TO_HEX(result["prof_pc_stop"]);
         cfg.prof_pc.single_match_num = TO_SIZE(result["prof_pc_single_match"]);
-        cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
+        cfg.prof_trace = TO_BOOL(result["prof_trace"]);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
-        cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
+        #endif
 
         #ifdef DASM_EN
         cfg.log = TO_BOOL(result["log"]);
@@ -380,6 +392,8 @@ int main(int argc, char* argv[]) {
 
     // print useful info about the run
     std::cout << "Running: " << test_elf << std::hex << "\n";
+
+    #ifdef PROFILERS_EN
     if (cfg.prof_pc.start != 0) {
         std::cout << "Profiling start PC: 0x" << cfg.prof_pc.start << "\n";
     }
@@ -391,6 +405,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Profiling only match number: "
                   << cfg.prof_pc.single_match_num << "\n";
     }
+    #endif
+
     #ifdef DASM_EN
     if (cfg.log) {
         std::cout << "Logging enabled";

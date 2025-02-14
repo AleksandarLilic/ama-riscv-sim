@@ -357,6 +357,9 @@ class core {
         std::string out_dir;
         prof_pc_t prof_pc;
         bool prof_act; // used for both profiling and hw models
+        #ifdef PROFILERS_EN
+        bool prof_trace;
+        #endif
         #ifdef DASM_EN
         std::ofstream log_ofstream;
         bool csr_updated = false;
