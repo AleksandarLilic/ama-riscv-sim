@@ -246,7 +246,7 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
                            height_ratios=(len(df)*.95, len(df_g)),
                            constrained_layout=True)
     suptitle_str = f"Execution profile for {title}"
-    suptitle_str += f"\nInstructions profiled: {inst_profiled}"
+    suptitle_str += f"\nSamples profiled: {inst_profiled}"
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
@@ -571,15 +571,15 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
                                       constrained_layout=True)
 
     # add SP trace
-    ax_sp.step(df.index, df['sp_real'], where='post', lw=1, color=(0,.3,.6,1))
+    ax_sp.step(df.smp, df.sp_real, where='post', lw=1, color=(0,.3,.6,1))
     ax_sp.grid(axis='both', linestyle='-', alpha=.6, which='major')
 
     # add PC/DMEM trace
-    ax_t.step(df.index, df[cols[0]], where='pre', lw=1.5, color=(0,.3,.6,.15))
+    ax_t.step(df.smp, df[cols[0]], where='pre', lw=1.5, color=(0,.3,.6,.15))
     ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
 
     x_val, y_val = [], []
-    for x, y, s in zip(df.index, df[cols[0]], df[cols[1]]):
+    for x, y, s in zip(df.smp, df[cols[0]], df[cols[1]]):
         x_val.extend([x, x, None]) # 'None' used to break the line
         y_val.extend([y, y + s, None])
     ax_t.plot(x_val, y_val, color='#649ac9', lw=2.)
@@ -592,7 +592,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
             y_val_hl = []
             for inst in hl_g:
                 df_hl = df[df['inst_mnm'] == inst]
-                for x, y, s in zip(df_hl.index, df_hl['pc'], df_hl['isz']):
+                for x, y, s in zip(df_hl.smp, df_hl['pc'], df_hl['isz']):
                     x_val_hl.extend([x, x, None])
                     y_val_hl.extend([y+hl_off, y+s-hl_off, None])
             ax_t.plot(x_val_hl, y_val_hl, color=hl_colors[hc], alpha=1, lw=3)
@@ -610,7 +610,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
             x_val_hl = []
             y_val_hl = []
             df_hl = df[df['dtyp'] == hl_g]
-            for x, y, s in zip(df_hl.index, df_hl['dmem'], df_hl['dsz']):
+            for x, y, s in zip(df_hl.smp, df_hl['dmem'], df_hl['dsz']):
                 x_val_hl.extend([x, x, None])
                 y_val_hl.extend([y, y+s, None])
             ax_t.plot(x_val_hl, y_val_hl, color=hl_colors[hc], lw=2)
@@ -646,7 +646,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
 
     # label
-    ax_sp.set_xlabel('Instruction Count')
+    ax_sp.set_xlabel('Sample Count')
     ax_t.set_ylabel(ylabel)
     ax_sp.set_ylabel('Stack Pointer')
     ax_t.set_title(f"Execution profile for {title}")
@@ -654,16 +654,20 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     return fig
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
-    h = ['pc', 'isz', 'dmem', 'dsz', 'sp']
+    h = ['smp', 'pc', 'dmem', 'sp', 'isz', 'dsz', 'padding'] # , 'padding2'
     dtype = np.dtype([
-        (h[0], np.uint32),
+        (h[0], np.uint64),
         (h[1], np.uint32),
         (h[2], np.uint32),
         (h[3], np.uint32),
-        (h[4], np.uint32),
+        (h[4], np.uint8),
+        (h[5], np.uint8),
+        (h[6], np.uint16),
     ])
     data = np.fromfile(bin_log, dtype=dtype)
     df = pd.DataFrame(data, columns=h)
+    df = df.drop(columns=[h[6]])
+    df['smp_taken'] = df['smp'].diff().fillna(df['smp']).astype(int)
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
         lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
@@ -693,7 +697,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     df = df_og.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
-        count=('pc', 'size') # count them all (size of the group)
+        count=('smp_taken', 'sum') # count them all (size of the group)
     ).reset_index()
     df = df.sort_values(by='pc', ascending=True)
     df['pc'] = df['pc'].astype(int)
