@@ -140,7 +140,7 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
 }
 
 void profiler::add_te() {
-    if (active) {
+    if (active && trace_en) {
         trace.push_back(te);
         rst_te(); // in case next instruction doesn't update all fields
     }
@@ -179,10 +179,10 @@ void profiler::log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc) {
 }
 
 void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
-    if (active) prof_reg_hist[reg][TO_U8(reg_use)]++;
+    if (active && rf_usage) prof_rf_usage[reg][TO_U8(reg_use)]++;
 }
 
-void profiler::log_to_file_and_print(bool trace_en) {
+void profiler::log_to_file_and_print() {
     cnt_t cnt;
     std::string pt = "";
     if (prof_src == profiler_source_t::clock) pt = "_clk";
@@ -225,11 +225,11 @@ void profiler::log_to_file_and_print(bool trace_en) {
         ofs.close();
     }
 
-    if (prof_src == profiler_source_t::inst) { // same for inst and clock sim
-        ofs.open(out_dir + "reg_hist" +  pt + ".bin", std::ios::binary);
+    if (rf_usage) {
+        ofs.open(out_dir + "rf_usage" +  pt + ".bin", std::ios::binary);
         ofs.write(
-            reinterpret_cast<char*>(prof_reg_hist.data()),
-            prof_reg_hist.size() * prof_reg_hist[0].size() * sizeof(uint32_t));
+            reinterpret_cast<char*>(prof_rf_usage.data()),
+            prof_rf_usage.size() * prof_rf_usage[0].size() * sizeof(uint32_t));
         ofs.close();
     }
 

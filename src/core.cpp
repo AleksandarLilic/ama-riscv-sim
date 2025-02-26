@@ -28,6 +28,7 @@ core::core(
     mem->trap_setup(&tu);
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
+    prof.set_prof_flags(cfg.prof_trace, cfg.rf_usage);
     prof_trace = cfg.prof_trace;
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
@@ -229,7 +230,7 @@ void core::finish(bool dump_regs) {
     #ifdef PROFILERS_EN
     prof_fusion.finish();
     prof_perf.finish();
-    prof.finish(prof_trace);
+    prof.finish();
     #endif
     #ifdef HW_MODELS_EN
     bp.finish(out_dir);

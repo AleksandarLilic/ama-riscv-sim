@@ -199,8 +199,10 @@ class profiler {
         std::vector<trace_entry> trace;
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_j, TO_U32(opc_j::_count)> prof_j_arr;
-        std::array<std::array<uint32_t, 3>, 32> prof_reg_hist = {0};
+        std::array<std::array<uint32_t, 3>, 32> prof_rf_usage = {0};
         sparsity_cnt_t sparsity_cnt;
+        bool trace_en;
+        bool rf_usage;
 
     public:
         profiler() = delete;
@@ -216,7 +218,11 @@ class profiler {
         void log_stack_access_store(bool in_range) {
             if (active) stack_access.storing(in_range);
         }
-        void finish(bool trace_en) { log_to_file_and_print(trace_en); }
+        void set_prof_flags(bool trace_en, bool rf_usage) {
+            this->trace_en = trace_en;
+            this->rf_usage = rf_usage;
+        }
+        void finish() { log_to_file_and_print(); }
         void log_sparsity(bool sparse) {
             if (!active) return;
             sparsity_cnt.total++;
@@ -224,7 +230,7 @@ class profiler {
         }
 
     private:
-        void log_to_file_and_print(bool trace_en);
+        void log_to_file_and_print();
         void rst_te() { te = {0, 0, 0, 0, 0, 0}; }
 
     private:

@@ -118,6 +118,7 @@ struct defs_t {
     static constexpr char prof_pc_sm[] = "0";
     static constexpr char prof_trace[] = "false";
     static constexpr char perf_event[] = "inst";
+    static constexpr char rf_usage[] = "false";
     #endif
     #ifdef DASM_EN
     static constexpr char log[] = "false";
@@ -199,6 +200,8 @@ int main(int argc, char* argv[]) {
          "Performance event to track. Options: " +
          gen_help_list(perf_event_map),
          cxxopts::value<std::string>()->default_value(defs_t::perf_event))
+        ("rf_usage", "Enable profiling register file usage",
+         cxxopts::value<bool>()->default_value(defs_t::rf_usage))
         #endif
 
         #ifdef DASM_EN
@@ -306,7 +309,7 @@ int main(int argc, char* argv[]) {
 
         ("h,help", "Print usage");
 
-    options.positional_help("<path_to_bin_file>");
+    options.positional_help("<path_to_elf_file>");
     options.parse_positional({"path"});
 
     cxxopts::ParseResult result;
@@ -339,6 +342,7 @@ int main(int argc, char* argv[]) {
         cfg.prof_pc.single_match_num = TO_SIZE(result["prof_pc_single_match"]);
         cfg.prof_trace = TO_BOOL(result["prof_trace"]);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
+        cfg.rf_usage = TO_BOOL(result["rf_usage"]);
         #endif
 
         #ifdef DASM_EN
