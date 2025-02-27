@@ -430,7 +430,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     v[k2] = int(v2)
             symbols_py[k] = dict(v)
 
-        with open(args.dasm.replace(dasm_ext, '_symbols.json'), 'w') as symfile:
+        with open(os.path.join(logs_path, 'symbols.json'), 'w') as symfile:
             json.dump(symbols_py, symfile, indent=4)
 
     if section == "data":
