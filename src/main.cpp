@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
         ("prof_pc_single_match",
          "Run profiling only for match number (0 for all matches)",
          cxxopts::value<std::string>()->default_value(defs_t::prof_pc_sm))
-        ("prof_trace", "Enable profiler trace",
+        ("prof_trace", "Record profiler trace",
          cxxopts::value<bool>()->default_value(defs_t::prof_trace))
         ("e,perf_event",
          "Performance event to track. Options: " +

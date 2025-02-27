@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import json
 import argparse
@@ -188,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
 
     # trace only options
-    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the Trace. New file is generated at the same path with *.prof.<original ext> suffix. Trace only option")
+    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
     parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
     parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
     parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
