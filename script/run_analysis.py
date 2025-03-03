@@ -175,45 +175,6 @@ def ctype_check(ctype:str) -> Tuple[List[str], str]:
 
     return cols, ylabel
 
-def parse_args() -> argparse.Namespace:
-    TIME_SERIES_LIMIT = 50000
-    parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
-    # either
-    parser.add_argument('-i', '--inst_log', type=str, help="Path to JSON instruction count log with profiling data")
-    # or
-    parser.add_argument('-t', '--trace', type=str, help="Path to binary execution trace")
-
-    # instruction count log only options
-    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
-    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction count log only option")
-    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction count log only option")
-    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
-
-    # trace only options
-    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
-    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
-    parser.add_argument('--pc_only', action='store_true', help="Only backannotate and display the PC trace. Trace only option")
-    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace. Same as --no_pc_limit but for DMEM. Trace only option")
-    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address. Input is a hex string. E.g. '0x80000200'. Applied after --no_dmem_limit. Trace only option")
-    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
-    parser.add_argument('--dmem_only', action='store_true', help="Only backannotate and display the DMEM trace. Trace only option")
-    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
-    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
-    parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
-    parser.add_argument('--save_converted_bin', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
-
-    # common options
-    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
-    # TODO: add highlighting for function calls/PC ?
-    parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
-    parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
-    parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
-    parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
-
-    return parser.parse_args()
-
 def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
     inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
@@ -676,6 +637,10 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     if args.save_converted_bin:
         df.to_csv(bin_log.replace('.bin', '.csv'), index=False)
 
+    df_start = int(args.sample_begin) if args.sample_begin else 0
+    df_end = int(args.sample_end) if args.sample_end else df.smp.max()
+    df = df.loc[df['smp'].between(df_start,df_end)]
+
     return df
 
 def run_bin_trace(bin_log, hl_groups, title, args) -> \
@@ -760,6 +725,51 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
     return df, fig, fig2
 
+def parse_args() -> argparse.Namespace:
+    TIME_SERIES_LIMIT = 50000
+    parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
+    # either
+    parser.add_argument('-i', '--inst_log', type=str, help="Path to JSON instruction count log with profiling data")
+    # or
+    parser.add_argument('-t', '--trace', type=str, help="Path to binary execution trace")
+
+    # instruction count log only options
+    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
+    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(inst_t.keys())}. Instruction count log only option")
+    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction count log only option")
+    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
+
+    # trace only options
+    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
+
+    parser.add_argument('--sample_begin', type=str, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
+    parser.add_argument('--sample_end', type=str, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
+
+    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_only', action='store_true', help="Only backannotate and display the PC trace. Trace only option")
+
+    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace. Same as --no_pc_limit but for DMEM. Trace only option")
+    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address. Input is a hex string. E.g. '0x80000200'. Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_only', action='store_true', help="Only backannotate and display the DMEM trace. Trace only option")
+
+    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
+    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
+    parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
+    parser.add_argument('--save_converted_bin', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
+
+    # common options
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
+    # TODO: add highlighting for function calls/PC ?
+    parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
+    parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
+    parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
+    parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
+
+    return parser.parse_args()
+
 def run_main(args) -> None:
     run_inst = args.inst_log is not None
     run_trace = args.trace is not None
@@ -780,24 +790,26 @@ def run_main(args) -> None:
     if (args.pc_only and args.dmem_only and not args.symbols_only):
         raise ValueError("--pc_only and --dmem_only cannot be used together")
 
-    # check PC args
-    if (args.pc_begin or args.pc_end):
+    # filtering args
+    if args.sample_begin or args.sample_end or \
+       args.pc_begin or args.pc_end or \
+       args.dmem_begin or args.dmem_end:
         if not args.trace:
-            raise ValueError(
-                "--pc_begin and --pc_end require single execution trace")
+            raise ValueError("trace filtering options require execution trace")
         if not args.dasm:
-            raise ValueError("--pc_begin and --pc_end require --dasm")
+            raise ValueError("trace filtering options require --dasm")
+
+    # check sample filtering
+    if (args.sample_begin and args.sample_end):
+        if int(args.sample_begin) >= int(args.sample_end):
+            raise ValueError("--sample_begin must be less than --sample_end")
+
+    # check PC filtering
     if (args.pc_begin and args.pc_end):
         if int(args.pc_begin, 16) >= int(args.pc_end, 16):
             raise ValueError("--pc_begin must be less than --pc_end")
 
-    # check DMEM args
-    if (args.dmem_begin or args.dmem_end):
-        if not args.trace:
-            raise ValueError(
-                "--dmem_begin and --dmem_end require single execution trace")
-        if not args.dasm:
-            raise ValueError("--dmem_begin and --dmem_end require --dasm")
+    # check DMEM filtering
     if (args.dmem_begin and args.dmem_end):
         if int(args.dmem_begin, 16) >= int(args.dmem_end, 16):
             raise ValueError("--dmem_begin must be less than --dmem_end")
