@@ -534,3 +534,4 @@ static_assert(0, "DPI requires profilers");
 #endif
 
 #define INDENT "    "
+#define INDENT_3X INDENT << INDENT << INDENT

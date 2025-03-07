@@ -1408,9 +1408,9 @@ void core::dump() {
 
 std::string core::print_state(bool dump_csr) {
     std::ostringstream state;
-    state << INDENT << INDENT << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
+    state << INDENT_3X << "PC: " << MEM_ADDR_FORMAT(pc) << "\n";
     for(uint32_t i = 0; i < 32; i+=4){
-        state << INDENT << INDENT;
+        state << INDENT_3X;
         for(uint32_t j = 0; j < 4; j++) {
             state << FRF(rf_names[i+j][rf_names_idx], rf[i+j]) << "   ";
         }
@@ -1418,7 +1418,7 @@ std::string core::print_state(bool dump_csr) {
     }
     if (dump_csr) {
         for (auto it = csr.begin(); it != csr.end(); it++) {
-            state << INDENT << INDENT << CSRF(it) << "\n";
+            state << INDENT_3X << CSRF(it) << "\n";
         }
     }
 
