@@ -499,12 +499,12 @@ Generate register file usage plots and save csv
 
 ![](examples/out_dhrystone_dhrystone/inst_profiler.png)
 
-***Trace vis***
+***Execution trace visualization***
 
-![](examples/out_dhrystone_dhrystone/trace_dmem_exec.png)
-![](examples/out_dhrystone_dhrystone/trace_dmem.png)
-![](examples/out_dhrystone_dhrystone/trace_pc_exec.png)
 ![](examples/out_dhrystone_dhrystone/trace_pc.png)
+![](examples/out_dhrystone_dhrystone/trace_pc_exec.png)
+![](examples/out_dhrystone_dhrystone/trace_dmem.png)
+![](examples/out_dhrystone_dhrystone/trace_dmem_exec.png)
 
 ***Register file usage***
 
