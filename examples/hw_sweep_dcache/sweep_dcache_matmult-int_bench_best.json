@@ -1,0 +1,46 @@
+{
+    "lru": {
+        "1": {
+            "6": { "hr": 48.92, "size": 384, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2406400,     "writes": 122560 } },
+            "8": { "hr": 48.98, "size": 512, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2403776,     "writes": 122560 } },
+            "10": { "hr": 49.96, "size": 640, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2357696,     "writes": 122560 } },
+            "12": { "hr": 50.47, "size": 768, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2333376,     "writes": 122560 } },
+            "16": { "hr": 51.5, "size": 1024, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2284736,     "writes": 122560 } }
+        },
+        "2": {
+            "4": { "hr": 49.6, "size": 512, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2374336,     "writes": 122560 } },
+            "6": { "hr": 50.74, "size": 768, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2320576,     "writes": 122560 } },
+            "8": { "hr": 51.74, "size": 1024, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2273472,     "writes": 122560 } },
+            "10": { "hr": 57.58, "size": 1280, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 1998272,     "writes": 122560 } },
+            "12": { "hr": 85.98, "size": 1536, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 660416,     "writes": 59584 } },
+            "16": { "hr": 99.05, "size": 2048, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 44736,     "writes": 19968 } }
+        },
+        "4": {
+            "2": { "hr": 49.65, "size": 512, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2372032,     "writes": 122560 } },
+            "4": { "hr": 53.76, "size": 1024, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 2178496,     "writes": 122560 } },
+            "6": { "hr": 85.28, "size": 1536, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 693696,     "writes": 74688 } },
+            "8": { "hr": 98.84, "size": 2048, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 54464,     "writes": 20160 } },
+            "10": { "hr": 99.09, "size": 2560, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 42688,     "writes": 19904 } },
+            "12": { "hr": 99.14, "size": 3072, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 40640,     "writes": 19904 } },
+            "16": { "hr": 99.18, "size": 4096, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 38528,     "writes": 19520 } }
+        },
+        "8": {
+            "2": { "hr": 61.73, "size": 1024, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 1803200,     "writes": 122560 } },
+            "4": { "hr": 95.19, "size": 2048, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 226496,     "writes": 49600 } },
+            "6": { "hr": 99.14, "size": 3072, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 40384,     "writes": 19968 } },
+            "8": { "hr": 99.18, "size": 4096, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 38528,     "writes": 19584 } }
+        },
+        "16": {
+            "1": { "hr": 63.02, "size": 1024, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 1742016,     "writes": 115456 } },
+            "2": { "hr": 93.62, "size": 2048, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 300480,     "writes": 51968 } },
+            "4": { "hr": 99.23, "size": 4096, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 36352,     "writes": 19072 } }
+        },
+        "32": {
+            "1": { "hr": 91.07, "size": 2048, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 420800,     "writes": 76800 } },
+            "2": { "hr": 99.27, "size": 4096, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 34240,     "writes": 18112 } }
+        },
+        "64": {
+            "1": { "hr": 97.83, "size": 4096, "ct_core": {     "reads": 268824,     "writes": 25628 }, "ct_mem": {     "reads": 102080,     "writes": 53952 } }
+        }
+    }
+}

@@ -1,0 +1,79 @@
+{
+    "bp_static": {
+        "0": { "bp_static_method": "btfn", "acc": 68.87 }
+    },
+    "bp_bimodal": {
+        "2": { "bp_bimodal_pc_bits": "2", "bp_bimodal_cnt_bits": "3", "acc": 77.56 },
+        "4": { "bp_bimodal_pc_bits": "3", "bp_bimodal_cnt_bits": "3", "acc": 80.85 },
+        "7": { "bp_bimodal_pc_bits": "4", "bp_bimodal_cnt_bits": "3", "acc": 82.48 },
+        "13": { "bp_bimodal_pc_bits": "5", "bp_bimodal_cnt_bits": "3", "acc": 83.23 },
+        "17": { "bp_bimodal_pc_bits": "5", "bp_bimodal_cnt_bits": "4", "acc": 83.25 },
+        "25": { "bp_bimodal_pc_bits": "6", "bp_bimodal_cnt_bits": "3", "acc": 84.02 },
+        "33": { "bp_bimodal_pc_bits": "6", "bp_bimodal_cnt_bits": "4", "acc": 84.08 },
+        "49": { "bp_bimodal_pc_bits": "7", "bp_bimodal_cnt_bits": "3", "acc": 84.39 },
+        "65": { "bp_bimodal_pc_bits": "7", "bp_bimodal_cnt_bits": "4", "acc": 84.46 }
+    },
+    "bp_local": {
+        "4": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "1", "acc": 69.26 },
+        "8": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "3", "acc": 77.33 },
+        "14": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "5", "bp_local_cnt_bits": "3", "acc": 78.35 },
+        "26": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "6", "bp_local_cnt_bits": "3", "acc": 79.45 },
+        "23": { "bp_local_pc_bits": "5", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "3", "acc": 83.21 },
+        "63": { "bp_local_pc_bits": "4", "bp_local_hist_bits": "7", "bp_local_cnt_bits": "3", "acc": 84.36 },
+        "41": { "bp_local_pc_bits": "6", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "4", "acc": 84.98 },
+        "77": { "bp_local_pc_bits": "5", "bp_local_hist_bits": "7", "bp_local_cnt_bits": "3", "acc": 85.23 }
+    },
+    "bp_global": {
+        "3": { "bp_global_gr_bits": "4", "bp_global_cnt_bits": "1", "acc": 71.65 },
+        "2": { "bp_global_gr_bits": "2", "bp_global_cnt_bits": "3", "acc": 76.64 },
+        "7": { "bp_global_gr_bits": "4", "bp_global_cnt_bits": "3", "acc": 80.86 },
+        "17": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "2", "acc": 81.88 },
+        "13": { "bp_global_gr_bits": "5", "bp_global_cnt_bits": "3", "acc": 82.36 },
+        "33": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "4", "acc": 83.88 },
+        "25": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "3", "acc": 84.04 },
+        "65": { "bp_global_gr_bits": "7", "bp_global_cnt_bits": "4", "acc": 84.98 },
+        "49": { "bp_global_gr_bits": "7", "bp_global_cnt_bits": "3", "acc": 85.16 }
+    },
+    "bp_gselect": {
+        "2": { "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "1", "bp_gselect_cnt_bits": "3", "acc": 71.94 },
+        "4": { "bp_gselect_pc_bits": "2", "bp_gselect_gr_bits": "1", "bp_gselect_cnt_bits": "3", "acc": 79.27 },
+        "17": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "acc": 80.1 },
+        "7": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "1", "bp_gselect_cnt_bits": "3", "acc": 81.57 },
+        "13": { "bp_gselect_pc_bits": "2", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "3", "acc": 82.16 },
+        "25": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "3", "acc": 84.5 },
+        "33": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "2", "acc": 85.72 },
+        "65": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "4", "acc": 87.0 },
+        "49": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "3", "acc": 87.07 }
+    },
+    "bp_gshare": {
+        "2": { "bp_gshare_pc_bits": "2", "bp_gshare_gr_bits": "2", "bp_gshare_cnt_bits": "3", "acc": 70.02 },
+        "3": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "4", "bp_gshare_cnt_bits": "1", "acc": 70.14 },
+        "7": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "4", "bp_gshare_cnt_bits": "3", "acc": 80.21 },
+        "17": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "acc": 80.49 },
+        "13": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "5", "bp_gshare_cnt_bits": "3", "acc": 81.91 },
+        "33": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "4", "acc": 83.31 },
+        "25": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "3", "acc": 83.4 },
+        "65": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "4", "acc": 84.32 },
+        "49": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "acc": 84.41 }
+    },
+    "bp_combined-1": {
+        "4": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "2", "bp_gshare_gr_bits": "2", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "2", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 77.32 },
+        "8": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "5", "bp_gshare_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 79.97 },
+        "16": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 82.37 },
+        "22": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 82.45 },
+        "30": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 84.69 },
+        "38": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "5", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 85.15 },
+        "62": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 86.5 },
+        "66": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "4", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 86.82 }
+    },
+    "bp_combined-2": {
+        "4": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "2", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 77.13 },
+        "8": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 80.99 },
+        "14": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 81.11 },
+        "24": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 82.97 },
+        "26": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "4", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 83.33 },
+        "42": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "6", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 83.82 },
+        "79": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "8", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 87.46 },
+        "60": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "3", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "5", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 87.72 }
+    }
+}

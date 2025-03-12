@@ -1,0 +1,73 @@
+{
+    "bp_static": {
+        "0": { "bp_static_method": "btfn", "acc": 70.38 }
+    },
+    "bp_bimodal": {
+        "4": { "bp_bimodal_pc_bits": "3", "bp_bimodal_cnt_bits": "3", "acc": 70.29 },
+        "17": { "bp_bimodal_pc_bits": "5", "bp_bimodal_cnt_bits": "4", "acc": 76.2 },
+        "33": { "bp_bimodal_pc_bits": "6", "bp_bimodal_cnt_bits": "4", "acc": 76.2 },
+        "65": { "bp_bimodal_pc_bits": "7", "bp_bimodal_cnt_bits": "4", "acc": 76.36 },
+        "49": { "bp_bimodal_pc_bits": "7", "bp_bimodal_cnt_bits": "3", "acc": 76.43 },
+        "25": { "bp_bimodal_pc_bits": "6", "bp_bimodal_cnt_bits": "3", "acc": 76.44 },
+        "7": { "bp_bimodal_pc_bits": "4", "bp_bimodal_cnt_bits": "3", "acc": 76.44 },
+        "13": { "bp_bimodal_pc_bits": "5", "bp_bimodal_cnt_bits": "3", "acc": 76.44 }
+    },
+    "bp_local": {
+        "14": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "5", "bp_local_cnt_bits": "3", "acc": 74.47 },
+        "8": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "3", "acc": 74.55 },
+        "26": { "bp_local_pc_bits": "1", "bp_local_hist_bits": "6", "bp_local_cnt_bits": "3", "acc": 75.47 },
+        "41": { "bp_local_pc_bits": "6", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "4", "acc": 76.0 },
+        "63": { "bp_local_pc_bits": "4", "bp_local_hist_bits": "7", "bp_local_cnt_bits": "3", "acc": 76.08 },
+        "77": { "bp_local_pc_bits": "5", "bp_local_hist_bits": "7", "bp_local_cnt_bits": "3", "acc": 76.08 },
+        "23": { "bp_local_pc_bits": "5", "bp_local_hist_bits": "4", "bp_local_cnt_bits": "3", "acc": 76.15 }
+    },
+    "bp_global": {
+        "2": { "bp_global_gr_bits": "2", "bp_global_cnt_bits": "3", "acc": 73.41 },
+        "17": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "2", "acc": 73.67 },
+        "13": { "bp_global_gr_bits": "5", "bp_global_cnt_bits": "3", "acc": 75.07 },
+        "7": { "bp_global_gr_bits": "4", "bp_global_cnt_bits": "3", "acc": 75.11 },
+        "25": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "3", "acc": 75.93 },
+        "49": { "bp_global_gr_bits": "7", "bp_global_cnt_bits": "3", "acc": 76.27 },
+        "33": { "bp_global_gr_bits": "6", "bp_global_cnt_bits": "4", "acc": 76.31 },
+        "65": { "bp_global_gr_bits": "7", "bp_global_cnt_bits": "4", "acc": 76.56 }
+    },
+    "bp_gselect": {
+        "17": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "acc": 70.13 },
+        "7": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "1", "bp_gselect_cnt_bits": "3", "acc": 72.77 },
+        "13": { "bp_gselect_pc_bits": "2", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "3", "acc": 74.22 },
+        "33": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "2", "acc": 75.61 },
+        "25": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "3", "acc": 76.31 },
+        "49": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "3", "acc": 77.29 },
+        "65": { "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "4", "acc": 77.78 }
+    },
+    "bp_gshare": {
+        "17": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "acc": 72.86 },
+        "2": { "bp_gshare_pc_bits": "2", "bp_gshare_gr_bits": "2", "bp_gshare_cnt_bits": "3", "acc": 73.87 },
+        "7": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "4", "bp_gshare_cnt_bits": "3", "acc": 74.05 },
+        "13": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "5", "bp_gshare_cnt_bits": "3", "acc": 74.38 },
+        "25": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "3", "acc": 75.0 },
+        "49": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "acc": 75.51 },
+        "33": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "4", "acc": 75.53 },
+        "65": { "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "4", "acc": 76.16 }
+    },
+    "bp_combined-1": {
+        "8": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "5", "bp_gshare_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 74.71 },
+        "4": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "2", "bp_gshare_gr_bits": "2", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "2", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 75.97 },
+        "16": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 76.27 },
+        "22": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 76.54 },
+        "38": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "5", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 77.08 },
+        "30": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "6", "bp_gshare_cnt_bits": "2", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 77.58 },
+        "66": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "4", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 78.33 },
+        "62": { "bp_static_method": "btfn", "bp_gshare_pc_bits": "1", "bp_gshare_gr_bits": "7", "bp_gshare_cnt_bits": "3", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gshare", "acc": 78.38 }
+    },
+    "bp_combined-2": {
+        "4": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "2", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 72.86 },
+        "8": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 75.06 },
+        "14": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "3", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "1", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 75.83 },
+        "26": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "4", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 77.61 },
+        "24": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 77.78 },
+        "42": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "6", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 77.78 },
+        "79": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "1", "bp_gselect_gr_bits": "8", "bp_gselect_cnt_bits": "1", "bp_combined_pc_bits": "5", "bp_combined_cnt_bits": "3", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 77.98 },
+        "60": { "bp_static_method": "btfn", "bp_gselect_pc_bits": "3", "bp_gselect_gr_bits": "4", "bp_gselect_cnt_bits": "3", "bp_combined_pc_bits": "4", "bp_combined_cnt_bits": "5", "bp_combined_p1": "static", "bp_combined_p2": "gselect", "acc": 78.43 }
+    }
+}

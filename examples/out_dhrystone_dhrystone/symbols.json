@@ -1,0 +1,332 @@
+{
+    "_start": {
+        "addr_start": 0,
+        "exec_count": 42,
+        "addr_end": 164,
+        "symbol_text": "_start (42)"
+    },
+    "clear_bss_w": {
+        "addr_start": 168,
+        "exec_count": 13272,
+        "addr_end": 184,
+        "symbol_text": "clear_bss_w (13272)"
+    },
+    "clear_bss_b": {
+        "addr_start": 188,
+        "exec_count": 1,
+        "addr_end": 200,
+        "symbol_text": "clear_bss_b (1)"
+    },
+    "done_bss": {
+        "addr_start": 204,
+        "exec_count": 1,
+        "addr_end": 204,
+        "symbol_text": "done_bss (1)"
+    },
+    "call_main": {
+        "addr_start": 208,
+        "exec_count": 1,
+        "addr_end": 212,
+        "symbol_text": "call_main (1)"
+    },
+    "forever": {
+        "addr_start": 216,
+        "exec_count": 0,
+        "addr_end": 216,
+        "symbol_text": "forever (0)"
+    },
+    "trap_entry": {
+        "addr_start": 220,
+        "exec_count": 0,
+        "addr_end": 492,
+        "symbol_text": "trap_entry (0)"
+    },
+    "strcmp": {
+        "addr_start": 496,
+        "exec_count": 570,
+        "addr_end": 872,
+        "symbol_text": "strcmp (570)"
+    },
+    "__udivdi3": {
+        "addr_start": 876,
+        "exec_count": 194,
+        "addr_end": 2352,
+        "symbol_text": "__udivdi3 (194)"
+    },
+    "__divsf3": {
+        "addr_start": 2356,
+        "exec_count": 0,
+        "addr_end": 3236,
+        "symbol_text": "__divsf3 (0)"
+    },
+    "__mulsf3": {
+        "addr_start": 3240,
+        "exec_count": 0,
+        "addr_end": 4080,
+        "symbol_text": "__mulsf3 (0)"
+    },
+    "__fixsfsi": {
+        "addr_start": 4084,
+        "exec_count": 0,
+        "addr_end": 4192,
+        "symbol_text": "__fixsfsi (0)"
+    },
+    "__floatsisf": {
+        "addr_start": 4196,
+        "exec_count": 0,
+        "addr_end": 4464,
+        "symbol_text": "__floatsisf (0)"
+    },
+    "__mulsi3": {
+        "addr_start": 4468,
+        "exec_count": 32,
+        "addr_end": 4500,
+        "symbol_text": "__mulsi3 (32)"
+    },
+    "__divsi3": {
+        "addr_start": 4504,
+        "exec_count": 20,
+        "addr_end": 4508,
+        "symbol_text": "__divsi3 (20)"
+    },
+    "__hidden___udivsi3": {
+        "addr_start": 4512,
+        "exec_count": 0,
+        "addr_end": 4512,
+        "symbol_text": "__hidden___udivsi3 (0)"
+    },
+    "__udivsi3": {
+        "addr_start": 4512,
+        "exec_count": 2844,
+        "addr_end": 4580,
+        "symbol_text": "__udivsi3 (2844)"
+    },
+    "__umodsi3": {
+        "addr_start": 4584,
+        "exec_count": 204,
+        "addr_end": 4632,
+        "symbol_text": "__umodsi3 (204)"
+    },
+    "__modsi3": {
+        "addr_start": 4636,
+        "exec_count": 0,
+        "addr_end": 4680,
+        "symbol_text": "__modsi3 (0)"
+    },
+    "__clzsi2": {
+        "addr_start": 4684,
+        "exec_count": 0,
+        "addr_end": 4756,
+        "symbol_text": "__clzsi2 (0)"
+    },
+    "Proc_2": {
+        "addr_start": 4760,
+        "exec_count": 90,
+        "addr_end": 4796,
+        "symbol_text": "Proc_2 (90)"
+    },
+    "Proc_3": {
+        "addr_start": 4800,
+        "exec_count": 100,
+        "addr_end": 4836,
+        "symbol_text": "Proc_3 (100)"
+    },
+    "Proc_1": {
+        "addr_start": 4840,
+        "exec_count": 570,
+        "addr_end": 5188,
+        "symbol_text": "Proc_1 (570)"
+    },
+    "Proc_4": {
+        "addr_start": 5192,
+        "exec_count": 100,
+        "addr_end": 5228,
+        "symbol_text": "Proc_4 (100)"
+    },
+    "Proc_5": {
+        "addr_start": 5232,
+        "exec_count": 40,
+        "addr_end": 5244,
+        "symbol_text": "Proc_5 (40)"
+    },
+    "main": {
+        "addr_start": 5248,
+        "exec_count": 931,
+        "addr_end": 6972,
+        "symbol_text": "main (931)"
+    },
+    "Proc_7": {
+        "addr_start": 6976,
+        "exec_count": 120,
+        "addr_end": 6988,
+        "symbol_text": "Proc_7 (120)"
+    },
+    "Proc_8": {
+        "addr_start": 6992,
+        "exec_count": 250,
+        "addr_end": 7088,
+        "symbol_text": "Proc_8 (250)"
+    },
+    "Func_1": {
+        "addr_start": 7092,
+        "exec_count": 150,
+        "addr_end": 7120,
+        "symbol_text": "Func_1 (150)"
+    },
+    "Func_2": {
+        "addr_start": 7124,
+        "exec_count": 280,
+        "addr_end": 7244,
+        "symbol_text": "Func_2 (280)"
+    },
+    "Func_3": {
+        "addr_start": 7248,
+        "exec_count": 30,
+        "addr_end": 7256,
+        "symbol_text": "Func_3 (30)"
+    },
+    "Proc_6": {
+        "addr_start": 7260,
+        "exec_count": 200,
+        "addr_end": 7448,
+        "symbol_text": "Proc_6 (200)"
+    },
+    "time_s": {
+        "addr_start": 7452,
+        "exec_count": 20,
+        "addr_end": 7488,
+        "symbol_text": "time_s (20)"
+    },
+    "send_byte_uart0": {
+        "addr_start": 7492,
+        "exec_count": 10008,
+        "addr_end": 7512,
+        "symbol_text": "send_byte_uart0 (10008)"
+    },
+    "_write": {
+        "addr_start": 7516,
+        "exec_count": 31248,
+        "addr_end": 7592,
+        "symbol_text": "_write (31248)"
+    },
+    "__puts_uart": {
+        "addr_start": 7596,
+        "exec_count": 19968,
+        "addr_end": 7644,
+        "symbol_text": "__puts_uart (19968)"
+    },
+    "mini_printf": {
+        "addr_start": 7648,
+        "exec_count": 1200,
+        "addr_end": 7724,
+        "symbol_text": "mini_printf (1200)"
+    },
+    "get_cpu_time": {
+        "addr_start": 7728,
+        "exec_count": 10,
+        "addr_end": 7744,
+        "symbol_text": "get_cpu_time (10)"
+    },
+    "timer_interrupt_handler": {
+        "addr_start": 7748,
+        "exec_count": 0,
+        "addr_end": 7788,
+        "symbol_text": "timer_interrupt_handler (0)"
+    },
+    "trap_handler": {
+        "addr_start": 7792,
+        "exec_count": 0,
+        "addr_end": 7880,
+        "symbol_text": "trap_handler (0)"
+    },
+    "mini_strlen": {
+        "addr_start": 7884,
+        "exec_count": 500,
+        "addr_end": 7920,
+        "symbol_text": "mini_strlen (500)"
+    },
+    "mini_itoa": {
+        "addr_start": 7924,
+        "exec_count": 2325,
+        "addr_end": 8280,
+        "symbol_text": "mini_itoa (2325)"
+    },
+    "mini_pad": {
+        "addr_start": 8284,
+        "exec_count": 777,
+        "addr_end": 8804,
+        "symbol_text": "mini_pad (777)"
+    },
+    "_puts": {
+        "addr_start": 8808,
+        "exec_count": 0,
+        "addr_end": 8920,
+        "symbol_text": "_puts (0)"
+    },
+    "mini_vpprintf": {
+        "addr_start": 8924,
+        "exec_count": 21475,
+        "addr_end": 9748,
+        "symbol_text": "mini_vpprintf (21475)"
+    },
+    "_sbrk": {
+        "addr_start": 9752,
+        "exec_count": 18,
+        "addr_end": 9808,
+        "symbol_text": "_sbrk (18)"
+    },
+    "malloc": {
+        "addr_start": 9812,
+        "exec_count": 6,
+        "addr_end": 9820,
+        "symbol_text": "malloc (6)"
+    },
+    "_malloc_r": {
+        "addr_start": 9824,
+        "exec_count": 198,
+        "addr_end": 11884,
+        "symbol_text": "_malloc_r (198)"
+    },
+    "__malloc_lock": {
+        "addr_start": 11888,
+        "exec_count": 2,
+        "addr_end": 11888,
+        "symbol_text": "__malloc_lock (2)"
+    },
+    "__malloc_unlock": {
+        "addr_start": 11892,
+        "exec_count": 2,
+        "addr_end": 11892,
+        "symbol_text": "__malloc_unlock (2)"
+    },
+    "_sbrk_r": {
+        "addr_start": 11896,
+        "exec_count": 30,
+        "addr_end": 11984,
+        "symbol_text": "_sbrk_r (30)"
+    },
+    "__libc_init_array": {
+        "addr_start": 11988,
+        "exec_count": 20,
+        "addr_end": 12124,
+        "symbol_text": "__libc_init_array (20)"
+    },
+    "strcpy": {
+        "addr_start": 12128,
+        "exec_count": 1032,
+        "addr_end": 12288,
+        "symbol_text": "strcpy (1032)"
+    },
+    "_malloc_trim_r": {
+        "addr_start": 12292,
+        "exec_count": 0,
+        "addr_end": 12608,
+        "symbol_text": "_malloc_trim_r (0)"
+    },
+    "_free_r": {
+        "addr_start": 12612,
+        "exec_count": 0,
+        "addr_end": 13360,
+        "symbol_text": "_free_r (0)"
+    }
+}

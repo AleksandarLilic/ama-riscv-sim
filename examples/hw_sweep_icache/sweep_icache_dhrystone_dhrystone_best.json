@@ -1,0 +1,50 @@
+{
+    "lru": {
+        "1": {
+            "4": { "hr": 91.21, "size": 256, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2368,     "writes": 0 } },
+            "6": { "hr": 91.69, "size": 384, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2240,     "writes": 0 } },
+            "8": { "hr": 91.92, "size": 512, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2176,     "writes": 0 } },
+            "10": { "hr": 92.64, "size": 640, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1984,     "writes": 0 } },
+            "12": { "hr": 93.59, "size": 768, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1728,     "writes": 0 } },
+            "16": { "hr": 93.82, "size": 1024, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1664,     "writes": 0 } }
+        },
+        "2": {
+            "2": { "hr": 90.97, "size": 256, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2432,     "writes": 0 } },
+            "4": { "hr": 91.92, "size": 512, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2176,     "writes": 0 } },
+            "6": { "hr": 93.59, "size": 768, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1728,     "writes": 0 } },
+            "8": { "hr": 93.82, "size": 1024, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1664,     "writes": 0 } },
+            "10": { "hr": 94.06, "size": 1280, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1600,     "writes": 0 } },
+            "12": { "hr": 95.49, "size": 1536, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1216,     "writes": 0 } },
+            "16": { "hr": 100.0, "size": 2048, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } }
+        },
+        "4": {
+            "1": { "hr": 90.97, "size": 256, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2432,     "writes": 0 } },
+            "2": { "hr": 91.92, "size": 512, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2176,     "writes": 0 } },
+            "4": { "hr": 93.82, "size": 1024, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1664,     "writes": 0 } },
+            "6": { "hr": 96.44, "size": 1536, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 960,     "writes": 0 } },
+            "8": { "hr": 100.0, "size": 2048, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } },
+            "10": { "hr": 100.0, "size": 2560, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } },
+            "12": { "hr": 100.0, "size": 3072, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } },
+            "16": { "hr": 100.0, "size": 4096, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } }
+        },
+        "8": {
+            "1": { "hr": 91.69, "size": 512, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 2240,     "writes": 0 } },
+            "2": { "hr": 93.82, "size": 1024, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1664,     "writes": 0 } },
+            "4": { "hr": 99.29, "size": 2048, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 192,     "writes": 0 } },
+            "6": { "hr": 100.0, "size": 3072, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } },
+            "8": { "hr": 100.0, "size": 4096, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } }
+        },
+        "16": {
+            "1": { "hr": 93.59, "size": 1024, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 1728,     "writes": 0 } },
+            "2": { "hr": 98.57, "size": 2048, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 384,     "writes": 0 } },
+            "4": { "hr": 100.0, "size": 4096, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } }
+        },
+        "32": {
+            "1": { "hr": 96.67, "size": 2048, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 896,     "writes": 0 } },
+            "2": { "hr": 100.0, "size": 4096, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 0,     "writes": 0 } }
+        },
+        "64": {
+            "1": { "hr": 98.57, "size": 4096, "ct_core": {     "reads": 1684,     "writes": 0 }, "ct_mem": {     "reads": 384,     "writes": 0 } }
+        }
+    }
+}
