@@ -3,6 +3,7 @@
 *.log
 sweep_*_best.json
 sweep_*_binned.json
+sweep_*.png
 
 # test files
 test/out_*/
