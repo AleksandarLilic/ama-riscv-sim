@@ -288,7 +288,7 @@ def run_cache_sweep(
     lbl = lambda x, y: f"{x}, sets: {y}"
     max_nrows = 3 if ck == "dcache" else 2
     nrows = max_nrows if len(workloads) == 1 else 1
-    _, axs = create_plot(ck.capitalize(), f"{sweep_name}", nrows=nrows)
+    fig, axs = create_plot(ck.capitalize(), f"{sweep_name}", nrows=nrows)
     axs_hr = axs[0] if len(workloads) == 1 else axs
     ax = axs_hr[0]
     for cpolicy, pe in sr.items():
@@ -387,6 +387,9 @@ def run_cache_sweep(
     for a in list(axs_hr) + axs_ct:
         a.grid(True)
         a.margins(x=0.02)
+
+    if args.save_png:
+        fig.savefig(sweep_log.replace(".log", ".png"))
 
     return sr
 
@@ -726,7 +729,7 @@ def run_bp_sweep(
 
     # plot accuracy wrt size
     ncols = 1 if running_best else 2
-    _, axs = create_plot(bpk.capitalize(), sweep_name, ncols)
+    fig, axs = create_plot(bpk.capitalize(), sweep_name, ncols)
     for sr,ax in zip([sr_bin, sr_best], axs):
         title_add = ""
         for bp_h,entry in sr.items():
@@ -774,12 +777,15 @@ def run_bp_sweep(
             ymin = max(args.plot_acc_thr, ymin)
         a.set_ylim(ymin, 100.1)
 
+    if args.save_png:
+        fig.savefig(sweep_log.replace(".log", ".png"))
+
     return sr_bin
 
 MAX_WORKERS = int(os.cpu_count())
 def parse_args() -> argparse.Namespace:
     SWEEP_CHOICES = ["icache", "dcache", "bpred"]
-    parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given app")
+    parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given workload")
     parser.add_argument("-s", "--sweep", required=True, choices=SWEEP_CHOICES, help="Select the hardware model to sweep")
     parser.add_argument("-p", "--params", required=True, help="Path to the hardware model sweep params file")
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
@@ -787,6 +793,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Ignores --save_stats")
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
+    parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_skip_ct_thr", action="store_true", help="Skip setting the upper limit for the plot y-axis for cache traffic")
@@ -811,7 +818,7 @@ def run_main(args: argparse.Namespace) -> None:
     for wl,flavors in workloads_dict.items():
         for flavor in flavors[0]:
             elf = os.path.join(APPS_DIR, wl, f"{flavor}.elf")
-            if not os.path.exists(elf):
+            if not os.path.exists(elf) and not args.load_stats:
                 raise FileNotFoundError(f"elf not found at: {elf}")
             else:
                 for_sweep = not flavors[3]['skip_search']
