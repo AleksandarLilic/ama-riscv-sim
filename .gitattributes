@@ -1,0 +1,7 @@
+# vendored code
+sw/baremetal/coremark/** linguist-vendored
+sw/baremetal/dhrystone/** linguist-vendored
+sw/baremetal/embench/** linguist-vendored
+
+# overrides
+Makefile*inc linguist-language=Makefile
