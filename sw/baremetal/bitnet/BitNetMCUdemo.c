@@ -1,1 +1,0 @@
-../../BitNetMCU/mcu/BitNetMCUdemo.c
