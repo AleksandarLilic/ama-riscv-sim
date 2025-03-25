@@ -4,8 +4,8 @@
 
 #define CACHE_STATS_JSON_ENTRY(stat_struct) \
     "\"references\": " << stat_struct->references \
-    << ", \"hits\": " << stat_struct->hits \
-    << ", \"misses\": " << stat_struct->misses \
+    << ", \"hits\": " << stat_struct->hits.all() \
+    << ", \"misses\": " << stat_struct->misses.all() \
     << ", \"evicts\": " << stat_struct->evicts \
     << ", \"writebacks\": " << stat_struct->writebacks \
     << ", \"ct_core\": {\"reads\": " << stat_struct->ct_core.reads \
@@ -71,6 +71,7 @@ struct cache_traffic_t {
             rd /= 1024;
             wr /= 1024;
             idx++;
+            if (idx == (std::size(suffixes) - 1)) break; // leave at TB
         }
         size_t prec = ((rd < PREC_THR) || (wr < PREC_THR)) ? 1 : 0;
         std::ostringstream oss;
@@ -80,11 +81,18 @@ struct cache_traffic_t {
     }
 };
 
+struct ls_pair {
+    uint32_t ld;
+    uint32_t st;
+    ls_pair() : ld(0), st(0) {};
+    uint32_t all() const { return ld + st; };
+};
+
 struct cache_stats_t {
     private:
         uint32_t references;
-        uint32_t hits;
-        uint32_t misses;
+        ls_pair hits;
+        ls_pair misses;
         uint32_t evicts;
         uint32_t writebacks;
         cache_traffic_t ct_core;
@@ -93,23 +101,26 @@ struct cache_stats_t {
 
     public:
         cache_stats_t() :
-            references(0), hits(0), misses(0), evicts(0), writebacks(0),
+            references(0), hits(), misses(), evicts(0), writebacks(0),
             ct_core(), ct_mem() {}
 
         void profiling(bool enable) { prof_active = enable; }
         void reference(mem_op_t atype, uint32_t size) {
             if (!prof_active) return;
             references++;
+            // it'll hit or miss afterwards, but data is always transferred
             if (atype == mem_op_t::read) ct_core.reads += size;
             else ct_core.writes += size;
         }
-        void hit() {
+        void hit(mem_op_t atype) {
             if (!prof_active) return;
-            hits++;
+            hits.ld += (atype == mem_op_t::read);
+            hits.st += (atype == mem_op_t::write);
         }
-        void miss() {
+        void miss(mem_op_t atype) {
             if (!prof_active) return;
-            misses++;
+            misses.ld += (atype == mem_op_t::read);
+            misses.st += (atype == mem_op_t::write);
             ct_mem.reads += CACHE_LINE_SIZE;
         }
         void evict(bool dirty) {
@@ -128,10 +139,14 @@ struct cache_stats_t {
     public:
         void show() const {
             float_t hr = 0.0; // hit rate
-            if (references > 0) hr = TO_F32(hits) / TO_F32(references) * 100;
+            if (references > 0) {
+                hr = TO_F32(hits.all()) / TO_F32(references) * 100;
+            }
             std::cout << "R: " << references
-                      << ", H: " << hits
-                      << ", M: " << misses
+                      << ", H: " << hits.all()
+                      << "(" << hits.ld << "/" << hits.st << ")"
+                      << ", M: " << misses.all()
+                      << "(" << misses.ld << "/" << misses.st << ")"
                       << ", E: " << evicts
                       << ", WB: " << writebacks
                       << ", HR: " << std::fixed << std::setprecision(2)
