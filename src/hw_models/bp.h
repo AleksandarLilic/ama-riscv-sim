@@ -60,7 +60,7 @@ class bp {
         virtual void log_stats(std::string name, std::ofstream &file) {
             file << "\"" << name << "\"" << ": {";
             stats.log(file);
-            file << ", \"size\": " << size << "},";
+            file << "," << JSON_N << "\"size\": " << size << "\n},";
         }
 
         virtual void summarize_stats() {

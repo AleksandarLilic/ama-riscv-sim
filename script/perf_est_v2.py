@@ -10,6 +10,18 @@ from run_analysis import json_prof_to_df
 DELIM = "\n    "
 R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
+# main mem configuration assumptions based on the port contention from hwpm
+
+# | rd  | wr  | mem cfg |
+# | --- | --- | ------- |
+# | 0   | 0   | 2R 1W   | - no contention
+# | >0  | 0   | 1R 1W   | - IMEM and DMEM contend only for read port
+# | 0   | >0  | 1R 1RW  | - DMEM read and write ports contend within a few clks
+# | >0  | >0  | 1RW     | - as above, and contention with IMEM read
+
+# write contention is likely to be very small, as it's not easy to occur
+# e.g. D$ read miss followed by D$ write miss in the next cycle
+
 class perf:
     # TODO: needs compressed ISA
     b_inst_a = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
@@ -22,11 +34,11 @@ class perf:
     div_inst_a = ["div", "divu", "rem", "remu"]
     dot_inst_a = ["dot4", "dot8", "dot16"]
     csr_inst_a = ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"]
-    expected_hw_metrics = ["cpu_frequency_mhz", "pipeline",
-                           "branch_resolution", "jump_resolution",
-                           "icache", "dcache", "bpred", "mem",
-                           "mul", "div", "dot",
-                           "icache_name", "dcache_name", "bpred_name"]
+    expected_hw_metrics = [
+        "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
+        "bpred", "icache", "dcache", "rd_port_contention", "wr_port_contention",
+        "mem", "mul", "div", "dot",
+        "icache_name", "dcache_name", "bpred_name"]
 
     def __init__(self, inst_profiler_path, hw_stats_path, hw_perf_metrics_path,
                  realistic=False):
@@ -57,15 +69,23 @@ class perf:
         # check if all expected metrics are present
         for metric in self.expected_hw_metrics:
             if metric not in hwpm:
-                raise ValueError(f"Missing metric '{metric}' in " + \
-                                  "HW performance metrics JSON file")
+                raise ValueError(
+                    f"Missing metric '{metric}' in " +
+                    "HW performance metrics JSON file")
+            if "contention" in metric and hwpm[metric] > 1:
+                raise ValueError(
+                    f"Contention '{metric}' can't be above 100% but was " + \
+                    f"specified as '{hwpm[metric]*100}%'")
 
+        # class can be printed, save all stats as member variables
         self.c_pipeline = hwpm['pipeline']
         self.c_branch_res = hwpm['branch_resolution']
         self.c_jump_res = hwpm['jump_resolution']
+        self.c_bp = hwpm["bpred"]
         self.c_ic = hwpm['icache']
         self.c_dc = hwpm['dcache']
-        self.c_bp = hwpm["bpred"]
+        self.rdc = hwpm["rd_port_contention"]
+        self.wrc = hwpm["wr_port_contention"]
         self.c_mem = hwpm['mem']
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
@@ -73,6 +93,8 @@ class perf:
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
+
+        sd = lambda d: sum(d.values())
 
         hw_bp = self.hw_stats[self.bp_name]
         self.bp_stats = {
@@ -85,19 +107,19 @@ class perf:
         hw_dc = self.hw_stats[self.dc_name]
         self.ic_stats = {
             "references": hw_ic["references"],
-            "hits": hw_ic["hits"],
-            "misses": hw_ic["misses"],
-            "hit_rate": (hw_ic["hits"] / hw_ic["references"]) * 100,
+            "hits": hw_ic["hits"]["reads"],
+            "misses": hw_ic["misses"]["reads"],
+            "hit_rate": (hw_ic["hits"]["reads"] / hw_ic["references"]) * 100,
             "sets": hw_ic["size"]["sets"],
             "ways": hw_ic["size"]["ways"],
             "data": hw_ic["size"]["data"]
         }
         self.dc_stats = {
             "references": hw_dc["references"],
-            "hits": hw_dc["hits"],
-            "misses": hw_dc["misses"],
+            "hits": sd(hw_dc["hits"]),
+            "misses": sd(hw_dc["misses"]),
             "writebacks": hw_dc["writebacks"],
-            "hit_rate": (hw_dc["hits"] / hw_dc["references"]) * 100,
+            "hit_rate": (sd(hw_dc["hits"]) / hw_dc["references"]) * 100,
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
             "data": hw_dc["size"]["data"]
@@ -124,10 +146,22 @@ class perf:
         self.b_stalls = (self.c_bp - 1) * self.bp_stats['pred']
         self.b_stalls += (self.c_branch_res - 1) * self.bp_stats['mispred']
         self.j_stalls = (self.c_jump_res - 1) * self.j_inst
-        self.ic_stalls = (self.c_ic - 1) * self.hw_stats[self.ic_name]["hits"]
-        self.ic_stalls += self.c_mem * self.hw_stats[self.ic_name]["misses"]
-        self.dc_stalls = (self.c_dc - 1) * self.hw_stats[self.dc_name]["hits"]
-        self.dc_stalls += self.c_mem * self.hw_stats[self.dc_name]["misses"]
+        self.ic_stalls = (self.c_ic - 1) * hw_ic["hits"]["reads"]
+        self.ic_stalls += self.c_mem * hw_ic["misses"]["reads"]
+        self.dc_stalls = (self.c_dc - 1) * sd(hw_dc["hits"])
+        self.dc_stalls += self.c_mem * sd(hw_dc["misses"])
+
+        self.rdc_stalls = 0
+        self.wrc_stalls = 0
+        if self.rdc > 0:
+            occurences = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
+            self.rdc_stalls = int(occurences * self.c_mem * self.rdc)
+
+        if self.wrc > 0:
+            occurences = min(hw_dc["misses"]["reads"],hw_dc["misses"]["writes"])
+            self.wrc_stalls = int(occurences * self.c_mem * self.wrc)
+
+        # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
 
         self.mul_stalls = (self.c_mul - 1) * self.mul_inst
         self.div_stalls = (self.c_div - 1) * self.div_inst
@@ -167,6 +201,8 @@ class perf:
             self.total_cycles_wc += self.fe_stalls - fe_o # reduced by overlap
             self.total_cycles_wc += self.dc_stalls + alu_h
 
+        self.total_cycles_wc += self.rdc_stalls + self.wrc_stalls
+
         # best case:
         #   fe stalls overlap with dc stalls completely
         #   no alu hazard stall (e.g. best possible inst scheduling)
@@ -179,6 +215,8 @@ class perf:
             fe_o = fe_s * (R["fe_overlap"] + R["fe_range"])
             self.total_cycles_bc += self.fe_stalls - fe_o
             self.total_cycles_bc += self.dc_stalls + alu_h
+
+        self.total_cycles_bc += self.rdc_stalls + self.wrc_stalls
 
     def _log_branches(self, entry):
         for key in entry['breakdown']:
@@ -255,7 +293,8 @@ class perf:
             f"DCache: {self.dc_stalls} " + \
             f"MUL: {self.mul_stalls}, " + \
             f"DIV: {self.div_stalls}, " + \
-            f"DOT: {self.dot_stalls}"
+            f"DOT: {self.dot_stalls}" + \
+            f"\nMemory contention: {self.rdc_stalls + self.wrc_stalls} "
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \

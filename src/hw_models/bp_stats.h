@@ -3,14 +3,14 @@
 #include "defines.h"
 
 #define BP_STATS_JSON_ENTRY(type, stat_struct) \
-    "\"type\": " << "\"" << type << "\"" \
-    << ", \"branches\": " << stat_struct->total \
-    << ", \"predicted\": " << stat_struct->predicted \
-    << ", \"predicted_fwd\": " << stat_struct->predicted_fwd \
-    << ", \"predicted_bwd\": " << stat_struct->predicted_bwd \
-    << ", \"mispredicted\": " << stat_struct->mispredicted \
-    << ", \"mispredicted_fwd\": " << stat_struct->mispredicted_fwd \
-    << ", \"mispredicted_bwd\": " << stat_struct->mispredicted_bwd
+    JSON_N << "\"type\": " << "\"" << type << "\","\
+    << JSON_N << "\"branches\": " << stat_struct->total << ","\
+    << JSON_N << "\"predicted\": " << stat_struct->predicted << ","\
+    << JSON_N << "\"predicted_fwd\": " << stat_struct->predicted_fwd << ","\
+    << JSON_N << "\"predicted_bwd\": " << stat_struct->predicted_bwd << ","\
+    << JSON_N << "\"mispredicted\": " << stat_struct->mispredicted << ","\
+    << JSON_N << "\"mispredicted_fwd\": " << stat_struct->mispredicted_fwd<<","\
+    << JSON_N << "\"mispredicted_bwd\": " << stat_struct->mispredicted_bwd
 
 // branch instruction stats
 struct bi_app_stats_t {

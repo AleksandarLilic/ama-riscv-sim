@@ -1373,7 +1373,7 @@ void core::log_hw_stats() {
     ofs << "{\n";
     mem->log_cache_stats(ofs);
     bp.log_stats(ofs);
-    ofs << "\"_done\": true"; // to avoid trailing comma
+    ofs << "\n\"_done\": true"; // to avoid trailing comma
     ofs << "\n}\n";
     ofs.close();
 }

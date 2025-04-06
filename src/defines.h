@@ -535,3 +535,5 @@ static_assert(0, "DPI requires profilers");
 
 #define INDENT "    "
 #define INDENT_3X INDENT << INDENT << INDENT
+
+#define JSON_N "\n    "

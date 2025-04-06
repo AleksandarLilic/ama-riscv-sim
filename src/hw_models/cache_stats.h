@@ -3,18 +3,24 @@
 #include "defines.h"
 
 #define CACHE_STATS_JSON_ENTRY(stat_struct) \
-    "\"references\": " << stat_struct->references \
-    << ", \"hits\": " << stat_struct->hits.all() \
-    << ", \"misses\": " << stat_struct->misses.all() \
-    << ", \"evicts\": " << stat_struct->evicts \
-    << ", \"writebacks\": " << stat_struct->writebacks \
-    << ", \"ct_core\": {\"reads\": " << stat_struct->ct_core.reads \
-    << ", \"writes\": " << stat_struct->ct_core.writes << "}" \
-    << ", \"ct_mem\": {\"reads\": " << stat_struct->ct_mem.reads \
+    JSON_N << "\"references\": " << stat_struct->references << "," \
+    << JSON_N << "\"hits\": " \
+    << "{\"reads\": " << stat_struct->hits.ld \
+    << ", \"writes\": " << stat_struct->hits.st << "}, " \
+    << JSON_N << "\"misses\": " \
+    << "{\"reads\": " << stat_struct->misses.ld \
+    << ", \"writes\": " << stat_struct->misses.st << "}, " \
+    << JSON_N << "\"evicts\": " << stat_struct->evicts << "," \
+    << JSON_N << "\"writebacks\": " << stat_struct->writebacks << "," \
+    << JSON_N << "\"ct_core\": " \
+    << "{\"reads\": " << stat_struct->ct_core.reads \
+    << ", \"writes\": " << stat_struct->ct_core.writes << "}, " \
+    << JSON_N << "\"ct_mem\": " \
+    << "{\"reads\": " << stat_struct->ct_mem.reads \
     << ", \"writes\": " << stat_struct->ct_mem.writes << "}" \
 
 #define CACHE_SIZE_JSON_ENTRY(size_struct) \
-    "\"size\"" << ": {" \
+    JSON_N << "\"size\"" << ": {" \
     << "\"data\": " << size_struct->data \
     << ", \"tags\": " << size_struct->tags \
     << ", \"metadata\": " << size_struct->metadata \
