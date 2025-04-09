@@ -400,6 +400,11 @@ Open the generated interactive `flamegraph_exec.svg` in the web browser
 
 ![](examples/out_dhrystone_dhrystone/flamegraph_exec.svg)
 
+The 10 iterations Dhrystone run is useful as an example run since the values are small and runtime very short. For the very same reasons, it's not useful as an actual benchmark, and it also skews the results since the `printf` takes longer than benchmark itself.  
+Therefore, the 80k iterations version is also available under [examples/out_dhrystone_dhrystone_80k](./examples/out_dhrystone_dhrystone_80k)
+
+![](examples/out_dhrystone_dhrystone_80k/flamegraph_exec.svg)
+
 ### Execution visualization
 
 Main analysis script

@@ -1,0 +1,34 @@
+{
+"icache": {
+    "references": 34751212,
+    "hits": {"reads": 31546461, "writes": 0}, 
+    "misses": {"reads": 3204751, "writes": 0}, 
+    "evicts": 3204747,
+    "writebacks": 0,
+    "ct_core": {"reads": 139004848, "writes": 0}, 
+    "ct_mem": {"reads": 205104064, "writes": 0}, 
+    "size": {"data": 256, "tags": 6, "metadata": 3, "sets": 1, "ways": 4, "line_size": 64}
+},
+"dcache": {
+    "references": 10830027,
+    "hits": {"reads": 5534239, "writes": 4495484}, 
+    "misses": {"reads": 320106, "writes": 480198}, 
+    "evicts": 800296,
+    "writebacks": 640198,
+    "ct_core": {"reads": 21006691, "writes": 18697199}, 
+    "ct_mem": {"reads": 51219456, "writes": 40972672}, 
+    "size": {"data": 512, "tags": 12, "metadata": 7, "sets": 1, "ways": 8, "line_size": 64}
+},
+"bpred": {
+    "type": "combined",
+    "branches": 4096776,
+    "predicted": 3936013,
+    "predicted_fwd": 2727440,
+    "predicted_bwd": 1208573,
+    "mispredicted": 160763,
+    "mispredicted_fwd": 160414,
+    "mispredicted_bwd": 349,
+    "size": 58
+},
+"_done": true
+}
