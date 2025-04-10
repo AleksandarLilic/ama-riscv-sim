@@ -5,13 +5,11 @@ cache::cache(
     uint32_t sets,
     uint32_t ways,
     cache_policy_t policy,
-    std::string cache_name,
-    main_memory* mem) :
+    std::string cache_name) :
         sets(sets),
         ways(ways),
         policy(policy),
-        cache_name(cache_name),
-        mem(mem)
+        cache_name(cache_name)
     {
     validate_inputs(sets, ways, policy);
 
@@ -45,23 +43,35 @@ cache::cache(
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
-    reference(addr, size, mem_op_t::read, scp_mode_t::m_none);
+    auto ret = reference(addr, size, mem_op_t::read, scp_mode_t::m_none);
+    if (ret == cache_ref_t::miss) {
+        miss(addr, size, mem_op_t::read, scp_mode_t::m_none);
+    }
     return rd_buf;
-}
-
-scp_status_t cache::scp_lcl(uint32_t addr) {
-    reference(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
-    return scp_status;
-}
-
-scp_status_t cache::scp_rel(uint32_t addr) {
-    reference(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
-    return scp_status;
 }
 
 void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
     wr_buf = data;
-    reference(addr, size, mem_op_t::write, scp_mode_t::m_none);
+    auto ret = reference(addr, size, mem_op_t::write, scp_mode_t::m_none);
+    if (ret == cache_ref_t::miss) {
+        miss(addr, size, mem_op_t::write, scp_mode_t::m_none);
+    }
+}
+
+scp_status_t cache::scp_lcl(uint32_t addr) {
+    auto ret = reference(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
+    if (ret == cache_ref_t::miss) {
+        miss(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
+    }
+    return scp_status;
+}
+
+scp_status_t cache::scp_rel(uint32_t addr) {
+    auto ret = reference(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
+    if (ret == cache_ref_t::miss) {
+        miss(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
+    }
+    return scp_status;
 }
 
 void cache::speculative_exec(speculative_t smode) {
@@ -70,71 +80,79 @@ void cache::speculative_exec(speculative_t smode) {
 }
 
 // uses the real address so that the tags are appropriately set
-void cache::reference(uint32_t addr, uint32_t size,
-                      mem_op_t atype, scp_mode_t scp_mode) {
+cache_ref_t cache::reference(
+    uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp_mode) {
     // don't count reference for scp release, no data is referenced
     if (scp_mode != scp_mode_t::m_rel) {
-        stats.reference(atype, size);
-        if (roi.has(addr)) roi.stats.reference(atype, size);
+        stats.referenced(atype, size);
+        if (roi.has(addr)) roi.stats.referenced(atype, size);
         #ifdef PROFILERS_EN
         prof_perf->set_perf_event_flag(ref_event);
         #endif
     }
+    ccl.init((addr>>CACHE_BYTE_ADDR_BITS) & index_mask, addr>>tag_off, {0, 0});
     #if CACHE_MODE == CACHE_MODE_FUNC
-    uint32_t byte_addr = addr & CACHE_BYTE_ADDR_MASK;
+    ccl.byte_addr = addr & CACHE_BYTE_ADDR_MASK;
     #endif
-    uint32_t index = (addr >> CACHE_BYTE_ADDR_BITS) & index_mask;
-    uint32_t tag = addr >> tag_off;
-    victim_t victim_line;
 
     for (uint32_t way = 0; way < ways; way++) {
-        auto& line = cache_entries[index][way];
-        if (line.metadata.valid && line.tag == tag) {
+        auto& line = cache_entries[ccl.index][way];
+        if (line.metadata.valid && line.tag == ccl.tag) {
             // hit, doesn't go to main mem
-            scp_status = update_scp(scp_mode, line, index);
+            scp_status = update_scp(scp_mode, line, ccl.index);
             // don't update lru on release
-            if (scp_mode == scp_mode_t::m_rel) return;
-            update_lru(index, way);
-            line.reference();
-            stats.hit();
-            if (roi.has(addr)) roi.stats.hit();
+            if (scp_mode == scp_mode_t::m_rel) return cache_ref_t::hit;
+            update_lru(ccl.index, way);
+            line.referenced();
+            stats.hit(atype);
+            if (roi.has(addr)) roi.stats.hit(atype);
             #if CACHE_MODE == CACHE_MODE_FUNC
-            if (atype == mem_op_t::write) write_to_cache(byte_addr, size, line);
-            else read_from_cache(byte_addr, size, line);
+            if (atype == mem_op_t::write) {
+                write_to_cache(ccl.byte_addr, size, line);
+            } else {
+                read_from_cache(ccl.byte_addr, size, line);
+            }
             #else
             if (atype == mem_op_t::write) line.metadata.dirty = true;
             #endif
-            return;
+            return cache_ref_t::hit;
 
         } else {
-            if (line.metadata.lru_cnt > victim_line.lru_cnt &&
+            if (line.metadata.lru_cnt > ccl.victim.lru_cnt &&
                 !line.metadata.scp) {
-                victim_line = {way, line.metadata.lru_cnt};
+                ccl.victim = {way, line.metadata.lru_cnt};
             }
         }
     }
 
     // can't release on miss, assume to be an erroneous attempt from SW
-    if (scp_mode == scp_mode_t::m_rel) return;
+    if (scp_mode == scp_mode_t::m_rel) return cache_ref_t::ignore;
+    return cache_ref_t::miss;
+}
 
+void cache::miss(
+    uint32_t addr,
+    [[maybe_unused]] uint32_t size,
+    mem_op_t atype,
+    scp_mode_t scp_mode) {
     // TODO: don't service misses in speculative mode?
 
     // miss, goes to main mem
-    stats.miss();
-    if (roi.has(addr)) roi.stats.miss();
+    stats.miss(atype);
+    if (roi.has(addr)) roi.stats.miss(atype);
     #ifdef PROFILERS_EN
     prof_perf->set_perf_event_flag(miss_event);
     #endif
 
     // evict the line
-    auto& act_line = cache_entries[index][victim_line.way_idx]; // line being evicted
+    auto& act_line = cache_entries[ccl.index][ccl.victim.way_idx];
     if (act_line.metadata.valid) {
         stats.evict(act_line.metadata.dirty);
         if (roi.has(act_line.tag << tag_off)) {
             roi.stats.evict(act_line.metadata.dirty);
         }
         if (act_line.metadata.dirty) {
-            #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
+            #if CACHE_MODE == CACHE_MODE_FUNC
             mem->wr_line((act_line.tag << tag_off) - BASE_ADDR, act_line.data);
             #endif
             act_line.metadata.dirty = false;
@@ -142,15 +160,16 @@ void cache::reference(uint32_t addr, uint32_t size,
     }
 
     // bring in the new line requested by the core
-    act_line.reference();
-    act_line.tag = tag; // act_line now caching new data
+    act_line.referenced();
+    act_line.tag = ccl.tag; // act_line now caching new data
     act_line.metadata.valid = true;
-    update_lru(index, victim_line.way_idx); // now the most recently used
-    scp_status = update_scp(scp_mode, act_line, index);
+    update_lru(ccl.index, ccl.victim.way_idx); // now the most recently used
+    scp_status = update_scp(scp_mode, act_line, ccl.index);
+
     #if CACHE_MODE == CACHE_MODE_FUNC
     act_line.data = mem->rd_line(addr - BASE_ADDR);
-    if (atype == mem_op_t::write) write_to_cache(byte_addr, size, act_line);
-    else read_from_cache(byte_addr, size, act_line);
+    if (atype == mem_op_t::write) write_to_cache(ccl.byte_addr, size, act_line);
+    else read_from_cache(ccl.byte_addr, size, act_line);
     #else
     if (atype == mem_op_t::write) act_line.metadata.dirty = true;
     #endif
@@ -162,8 +181,7 @@ void cache::reference(uint32_t addr, uint32_t size,
         if ((act_line.tag == TO_U32(0x17200>>CACHE_BYTE_ADDR_BITS)) ||
             (act_line.tag == TO_U32((0x17200 + 64)>>CACHE_BYTE_ADDR_BITS)) ||
             (act_line.tag == TO_U32((0x17200 + 128)>>CACHE_BYTE_ADDR_BITS)) ||
-            (act_line.tag == TO_U32((0x17200 + 192)>>CACHE_BYTE_ADDR_BITS)))
-            {
+            (act_line.tag == TO_U32((0x17200 + 192)>>CACHE_BYTE_ADDR_BITS))) {
             act_line.metadata.scp = true; // converted to scratchpad
             std::cout << "Converted to scratchpad: " << std::hex << addr
                       << std::endl;
@@ -282,19 +300,21 @@ void cache::validate_inputs(
 }
 
 #if CACHE_MODE == CACHE_MODE_FUNC
-void cache::read_from_cache(uint32_t byte_addr, uint32_t size,
-                            cache_line_t& act_line) {
+void cache::read_from_cache(
+    uint32_t byte_addr, uint32_t size, cache_line_t& act_line) {
     rd_buf = 0;
-    for (uint32_t i = 0; i < size; i++)
+    for (uint32_t i = 0; i < size; i++) {
         rd_buf |= act_line.data[byte_addr + i] << (i * 8);
+    }
 }
 
-void cache::write_to_cache(uint32_t byte_addr, uint32_t size,
-                           cache_line_t& act_line) {
+void cache::write_to_cache(
+    uint32_t byte_addr, uint32_t size, cache_line_t& act_line) {
     // write-back policy, just mark the line as dirty
     act_line.metadata.dirty = true;
-    for (uint32_t i = 0; i < size; i++)
+    for (uint32_t i = 0; i < size; i++) {
         act_line.data[byte_addr + i] = TO_U8(wr_buf >> (i * 8));
+    }
 }
 #endif
 
@@ -304,6 +324,7 @@ void cache::set_roi(uint32_t start, uint32_t size) { roi.set(start, size); }
 void cache::show_stats() {
     std::cout << cache_name;
     size.show();
+    std::cout << "\n" << INDENT;
     stats.show();
     std::cout << std::endl;
 
@@ -317,7 +338,8 @@ void cache::show_stats() {
     }
 
     for (uint32_t set = 0; set < sets; set++) {
-        std::cout << INDENT << "s" << set << ": ";
+        std::cout << INDENT << "s" << std::left << std::setw(2) << set << ": ";
+        std::cout << std::right;
         for (uint32_t way = 0; way < ways; way++) {
             std::cout << " w" << way << " [" << std::setw(n)
                       << cache_entries[set][way].reference_cnt << "] ";
@@ -340,7 +362,7 @@ void cache::log_stats(std::ofstream& log_file) {
     stats.log(log_file);
     log_file << ", ";
     size.log(log_file);
-    log_file << "}," << std::endl;
+    log_file << "\n}," << std::endl;
 }
 
 void cache::dump() const {
@@ -361,7 +383,7 @@ void cache::dump() const {
             std::cout << "     ";
             for (uint32_t i = 0; i < CACHE_LINE_SIZE; i++) {
                 std::cout << " " << std::hex << std::setw(2)
-                          << std::setfill('0') << (uint32_t)line.data[i];
+                          << std::setfill('0') << TO_U32(line.data[i]);
                 if (i % 4 == 3) std::cout << " ";
                 if (i % 64 == 63) std::cout << std::endl;
             }

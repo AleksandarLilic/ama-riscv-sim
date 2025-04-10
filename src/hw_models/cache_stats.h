@@ -111,7 +111,7 @@ struct cache_stats_t {
             ct_core(), ct_mem() {}
 
         void profiling(bool enable) { prof_active = enable; }
-        void reference(mem_op_t atype, uint32_t size) {
+        void referenced(mem_op_t atype, uint32_t size) {
             if (!prof_active) return;
             references++;
             // it'll hit or miss afterwards, but data is always transferred

@@ -4,6 +4,12 @@
 #include "cache_stats.h"
 #include "profiler_perf.h"
 
+//#ifdef DPI
+//#define MEM_TYPE memory_dpi
+//#else
+#define MEM_TYPE main_memory
+//#endif
+
 #define MAX_CACHE_SETS 1024
 #define MAX_CACHE_WAYS 128
 
@@ -32,7 +38,7 @@ struct cache_line_t {
     public:
         cache_line_t() : metadata(), tag(0), reference_cnt(0) {}
         void profiling(bool enable) { prof_active = enable; }
-        void reference() {
+        void referenced() {
             if (!prof_active) return;
             reference_cnt++;
             //for (uint32_t i = 0; i < size; i++) {
@@ -46,6 +52,19 @@ struct victim_t {
     uint32_t lru_cnt;
     victim_t() : way_idx(0), lru_cnt(0) {}
     victim_t(uint32_t way, uint32_t lru_cnt) : way_idx(way), lru_cnt(lru_cnt) {}
+};
+
+struct current_cache_line {
+    uint32_t index;
+    uint32_t tag;
+    victim_t victim;
+    uint32_t byte_addr;
+    public:
+        void init(uint32_t index, uint32_t tag, victim_t victim) {
+            this->index = index;
+            this->tag = tag;
+            this->victim = victim;
+        }
 };
 
 class main_memory; // forward declaration
@@ -72,10 +91,11 @@ class cache {
         uint32_t index_mask;
         uint32_t tag_bits_num;
         uint32_t tag_off;
+        current_cache_line ccl;
         uint32_t metadata_bits_num;
         std::vector<std::vector<cache_line_t>> cache_entries;
         std::string cache_name;
-        main_memory* mem;
+        MEM_TYPE* mem;
         cache_stats_t stats;
         cache_size_t size;
         region_of_interest_t roi;
@@ -95,12 +115,14 @@ class cache {
         cache() = delete;
         cache(
             uint32_t sets, uint32_t ways, cache_policy_t policy,
-            std::string cache_name, main_memory* mem);
+            std::string cache_name);
+        void set_mem(MEM_TYPE* mem) { this->mem = mem; }
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
         scp_status_t scp_lcl(uint32_t addr);
         scp_status_t scp_rel(uint32_t addr);
         void speculative_exec(speculative_t smode);
+
         // prof
         void profiling(bool enable) {
             stats.profiling(enable);
@@ -128,7 +150,9 @@ class cache {
         void dump() const;
 
     private:
-        void reference(
+        cache_ref_t reference(
+            uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
+        void miss(
             uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
         void update_lru(uint32_t index, uint32_t way);
         scp_status_t update_scp(

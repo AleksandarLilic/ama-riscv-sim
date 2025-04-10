@@ -12,13 +12,17 @@ main_memory::main_memory(
         dev(size)
         #ifdef HW_MODELS_EN
         ,
-        icache(ICACHE_CFG, this),
-        dcache(DCACHE_CFG, this)
+        icache(ICACHE_CFG),
+        dcache(DCACHE_CFG)
         #endif
 {
     burn_elf(test_elf);
     #ifdef HW_MODELS_EN
     dcache.set_roi(hw_cfg.roi_start, hw_cfg.roi_size);
+    #if CACHE_MODE == CACHE_MODE_FUNC
+    icache.set_mem(this);
+    dcache.set_mem(this);
+    #endif
     #endif
 }
 
@@ -194,7 +198,6 @@ void main_memory::wr(uint32_t addr, uint32_t data, uint32_t size) {
     dev::wr(addr, data, size);
 }
 
-// TODO: DPI modes should be also added
 #if CACHE_MODE == CACHE_MODE_FUNC
 std::array<uint8_t, CACHE_LINE_SIZE> main_memory::rd_line(uint32_t addr) {
     std::array<uint8_t, CACHE_LINE_SIZE> data;
@@ -205,8 +208,8 @@ std::array<uint8_t, CACHE_LINE_SIZE> main_memory::rd_line(uint32_t addr) {
 #endif
 
 #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
-void main_memory::wr_line(uint32_t addr,
-                          std::array<uint8_t, CACHE_LINE_SIZE> data) {
+void main_memory::wr_line(
+    uint32_t addr, std::array<uint8_t, CACHE_LINE_SIZE> data) {
     addr = addr & ~CACHE_BYTE_ADDR_MASK; // align to cache line
     // don't actually write to memory (the updated data is already there),
     // instead read each byte and compare
