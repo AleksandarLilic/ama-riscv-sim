@@ -11,7 +11,7 @@ TEST_DIR = os.path.join(GIT_ROOT, 'sw/baremetal')
 ISA_TEST_DIR = os.path.join(GIT_ROOT, 'sw/riscv-isa-tests')
 WORK_DIR = os.getcwd()
 
-CODEGEN_APPS = ["aapg_static", "sorting", "vector_ew_basic", "matmul_int8"]
+CODEGEN_APPS = ["aapg_static", "sorting", "vector_ew_basic", "matmul"]
 
 def file_exists(filename):
     if not os.path.exists(filename):
@@ -48,7 +48,7 @@ def build_test(test):
     if args.clean_only:
         return
     # if any of the CODEGEN_APPS is in the test directory, run codegen first
-    if any(app in test_dir for app in CODEGEN_APPS):
+    if any(test_dir.startswith(app) for app in CODEGEN_APPS):
         run_make(["make", "clean_codegen"], cwd=test_dir)
         run_make(["make", "codegen"], cwd=test_dir)
     make_all = (test_list == ["all"])
