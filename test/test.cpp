@@ -9,7 +9,7 @@
 #include "../src/defines.h"
 
 #define CHECK_PASS "0x051e tohost    : 0x00000001"
-#define SIM_BIN "../src/ama-riscv-sim "
+#define SIM_BIN "../src/build_gtest/ama-riscv-sim "
 
 struct cmd_setup {
     std::string log_name;

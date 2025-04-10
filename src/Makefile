@@ -14,7 +14,8 @@ LDFLAGS :=
 BDIR ?= build
 $(shell mkdir -p $(BDIR))
 
-TARGET := ama-riscv-sim
+BIN := ama-riscv-sim
+TARGET := $(BDIR)/$(BIN)
 SOURCES := $(wildcard *.cpp)
 SOURCES += $(wildcard devices/*.cpp)
 SOURCES += $(wildcard profilers/*.cpp)
@@ -34,9 +35,12 @@ all: $(TARGET)
 
 obj: $(OBJECTS)
 
+NO_LINK ?= 0
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $(BDIR)/$@ $^ $(LDFLAGS)
-	@ln -sf $(BDIR)/$@ $@
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	@if [ "$(NO_LINK)" = "0" ]; then \
+		ln -sf $@ $(BIN); \
+	fi
 
 $(BDIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
