@@ -44,6 +44,15 @@ class core {
             ostr << "x" << ip.rd() << ": " << FHEXZ(rf[ip.rd()], 8);
             return ostr.str();
         }
+        void simd_ss_init(std::string a);
+        void simd_ss_init(std::string a, std::string b);
+        void simd_ss_init(std::string c, std::string a, std::string b);
+        void simd_ss_append(int32_t a);
+        void simd_ss_append(int32_t a, int32_t b);
+        void simd_ss_append(int32_t c, int32_t a, int32_t b);
+        void simd_ss_finish(std::string a);
+        void simd_ss_finish(std::string a, std::string b, int32_t res);
+        void simd_ss_finish(std::string c, std::string a, std::string b);
         #endif
 
     private:

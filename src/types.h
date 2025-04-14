@@ -249,6 +249,10 @@ perf_event_names = {
 // dasm
 struct dasm_str {
     std::ostringstream asm_ss;
+    std::ostringstream simd_ss;
+    std::ostringstream simd_a;
+    std::ostringstream simd_b;
+    std::ostringstream simd_c;
     std::string asm_str;
     std::string op;
 };

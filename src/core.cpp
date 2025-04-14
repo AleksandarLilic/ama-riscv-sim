@@ -94,6 +94,7 @@ void core::prof_state([[maybe_unused]] bool enable) {
     #ifdef DASM_EN
     logf.activate(enable);
     dasm.asm_ss.str(""); // clear the string stream on start/stop
+    dasm.simd_ss.str("");
     if (logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
@@ -172,8 +173,10 @@ void core::exec_inst() {
 
     #ifdef DASM_EN
     // dasm string always available, logged to the file conditionally
+    dasm.asm_ss << dasm.simd_ss.str();
     dasm.asm_str = dasm.asm_ss.str();
     dasm.asm_ss.str("");
+    dasm.simd_ss.str("");
     if (logf.act) {
         if (tu.is_trapped()) {
             // log changed callstack and return
@@ -569,9 +572,11 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP(dot4)
             default : tu.e_unsupported_inst("custom extension - arith");
         }
+
         #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::simd);
         #endif
+
         #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
         DASM_RD_UPDATE;
@@ -581,6 +586,7 @@ void core::custom_ext() {
                              funct7 == TO_U8(alu_custom_op_t::op_mul8u));
         if (paired_arith) DASM_RD_UPDATE_PAIR;
         #endif
+
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
         switch (funct7) {
@@ -594,24 +600,29 @@ void core::custom_ext() {
             CASE_MEM_CUSTOM_OP(unpk2u)
             default: tu.e_unsupported_inst("custom extension - memory");
         }
+
         #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::simd);
         #endif
+
         #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
         DASM_RD_UPDATE_PAIR;
         #endif
+
     } else if (funct3 == TO_U8(custom_ext_t::hints)) {
         switch (funct7) {
             CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
             CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
             default : tu.e_unsupported_inst("custom extension - hint");
         }
+
         #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1;
         DASM_RD_UPDATE;
         #endif
+
     } else {
         tu.e_unsupported_inst("custom extension");
     }
@@ -620,82 +631,192 @@ void core::custom_ext() {
 
 uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
     // parallel add 2 halfword chunks
+    constexpr size_t e = 2;
     int32_t res = 0;
-    for (size_t i = 0; i < 2; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         int32_t sum = TO_I32(TO_I16(a & 0xffff)) + TO_I32(TO_I16(b & 0xffff));
+        #ifdef DASM_EN
+        simd_ss_append(
+            TO_I32(TO_I16(sum & 0xFFFF)),
+            TO_I32(TO_I16(a & 0xffff)),
+            TO_I32(TO_I16(b & 0xffff))
+        );
+        #endif
         a >>= 16;
         b >>= 16;
         res |= (sum & 0xFFFF) << (i * 16);
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", "]");
+    #endif
+
     return res;
 }
 
 uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
     // parallel add 4 byte chunks
+    constexpr size_t e = 4;
     int32_t res = 0;
-    for (size_t i = 0; i < 4; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         int32_t sum = TO_I32(TO_I8(a & 0xff)) + TO_I32(TO_I8(b & 0xff));
+        #ifdef DASM_EN
+        simd_ss_append(
+            TO_I32(TO_I8(sum & 0xff)),
+            TO_I32(TO_I8(a & 0xff)),
+            TO_I32(TO_I8(b & 0xff))
+        );
+        #endif
         a >>= 8;
         b >>= 8;
         res |= (sum & 0xFF) << (i * 8);
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", "]");
+    #endif
+
     return res;
 }
 
 uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
     // parallel sub 2 halfword chunks
+    constexpr size_t e = 2;
     int32_t res = 0;
-    for (size_t i = 0; i < 2; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         int32_t sum = TO_I32(TO_I16(a & 0xffff)) - TO_I32(TO_I16(b & 0xffff));
+        #ifdef DASM_EN
+        simd_ss_append(
+            TO_I32(TO_I16(sum & 0xFFFF)),
+            TO_I32(TO_I16(a & 0xffff)),
+            TO_I32(TO_I16(b & 0xffff))
+        );
+        #endif
         a >>= 16;
         b >>= 16;
         res |= (sum & 0xFFFF) << (i * 16);
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", "]");
+    #endif
+
     return res;
 }
 
 uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
     // parallel sub 4 byte chunks
+    constexpr size_t e = 4;
     int32_t res = 0;
-    for (size_t i = 0; i < 4; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         int32_t sum = TO_I32(TO_I8(a & 0xff)) - TO_I32(TO_I8(b & 0xff));
+        #ifdef DASM_EN
+        simd_ss_append(
+            TO_I32(TO_I8(sum & 0xff)),
+            TO_I32(TO_I8(a & 0xff)),
+            TO_I32(TO_I8(b & 0xff))
+        );
+        #endif
         a >>= 8;
         b >>= 8;
         res |= (sum & 0xFF) << (i * 8);
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", "]");
+    #endif
+
     return res;
 }
 
 reg_pair core::al_c_mul16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     int32_t words[2];
+    #ifdef DASM_EN
+    simd_ss_init("", "[ ", "[ ");
+    #endif
+
     for (auto &word : words) {
         word = TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I16(a & 0xffff)), TO_I32(TO_I16(b & 0xffff)));
+        #endif
         a >>= 16;
         b >>= 16;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_c << TO_I32(words[0]) << ", " << TO_I32(words[1]);
+    simd_ss_finish("", "]", "]");
+    #endif
+
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
 reg_pair core::al_c_mul16u(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     uint32_t words[2];
+    #ifdef DASM_EN
+    simd_ss_init("", "[ ", "[ ");
+    #endif
+
     for (auto &word : words) {
         word = TO_U32(TO_U16(a & 0xffff)) * TO_U32(TO_U16(b & 0xffff));
+        #ifdef DASM_EN
+        simd_ss_append(TO_U32(TO_U16(a & 0xffff)), TO_U32(TO_U16(b & 0xffff)));
+        #endif
         a >>= 16;
         b >>= 16;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_c << TO_U32(words[0]) << ", " << TO_U32(words[1]);
+    simd_ss_finish("", "]", "]");
+    #endif
+
     return {words[0], words[1]};
 }
 
 reg_pair core::al_c_mul8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     int16_t halves[4];
+    #ifdef DASM_EN
+    simd_ss_init("", "[ ", "[ ");
+    #endif
+
     for (auto &half : halves) {
         half = TO_I16(TO_I8(a & 0xff)) * TO_I16(TO_I8(b & 0xff));
+        #ifdef DASM_EN
+        simd_ss_append(TO_I16(TO_I8(a & 0xff)), TO_I16(TO_I8(b & 0xff)));
+        #endif
         a >>= 8;
         b >>= 8;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_c << "[ " << TO_I32(TO_I16(halves[0]) & 0xFFFF) << " "
+                << TO_I32(TO_I16(halves[1]) & 0xFFFF) << " ], "
+                << "[ " << TO_I32(TO_I16(halves[2]) & 0xFFFF) << " "
+                << TO_I32(TO_I16(halves[3]) & 0xFFFF) << " ]";
+    simd_ss_finish("", "]", "]");
+    #endif
+
     int32_t words[2] = {0, 0};
     words[0] = (TO_I32(halves[0]) & 0xFFFF) |
                ((TO_I32(halves[1]) & 0xFFFF) << 16);
@@ -707,11 +828,27 @@ reg_pair core::al_c_mul8(uint32_t a, uint32_t b) {
 reg_pair core::al_c_mul8u(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     uint16_t halves[4];
+    #ifdef DASM_EN
+    simd_ss_init("", "[ ", "[ ");
+    #endif
+
     for (auto &half : halves) {
         half = TO_U16(TO_U8(a & 0xff)) * TO_U16(TO_U8(b & 0xff));
+        #ifdef DASM_EN
+        simd_ss_append(TO_U16(TO_U8(a & 0xff)), TO_U16(TO_U8(b & 0xff)));
+        #endif
         a >>= 8;
         b >>= 8;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_c << "[ " << TO_U32(TO_U16(halves[0]) & 0xFFFF) << " "
+                << TO_U32(TO_U16(halves[1]) & 0xFFFF) << " ], "
+                << "[ " << TO_U32(TO_U16(halves[2]) & 0xFFFF) << " "
+                << TO_U32(TO_U16(halves[3]) & 0xFFFF) << " ]";
+    simd_ss_finish("", "]", "]");
+    #endif
+
     uint32_t words[2] = {0, 0};
     words[0] = (TO_U32(halves[0]) & 0xFFFF) |
                ((TO_U32(halves[1]) & 0xFFFF) << 16);
@@ -722,73 +859,163 @@ reg_pair core::al_c_mul8u(uint32_t a, uint32_t b) {
 
 uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks and sum the results
+    constexpr size_t e = 2;
     int32_t res = 0;
-    for (size_t i = 0; i < 2; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I16(a & 0xffff)), TO_I32(TO_I16(b & 0xffff)));
+        #endif
         res += TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
         a >>= 16;
         b >>= 16;
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", res);
+    #endif
+
     #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
+
     return res;
 }
 
 uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks and sum the results
+    constexpr size_t e = 4;
     int32_t res = 0;
-    for (size_t i = 0; i < 4; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I8(a & 0xff)), TO_I32(TO_I8(b & 0xff)));
+        #endif
         res += TO_I32(TO_I8(a & 0xff)) * TO_I32(TO_I8(b & 0xff));
         a >>= 8;
         b >>= 8;
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", res);
+    #endif
+
     #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
+
     return res;
 }
 
 uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
     // multiply 8 nibble chunks and sum the results
+    constexpr size_t e = 8;
     int32_t res = 0;
-    for (size_t i = 0; i < 8; i++) {
+    #ifdef DASM_EN
+    simd_ss_init("[ ", "[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I4(a & 0xf)), TO_I32(TO_I4(b & 0xf)));
+        #endif
         res += TO_I32(TO_I4(a & 0xf)) * TO_I32(TO_I4(b & 0xf));
         a >>= 4;
         b >>= 4;
     }
+
+    #ifdef DASM_EN
+    simd_ss_finish("]", "]", res);
+    #endif
     #ifdef PROFILERS_EN
     prof.log_sparsity(res==0);
     #endif
+
     return res;
 }
 
 reg_pair core::mem_c_unpk16(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values
-    int16_t halves[2];
-    for (size_t i = 0; i < 2; i++) {
+    constexpr size_t e = 2;
+    int16_t halves[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         halves[i] = TO_I16(a & 0xffff);
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I16(a & 0xffff)));
+        #endif
         a >>= 16;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << TO_I32(halves[0]) << ", " << TO_I32(halves[1]);
+    simd_ss_finish("");
+    #endif
+
     return {TO_U32(halves[0]), TO_U32(halves[1])};
 }
 
 reg_pair core::mem_c_unpk16u(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values unsigned
-    uint16_t halves[2];
-    for (size_t i = 0; i < 2; i++) {
+    constexpr size_t e = 2;
+    uint16_t halves[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         halves[i] = TO_U16(a & 0xffff);
+        #ifdef DASM_EN
+        simd_ss_append(TO_U32(TO_U16(a & 0xffff)));
+        #endif
         a >>= 16;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << TO_U32(TO_U16(halves[0])) << ", "
+                << TO_U32(TO_U16(halves[1]));
+    simd_ss_finish("");
+    #endif
+
     return {TO_U32(halves[0]), TO_U32(halves[1])};
 }
 
 reg_pair core::mem_c_unpk8(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
-    int8_t bytes[4];
-    for (size_t i = 0; i < 4; i++) {
+    constexpr size_t e = 4;
+    int8_t bytes[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         bytes[i] = TO_I8(a & 0xff);
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I8(a & 0xff)));
+        #endif
         a >>= 8;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ " << TO_I32(TO_I16(bytes[0])) << " "
+                << TO_I32(TO_I16(bytes[1])) << " ], "
+                << "[ " << TO_I32(TO_I16(bytes[2])) << " "
+                << TO_I32(TO_I16(bytes[3])) << " ]";
+    simd_ss_finish("");
+    #endif
+
     int32_t words[2];
     words[0] = (TO_I32(TO_I16(bytes[0])) & 0xFFFF) |
                ((TO_I32(TO_I16(bytes[1])) & 0xFFFF) << 16);
@@ -799,11 +1026,29 @@ reg_pair core::mem_c_unpk8(uint32_t a) {
 
 reg_pair core::mem_c_unpk8u(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
-    uint8_t bytes[4];
-    for (size_t i = 0; i < 4; i++) {
+    constexpr size_t e = 4;
+    uint8_t bytes[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         bytes[i] = TO_U8(a & 0xff);
+        #ifdef DASM_EN
+        simd_ss_append(TO_U32(TO_U8(a & 0xff)));
+        #endif
         a >>= 8;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ " << TO_U32(TO_U16(bytes[0])) << " "
+                << TO_U32(TO_U16(bytes[1])) << " ], "
+                << "[ " << TO_U32(TO_U16(bytes[2])) << " "
+                << TO_U32(TO_U16(bytes[3])) << " ]";
+    simd_ss_finish("");
+    #endif
+
     uint32_t words[2];
     words[0] = (TO_U32(TO_U16(bytes[0])) & 0xFFFF) |
                ((TO_U32(TO_U16(bytes[1])) & 0xFFFF) << 16);
@@ -814,13 +1059,33 @@ reg_pair core::mem_c_unpk8u(uint32_t a) {
 
 reg_pair core::mem_c_unpk4(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values)
-    int8_t nibbles[8];
-    for (size_t i = 0; i < 8; i++) {
+    constexpr size_t e = 8;
+    int8_t nibbles[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         nibbles[i] = TO_I4(a & 0xf);
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I4(a & 0xf)));
+        #endif
         a >>= 4;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ ";
+    for (size_t i = 0; i < e; i++) {
+        dasm.simd_c << TO_I32(TO_I8(nibbles[i])) << " ";
+        if (i==3) dasm.simd_c << "], [ ";
+        if (i==7) dasm.simd_c << "]";
+    }
+    simd_ss_finish("");
+    #endif
+
     uint32_t words[2] = {0, 0};
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t i = 0; i < (e>>1); i++) {
         words[0] |= (TO_I32(TO_I8(nibbles[i])) & 0xFF) << (i * 8);
         words[1] |= (TO_I32(TO_I8(nibbles[i + 4])) & 0xFF) << (i * 8);
     }
@@ -829,13 +1094,33 @@ reg_pair core::mem_c_unpk4(uint32_t a) {
 
 reg_pair core::mem_c_unpk4u(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
-    uint8_t nibbles[8];
-    for (size_t i = 0; i < 8; i++) {
+    constexpr size_t e = 8;
+    uint8_t nibbles[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         nibbles[i] = TO_U4(a & 0xf);
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_U4(a & 0xf)));
+        #endif
         a >>= 4;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ ";
+    for (size_t i = 0; i < e; i++) {
+        dasm.simd_c << TO_U32(TO_U8(nibbles[i])) << " ";
+        if (i==3) dasm.simd_c << "], [ ";
+        if (i==7) dasm.simd_c << "]";
+    }
+    simd_ss_finish("");
+    #endif
+
     uint32_t words[2] = {0, 0};
-    for (size_t i = 0; i < 4; i++) {
+    for (size_t i = 0; i < (e>>1); i++) {
         words[0] |= (TO_U32(TO_U8(nibbles[i])) & 0xFF) << (i * 8);
         words[1] |= (TO_U32(TO_U8(nibbles[i + 4])) & 0xFF) << (i * 8);
     }
@@ -844,13 +1129,33 @@ reg_pair core::mem_c_unpk4u(uint32_t a) {
 
 reg_pair core::mem_c_unpk2(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values)
-    int8_t crumbs[16];
-    for (size_t i = 0; i < 16; i++) {
+    constexpr size_t e = 16;
+    int8_t crumbs[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         crumbs[i] = TO_I2(a & 0x3);
+        #ifdef DASM_EN
+        simd_ss_append(TO_I32(TO_I2(a & 0x3)));
+        #endif
         a >>= 2;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ ";
+    for (size_t i = 0; i < e; i++) {
+        dasm.simd_c << TO_I32(TO_I4(crumbs[i])) << " ";
+        if (i==7) dasm.simd_c << "], [ ";
+        if (i==15) dasm.simd_c << "]";
+    }
+    simd_ss_finish("");
+    #endif
+
     int32_t words[2] = {0, 0};
-    for (size_t i = 0; i < 8; i++) {
+    for (size_t i = 0; i < (e>>1); i++) {
         words[0] |= (TO_I32(TO_I8(crumbs[i])) & 0xF) << (i * 4);
         words[1] |= (TO_I32(TO_I8(crumbs[i + 8])) & 0xF) << (i * 4);
     }
@@ -859,18 +1164,96 @@ reg_pair core::mem_c_unpk2(uint32_t a) {
 
 reg_pair core::mem_c_unpk2u(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
-    uint8_t crumbs[16];
-    for (size_t i = 0; i < 16; i++) {
+    constexpr size_t e = 16;
+    uint8_t crumbs[e];
+    #ifdef DASM_EN
+    simd_ss_init("[ ");
+    #endif
+
+    for (size_t i = 0; i < e; i++) {
         crumbs[i] = TO_U2(a & 0x3);
+        #ifdef DASM_EN
+        simd_ss_append(TO_U32(TO_U2(a & 0x3)));
+        #endif
         a >>= 2;
     }
+
+    #ifdef DASM_EN
+    dasm.simd_a << "] ";
+    dasm.simd_c << "[ ";
+    for (size_t i = 0; i < e; i++) {
+        dasm.simd_c << TO_U32(TO_U4(crumbs[i])) << " ";
+        if (i==7) dasm.simd_c << "], [ ";
+        if (i==15) dasm.simd_c << "]";
+    }
+    simd_ss_finish("");
+    #endif
+
     uint32_t words[2] = {0, 0};
-    for (size_t i = 0; i < 8; i++) {
+    for (size_t i = 0; i < (e>>1); i++) {
         words[0] |= (TO_U32(TO_U8(crumbs[i])) & 0xF) << (i * 4);
         words[1] |= (TO_U32(TO_U8(crumbs[i+8])) & 0xF) << (i * 4);
     }
     return {words[0], words[1]};
 }
+
+#ifdef DASM_EN
+void core::simd_ss_init(std::string a) {
+    dasm.simd_a.str("");
+    dasm.simd_c.str("");
+    dasm.simd_a << a;
+}
+
+void core::simd_ss_init(std::string a, std::string b) {
+    dasm.simd_a.str("");
+    dasm.simd_b.str("");
+    dasm.simd_a << a;
+    dasm.simd_b << b;
+}
+
+void core::simd_ss_init(std::string c, std::string a, std::string b) {
+    simd_ss_init(a, b);
+    dasm.simd_c.str("");
+    dasm.simd_c << c;
+}
+
+void core::simd_ss_append(int32_t a) {
+    dasm.simd_a << a << " ";
+}
+
+void core::simd_ss_append(int32_t a, int32_t b) {
+    dasm.simd_a << a << " ";
+    dasm.simd_b << b << " ";
+}
+
+void core::simd_ss_append(int32_t c, int32_t a, int32_t b) {
+    simd_ss_append(a, b);
+    dasm.simd_c << c << " ";
+}
+
+void core::simd_ss_finish(std::string a) {
+    dasm.simd_a << a;
+    dasm.simd_ss << "; " << dasm.simd_c.str()
+                 << ", " << dasm.simd_a.str();
+}
+
+void core::simd_ss_finish(std::string a, std::string b, int32_t res) {
+    dasm.simd_a << a;
+    dasm.simd_b << b;
+    dasm.simd_ss << "; " << res
+                 << ", " << dasm.simd_a.str()
+                 << ", " << dasm.simd_b.str();
+}
+
+void core::simd_ss_finish(std::string c, std::string a, std::string b) {
+    dasm.simd_a << a;
+    dasm.simd_b << b;
+    dasm.simd_c << c;
+    dasm.simd_ss << "; " << dasm.simd_c.str()
+                 << ", " << dasm.simd_a.str()
+                 << ", " << dasm.simd_b.str();
+}
+#endif
 
 // Zicsr extension
 void core::csr_access() {
@@ -898,6 +1281,7 @@ void core::csr_access() {
         }
         if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
+
     #ifdef DASM_EN
     bool imm_type = (ip.funct3() & 0x4);
     DASM_RD_UPDATE;
