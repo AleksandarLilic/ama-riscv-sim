@@ -210,7 +210,7 @@ void _simd_mul_uint8(
         register uint32_t c_slice_1 asm("t5");
         register uint32_t c_slice_2 asm("t6");
         asm volatile(
-            "mul8 %[c1], %[a], %[b];"
+            "mul8u %[c1], %[a], %[b];"
             : [c1] "=r" (c_slice_1), [c2] "=r" (c_slice_2)
             : [a] "r" (a_slice), [b] "r" (b_slice)
             :
