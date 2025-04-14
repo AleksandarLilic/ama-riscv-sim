@@ -27,8 +27,8 @@ USER_DEFINES =
 
 # if not set in test's Makefile, default to all supported ISA extensions
 #MARCH ?= rv32imc_zicsr_zifencei_zicntr
-#MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
-MARCH ?= rv32i_zicsr
+MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
+#MARCH ?= rv32i_zicsr
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany -static -fno-pic
 GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
