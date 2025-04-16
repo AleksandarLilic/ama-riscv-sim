@@ -40,8 +40,9 @@ class bp {
             stats.eval(pc, correct, b_dir_last);
         }
 
-        // for ideal predictor only
-        virtual void goto_future(uint32_t /* correct_pc */) {};
+        virtual float_t get_acc() { return stats.get_acc(); };
+
+        virtual void goto_future(uint32_t /* correct_pc */) {}; // ideal bp only
 
         virtual void dump() {
             if (cnt_ptr == nullptr) return;

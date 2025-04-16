@@ -69,11 +69,15 @@ struct bp_stats_t {
             }
             return bi_predictor_stats.at(pc).predicted;
         }
-        void show() const {
-            float_t acc = 0.0;
+        float_t get_acc() {
+            summarize();
+            float_t acc = -1.0; // i.e. never seen a branch
             if (total > 0) {
                 acc = TO_F32(predicted) / TO_F32(total) * 100;
             }
+            return acc;
+        }
+        void show() {
             std::cout << std::fixed << std::setprecision(2)
                       << "P: " << predicted
                       << ", M: " << mispredicted
@@ -83,7 +87,7 @@ struct bp_stats_t {
                       //<< "), M(f/b): " << mispredicted
                       //<< "(" << mispredicted_fwd << "/" << mispredicted_bwd
                       //<< "), ACC: "
-                      << acc << "%";
+                      << get_acc() << "%";
         }
         void log(std::ofstream& log_file) const {
             log_file << BP_STATS_JSON_ENTRY(type_name, this);

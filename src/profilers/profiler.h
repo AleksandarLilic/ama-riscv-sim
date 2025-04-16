@@ -117,6 +117,9 @@ struct trace_entry {
     uint32_t pc;
     uint32_t dmem;
     uint32_t sp;
+    uint8_t ic_hm;
+    uint8_t dc_hm;
+    uint8_t bp_hm;
     uint8_t inst_size;
     uint8_t dmem_size;
 };
@@ -231,7 +234,7 @@ class profiler {
 
     private:
         void log_to_file_and_print();
-        void rst_te() { te = {0, 0, 0, 0, 0, 0}; }
+        void rst_te() { te = {0, 0, 0, 0, 0, 0, 0, 0, 0}; }
 
     private:
         // all compressed instructions

@@ -98,8 +98,13 @@ class core {
             #ifdef HW_MODELS_EN
             // if previous inst was branch, use that instead of fetching
             // this prevents cache from logging the same access twice
-            if (!last_inst_branch) inst = mem->rd_inst(pc);
-            else inst = inst_resolved;
+            if (!last_inst_branch) {
+                inst = mem->rd_inst(pc);
+            } else {
+                inst = inst_resolved;
+                hwrs.ic_hm = next_ic_hm;
+                next_ic_hm = hw_status_t::none;
+            }
             last_inst_branch = false;
             #else
             inst = mem->rd_inst(pc);
@@ -187,7 +192,7 @@ class core {
         uint32_t al_slli(uint32_t a, uint32_t b) {
             #ifdef PROFILERS_EN
             prof_fusion.attack(
-                {trigger::slli_lea, inst, mem->rd_inst(pc + 4), false}
+                {trigger::slli_lea, inst, mem->just_inst(pc + 4), false}
             );
             #endif
             return al_sll(a, b);
@@ -430,6 +435,8 @@ class core {
         uint32_t inst_resolved;
         bool last_inst_branch;
         bool no_bp;
+        hw_status_t next_ic_hm;
+        hw_running_stats_t hwrs;
         #endif
 
         // register names

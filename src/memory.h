@@ -53,6 +53,7 @@ class memory {
         void set_dasm(dasm_str* d) { dasm = d; }
         #endif
         uint32_t rd_inst(uint32_t address);
+        uint32_t just_inst(uint32_t address);
         uint32_t rd(uint32_t address, uint32_t size);
         void wr(uint32_t address, uint32_t data, uint32_t size);
         void dump();
@@ -62,6 +63,9 @@ class memory {
         // propagating to caches
         void log_cache_stats(std::ofstream& log_file) {
             mm.log_cache_stats(log_file);
+        }
+        void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
+            mm.set_cache_hws(ic, dc);
         }
         void cache_finish() {
             mm.finish();

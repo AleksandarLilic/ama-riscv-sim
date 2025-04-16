@@ -101,7 +101,10 @@ cache_ref_t cache::reference(
             // hit, doesn't go to main mem
             scp_status = update_scp(scp_mode, line, ccl.index);
             // don't update lru on release
-            if (scp_mode == scp_mode_t::m_rel) return cache_ref_t::hit;
+            if (scp_mode == scp_mode_t::m_rel) {
+                *hws = hw_status_t::hit;
+                return cache_ref_t::hit;
+            }
             update_lru(ccl.index, way);
             line.referenced();
             stats.hit(atype);
@@ -115,6 +118,7 @@ cache_ref_t cache::reference(
             #else
             if (atype == mem_op_t::write) line.metadata.dirty = true;
             #endif
+            *hws = hw_status_t::hit;
             return cache_ref_t::hit;
 
         } else {
@@ -127,6 +131,7 @@ cache_ref_t cache::reference(
 
     // can't release on miss, assume to be an erroneous attempt from SW
     if (scp_mode == scp_mode_t::m_rel) return cache_ref_t::ignore;
+    *hws = hw_status_t::miss;
     return cache_ref_t::miss;
 }
 

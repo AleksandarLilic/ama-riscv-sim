@@ -24,6 +24,7 @@ class main_memory : public dev {
             return symbol_map;
         }
         uint32_t rd_inst(uint32_t addr);
+        uint32_t just_inst(uint32_t addr) { return dev::rd(addr, 4); }
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
         std::array<uint8_t, CACHE_LINE_SIZE> rd_line(uint32_t addr);
@@ -41,6 +42,10 @@ class main_memory : public dev {
         void log_cache_stats(std::ofstream& log_file) {
            icache.log_stats(log_file);
            dcache.log_stats(log_file);
+        }
+        void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
+            icache.set_hws(ic);
+            dcache.set_hws(dc);
         }
         void finish() { icache.show_stats(); dcache.show_stats(); }
         #ifdef PROFILERS_EN

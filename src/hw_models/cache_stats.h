@@ -143,11 +143,14 @@ struct cache_stats_t {
         }
 
     public:
-        void show() const {
-            float_t hr = 0.0; // hit rate
+        float_t get_hr() { // hit rate
+            float_t hr = -1.0; // i.e. never seen a request
             if (references > 0) {
                 hr = TO_F32(hits.all()) / TO_F32(references) * 100;
             }
+            return hr;
+        }
+        void show() {
             std::cout << "R: " << references
                       << ", H: " << hits.all()
                       << "(" << hits.ld << "/" << hits.st << ")"
@@ -156,7 +159,7 @@ struct cache_stats_t {
                       << ", E: " << evicts
                       << ", WB: " << writebacks
                       << ", HR: " << std::fixed << std::setprecision(2)
-                      << hr << "%"
+                      << get_hr() << "%"
                       << "; CT (R/W): "
                       << "core " << ct_core.to_string()
                       << ", mem " << ct_mem.to_string();

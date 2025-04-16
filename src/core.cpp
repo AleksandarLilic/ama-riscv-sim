@@ -46,6 +46,7 @@ core::core(
 
     #ifdef HW_MODELS_EN
     last_inst_branch = false;
+    mem->set_cache_hws(&hwrs.ic_hm, &hwrs.dc_hm);
     #endif
 
     // initialize CSRs
@@ -102,11 +103,15 @@ void core::prof_state([[maybe_unused]] bool enable) {
     prof_act = enable;
     bp.profiling(enable);
     mem->cache_profiling(enable);
+    hwrs.rst();
     #endif
 }
 
 void core::exec_inst() {
     tu.clear_trap();
+    #ifdef HW_MODELS_EN
+    hwrs.rst();
+    #endif
     if (prof_pc.should_start(pc)) prof_state(true);
     else if (prof_pc.should_stop(pc)) prof_state(false);
 
@@ -208,6 +213,11 @@ void core::exec_inst() {
         prof.te.sample_cnt = clk_src.get_cr();
         #else
         prof.te.sample_cnt = prof_pc.inst_cnt;
+        #endif
+        #ifdef HW_MODELS_EN
+        prof.te.ic_hm = TO_U8(hwrs.ic_hm);
+        prof.te.dc_hm = TO_U8(hwrs.dc_hm);
+        prof.te.bp_hm = TO_U8(hwrs.bp_hm);
         #endif
         prof.add_te();
     }
@@ -403,6 +413,8 @@ void core::branch() {
     #endif
 
     #ifdef HW_MODELS_EN
+    // buffer icache hit/miss; at least 1 if bp hits, but 2 if bp misses
+    hw_status_t save_ic_hm = hwrs.ic_hm; // next fetch will override the stat
     last_inst_branch = true;
     bp.ideal(next_pc);
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b(), ip.funct3());
@@ -410,6 +422,7 @@ void core::branch() {
         //mem->speculative_exec(speculative_t::enter);
         inst_speculative = mem->rd_inst(speculative_next_pc);
     }
+    next_ic_hm = hwrs.ic_hm; // count speculative access, not the resolution
     bp.update(pc, next_pc);
     bool correct = (next_pc == speculative_next_pc);
     if (!correct) {
@@ -422,6 +435,9 @@ void core::branch() {
         //mem->speculative_exec(speculative_t::exit_commit);
         inst_resolved = inst_speculative;
     }
+    hwrs.bp_hm = static_cast<hw_status_t>(correct);
+    //next_ic_hm = hwrs.ic_hm;
+    hwrs.ic_hm = save_ic_hm;
     #endif
 }
 
@@ -1543,7 +1559,7 @@ void core::c_slli() {
     DASM_OP(c.slli)
     PROF_G(c_slli)
     #ifdef PROFILERS_EN
-    prof_fusion.attack({trigger::slli_lea, inst, mem->rd_inst(pc + 2), true});
+    prof_fusion.attack({trigger::slli_lea, inst, mem->just_inst(pc + 2), true});
     #endif
     #ifdef DASM_EN
     DASM_OP_RD << "," << FHEXN(TO_I32(ip.imm_c_slli()), 2);

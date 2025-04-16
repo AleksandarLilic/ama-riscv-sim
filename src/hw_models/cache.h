@@ -105,6 +105,7 @@ class cache {
         scp_status_t scp_status;
         speculative_t smode;
         bool speculative_exec_active; // not used atm
+        hw_status_t* hws;
         #ifdef PROFILERS_EN
         profiler_perf* prof_perf;
         perf_event_t ref_event;
@@ -122,6 +123,7 @@ class cache {
         scp_status_t scp_lcl(uint32_t addr);
         scp_status_t scp_rel(uint32_t addr);
         void speculative_exec(speculative_t smode);
+        void set_hws(hw_status_t* hws) { this->hws = hws; };
 
         // prof
         void profiling(bool enable) {
@@ -147,6 +149,7 @@ class cache {
         void set_roi(uint32_t start, uint32_t size);
         void show_stats();
         void log_stats(std::ofstream& log_file);
+        float_t get_hr() { return stats.get_hr(); }
         void dump() const;
 
     private:

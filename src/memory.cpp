@@ -86,6 +86,13 @@ uint32_t memory::rd_inst(uint32_t address) {
     //return inst;
 }
 
+uint32_t memory::just_inst(uint32_t address) {
+    address = address - mem_map[0].base;
+    dev_ptr = mem_map[0].ptr;
+    main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
+    return TO_U32(mm_ptr->just_inst(address));
+}
+
 uint32_t memory::rd(uint32_t address, uint32_t size) {
     address = set_addr(address, mem_op_t::read, size);
     if (tu->is_trapped()) return 0;

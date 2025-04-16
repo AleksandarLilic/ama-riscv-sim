@@ -165,6 +165,8 @@ enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
 enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
 
+enum class hw_status_t { miss, hit, none };
+
 // profilers
 enum class profiler_source_t { inst, clock };
 
@@ -198,6 +200,17 @@ struct symbol_tracking_t {
     std::vector<uint8_t> idx_callstack_prev;
     uint32_t fallthrough_pc;
     bool updated;
+};
+
+struct hw_running_stats_t {
+    hw_status_t ic_hm;
+    hw_status_t dc_hm;
+    hw_status_t bp_hm;
+    void rst() {
+        ic_hm = hw_status_t::none;
+        dc_hm = hw_status_t::none;
+        bp_hm = hw_status_t::none;
+    }
 };
 
 // perf events

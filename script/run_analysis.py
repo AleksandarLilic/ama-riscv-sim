@@ -521,6 +521,79 @@ def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
 
     return fig
 
+def map_value(x, left_x, right_x, left_y, right_y):
+    """
+    Maps x from an input range [left_x, right_x]
+    to an output value in [left_y, right_y] linearly.
+    Values below left_x are clamped to left_y
+    and values above right_x are clamped to right_y.
+
+    Parameters:
+        x (float): The input value.
+        left_x (float): The lower bound of the input range.
+        right_x (float): The upper bound of the input range.
+        left_y (float): The output value for inputs <= left_x.
+        right_y (float): The output value for inputs >= right_x.
+
+    Returns:
+        float: The mapped output value.
+    """
+
+    if x <= left_x: return left_y
+    elif x >= right_x: return right_y
+
+    # slope for linear interpolation.
+    slope = (right_y - left_y) / (right_x - left_x)
+
+    # interpolate
+    return slope * (x - left_x) + left_y
+
+def progressive_alpha(x):
+    left_bound = 1_000
+    right_bound = 100_000
+    left_out = .7
+    right_out = .1
+    return map_value(x, left_bound, right_bound, left_out, right_out)
+
+def progressive_lw(x):
+    left_bound = 1_000
+    right_bound = 100_000
+    left_out = 1.5
+    right_out = .3
+    return map_value(x, left_bound, right_bound, left_out, right_out)
+
+def plot_hw_hm(ax, df, col, hw_win_size):
+    offset = .3
+    hit = df[col].where(df[col] == 1, np.nan) + offset
+    miss = df[col].where(df[col] == 0, np.nan) - offset
+    alpha = progressive_alpha(df.index.size)
+    ax.plot(df.smp, hit,
+            ls='None', marker="|", ms=8, alpha=alpha, c='g', label='hit')
+    ax.plot(df.smp, miss,
+            ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
+
+    # drop NaNs to have continuous mean
+    running_avg = df[col] \
+                  .dropna() \
+                  .rolling(window=hw_win_size, min_periods=1) \
+                  .mean()
+    # reindex and forward fill to account for NaNs in the source
+    running_avg = running_avg.reindex(df.index, method='ffill')
+    lw = progressive_lw(df.index.size)
+    ax.plot(df.smp, running_avg, lw=lw, color=(0,.3,.6,.7), label='avg')
+    ax.set_ylim(-.8+offset, 1.8-offset)
+    ax.set_yticks([0, .5, 1])
+    ax.set_yticklabels(['0%', '', '100%'])
+    #ax.legend(loc='upper right', ncol=3)
+
+    metric = "ACC" if col == 'bp' else "HR"
+    metric_mean = round(df[col].mean()*100,2)
+    ax.text(1, 1,
+            f"  {metric}: {metric_mean}%", color='k',
+            fontsize=9, ha='left', va='center',
+            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+            transform=ax.get_yaxis_transform())
+
 def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
     if len(df) > args.time_series_limit:
@@ -529,18 +602,23 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
               f"entries. Either increase the limit or filter the data.")
         return None
 
-    fig, [ax_t, ax_sp] = plt.subplots(ncols=1, nrows=2, figsize=(24,12),
-                                      sharex=True, height_ratios=[9, 1],
-                                      constrained_layout=True)
+    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=(25,20),
+                           sharex=True, height_ratios=[10, 1.2, 1.2, 1.2, 1],
+                           constrained_layout=True)
 
-    # add SP trace
-    ax_sp.step(df.smp, df.sp_real, where='post', lw=1, color=(0,.3,.6,1))
-    ax_sp.grid(axis='both', linestyle='-', alpha=.6, which='major')
+    ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
+    ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
+    for a in ax:
+        a.grid(axis='both', linestyle='-', alpha=.6, which='major')
+
+    lw = progressive_lw(df.index.size)
+    ax_sp.step(df.smp, df.sp_real, where='post', lw=lw, color=(0,.3,.6,.7))
+    plot_hw_hm(ax_bp, df, 'bp', args.hw_win_size)
+    plot_hw_hm(ax_ic, df, 'ic', args.hw_win_size)
+    plot_hw_hm(ax_dc, df, 'dc', args.hw_win_size)
 
     # add PC/DMEM trace
     ax_t.step(df.smp, df[cols[0]], where='pre', lw=1.5, color=(0,.3,.6,.15))
-    ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
-
     x_val, y_val = [], []
     for x, y, s in zip(df.smp, df[cols[0]], df[cols[1]]):
         x_val.extend([x, x, None]) # 'None' used to break the line
@@ -586,10 +664,11 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_t = annotate_chart(df, symbols, ax_t, args, ctype)
     ax_t = add_cache_line_spans(ax_t)
 
-    ax_sp.text(ax_sp.get_xlim()[1], df['sp_real'].max(),
+    ax_sp.text(1, df['sp_real'].max(),
                f"  SP max : {df['sp_real'].max()} bytes", color='k',
                fontsize=9, ha='left', va='center',
-               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1))
+               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+               transform=ax_sp.get_yaxis_transform())
 
     # update axis
     current_nbins = len(ax_t.get_xticks())
@@ -609,27 +688,45 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
 
     # label
-    ax_sp.set_xlabel('Sample Count')
+    ax_t.set_title(f"Execution profile for {title}")
     ax_t.set_ylabel(ylabel)
     ax_sp.set_ylabel('Stack Pointer')
-    ax_t.set_title(f"Execution profile for {title}")
+    ax_ic.set_ylabel('ICache')
+    ax_dc.set_ylabel('DCache')
+    ax_bp.set_ylabel('Branch\nPredictor')
+
+    ax[-1].set_xlabel('Sample Count')
 
     return fig
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
-    h = ['smp', 'pc', 'dmem', 'sp', 'isz', 'dsz', 'padding'] # , 'padding2'
+    h = ['smp', 'pc', 'dmem', 'sp', 'ic', 'dc', 'bp', 'isz', 'dsz',
+         'padding8' , 'padding16', 'padding32']
+
     dtype = np.dtype([
-        (h[0], np.uint64),
-        (h[1], np.uint32),
-        (h[2], np.uint32),
-        (h[3], np.uint32),
-        (h[4], np.uint8),
-        (h[5], np.uint8),
-        (h[6], np.uint16),
+        (h[0], np.uint64), # smp
+        (h[1], np.uint32), # pc
+        (h[2], np.uint32), # dmem
+        (h[3], np.uint32), # sp
+        (h[4], np.uint8), # ic
+        (h[5], np.uint8), # dc
+        (h[6], np.uint8), # bp
+        (h[7], np.uint8), # isz
+        (h[8], np.uint8), # dsz
+        (h[9], np.uint8), # padding
+        (h[10], np.uint16), # padding
+        (h[11], np.uint32), # padding
     ])
+
     data = np.fromfile(bin_log, dtype=dtype)
     df = pd.DataFrame(data, columns=h)
-    df = df.drop(columns=[h[6]])
+    df = df.drop(columns=h[9:]) # drop padding columns
+
+    # enum class hw_status_t { miss, hit, none };
+    hw_status_t_none = 2
+    df.ic = df.ic.replace(hw_status_t_none, np.nan)
+    df.dc = df.dc.replace(hw_status_t_none, np.nan)
+    df.bp = df.bp.replace(hw_status_t_none, np.nan)
     df['smp_taken'] = df['smp'].diff().fillna(df['smp']).astype(int)
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
@@ -755,6 +852,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_only', action='store_true', help="Only backannotate and display the DMEM trace. Trace only option")
 
+    parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
