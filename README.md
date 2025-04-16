@@ -24,10 +24,12 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
   - [Branch predictors](#branch-predictors)
 - [Building RISC-V programs](#building-risc-v-programs)
   - [Baremetal](#baremetal)
+    - [Benchmarks](#benchmarks)
+    - [Quantized Neural Network](#quantized-neural-network)
   - [RISC-V ISA tests](#risc-v-isa-tests)
 - [Gtest](#gtest)
 - [Building the Simulator](#building-the-simulator)
-- [Custom ISA](#custom-isa)
+- [Custom SIMD ISA](#custom-simd-isa)
 
 
 # Getting the project
@@ -766,9 +768,26 @@ Each program is in its own directory with the provided `Makefile`
 Simulation ends when `tohost` LSB is set
 
 ## Baremetal
-The exact build command is test dependent, but all tests follow the same general structure with the Makefile recipes. A detailed description is available in the [baremetal README](./sw/baremetal/README.md)
+The exact build command is test dependent, but all tests follow the same general structure with the Makefile recipes. A detailed description is available in the [baremetal README](./sw/baremetal/README.md)  
+
+All tests and workloads are under [sw/baremetal](./sw/baremetal)
 
 Each workload can be built individually. A more common, and easier, approach is to use the provided build script which is a part of a [Gtest](#gtest) suite described below
+
+### Benchmarks
+Some of the standard benchmarks are available:
+- [Dhrystone](./sw/baremetal/dhrystone)
+- [CoreMark](./sw/baremetal/coremark)
+- [Embench](./sw/baremetal/embench)
+- [STREAM-INT](./sw/baremetal/stream_int) (STREAM benchmark modified to use 32-bit integers instead of single/double)
+
+### Quantized Neural Network
+Quantized MLP NN is available under [mlp](.sw/baremetal/mlp) in three flavors:
+- w2a8.elf
+- w4a8.elf
+- w8a8.elf
+
+NN is used as a showcase of [Custom SIMD ISA](#custom-simd-isa) capabilities and speed-up
 
 ## RISC-V ISA tests
 [Official RISC-V ISA tests](https://github.com/riscv-software-src/riscv-tests) are also provided
@@ -835,6 +854,6 @@ Optional switches are:
 `-DDPI`
 - build for DPI environment, disabled by default
 
-# Custom ISA
+# Custom SIMD ISA
 
-TBD
+TBD - Packed 32-bit SIMD ISA supporting low precision formats: 16, 8, 4, and 2-bit integers
