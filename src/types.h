@@ -326,6 +326,8 @@ struct prof_pc_t {
 struct cfg_t {
     prof_pc_t prof_pc;
     rf_names_t rf_names;
+    uint32_t mem_dump_start;
+    uint32_t mem_dump_size;
     perf_event_t perf_event;
     bool prof_trace;
     bool rf_usage;
@@ -333,6 +335,7 @@ struct cfg_t {
     bool log_always;
     bool log_state;
     bool end_dump_state;
+    bool exit_on_trap;
 };
 
 struct hw_cfg_t {

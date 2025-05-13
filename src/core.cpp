@@ -25,6 +25,7 @@ core::core(
     end_dump_state = cfg.end_dump_state;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
+    this->cfg = &cfg;
     mem->trap_setup(&tu);
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
@@ -187,6 +188,7 @@ void core::exec_inst() {
             // log changed callstack and return
             log_ofstream << dasm.asm_str << "\n";
             if (log_symbol) LOG_SYMBOL_TO_FILE;
+            if (cfg->exit_on_trap) running = false;
             return;
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
@@ -202,7 +204,10 @@ void core::exec_inst() {
         }
     }
     #endif
-    if (tu.is_trapped()) return;
+    if (tu.is_trapped()) {
+        if (cfg->exit_on_trap) running = false;
+        return;
+    }
 
     #ifdef PROFILERS_EN
     if (prof_act && prof_trace) {
@@ -240,6 +245,9 @@ void core::exec_inst() {
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
+    if (cfg->mem_dump_start > 0) {
+        mem->dump_as_words(cfg->mem_dump_start, cfg->mem_dump_size, out_dir);
+    }
     #ifdef PROFILERS_EN
     prof_fusion.finish();
     prof_perf.finish();
@@ -357,8 +365,10 @@ void core::load() {
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
-    dasm.asm_ss << " <- mem["
-                << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rs1) << "]";
+    if (ip.rd()) {
+        dasm.asm_ss << " <- mem["
+                    << MEM_ADDR_FORMAT(TO_I32(ip.imm_i()) + rs1) << "]";
+    }
     #endif
 }
 
@@ -1606,8 +1616,10 @@ void core::c_lw() {
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
                 << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
     DASM_RD_UPDATE_P(ip.cregl());
-    dasm.asm_ss << " <- mem["
-                << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rs1) << "]";
+    if (ip.rd()) {
+        dasm.asm_ss << " <- mem["
+                    << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rs1) << "]";
+    }
     #endif
     next_pc = pc + 2;
 }
@@ -1626,8 +1638,10 @@ void core::c_lwsp() {
     DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
                << "(" << rf_names[2][rf_names_idx] << ")";
     DASM_RD_UPDATE;
-    dasm.asm_ss << " <- mem[" << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp())+rf[2])
-                << "]";
+    if (ip.rd()) {
+        dasm.asm_ss << " <- mem["
+                    << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2]) << "]";
+    }
     #endif
     next_pc = pc + 2;
 }

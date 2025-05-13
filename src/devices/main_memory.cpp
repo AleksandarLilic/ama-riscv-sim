@@ -80,11 +80,11 @@ void main_memory::burn_elf(std::string test_elf) {
             "Segment address is not at base address.");
     }
 
-    uint64_t size = load_seg->get_file_size(); // returns hex value
+    uint64_t size = load_seg->get_file_size();
     if (size > MEM_SIZE) {
         std::cerr << "ERROR: Segment size is greater than memory size."
-                  << " Segment size: 0x" << size << "B"
-                  << " Memory size: 0x" << std::hex << MEM_SIZE << "B"
+                  << " Segment size: 0x" << std::hex << size << " B"
+                  << " Memory size: 0x" << std::hex << MEM_SIZE << " B"
                   << std::dec << std::endl;
         throw std::runtime_error(
             "Segment size is greater than memory size.");

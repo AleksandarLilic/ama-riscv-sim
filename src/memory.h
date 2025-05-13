@@ -33,7 +33,6 @@ class memory {
         #endif
 
     private:
-        void mem_dump(uint32_t start, uint32_t end);
         uint32_t set_addr(uint32_t address, mem_op_t access, uint32_t size);
 
     public:
@@ -56,8 +55,8 @@ class memory {
         uint32_t just_inst(uint32_t address);
         uint32_t rd(uint32_t address, uint32_t size);
         void wr(uint32_t address, uint32_t data, uint32_t size);
-        void dump();
-        void dump(uint32_t start, uint32_t size);
+        void dump_as_bytes(uint32_t start, uint32_t size);
+        void dump_as_words(uint32_t start, uint32_t size, std::string out_dir);
         scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
         #ifdef HW_MODELS_EN
         // propagating to caches

@@ -105,8 +105,8 @@ void memory::wr(uint32_t address, uint32_t data, uint32_t size) {
     dev_ptr->wr(address, data, size);
 }
 
-// Dump (private)
-void memory::mem_dump(uint32_t start, uint32_t size) {
+// xxd style byte dump
+void memory::dump_as_bytes(uint32_t start, uint32_t size) {
     constexpr uint32_t bytes_per_row = 16;
     constexpr uint32_t word_boundary = 4;
 
@@ -115,23 +115,37 @@ void memory::mem_dump(uint32_t start, uint32_t size) {
     uint32_t addr;
 
     for (uint32_t i = aligned_start; i < aligned_start + size + offset; i++) {
-        if (i % bytes_per_row == 0) // insert address at the start of each row
+        if (i % bytes_per_row == 0) {
+            // insert address at the start of each row
             std::cout << std::endl << MEM_ADDR_FORMAT(i) << ": ";
+        }
         addr = set_addr(i, mem_op_t::read, 1u);
-        std::cout << std::right << std::setw(2) << std::setfill('0')
+        std::cout << std::hex << std::right << std::setw(2) << std::setfill('0')
                   << dev_ptr->rd(addr, 1u) << " ";
-        if (i % word_boundary == 3)
-            std::cout << "  ";
+        if (i % word_boundary == 3) std::cout << "  ";
     }
     std::cout << std::dec << std::left << std::endl;
 }
 
-// Dump entire memory to console
-void memory::dump() {
-    mem_dump(BASE_ADDR, MEM_SIZE);
-}
+// word per line
+void memory::dump_as_words(uint32_t start, uint32_t size, std::string out_dir){
+    constexpr uint32_t word_bytes = 4;
+    uint32_t end = start + size;
+    std::ofstream ofs;
+    ofs.open(out_dir + "mem_dump.log");
+    ofs << std::hex << "0x" << start << std::dec << ": " << size << " B\n";
 
-// Dump memory range to console
-void memory::dump(uint32_t start, uint32_t size) {
-    mem_dump(start, size);
+    // process full 4-byte words
+    for (uint32_t addr = start; addr + word_bytes <= end; addr += word_bytes) {
+        uint32_t word = 0;
+
+        // ready and pack bytes it into word as big-endian
+        for (uint32_t i = 0; i < word_bytes; ++i) {
+            uint32_t phys = set_addr(addr + i, mem_op_t::read, 1u);
+            uint8_t b = dev_ptr->rd(phys, 1u);
+            word |= static_cast<uint32_t>(b) << (8 * (i));
+        }
+        ofs << std::hex << std::setw(8) << std::setfill('0') << word << "\n";
+    }
+    std::cout << std::dec;
 }

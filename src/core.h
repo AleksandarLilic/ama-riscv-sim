@@ -357,7 +357,7 @@ class core {
     private:
         bool running;
         std::array<int32_t, 32> rf;
-        memory *mem;
+        memory* mem;
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
@@ -380,6 +380,7 @@ class core {
         dasm_str dasm;
         logging_flags_t logf;
         #endif
+        cfg_t* cfg;
 
         std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 25> supported_csrs = {{

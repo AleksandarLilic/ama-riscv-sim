@@ -112,6 +112,9 @@ const std::unordered_map<std::string, bp_t> bpc_names_map = {
 struct defs_t {
     static constexpr char rf_names[] = "abi";
     static constexpr char end_dump_state[] = "false";
+    static constexpr char exit_on_trap[] = "false";
+    static constexpr char mem_dump_start[] = "0";
+    static constexpr char mem_dump_size[] = "0";
     #ifdef PROFILERS_EN
     static constexpr char prof_pc_start[] = "0";
     static constexpr char prof_pc_stop[] = "0";
@@ -183,6 +186,15 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(defs_t::rf_names))
         ("end_dump_state", "Dump all registers at the end of simulation",
          cxxopts::value<bool>()->default_value(defs_t::end_dump_state))
+        ("exit_on_trap",
+         "Exit sim on trap instead of going to trap handler",
+         cxxopts::value<bool>()->default_value(defs_t::exit_on_trap))
+        ("mem_dump_start",
+         "Start address (hex) for memory dump at the end of simulation",
+         cxxopts::value<std::string>()->default_value(defs_t::mem_dump_start))
+        ("mem_dump_size",
+         "Size of the region for memory dump at the end of simulation",
+         cxxopts::value<std::string>()->default_value(defs_t::mem_dump_size))
         ("out_dir_tag", "Tag (suffix) for output directory",
          cxxopts::value<std::string>()->default_value(""))
 
@@ -230,9 +242,9 @@ int main(int argc, char* argv[]) {
         ("dcache_policy", "D$ replacement policy. \nOptions: " +
          gen_help_list(cache_policy_map),
          cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_policy))
-        ("roi_start", "D$ Region of interest start address (hex)",
+        ("roi_start", "Region of interest start address (hex)",
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_start))
-        ("roi_size", "D$ Region of interest size",
+        ("roi_size", "Region of interest size",
          cxxopts::value<std::string>()->default_value(hw_defs_t::roi_size))
         ("bp_active",
          "Active branch predictor (driving I$).\nOptions: " +
@@ -334,6 +346,9 @@ int main(int argc, char* argv[]) {
         test_elf = result["path"].as<std::string>();
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
+        cfg.exit_on_trap = TO_BOOL(result["exit_on_trap"]);
+        cfg.mem_dump_start = TO_HEX(result["mem_dump_start"]);
+        cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
 
         #ifdef PROFILERS_EN
