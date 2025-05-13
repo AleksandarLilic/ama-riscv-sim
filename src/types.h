@@ -186,7 +186,7 @@ struct clock_source_t {
 };
 
 struct symbol_map_entry_t {
-    uint8_t idx;
+    uint16_t idx;
     std::string name;
 };
 
@@ -196,8 +196,8 @@ struct symbol_lut_entry_t {
 };
 
 struct symbol_tracking_t {
-    std::vector<uint8_t> idx_callstack;
-    std::vector<uint8_t> idx_callstack_prev;
+    std::vector<uint16_t> idx_callstack;
+    std::vector<uint16_t> idx_callstack_prev;
     uint32_t fallthrough_pc;
     bool updated;
 };

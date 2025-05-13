@@ -137,7 +137,7 @@ void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
 
 bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
     // find to which range does the next_pc belong
-    uint8_t idx = 0;
+    uint16_t idx = 0;
     for (const auto &sym : symbol_map) {
         if (next_pc >= sym.first) idx = sym.second.idx;
         else break;
@@ -146,7 +146,7 @@ bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
 }
 
 std::string profiler_perf::get_callstack_str(
-    const std::vector<uint8_t>& idx_stack) {
+    const std::vector<uint16_t>& idx_stack) {
     std::string stack_str = "";
     for (const auto &idx : idx_stack) {
         stack_str += symbol_lut.at(idx).name + ";";
@@ -154,11 +154,9 @@ std::string profiler_perf::get_callstack_str(
     return stack_str;
 }
 
-std::string profiler_perf::callstack_to_key() {
-    return std::string(
-        reinterpret_cast<const char*>(st.idx_callstack.data()),
-        st.idx_callstack.size()
-    );
+std::u16string profiler_perf::callstack_to_key() {
+  auto p = reinterpret_cast<const char16_t*>(st.idx_callstack.data());
+  return std::u16string(p, st.idx_callstack.size());
 }
 
 void profiler_perf::log_to_file_and_print() {
@@ -171,13 +169,13 @@ void profiler_perf::log_to_file_and_print() {
     std::string out = out_dir + "callstack_folded_" + pt +
                       perf_event_names[TO_U32(perf_event)] + ".txt";
     std::ofstream out_file(out);
-    std::vector<uint8_t> callstack_ids;
+    std::vector<uint16_t> callstack_ids;
     uint64_t total_cnt = 0;
     for (const auto &c : callstack_cnt_map) {
         callstack_ids.clear();
         callstack_ids.reserve(c.first.size());
         // demangle the key string
-        for (const auto &id : c.first) callstack_ids.push_back(TO_U8(id));
+        for (const auto &id : c.first) callstack_ids.push_back(TO_U16(id));
         // write to file
         out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
         total_cnt += c.second;

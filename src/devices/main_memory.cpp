@@ -121,16 +121,15 @@ void main_memory::burn_elf(std::string test_elf) {
         }
     }
 
-    // TODO: consider increasing the limit
-    if (symbol_map.size() > 255) {
-        std::cerr << "ERROR: Number of symbols is greater than 255."
-                  << " Number of symbols: " << symbol_map.size()
+    if (symbol_map.size() > UINT16_MAX) {
+        std::cerr << "ERROR: Number of symbols is greater than " << UINT16_MAX
+                  << ". Number of symbols: " << symbol_map.size()
                   << std::endl;
         throw std::runtime_error("Number of symbols is greater than 255.");
     }
 
     // re-index the symbols
-    uint8_t idx = 1; // 0th index is reserved
+    uint16_t idx = 1; // 0th index is reserved
     for (const auto& sym : symbol_map) symbol_map[sym.first].idx = idx++;
 
     //for (const auto& sym : symbol_map) {

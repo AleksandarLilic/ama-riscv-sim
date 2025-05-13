@@ -15,7 +15,7 @@ class profiler_perf {
         profiler_source_t prof_src;
         std::array<uint8_t, TO_U32(perf_event_t::_count)> perf_event_flags;
         uint64_t callstack_cnt;
-        std::unordered_map<std::string, uint64_t> callstack_cnt_map;
+        std::unordered_map<std::u16string, uint64_t> callstack_cnt_map;
         #ifdef DPI
         clock_source_t* clk_src;
         #endif
@@ -52,7 +52,7 @@ class profiler_perf {
         void update_callstack(uint32_t pc);
         void set_fallthrough_symbol(uint32_t pc);
         bool symbol_change_on_jump(uint32_t next_pc);
-        std::string get_callstack_str(const std::vector<uint8_t>& idx_stack);
-        std::string callstack_to_key();
+        std::string get_callstack_str(const std::vector<uint16_t>& idx_stack);
+        std::u16string callstack_to_key();
         void log_to_file_and_print();
 };
