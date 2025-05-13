@@ -57,6 +57,11 @@
     "embench/ud/": [["bench"], ["CPU_MHZ=0.1"]],
     "embench/wikisort/": [["bench"], ["CPU_MHZ=1"]],
 
+    "aapg_static/rv32i": ["aapg"],
+    "aapg_static/rv32i_zmmul": ["aapg"],
+    "aapg_static/rv32i_branches": ["aapg"],
+    "aapg_static/rv32i_mem": ["aapg"],
+
     "imperas-riscv-tests/ADD": ["test"],
     "imperas-riscv-tests/ADDI": ["test"],
     "imperas-riscv-tests/AND": ["test"],
