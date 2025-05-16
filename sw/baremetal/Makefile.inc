@@ -5,6 +5,21 @@ RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
 SHELL  := /bin/bash
 
+# Turn on increased build verbosity by defining BUILD_VERBOSE in test Makefile
+# or use V=1 on the make command line
+
+BUILD_VERBOSE ?= 0
+
+ifeq ("$(origin V)", "command line")
+BUILD_VERBOSE := $(V)
+endif
+
+ifeq ($(BUILD_VERBOSE), 0)
+Q = @
+else
+Q =
+endif
+
 # if not set in test's Makefile, default to all object files w/o newlib
 COMMON_OBJ_NAMES ?= crt0.o common.o common_math.o mini-printf.o # newlib_defs.o
 COMMON_SRC_PATH := $(REPO_ROOT)/sw/baremetal/common
@@ -38,6 +53,7 @@ GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--gc-sections
 GCC_OPTS += -Wl,--no-warn-rwx-segments
+#GCC_OPTS += -Wp,-w # disable preprocessor warnings
 #GCC_OPTS += -Wl,--noinhibit-exec
 #GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
@@ -68,34 +84,41 @@ ifeq ($(HEX), 1)
 	endif
 endif
 
-%.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) $(INC) \
-		$(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
-	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
-	@$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
-	@if [ "$(HEX)" = "1" ]; then \
+# define as variable so it's not broken up across lines for stdout
+BUILD_APP = \
+	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) \
+	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
+
+HEX_GEN = \
+	$(Q)if [ "$(HEX)" = "1" ]; then \
 		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
 	fi
-	@echo "Generated $@"
-	@$(RV_GNU)-size -G $@
+
+%.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
+	$(BUILD_APP)
+	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
+	$(Q)$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
+	$(HEX_GEN)
+	@echo "Executable built: $@"
+	$(Q)$(RV_GNU)-size -G $@
 
 build_common: $(COMMON_OBJS)
 
 COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
 COMMON_FLAGS += -Werror -pedantic
 
-COMPILE_COMMON = \
-	@$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) -c $< -o $@ \
+BUILD_COMMON = \
+	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) -c $< -o $@ \
 	$(USER_DEFINES)
 
 $(COMMON_BUILD_DIR)/%.o: %.c %.h
-	$(COMPILE_COMMON)
+	$(BUILD_COMMON)
 
 $(COMMON_BUILD_DIR)/%.o: %.c
-	$(COMPILE_COMMON)
+	$(BUILD_COMMON)
 
 $(COMMON_BUILD_DIR)/%.o: %.S
-	$(COMPILE_COMMON)
+	$(BUILD_COMMON)
 
 clean:
 	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *.map
