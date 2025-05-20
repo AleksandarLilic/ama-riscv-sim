@@ -115,6 +115,7 @@ struct defs_t {
     static constexpr char exit_on_trap[] = "false";
     static constexpr char mem_dump_start[] = "0";
     static constexpr char mem_dump_size[] = "0";
+    static constexpr char run_insts[] = "0";
     #ifdef PROFILERS_EN
     static constexpr char prof_pc_start[] = "0";
     static constexpr char prof_pc_stop[] = "0";
@@ -197,6 +198,8 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(defs_t::mem_dump_size))
         ("out_dir_tag", "Tag (suffix) for output directory",
          cxxopts::value<std::string>()->default_value(""))
+        ("run_insts", "Number of instructions to run. Set to 0 for no limit",
+         cxxopts::value<std::string>()->default_value(defs_t::run_insts))
 
         #ifdef PROFILERS_EN
         ("prof_pc_start", "Start PC (hex) for profiling",
@@ -349,6 +352,7 @@ int main(int argc, char* argv[]) {
         cfg.exit_on_trap = TO_BOOL(result["exit_on_trap"]);
         cfg.mem_dump_start = TO_HEX(result["mem_dump_start"]);
         cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
+        cfg.run_insts = TO_SIZE(result["run_insts"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
 
         #ifdef PROFILERS_EN

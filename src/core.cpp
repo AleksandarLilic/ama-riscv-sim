@@ -237,6 +237,8 @@ void core::exec_inst() {
 
     pc = next_pc;
     inst_cnt++;
+
+    if (inst_cnt == cfg->run_insts) running = false; // stop based on cli
 }
 
 // void core::reset() {
