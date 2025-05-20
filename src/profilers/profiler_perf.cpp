@@ -26,7 +26,7 @@ profiler_perf::profiler_perf(
 
 bool profiler_perf::finish_inst(uint32_t next_pc) {
     // handle next instruction symbol change, if any
-    bool fallthrough = (next_pc == st.fallthrough_pc && !st.updated);
+    bool fallthrough = ((next_pc == st.fallthrough_pc) && !st.updated);
     if (fallthrough) {
         update_callstack(next_pc);
         st.idx_callstack.back() = symbol_map.at(next_pc).idx;
@@ -44,35 +44,49 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
 }
 
 void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
-    if (taken && (symbol_map.find(next_pc) != symbol_map.end())) {
-        update_callstack(next_pc);
-        st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+    if (!taken) return;
+    auto found = find_symbol_in_range(next_pc);
+    bool sym_chg = (found.second.idx != st.idx_callstack.back());
+    if (sym_chg) {
+        update_callstack(found.first);
+        st.idx_callstack.back() = symbol_map.at(found.first).idx;
     }
 }
 
-void profiler_perf::update_jalr(uint32_t next_pc, bool ret_inst) {
+void profiler_perf::update_jalr(
+    uint32_t next_pc, bool ret_inst, bool tail_call, uint32_t ra) {
     // also not ret if it doesn't change the symbol
     ret_inst &= symbol_change_on_jump(next_pc);
     if (ret_inst) {
         update_callstack(next_pc);
+        // catch_empty_callstack("jalr (ret)", next_pc);
         st.idx_callstack.pop_back();
-        //callstack_empty_check("jalr", next_pc);
         if (symbol_map.find(next_pc) != symbol_map.end()) {
             // returns to the next symbol (mostly-assembly thing)
-            st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+            if (st.idx_callstack.empty()) {
+                st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
+            } else {
+                st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+            }
         }
     } else if (symbol_map.find(next_pc) != symbol_map.end()) {
         update_callstack(next_pc);
+        bool noreturn_call = symbol_map.find(ra) != symbol_map.end();
+        if (tail_call || noreturn_call) {
+            // catch_empty_callstack("jalr", next_pc);
+            st.idx_callstack.pop_back();
+        }
         st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
     }
 }
 
-void profiler_perf::update_jal(uint32_t next_pc, bool tail_call) {
+void profiler_perf::update_jal(uint32_t next_pc, bool tail_call, uint32_t ra) {
+    bool noreturn_call = symbol_map.find(ra) != symbol_map.end();
     if (symbol_map.find(next_pc) != symbol_map.end()) {
         update_callstack(next_pc);
-        if (tail_call) {
+        if (tail_call || noreturn_call) {
             st.idx_callstack.pop_back();
-            //callstack_empty_check("jal", next_pc);
+            // catch_empty_callstack("jal", next_pc);
         }
         st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
     }
@@ -100,7 +114,7 @@ void profiler_perf::save_callstack_cnt() {
     callstack_cnt_map[callstack_to_key()] += callstack_cnt;
 }
 
-void profiler_perf::callstack_empty_check(
+void profiler_perf::catch_empty_callstack(
     const std::string& inst, uint32_t next_pc) {
     if (st.idx_callstack.empty()) {
         std::cerr << "ERROR: " << inst << ": callstack underflow at "
@@ -136,13 +150,19 @@ void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
 }
 
 bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
+    auto found = find_symbol_in_range(next_pc);
+    return (found.second.idx != st.idx_callstack.back());
+}
+
+std::pair<uint32_t, symbol_map_entry_t>
+profiler_perf::find_symbol_in_range(uint32_t next_pc) {
     // find to which range does the next_pc belong
-    uint16_t idx = 0;
+    std::pair<uint32_t, symbol_map_entry_t> found;
     for (const auto &sym : symbol_map) {
-        if (next_pc >= sym.first) idx = sym.second.idx;
+        if (next_pc >= sym.first) found = sym;
         else break;
     }
-    return (idx != st.idx_callstack.back());
+    return found;
 }
 
 std::string profiler_perf::get_callstack_str(
@@ -186,4 +206,15 @@ void profiler_perf::log_to_file_and_print() {
     std::cout << "Profiler Perf: "
               << "Event: " << perf_event_names[TO_U32(perf_event)]
               << ", Samples: " << total_cnt << "\n";
+}
+
+bool profiler_perf::dbg_check_top(uint32_t next_pc) {
+    std::string name;
+    for (const auto &sym : symbol_map) {
+        if (next_pc >= sym.first) name = sym.second.name;
+        else break;
+    }
+    name += ";";
+    std::string top = get_callstack_top_str();
+    return (name == top);
 }

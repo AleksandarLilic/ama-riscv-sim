@@ -230,13 +230,13 @@ void core::exec_inst() {
 
     #ifdef DASM_EN
     if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
+    //if (log_symbol && logf.act) {
+    //    log_ofstream << "match: " << prof_perf.dbg_check_top(next_pc) << "\n";
+    //}
     #endif
 
     pc = next_pc;
     inst_cnt++;
-
-    // TODO: --inst_limit
-    //if (inst_cnt == 2000) running = false;
 }
 
 // void core::reset() {
@@ -454,6 +454,7 @@ void core::branch() {
 void core::jalr() {
     if (ip.funct3() != 0) tu.e_unsupported_inst("jalr, funct3 != 0");
     next_pc = (rf[ip.rs1()] + ip.imm_i()) & 0xFFFFFFFE;
+
     #ifndef RV32C
     bool address_unaligned = (next_pc % 4 != 0);
     if (address_unaligned) {
@@ -461,25 +462,35 @@ void core::jalr() {
         return;
     }
     #endif
-    write_rf(ip.rd(), pc + 4);
-    DASM_OP(jalr)
+
+    uint32_t ra = pc + 4;
+    write_rf(ip.rd(), ra);
+    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
+    if (ret_inst) { DASM_OP(ret) }
+    else { DASM_OP(jalr) }
     PROF_J(jalr)
     PROF_RD_RS1
 
     #ifdef PROFILERS_EN
-    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
-    prof_perf.update_jalr(next_pc, ret_inst);
+    bool tail_call = (ip.rd() == 0);
+    prof_perf.update_jalr(next_pc, ret_inst, tail_call, ra);
     #endif
 
     #ifdef DASM_EN
-    DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
+    if (ret_inst) {
+        dasm.asm_ss << dasm.op;
+    } else {
+        DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
+    }
     DASM_RD_UPDATE;
     #endif
 }
 
 void core::jal() {
-    write_rf(ip.rd(), pc + 4);
+    uint32_t ra = pc + 4;
+    write_rf(ip.rd(), ra);
     next_pc = pc + ip.imm_j();
+
     #ifndef RV32C
     bool address_unaligned = (next_pc % 4 != 0);
     if (address_unaligned) {
@@ -487,13 +498,14 @@ void core::jal() {
         return;
     }
     #endif
+
     DASM_OP(jal)
     PROF_J(jal)
     PROF_RD
 
     #ifdef PROFILERS_EN
     bool tail_call = (ip.rd() == 0);
-    prof_perf.update_jal(next_pc, tail_call);
+    prof_perf.update_jal(next_pc, tail_call, ra);
     #endif
 
     #ifdef DASM_EN
@@ -549,7 +561,7 @@ void core::system() {
                 DASM_OP(mret)
                 PROF_G(mret)
                 #ifdef PROFILERS_EN
-                prof_perf.update_jalr(next_pc, true);
+                prof_perf.update_jalr(next_pc, true, false, 0u);
                 #endif
                 break;
             default: tu.e_unsupported_inst("system");
@@ -1716,7 +1728,7 @@ void core::c_j() {
     DASM_OP(c.j)
     PROF_J(c_j)
     #ifdef PROFILERS_EN
-    prof_perf.update_jal(next_pc, true);
+    prof_perf.update_jal(next_pc, true, false);
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
@@ -1730,7 +1742,7 @@ void core::c_jal() {
     DASM_OP(c.jal)
     PROF_J(c_jal)
     #ifdef PROFILERS_EN
-    prof_perf.update_jal(next_pc, false);
+    prof_perf.update_jal(next_pc, false, false);
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
@@ -1743,26 +1755,36 @@ void core::c_jr() {
     // rs1 in position of rd
     if (ip.rd() == 0x0) tu.e_illegal_inst("c.jr (rd=0)", 4);
     next_pc = rf[ip.rd()];
-    DASM_OP(c.jr)
-    PROF_J(c_jr)
-    #ifdef PROFILERS_EN
     bool ret_inst = (inst == INST_C_RET);
-    prof_perf.update_jalr(next_pc, ret_inst);
+    if (ret_inst) { DASM_OP(ret) }
+    else { DASM_OP(c.jr) }
+    PROF_J(c_jr)
+
+    #ifdef PROFILERS_EN
+    prof_perf.update_jalr(next_pc, ret_inst, true, pc + 2); // no ra, tail calls
     #endif
+
     #ifdef DASM_EN
-    DASM_OP_RD;
+    if (ret_inst) {
+        dasm.asm_ss << dasm.op;
+    } else {
+        DASM_OP_RD;
+    }
     #endif
 }
 
 void core::c_jalr() {
     // rs1 in position of rd
     next_pc = rf[ip.rd()];
-    write_rf(1, pc + 2);
+    uint32_t ra = pc + 2;
+    write_rf(1, ra);
     DASM_OP(c.jalr)
     PROF_J(c_jalr)
+
     #ifdef PROFILERS_EN
-    prof_perf.update_jalr(next_pc, false);
+    prof_perf.update_jalr(next_pc, false, false, ra);
     #endif
+
     #ifdef DASM_EN
     DASM_OP_RD;
     DASM_RD_UPDATE_P(1);

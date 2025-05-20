@@ -10,6 +10,9 @@
     << FORMAT_INST(*pc, *inst, 8)
 
 void trap::trap_inst(uint32_t cause, uint32_t tval) {
+    std::cout << "; cause=" << std::hex << cause
+              << ", tval=" << tval
+              << ", pc="  << *pc << std::dec << "\n";
     inst_trapped = true;
     csr->at(CSR_MCAUSE).value = cause;
     csr->at(CSR_MTVAL).value = tval; // trap-specific, for trap handler
@@ -21,11 +24,8 @@ void trap::trap_inst(uint32_t cause, uint32_t tval) {
     csr->at(CSR_MSTATUS).value &= ~MSTATUS_MIE; // disable interrupts
     *pc = csr->at(CSR_MTVEC).value;
     #ifdef PROFILERS_EN
-    prof_perf->update_jalr(*pc, false);
+    prof_perf->update_jalr(*pc, false, false, 0u);
     #endif
-    std::cout << "; cause=" << std::hex << cause
-              << ", tval=" << tval
-              << ", pc="  << *pc << std::dec << "\n";
 }
 
 // exception handling
