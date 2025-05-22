@@ -229,10 +229,14 @@ void core::exec_inst() {
     #endif
 
     #ifdef DASM_EN
+    if (log_symbol && logf.act && !prof_perf.dbg_check_top(next_pc)) {
+        //log_ofstream << "would'be been mismatched callstack" << "\n";
+        // risky but very likely to work since tail calls can be missed
+        // TODO: should really be done on a callstack copy,
+        // this will crash the sim if it pops all functions from callstack
+        while (!prof_perf.dbg_check_top(next_pc)) prof_perf.dbg_pop_back();
+    }
     if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
-    //if (log_symbol && logf.act) {
-    //    log_ofstream << "match: " << prof_perf.dbg_check_top(next_pc) << "\n";
-    //}
     #endif
 
     pc = next_pc;
@@ -506,7 +510,8 @@ void core::jal() {
     PROF_RD
 
     #ifdef PROFILERS_EN
-    bool tail_call = (ip.rd() == 0);
+    //bool pc_match = (pc == 0x19118); // known noreturn call
+    bool tail_call = (ip.rd() == 0); // || pc_match;
     prof_perf.update_jal(next_pc, tail_call, ra);
     #endif
 

@@ -48,6 +48,7 @@ class profiler_perf {
 
         // debug helpers
         bool dbg_check_top(uint32_t next_pc);
+        void dbg_pop_back() { st.idx_callstack.pop_back(); }
 
     private:
         void inc_callstack_cnt();
