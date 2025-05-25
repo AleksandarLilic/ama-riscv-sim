@@ -10,3 +10,6 @@
 [submodule "script/FlameGraph"]
 	path = script/FlameGraph
 	url = git@github.com:brendangregg/FlameGraph.git
+[submodule "sw/micropython"]
+	path = sw/micropython
+	url = git@github.com:AleksandarLilic/micropython.git
