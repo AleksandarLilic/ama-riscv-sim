@@ -25,7 +25,7 @@ core::core(
     end_dump_state = cfg.end_dump_state;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
-    this->cfg = &cfg;
+    this->cfg = cfg;
     mem->trap_setup(&tu);
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
@@ -188,7 +188,7 @@ void core::exec_inst() {
             // log changed callstack and return
             log_ofstream << dasm.asm_str << "\n";
             if (log_symbol) LOG_SYMBOL_TO_FILE;
-            if (cfg->exit_on_trap) running = false;
+            if (cfg.exit_on_trap) running = false;
             return;
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
@@ -205,7 +205,7 @@ void core::exec_inst() {
     }
     #endif
     if (tu.is_trapped()) {
-        if (cfg->exit_on_trap) running = false;
+        if (cfg.exit_on_trap) running = false;
         return;
     }
 
@@ -242,7 +242,7 @@ void core::exec_inst() {
     pc = next_pc;
     inst_cnt++;
 
-    if (inst_cnt == cfg->run_insts) running = false; // stop based on cli
+    if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
 }
 
 // void core::reset() {
@@ -251,8 +251,8 @@ void core::exec_inst() {
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
-    if (cfg->mem_dump_start > 0) {
-        mem->dump_as_words(cfg->mem_dump_start, cfg->mem_dump_size, out_dir);
+    if ((cfg.mem_dump_start > 0) && (cfg.mem_dump_size > 0)) {
+        mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, out_dir);
     }
     #ifdef PROFILERS_EN
     prof_fusion.finish();

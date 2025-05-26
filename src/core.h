@@ -380,7 +380,7 @@ class core {
         dasm_str dasm;
         logging_flags_t logf;
         #endif
-        cfg_t* cfg;
+        cfg_t cfg;
 
         std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 25> supported_csrs = {{
