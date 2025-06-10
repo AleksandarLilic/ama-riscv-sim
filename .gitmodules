@@ -13,3 +13,6 @@
 [submodule "sw/micropython"]
 	path = sw/micropython
 	url = git@github.com:AleksandarLilic/micropython.git
+[submodule "script/gprof2dot"]
+	path = script/gprof2dot
+	url = git@github.com:jrfonseca/gprof2dot.git
