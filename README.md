@@ -16,7 +16,9 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
   - [Execution trace and register file usage](#execution-trace-and-register-file-usage)
   - [Hardware models outputs](#hardware-models-outputs)
   - [Analysis scripts](#analysis-scripts)
+    - [Flat profile](#flat-profile)
     - [FlameGraph](#flamegraph)
+    - [Call Graph](#call-graph)
     - [Execution visualization](#execution-visualization)
     - [Hardware performance estimates](#hardware-performance-estimates)
 - [Hardware model sweeps](#hardware-model-sweeps)
@@ -52,7 +54,7 @@ cd -
 # build ISA sim
 cd src
 make -j
-# run test, profile from the beginning, log executed instruction
+# run test, profile from the beginning, log executed instructions
 ./ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 10000 -l
 # check the execution log
 vim out_dhrystone_dhrystone/exec.log
@@ -393,6 +395,88 @@ PC,Direction,Funct3,Funct3_mn,Taken,Not_Taken,All,Taken%,P_combined,P_combined%,
 ## Analysis scripts
 Collection of custom and open source tools are provided for profiling, analysis, and visualization
 
+### Flat profile
+Similar to the GNU Profiler `gprof`, flat profile script provides samples/time spent in all executed functions, and prints it to the `stdout`
+
+```sh
+./script/prof_stats.py examples/out_dhrystone_dhrystone/callstack_folded_exec.txt
+```
+
+Output (also available under [examples/out_dhrystone_dhrystone/prof_stats_exec.txt](examples/out_dhrystone_dhrystone/prof_stats_exec.txt)):  
+```
+     % cumulative       self      total   name
+ 28.70      28.70      31248      41256   _write
+ 19.72      48.42      21475      89017   mini_vpprintf
+ 18.34      66.76      19968      61224   __puts_uart
+ 12.19      78.95      13272      13272   clear_bss_w
+  9.19      88.14      10008      10008   send_byte_uart0
+  2.61      90.76       2844       2844   __udivsi3
+  2.14      92.89       2325       5041   mini_itoa
+  1.10      93.99       1200      90217   mini_printf
+  0.95      94.94       1032       1032   strcpy
+  0.86      95.80        931      95544   main
+  0.71      96.51        777        777   mini_pad
+  0.52      97.03        570        940   Proc_1
+  0.52      97.56        570        570   strcmp
+  0.46      98.02        500        500   mini_strlen
+  0.26      98.27        280        900   Func_2
+  0.23      98.50        250        250   Proc_8
+  0.19      98.69        204       1516   __umodsi3
+  0.18      98.87        200        230   Proc_6
+  0.18      99.05        198        250   _malloc_r
+  0.18      99.23        194        338   __udivdi3
+  0.14      99.37        150        150   Func_1
+  0.11      99.48        120        120   Proc_7
+  0.09      99.57        100        100   Proc_3
+  0.09      99.66        100        100   Proc_4
+  0.08      99.75         90         90   Proc_2
+  0.04      99.79         42         42   _start
+  0.04      99.82         40         40   Proc_5
+  0.03      99.85         32         32   __mulsi3
+  0.03      99.88         30         30   Func_3
+  0.03      99.91         30         48   _sbrk_r
+  0.02      99.93         20         20   __divsi3
+  0.02      99.94         20         20   __libc_init_array
+  0.02      99.96         20        368   time_s
+  0.02      99.98         18         18   _sbrk
+  0.01      99.99         10         10   get_cpu_time
+  0.01      99.99          6          6   malloc
+  0.00     100.00          2          2   __malloc_lock
+  0.00     100.00          2          2   __malloc_unlock
+  0.00     100.00          1      95545   call_main
+  0.00     100.00          1          1   clear_bss_b
+  0.00     100.00          1         21   done_bss
+```
+
+The 10 iterations Dhrystone run is useful as an example run since the values are small and runtime very short. For the very same reasons, it's not useful as an actual benchmark, and it also skews the results since the `printf` takes longer than benchmark itself. 
+
+Therefore, the 80k iterations version is also available as an example under [examples/out_dhrystone_dhrystone_80k](./examples/out_dhrystone_dhrystone_80k)
+
+`stdout` of 80k version with `--top 20` argument
+```
+     % cumulative       self      total   name
+ 20.22      20.22    6880172    6880172   strcpy
+ 15.05      35.27    5120331   34016085   main
+ 13.40      48.67    4560000    7520000   Proc_1
+ 13.40      62.07    4560000    4560000   strcmp
+  6.58      68.65    2240000    7200000   Func_2
+  5.88      74.53    2000000    2000000   Proc_8
+  5.19      79.71    1765316    1765316   __udivsi3
+  4.70      84.41    1600000    1840000   Proc_6
+  3.53      87.94    1200000    1200000   Func_1
+  2.82      90.76     960000     960000   Proc_7
+  2.35      93.11     800000     800000   Proc_3
+  2.35      95.46     800000     800000   Proc_4
+  2.12      97.58     720000     720000   Proc_2
+  0.94      98.52     320000     320000   Proc_5
+  0.71      99.23     240000     240000   Func_3
+  0.47      99.70     160000     160000   __divsi3
+  0.09      99.79      31432      41548   _write
+  0.06      99.85      21685      91915   mini_vpprintf
+  0.06      99.91      20059      61607   __puts_uart
+  0.04      99.95      13272      13272   clear_bss_w
+```
+
 ### FlameGraph
 A lightweight wrapper is provided for chart formatting and annotation around the open source [FlameGraph scripts](https://github.com/brendangregg/FlameGraph)
 ``` sh
@@ -400,12 +484,46 @@ A lightweight wrapper is provided for chart formatting and annotation around the
 ```
 Open the generated interactive `flamegraph_exec.svg` in the web browser
 
+Dhrystone example with 10 iterations:  
 ![](examples/out_dhrystone_dhrystone/flamegraph_exec.svg)
 
-The 10 iterations Dhrystone run is useful as an example run since the values are small and runtime very short. For the very same reasons, it's not useful as an actual benchmark, and it also skews the results since the `printf` takes longer than benchmark itself.  
-Therefore, the 80k iterations version is also available under [examples/out_dhrystone_dhrystone_80k](./examples/out_dhrystone_dhrystone_80k)
-
+Dhrystone example with 80k iterations:  
 ![](examples/out_dhrystone_dhrystone_80k/flamegraph_exec.svg)
+
+### Call Graph  
+Similarly, a lightweight wrapper around the open source [gprof2dot tool](https://github.com/jrfonseca/gprof2dot) is provided for generating Call Graphs from the same folded callstack 
+
+Generate DOT and PNG with
+```
+./script/get_call_graph.py examples/out_dhrystone_dhrystone/callstack_folded_exec.txt --png
+```
+
+Wrapper additionally provides a few other options for saving the output call graph, other than the mandatory `.dot` format
+```
+usage: get_call_graph.py [-h] [--svg] [--png] [--pdf] input
+
+Convert collapsed callstack to call graph
+
+positional arguments:
+  input       Collapsed stack trace
+
+options:
+  -h, --help  show this help message and exit
+  --svg       Also save output as SVG
+  --png       Also save output as PNG
+  --pdf       Also save output as PDF
+```
+
+The `.dot` format can be opened directly with
+```
+xdot callstack_folded_exec.dot
+```
+
+Dhrystone example with 10 iterations:  
+![](examples/out_dhrystone_dhrystone/call_graph_exec.png)
+
+Dhrystone example with 80k iterations:  
+![](examples/out_dhrystone_dhrystone_80k/call_graph_exec.png)
 
 ### Execution visualization
 
@@ -856,4 +974,7 @@ Optional switches are:
 
 # Custom SIMD ISA
 
-TBD - Packed 32-bit SIMD ISA supporting low precision formats: 16, 8, 4, and 2-bit integers
+Packed 32-bit SIMD ISA supporting low precision formats: 16, 8, 4, and 2-bit integers  
+Also includes a couple of instructions for using Dcache as scratchpad
+
+TODO: instruction details and patch file for binutils/assembler
