@@ -32,6 +32,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
 - [Gtest](#gtest)
 - [Building the Simulator](#building-the-simulator)
 - [Custom SIMD ISA](#custom-simd-isa)
+  - [Patching `binutils` to add support for custom instructions](#patching-binutils-to-add-support-for-custom-instructions)
 
 
 # Getting the project
@@ -974,7 +975,38 @@ Optional switches are:
 
 # Custom SIMD ISA
 
-Packed 32-bit SIMD ISA supporting low precision formats: 16, 8, 4, and 2-bit integers  
-Also includes a couple of instructions for using Dcache as scratchpad
+// TODO  
+> Packed 32-bit SIMD ISA with support for low precision formats: 16, 8, 4, and 2-bit integers  
+> Also includes a couple of instructions for using Dcache as scratchpad
 
-TODO: instruction details and patch file for binutils/assembler
+## Patching `binutils` to add support for custom instructions
+
+Apply [provided patch file](./binutils.patch)
+
+```sh
+# go to binutils dir, it's assumed that the toolchain has already been compiled
+cd <toolchain_workdir>/riscv-gnu-toolchain/binutils
+
+# optionally check patch
+git apply --stat <workdir>/ama-riscv-sim/binutils.patch
+git apply --check <workdir>/ama-riscv-sim/binutils.patch
+
+# apply
+git apply <workdir>/ama-riscv-sim/binutils.patch
+
+# rebuild just binutils
+cd <toolchain_workdir>/riscv-gnu-toolchain/build-binutils-newlib
+make -j 8 && make install -j 8
+```
+
+Patch taken from  
+RISC-V GNU toolchain repo: `https://github.com/riscv/riscv-gnu-toolchain`  
+Pulls binutils from: `https://sourceware.org/git/binutils-gdb.git`
+
+```
+commit c7f28aad0c99d1d2fec4e52ebfa3735d90ceb8e9 (HEAD, tag: binutils-2_42)
+Author: Nick Clifton <nickc@redhat.com>
+Date:   Mon Jan 29 14:51:43 2024 +0000
+
+    Update version number to 2.42
+```
