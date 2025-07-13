@@ -260,7 +260,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef HW_MODELS_EN
-    bp.finish(out_dir);
+    bp.finish(out_dir, prof_pc.inst_cnt);
     mem->cache_finish();
     log_hw_stats();
     #endif

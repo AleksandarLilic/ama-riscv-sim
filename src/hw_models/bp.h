@@ -40,8 +40,6 @@ class bp {
             stats.eval(pc, correct, b_dir_last);
         }
 
-        virtual float_t get_acc() { return stats.get_acc(); };
-
         virtual void goto_future(uint32_t /* correct_pc */) {}; // ideal bp only
 
         virtual void dump() {
@@ -64,8 +62,8 @@ class bp {
             file << "," << JSON_N << "\"size\": " << size << "\n},";
         }
 
-        virtual void summarize_stats() {
-            stats.summarize();
+        virtual void summarize_stats(uint64_t total_insts) {
+            stats.summarize(total_insts);
         }
 
         virtual uint32_t get_predicted_stats(uint32_t pc) {

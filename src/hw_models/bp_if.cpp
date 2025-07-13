@@ -180,9 +180,9 @@ void bp_if::update_app_stats(uint32_t pc, bool taken) {
     ptr->pattern.push_back(taken);
 }
 
-void bp_if::finish(std::string out_dir) {
-    for (auto& p : all_predictors) p->summarize_stats();
-    active_bp->summarize_stats();
+void bp_if::finish(std::string out_dir, uint64_t profiled_insts) {
+    for (auto& p : all_predictors) p->summarize_stats(profiled_insts);
+    active_bp->summarize_stats(profiled_insts);
     show_stats(out_dir);
 }
 
