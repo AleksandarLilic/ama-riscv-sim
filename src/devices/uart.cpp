@@ -1,6 +1,6 @@
 #include "uart.h"
 
-uart::uart() : dev(UART_SIZE) {
+uart::uart(cfg_t cfg) : dev(UART_SIZE), sink_uart(cfg.sink_uart) {
     std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
     #ifdef UART_INPUT_EN
@@ -10,6 +10,7 @@ uart::uart() : dev(UART_SIZE) {
     std::unique_lock<std::mutex> lock(mtx);
     cv.wait(lock, [this] () { return uart_in_ready.load(); });
     #endif
+    uart_ofs.open(cfg.out_dir + "uart.log");
 }
 
 uart::~uart() {
@@ -25,7 +26,8 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
         // write to memory
         dev::wr(address, TO_U8(data), size);
         // emulate the effect of writing to uart tx_data register
-        std::cout << TO_U8(data) << std::flush;
+        uart_ofs << TO_U8(data);
+        if (!sink_uart) std::cout << TO_U8(data) << std::flush;
     }
 }
 
@@ -56,6 +58,7 @@ void uart::uart_stdin(uart_baud_rate baud_rate) {
     while (uart_running) {
         c = std::getchar();
         if (c == '\n') {
+            // input characters
             for (char c : input_buffer) {
                 {
                     std::lock_guard<std::mutex> lock(mtx);
@@ -64,6 +67,16 @@ void uart::uart_stdin(uart_baud_rate baud_rate) {
                 }
                 std::this_thread::sleep_for(delay);
             }
+            // newline for end
+            /*
+            {
+                std::lock_guard<std::mutex> lock(mtx);
+                mem[UART_RX_DATA] = '\n';
+                mem[UART_STATUS] |= UART_RX_VALID;
+            }
+            std::this_thread::sleep_for(delay);
+            */
+
             input_buffer.clear();
         } else {
             input_buffer.push_back(c);

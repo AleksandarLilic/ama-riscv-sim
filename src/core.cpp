@@ -2,17 +2,16 @@
 
 core::core(
     memory *mem,
-    std::string out_dir,
     cfg_t cfg,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         running(false),
         mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
         inst_cnt(0), inst_cnt_csr(0),
         tu(&csr, &pc, &inst),
-        out_dir(out_dir), prof_pc(cfg.prof_pc), prof_act(false)
+        out_dir(cfg.out_dir), prof_pc(cfg.prof_pc), prof_act(false)
     #ifdef PROFILERS_EN
-    , prof(out_dir, PROF_SRC)
-    , prof_perf(out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
+    , prof(cfg.out_dir, PROF_SRC)
+    , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
     #ifdef HW_MODELS_EN
     , bp("bpred", hw_cfg)
@@ -41,7 +40,7 @@ core::core(
     tu.set_dasm(&dasm);
     logf = {cfg.log, cfg.log_always, cfg.log_always, cfg.log_state};
     logf.activate(false);
-    if (logf.en) log_ofstream.open(out_dir + "exec.log");
+    if (logf.en) log_ofstream.open(cfg.out_dir + "exec.log");
     if (logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
@@ -64,6 +63,7 @@ core::core(
 }
 
 void core::exec() {
+    std::cout << std::dec << "SIMULATION STARTED\n";
     #ifdef PROFILERS_EN
     prof_act = false;
     prof.active = false;
@@ -72,7 +72,7 @@ void core::exec() {
     #endif
 
     #ifdef UART_EN
-    std::cout << "=== UART START ===" << "\n";
+    if (!cfg.sink_uart) std::cout << "=== UART START ===" << "\n";
     #endif
 
     // start the core
@@ -252,7 +252,7 @@ void core::exec_inst() {
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();
     if ((cfg.mem_dump_start > 0) && (cfg.mem_dump_size > 0)) {
-        mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, out_dir);
+        mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, cfg.out_dir);
     }
     #ifdef PROFILERS_EN
     prof_fusion.finish();
@@ -260,7 +260,7 @@ void core::finish(bool dump_regs) {
     prof.finish();
     #endif
     #ifdef HW_MODELS_EN
-    bp.finish(out_dir, prof_pc.inst_cnt);
+    bp.finish(cfg.out_dir, prof_pc.inst_cnt);
     mem->cache_finish();
     log_hw_stats();
     #endif
@@ -1812,7 +1812,7 @@ void core::c_ebreak() {
 #ifdef HW_MODELS_EN
 void core::log_hw_stats() {
     std::ofstream ofs;
-    ofs.open(out_dir + "hw_stats.json");
+    ofs.open(cfg.out_dir + "hw_stats.json");
     ofs << "{\n";
     mem->log_cache_stats(ofs);
     bp.log_stats(ofs);
@@ -1825,8 +1825,9 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_EN
-    std::cout << "=== UART END ===\n" << "\n";
+    if (!cfg.sink_uart) std::cout << "=== UART END ===\n";
     #endif
+    std::cout << "SIMULATION FINISHED\n\n";
     uint32_t tohost = csr.at(CSR_TOHOST).value;
     if (tohost != 1) {
         std::cout << "Failed test ID: " << (tohost >> 1);

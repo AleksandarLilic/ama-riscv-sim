@@ -35,8 +35,10 @@ class uart : public dev {
         std::atomic<bool> uart_in_ready;
         std::condition_variable cv;
         #endif
+        std::ofstream uart_ofs;
+        const bool sink_uart;
     public:
-        uart();
+        uart(cfg_t cfg);
         ~uart();
         void wr(uint32_t address, uint32_t data, uint32_t size) override;
     #ifdef UART_INPUT_EN

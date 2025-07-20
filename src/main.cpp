@@ -116,6 +116,9 @@ struct defs_t {
     static constexpr char mem_dump_start[] = "0";
     static constexpr char mem_dump_size[] = "0";
     static constexpr char run_insts[] = "0";
+    #ifdef UART_EN
+    static constexpr char sink_uart[] = "false";
+    #endif
     #ifdef PROFILERS_EN
     static constexpr char prof_pc_start[] = "0";
     static constexpr char prof_pc_stop[] = "0";
@@ -200,6 +203,11 @@ int main(int argc, char* argv[]) {
          cxxopts::value<std::string>()->default_value(""))
         ("run_insts", "Number of instructions to run. Set to 0 for no limit",
          cxxopts::value<std::string>()->default_value(defs_t::run_insts))
+        #ifdef UART_EN
+        ("sink_uart",
+         "Don't print UART output to terminal. UART still fully operational",
+         cxxopts::value<bool>()->default_value(defs_t::sink_uart))
+        #endif
 
         #ifdef PROFILERS_EN
         ("prof_pc_start", "Start PC (hex) for profiling",
@@ -354,6 +362,9 @@ int main(int argc, char* argv[]) {
         cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
         cfg.run_insts = TO_SIZE(result["run_insts"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
+        #ifdef UART_EN
+        cfg.sink_uart = TO_BOOL(result["sink_uart"]);
+        #endif
 
         #ifdef PROFILERS_EN
         cfg.prof_pc.start = TO_HEX(result["prof_pc_start"]);
@@ -439,9 +450,10 @@ int main(int argc, char* argv[]) {
     #endif
     std::cout << std::endl;
 
+    cfg.out_dir = gen_out_dir(test_elf, out_dir_tag);
     TRY_CATCH({
-        memory mem(test_elf, hw_cfg);
-        core rv32(&mem, gen_out_dir(test_elf, out_dir_tag), cfg, hw_cfg);
+        memory mem(test_elf, cfg, hw_cfg);
+        core rv32(&mem, cfg, hw_cfg);
         rv32.exec();
     });
 

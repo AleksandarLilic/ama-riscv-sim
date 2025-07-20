@@ -18,7 +18,7 @@
 class core {
     public:
         core() = delete;
-        core(memory* mem, std::string out_dir, cfg_t cfg, hw_cfg_t hw_cfg);
+        core(memory* mem, cfg_t cfg, hw_cfg_t hw_cfg);
         void exec();
         void exec_inst();
         void dump();

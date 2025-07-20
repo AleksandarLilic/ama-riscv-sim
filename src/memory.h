@@ -37,7 +37,7 @@ class memory {
 
     public:
         memory() = delete;
-        memory(std::string test_elf, hw_cfg_t hw_cfg);
+        memory(std::string test_elf, cfg_t cfg, hw_cfg_t hw_cfg);
         std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
             return mm.get_symbol_map();
         }
