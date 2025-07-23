@@ -62,7 +62,9 @@ class bp_local : public bp {
             cnt_ptr = &cnt;
         }
 
-        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & pc_mask; }
+        uint32_t get_idx(uint32_t pc) {
+            return (pc >> BP_PC_CUTOFF_BITS) & pc_mask;
+        }
 
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             idx_last = get_idx(pc);

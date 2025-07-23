@@ -30,7 +30,9 @@ class bp_combined : public bp {
 
         void add_size(uint32_t size) { this->size += size; }
 
-        uint32_t get_idx(uint32_t pc) { return (pc >> 2) & cnt.get_mask(); }
+        uint32_t get_idx(uint32_t pc) {
+            return (pc >> BP_PC_CUTOFF_BITS) & cnt.get_mask();
+        }
 
         uint32_t select(uint32_t pc) {
             idx_last = get_idx(pc);

@@ -33,7 +33,7 @@ class bp_global : public bp {
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             cnt.update(taken, idx_last);
-            gr = ((gr << 1) | taken) & idx_mask;
+            gr = ((gr << 1) | taken);
             return (next_pc == predicted_pc);
         }
 };

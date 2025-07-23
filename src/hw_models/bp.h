@@ -4,6 +4,12 @@
 #include "bp_stats.h"
 #include "bp_cnt.h"
 
+#ifdef RV32C
+#define BP_PC_CUTOFF_BITS 1
+#else
+#define BP_PC_CUTOFF_BITS 2
+#endif
+
 struct bp_cfg_t {
     const uint8_t pc_bits;
     const uint8_t cnt_bits;
