@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstring>
 #include <cmath>
+#include <bitset>
 
 // Decoder types
 enum class opcode {
@@ -337,6 +338,10 @@ struct cfg_t {
     bool log_state;
     bool end_dump_state;
     bool exit_on_trap;
+    #ifdef UART_EN
+    bool sink_uart;
+    #endif
+    std::string out_dir;
 };
 
 struct hw_cfg_t {

@@ -50,6 +50,7 @@ static_assert(0, "DPI requires profilers");
 //#define MEM_SIZE 16384
 //#define MEM_SIZE 32768
 #define MEM_SIZE 65536
+//#define MEM_SIZE 131072
 #define UART0_ADDR (BASE_ADDR + MEM_SIZE)
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
 #define CLINT_ADDR (BASE_ADDR + MEM_SIZE + 32)
@@ -334,6 +335,9 @@ static_assert(0, "DPI requires profilers");
 #define SIM_WARNING std::cout << "\n >> SIM RUNTIME WARNING: "
 #define SIM_TRAP std::cout << "\n >> SIM INFO: Instruction trapped: "
 #define DASM_TRAP dasm.asm_ss << "Instruction trapped: "
+
+#define BIN_FORMAT(val, n) \
+    std::setw((n)) << std::setfill('0') << std::bitset<n>(val) << std::dec
 
 #define MEM_ADDR_FORMAT(addr) \
     std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr \
