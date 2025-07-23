@@ -1,9 +1,12 @@
-# checkers/logs
+# checkers/logs/sim outputs
 *.check
 *.log
+*.dot
+*.pkl
 sweep_*_best.json
 sweep_*_binned.json
 sweep_*.png
+script/**/out_*/
 
 # test files
 test/out_*/
@@ -18,6 +21,7 @@ test/*.bin
 *.help
 *.man
 *.gprof
+gmon.out
 analysis.gprof.ipynb
 *.nm
 *.grep
