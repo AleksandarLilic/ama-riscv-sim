@@ -28,10 +28,8 @@ def get_test_name(app: str) -> str:
     test_name = app.split("/")
     return "_".join(test_name[-2:]).replace(".elf", "")
 
-def get_out_dir(test_name: str) -> str:
-    return f"out_{test_name}"
-
-def gen_sweep_log_name(sweep: str, workloads: List, only_searched: bool) -> str:
+def gen_sweep_log_name(
+    sweep: str, work_dir: str, workloads: List, only_searched: bool) -> str:
     if len(workloads) > 1:
         if only_searched:
             sweep_name = "workloads_searched"
@@ -39,7 +37,7 @@ def gen_sweep_log_name(sweep: str, workloads: List, only_searched: bool) -> str:
             sweep_name = "workloads_all"
     else:
         sweep_name = get_test_name(workloads[0]["app"])
-    return sweep_name, f"sweep_{sweep}_{sweep_name}.log"
+    return sweep_name, os.path.join(work_dir, f"sweep_{sweep}_{sweep_name}.log")
 
 def within_size(num, size_lim: List[int]) -> bool:
     return size_lim[0] <= num <= size_lim[1]
@@ -109,6 +107,8 @@ def run_workloads(wp: workload_params):
         cache_ct = []
 
     msg_out = f"{wp.msg}\n"
+    start_dir = os.getcwd()
+    os.chdir(args.work_dir)
     for workload in wp.workloads:
         app = workload["app"]
         wl_args = workload["args"]
@@ -118,7 +118,7 @@ def run_workloads(wp: workload_params):
         if wp.save_sim:
             msg_out += f"{res.stdout}\n\n"
 
-        out_dir = get_out_dir(get_test_name(app))
+        out_dir = f"out_{get_test_name(app)}"
         if wp.tag:
             out_dir += f"_{wp.tag}"
 
@@ -132,7 +132,8 @@ def run_workloads(wp: workload_params):
         with open(json_hw_stats, "r") as f:
             hw_stats = json.load(f)
 
-        subprocess.run(["rm", "-r", out_dir])
+        # TODO: no longer needed, outputs are required for combined bp prep
+        #subprocess.run(["rm", "-r", out_dir])
 
         if bp_sweep:
             if bp_size is None: # bp, and therefore size, is constant
@@ -171,6 +172,7 @@ def run_workloads(wp: workload_params):
                 cache_ct.append(hw_stats[wp.sweep]["ct_mem"]["reads"])
                 cache_ct.append(hw_stats[wp.sweep]["ct_mem"]["writes"])
 
+    os.chdir(start_dir)
     if bp_sweep:
         avg_acc = None
         if len(agg_acc) > 0:
@@ -194,7 +196,7 @@ def run_cache_sweep(
     multi_wl = len(workloads) > 1
     running_single_best = running_best and not multi_wl
     sweep_name, sweep_log = gen_sweep_log_name(
-        args.sweep, workloads, not running_best)
+        args.sweep, args.work_dir, workloads, not running_best)
     if os.path.exists(sweep_log):
         os.remove(sweep_log)
 
@@ -552,7 +554,7 @@ def run_bp_sweep(
     multi_wl = len(workloads) > 1
     running_single_best = running_best and not multi_wl
     sweep_name, sweep_log = gen_sweep_log_name(
-        args.sweep, workloads, not running_best)
+        args.sweep, args.work_dir, workloads, not running_best)
     if os.path.exists(sweep_log) and not args.load_stats:
         os.remove(sweep_log)
 
@@ -645,7 +647,7 @@ def run_bp_sweep(
                         msg=f"==> SWEEP: {bp_handle} {bpp} <==",
                         save_sim=args.save_sim,
                         ignore_thr=(bp == "bp_static"),
-                        tag="".join(bpp[1::2]), # every even index is a number
+                        tag=f"{bp_handle}_" + "".join(bpp[1::2]), # every even index is a number
                         ret_list=bpp
                     )
                 ): bpp for bpp in bp_params
@@ -790,7 +792,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-p", "--params", required=True, help="Path to the hardware model sweep params file")
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
-    parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Ignores --save_stats")
+    parser.add_argument("--load_stats", action="store_true", default=None, help="Load the previously saved stats from a json file instead of running the sweep. Takes priority over --save_stats")
+    parser.add_argument("--work_dir", default=os.getcwd(), help="Path to run the sweep in and store results. Either absolute, or relative to this script")
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
@@ -808,6 +811,9 @@ def parse_args() -> argparse.Namespace:
 def run_main(args: argparse.Namespace) -> None:
     if not os.path.exists(args.params):
         raise FileNotFoundError(f"Params file not found at: {args.params}")
+
+    if not os.path.exists(args.work_dir):
+        os.makedirs(args.work_dir)
 
     with open(args.params, "r") as flavor:
         sweep_dict = json.load(flavor)
