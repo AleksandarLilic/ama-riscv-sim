@@ -214,7 +214,7 @@ def run_cache_sweep(
 
     ck = args.sweep # cache key in the hw_stats dict
     sr = {} # sweep results dict
-    bp_act =  ["--bp_active", "none"] # so there is no impact on the caches
+    bp_act =  ["--bp", "none"] # so there is no impact on the caches
 
     if not args.load_stats:
         idx_c = 1
@@ -503,18 +503,21 @@ def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 
     bp_args = list(sk)
     # cartesian product of all the params
-    bp_combs = product(*(bp_sweep[bp_arg] for bp_arg in bp_args))
+    bp_products = product(*(bp_sweep[bp_arg] for bp_arg in bp_args))
 
     cmds = []
     sizes = []
-    for comb in bp_combs:
-        bp_size = get_bp_size(bp, dict(zip(bp_args, comb)))
+    for bp_prod in bp_products:
+        bp_size = get_bp_size(bp, dict(zip(bp_args, bp_prod)))
         if not within_size(bp_size, size_lim):
             if bp != "bp_static": # static is always included
                 continue
         command = []
-        for k, v in zip(bp_args, comb):
-            command.append(f"--{bp}_{k}")
+        for k, v in zip(bp_args, bp_prod):
+            if "method" in k or "combined" in bp:
+                command.append(f"--{bp}_{k}")
+            else:
+                command.append(f"--bp_{k}")
             command.append(str(v))
 
         cmds.append(command)
@@ -581,7 +584,7 @@ def run_bp_sweep(
 
         best = {}
         bp = bp_handle.split("-")[0]
-        bp_act =  ["--bp_active", bp.replace("bp_", "", 1)]
+        bp_act =  ["--bp", bp.replace("bp_", "", 1)]
 
         if running_best:
             bp_params = best_params[bp_handle]
@@ -592,6 +595,7 @@ def run_bp_sweep(
             bpc_sizes, bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
             bp1 = bpc["predictors"][0]
             bp2 = bpc["predictors"][1]
+            bp_act =  [""] # sim auto sets act=comb when second bp is provided
 
             if bpc["exhaustive"][0]:
                 bp1_p_all = save_bpp_for_combined_e[bp1]
@@ -613,8 +617,8 @@ def run_bp_sweep(
                 if within_size(bp1_s + bp2_s + bpc_s, SIZE_LIM)
             ]
 
-            bp1_arg = [f"--bp_combined_p1", bp1.replace("bp_", "", 1)]
-            bp2_arg = [f"--bp_combined_p2", bp2.replace("bp_", "", 1)]
+            bp1_arg = [f"--bp", bp1.replace("bp_", "", 1)]
+            bp2_arg = [f"--bp2", bp2.replace("bp_", "", 1)]
             for m in bp_params_list:
                 # add the combined predictor args into each command
                 m.extend(bp1_arg)
@@ -803,6 +807,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
     parser.add_argument("--bp_top_thr", type=int, default=80, help="Accuracy threshold for the best branch predictor configs to always include")
+    parser.add_argument("--skip_complete_workloads", action="store_true", default=False, help="Skip complete workloads sweep (i.e. don't run again with skip_search=True workloads). Skips per workloads as well")
     parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of workers")
 
@@ -849,6 +854,8 @@ def run_main(args: argparse.Namespace) -> None:
         if single_wl_sweep:
             return
 
+        if args.skip_complete_workloads:
+            return
         # FIXME: redundant to run all workloads and standalone workloads
         # as these are the same results, just plotted differently
         params = gen_cache_final_params(args.sweep, sr_best)
@@ -869,6 +876,8 @@ def run_main(args: argparse.Namespace) -> None:
         if single_wl_sweep:
             return
 
+        if args.skip_complete_workloads:
+            return
         # FIXME: same as above
         params = gen_bp_final_params(sr_bin)
         if workloads_all != workloads_sweep:
