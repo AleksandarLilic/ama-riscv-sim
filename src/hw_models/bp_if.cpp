@@ -4,22 +4,23 @@
 #define BP_CFG_NONE { 0, 0, 0, 0, hw_cfg.bp_active_name.c_str() }
 // reuse cnt bits as method for static
 #define BP_CFG_STATIC { \
-    0, TO_U8(hw_cfg.bp_static_method), 0, 0, hw_cfg.bp_active_name.c_str() }
+    0, TO_U8(hw_cfg.bp_static_method), 0, 0, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_BIMODAL_CFG { \
-    hw_cfg.bp_bimodal_pc_bits, hw_cfg.bp_bimodal_cnt_bits, 0, 0, \
+    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, 0, \
     hw_cfg.bp_active_name.c_str() }
 #define BP_LOCAL_CFG { \
-    hw_cfg.bp_local_pc_bits, hw_cfg.bp_local_cnt_bits, \
-    hw_cfg.bp_local_hist_bits, 0, hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, hw_cfg.bp_lhist_bits, 0, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_GLOBAL_CFG { \
-    0, hw_cfg.bp_global_cnt_bits, 0, hw_cfg.bp_global_gr_bits, \
+    0, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
     hw_cfg.bp_active_name.c_str() }
 #define BP_GSELECT_CFG { \
-    hw_cfg.bp_gselect_pc_bits, hw_cfg.bp_gselect_cnt_bits, \
-    0, hw_cfg.bp_gselect_gr_bits, hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_GSHARE_CFG { \
-    hw_cfg.bp_gshare_pc_bits, hw_cfg.bp_gshare_cnt_bits, \
-    0, hw_cfg.bp_gshare_gr_bits, hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_active_name.c_str() }
 #define BP_COMBINED_CFG { \
     hw_cfg.bp_combined_pc_bits, hw_cfg.bp_combined_cnt_bits, 0, 0, \
     hw_cfg.bp_active_name.c_str() }
@@ -27,8 +28,8 @@
 bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     bp_name(name),
     bp_active_type(hw_cfg.bp_active),
-    bp_combined_p1_type(hw_cfg.bp_combined_p1),
-    bp_combined_p2_type(hw_cfg.bp_combined_p2),
+    bp_combined_p1_type(hw_cfg.bp),
+    bp_combined_p2_type(hw_cfg.bp2),
     bp_run_all(hw_cfg.bp_run_all),
     to_dump_csv(hw_cfg.bp_dump_csv)
     {

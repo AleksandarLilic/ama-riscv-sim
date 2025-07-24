@@ -18,6 +18,9 @@
 #define TRY_CATCH(x) x
 #endif
 
+#define CXXOPTS_VAL_STR cxxopts::value<std::string>()
+#define CXXOPTS_VAL_BOOL cxxopts::value<bool>()
+
 #define TO_HEX(x) std::stoul(x.as<std::string>(), nullptr, 16)
 #define TO_SIZE(x) std::stoul(x.as<std::string>(), nullptr, 10)
 #define TO_BOOL(x) x.as<bool>()
@@ -77,7 +80,7 @@ const std::unordered_map<std::string, cache_policy_t> cache_policy_map = {
 };
 
 // allowed options for static predictor methods
-const std::unordered_map<std::string, bp_sttc_t> bp_static_map = {
+const std::unordered_map<std::string, bp_sttc_t> bp_sttc_map = {
     {"at", bp_sttc_t::at},
     {"ant", bp_sttc_t::ant},
     {"btfn", bp_sttc_t::btfn}
@@ -93,19 +96,9 @@ const std::unordered_map<std::string, bp_t> bp_names_map = {
     {"gshare", bp_t::gshare},
     {"ideal", bp_t::ideal},
     {"none", bp_t::none},
-    {"combined", bp_t::combined}
+    //{"combined", bp_t::combined}
 };
 
-// allowed options for combined predictor
-const std::unordered_map<std::string, bp_t> bpc_names_map = {
-    {"static", bp_t::sttc},
-    {"bimodal", bp_t::bimodal},
-    {"local", bp_t::local},
-    {"global", bp_t::global},
-    {"gselect", bp_t::gselect},
-    {"gshare", bp_t::gshare},
-    {"ideal", bp_t::ideal}
-};
 #endif
 
 // defaults
@@ -136,36 +129,35 @@ struct defs_t {
 
 #ifdef HW_MODELS_EN
 struct hw_defs_t {
+    // caches
     static constexpr char icache_sets[] = "1";
     static constexpr char icache_ways[] = "4";
     static constexpr char icache_policy[] = "lru";
     static constexpr char dcache_sets[] = "1";
     static constexpr char dcache_ways[] = "8";
     static constexpr char dcache_policy[] = "lru";
+    // caches other configs
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
-    static constexpr char bp_active[] = "combined";
-    static constexpr char bp_combined_p1[] = "static";
-    static constexpr char bp_combined_p2[] = "gselect";
-    static constexpr char bp_run_all[] = "false";
-    static constexpr char bp_dump_csv[] = "false";
+    // branch predictors
+    static constexpr char bp[] = "gshare";
+    static constexpr char bp2[] = "none";
     // supported predictors configurations
     static constexpr char bp_static_method[] = "btfn";
-    static constexpr char bp_bimodal_pc_bits[] = "7";
-    static constexpr char bp_bimodal_cnt_bits[] = "3";
-    static constexpr char bp_local_pc_bits[] = "5";
-    static constexpr char bp_local_hist_bits[] = "5";
-    static constexpr char bp_local_cnt_bits[] = "3";
-    static constexpr char bp_global_gr_bits[] = "7";
-    static constexpr char bp_global_cnt_bits[] = "3";
-    static constexpr char bp_gselect_pc_bits[] = "2";
-    static constexpr char bp_gselect_gr_bits[] = "6";
-    static constexpr char bp_gselect_cnt_bits[] = "1";
-    static constexpr char bp_gshare_pc_bits[] = "8";
-    static constexpr char bp_gshare_gr_bits[] = "8";
-    static constexpr char bp_gshare_cnt_bits[] = "1";
+    static constexpr char bp_pc_bits[] = "5";
+    static constexpr char bp_cnt_bits[] = "2";
+    static constexpr char bp_lhist_bits[] = "5";
+    static constexpr char bp_gr_bits[] = "5";
+    static constexpr char bp2_static_method[] = "at";
+    static constexpr char bp2_pc_bits[] = "5";
+    static constexpr char bp2_cnt_bits[] = "2";
+    static constexpr char bp2_lhist_bits[] = "5";
+    static constexpr char bp2_gr_bits[] = "5";
     static constexpr char bp_combined_pc_bits[] = "6";
     static constexpr char bp_combined_cnt_bits[] = "3";
+    // bp other configs
+    static constexpr char bp_run_all[] = "false";
+    static constexpr char bp_dump_csv[] = "false";
 };
 #endif
 
@@ -182,152 +174,133 @@ int main(int argc, char* argv[]) {
     hw_cfg_t hw_cfg;
 
     options.add_options()
-        ("p,path", "Path to the ELF file to load",
-         cxxopts::value<std::string>())
+        ("p,path", "Path to the ELF file to load", CXXOPTS_VAL_STR)
         ("rf_names",
          "Register file names used for output. Options: " +
          gen_help_list(rf_names_map),
-         cxxopts::value<std::string>()->default_value(defs_t::rf_names))
+         CXXOPTS_VAL_STR->default_value(defs_t::rf_names))
         ("end_dump_state", "Dump all registers at the end of simulation",
-         cxxopts::value<bool>()->default_value(defs_t::end_dump_state))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::end_dump_state))
         ("exit_on_trap",
          "Exit sim on trap instead of going to trap handler",
-         cxxopts::value<bool>()->default_value(defs_t::exit_on_trap))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_trap))
         ("mem_dump_start",
          "Start address (hex) for memory dump at the end of simulation",
-         cxxopts::value<std::string>()->default_value(defs_t::mem_dump_start))
+         CXXOPTS_VAL_STR->default_value(defs_t::mem_dump_start))
         ("mem_dump_size",
          "Size of the region for memory dump at the end of simulation",
-         cxxopts::value<std::string>()->default_value(defs_t::mem_dump_size))
+         CXXOPTS_VAL_STR->default_value(defs_t::mem_dump_size))
         ("out_dir_tag", "Tag (suffix) for output directory",
-         cxxopts::value<std::string>()->default_value(""))
+         CXXOPTS_VAL_STR->default_value(""))
         ("run_insts", "Number of instructions to run. Set to 0 for no limit",
-         cxxopts::value<std::string>()->default_value(defs_t::run_insts))
+         CXXOPTS_VAL_STR->default_value(defs_t::run_insts))
         #ifdef UART_EN
         ("sink_uart",
          "Don't print UART output to terminal. UART still fully operational",
-         cxxopts::value<bool>()->default_value(defs_t::sink_uart))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::sink_uart))
         #endif
 
         #ifdef PROFILERS_EN
         ("prof_pc_start", "Start PC (hex) for profiling",
-         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_start))
+         CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_start))
         ("prof_pc_stop", "Stop PC (hex) for profiling",
-         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_stop))
+         CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_stop))
         ("prof_pc_single_match",
          "Run profiling only for match number (0 for all matches)",
-         cxxopts::value<std::string>()->default_value(defs_t::prof_pc_sm))
+         CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_sm))
         ("t,prof_trace", "Record profiler trace",
-         cxxopts::value<bool>()->default_value(defs_t::prof_trace))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::prof_trace))
         ("e,perf_event",
          "Performance event to track. Options: " +
          gen_help_list(perf_event_map),
-         cxxopts::value<std::string>()->default_value(defs_t::perf_event))
+         CXXOPTS_VAL_STR->default_value(defs_t::perf_event))
         ("rf_usage", "Enable profiling register file usage",
-         cxxopts::value<bool>()->default_value(defs_t::rf_usage))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
         #endif
 
         #ifdef DASM_EN
         ("l,log",
          "Enable logging",
-         cxxopts::value<bool>()->default_value(defs_t::log))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::log))
         ("log_always",
          "Always log execution. Otherwise, log during profiling only",
-         cxxopts::value<bool>()->default_value(defs_t::log_always))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::log_always))
         ("log_state", "Log state after each executed instruction",
-         cxxopts::value<bool>()->default_value(defs_t::log_state))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::log_state))
         #endif
 
         #ifdef HW_MODELS_EN
+        // caches
         ("icache_sets", "Number of sets in I$",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::icache_sets))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_sets))
         ("icache_ways", "Number of ways in I$",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::icache_ways))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_ways))
         ("icache_policy", "I$ replacement policy. \nOptions: " +
          gen_help_list(cache_policy_map),
-         cxxopts::value<std::string>()->default_value(hw_defs_t::icache_policy))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_policy))
         ("dcache_sets", "Number of sets in D$",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_sets))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_sets))
         ("dcache_ways", "Number of ways in D$",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_ways))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_ways))
         ("dcache_policy", "D$ replacement policy. \nOptions: " +
          gen_help_list(cache_policy_map),
-         cxxopts::value<std::string>()->default_value(hw_defs_t::dcache_policy))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_policy))
+        // caches other configs
         ("roi_start", "Region of interest start address (hex)",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::roi_start))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_start))
         ("roi_size", "Region of interest size",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::roi_size))
-        ("bp_active",
-         "Active branch predictor (driving I$).\nOptions: " +
-         gen_help_list(bp_names_map) + "\n ",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_active))
-        ("bp_combined_p1",
-         "First branch predictor for combined predictor. Counters will be "
-         "weakly biased towards this predictor (impacts warm-up period)\n"
-         "Options: " +
-         gen_help_list(bpc_names_map) + "\n ",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p1))
-        ("bp_combined_p2",
-         "Second branch predictor for combined predictor.\n"
-         "Options: " +
-         gen_help_list(bpc_names_map) + "\n ",
-         cxxopts::value<std::string>()->default_value(hw_defs_t::bp_combined_p2))
-        ("bp_run_all", "Run all branch predictors",
-         cxxopts::value<bool>()->default_value(hw_defs_t::bp_run_all))
-        ("bp_dump_csv", "Dump branch predictor stats to CSV",
-         cxxopts::value<bool>()->default_value(hw_defs_t::bp_dump_csv))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_size))
+
+        // branch predictors
+        ("bp",
+         "First branch predictor. Defaults as active, driving the I$."
+         "For combined predictor, counters will be weakly biased towards this" "predictor (impacts warm-up period)\n"
+         "Options: " + gen_help_list(bp_names_map) + "\n ",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp))
+        ("bp2",
+         "Second branch predictor, only for combined predictor. If provided,"
+         "combined predictor becomes active\n"
+         "Options: " + gen_help_list(bp_names_map) + "\n ",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2))
 
         // supported predictors configurations
         ("bp_static_method",
          "Static predictor - method. \nOptions: " +
-         gen_help_list(bp_static_map),
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_static_method))
-        ("bp_bimodal_pc_bits", "Bimodal predictor - PC bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_bimodal_pc_bits))
-        ("bp_bimodal_cnt_bits", "Bimodal predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_bimodal_cnt_bits))
-        ("bp_local_pc_bits", "Local predictor - PC bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_local_pc_bits))
-        ("bp_local_cnt_bits", "Local predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_local_cnt_bits))
-        ("bp_local_hist_bits", "Local predictor - local history bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_local_hist_bits))
-        ("bp_global_cnt_bits", "Global predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_global_cnt_bits))
-        ("bp_global_gr_bits", "Global predictor - global register bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_global_gr_bits))
-        ("bp_gselect_cnt_bits", "Gselect predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gselect_cnt_bits))
-        ("bp_gselect_gr_bits", "Gselect predictor - global register bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gselect_gr_bits))
-        ("bp_gselect_pc_bits", "Gselect predictor - PC bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gselect_pc_bits))
-        ("bp_gshare_cnt_bits", "Gshare predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gshare_cnt_bits))
-        ("bp_gshare_gr_bits", "Gshare predictor - global register bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gshare_gr_bits))
-        ("bp_gshare_pc_bits", "Gshare predictor - PC bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_gshare_pc_bits))
+         gen_help_list(bp_sttc_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_static_method))
+        ("bp_pc_bits", "Branch predictor - PC bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_pc_bits))
+        ("bp_cnt_bits", "Branch predictor - counter bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_cnt_bits))
+        ("bp_lhist_bits", "Branch predictor - local history bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_lhist_bits))
+        ("bp_gr_bits", "Branch predictor - global register bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_gr_bits))
+
+        ("bp2_static_method",
+         "Static predictor - method. \nOptions: " +
+         gen_help_list(bp_sttc_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_static_method))
+        ("bp2_pc_bits", "Branch predictor 2 - PC bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_pc_bits))
+        ("bp2_cnt_bits", "Branch predictor 2 - counter bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_cnt_bits))
+        ("bp2_lhist_bits", "Branch predictor 2 - local history bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_lhist_bits))
+        ("bp2_gr_bits", "Branch predictor 2 - global register bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_gr_bits))
+
         ("bp_combined_pc_bits", "Combined predictor - PC bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_combined_pc_bits))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_combined_pc_bits))
         ("bp_combined_cnt_bits", "Combined predictor - counter bits",
-         cxxopts::value<std::string>()->
-            default_value(hw_defs_t::bp_combined_cnt_bits))
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_combined_cnt_bits))
+
+        // bp other configs
+        ("bp_run_all", "Run all branch predictors",
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_run_all))
+        ("bp_dump_csv", "Dump branch predictor stats to CSV",
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_dump_csv))
+
         #endif
 
         ("h,help", "Print usage");
@@ -382,37 +355,43 @@ int main(int argc, char* argv[]) {
         #endif
 
         #ifdef HW_MODELS_EN
+        // caches
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
         hw_cfg.icache_policy = RESOLVE_ARG("icache_policy", cache_policy_map);
         hw_cfg.dcache_sets = TO_SIZE(result["dcache_sets"]);
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
         hw_cfg.dcache_policy = RESOLVE_ARG("dcache_policy", cache_policy_map);
+        // caches other configs
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
-        hw_cfg.bp_active = RESOLVE_ARG("bp_active", bp_names_map);
-        hw_cfg.bp_active_name = result["bp_active"].as<std::string>();
-        hw_cfg.bp_combined_p1 = RESOLVE_ARG("bp_combined_p1", bpc_names_map);
-        hw_cfg.bp_combined_p2 = RESOLVE_ARG("bp_combined_p2", bpc_names_map);
-        hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
-        hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);
+        // branch predictors
+        hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);
+        hw_cfg.bp2 = RESOLVE_ARG("bp2", bp_names_map);
+        if (hw_cfg.bp2 != bp_t::none) {
+            hw_cfg.bp_active = bp_t::combined;
+            hw_cfg.bp_active_name = "combined";
+        } else {
+            hw_cfg.bp_active = hw_cfg.bp;
+            hw_cfg.bp_active_name = result["bp"].as<std::string>();
+        }
         // per predictor configurations
-        hw_cfg.bp_static_method = RESOLVE_ARG("bp_static_method",bp_static_map);
-        hw_cfg.bp_bimodal_pc_bits = TO_SIZE(result["bp_bimodal_pc_bits"]);
-        hw_cfg.bp_bimodal_cnt_bits = TO_SIZE(result["bp_bimodal_cnt_bits"]);
-        hw_cfg.bp_local_pc_bits = TO_SIZE(result["bp_local_pc_bits"]);
-        hw_cfg.bp_local_cnt_bits = TO_SIZE(result["bp_local_cnt_bits"]);
-        hw_cfg.bp_local_hist_bits = TO_SIZE(result["bp_local_hist_bits"]);
-        hw_cfg.bp_global_cnt_bits = TO_SIZE(result["bp_global_cnt_bits"]);
-        hw_cfg.bp_global_gr_bits = TO_SIZE(result["bp_global_gr_bits"]);
-        hw_cfg.bp_gselect_cnt_bits = TO_SIZE(result["bp_gselect_cnt_bits"]);
-        hw_cfg.bp_gselect_gr_bits = TO_SIZE(result["bp_gselect_gr_bits"]);
-        hw_cfg.bp_gselect_pc_bits = TO_SIZE(result["bp_gselect_pc_bits"]);
-        hw_cfg.bp_gshare_cnt_bits = TO_SIZE(result["bp_gshare_cnt_bits"]);
-        hw_cfg.bp_gshare_gr_bits = TO_SIZE(result["bp_gshare_gr_bits"]);
-        hw_cfg.bp_gshare_pc_bits = TO_SIZE(result["bp_gshare_pc_bits"]);
+        hw_cfg.bp_static_method = RESOLVE_ARG("bp_static_method",bp_sttc_map);
+        hw_cfg.bp_pc_bits = TO_SIZE(result["bp_pc_bits"]);
+        hw_cfg.bp_cnt_bits = TO_SIZE(result["bp_cnt_bits"]);
+        hw_cfg.bp_lhist_bits = TO_SIZE(result["bp_lhist_bits"]);
+        hw_cfg.bp_gr_bits = TO_SIZE(result["bp_gr_bits"]);
+        hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
+        hw_cfg.bp2_pc_bits = TO_SIZE(result["bp2_pc_bits"]);
+        hw_cfg.bp2_cnt_bits = TO_SIZE(result["bp2_cnt_bits"]);
+        hw_cfg.bp2_lhist_bits = TO_SIZE(result["bp2_lhist_bits"]);
+        hw_cfg.bp2_gr_bits = TO_SIZE(result["bp2_gr_bits"]);
+
         hw_cfg.bp_combined_pc_bits = TO_SIZE(result["bp_combined_pc_bits"]);
         hw_cfg.bp_combined_cnt_bits = TO_SIZE(result["bp_combined_cnt_bits"]);
+        // bp other configs
+        hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
+        hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);
         #endif
 
     } catch (const cxxopts::exceptions::option_has_no_value& e) {

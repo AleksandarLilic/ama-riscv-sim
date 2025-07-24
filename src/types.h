@@ -355,31 +355,26 @@ struct hw_cfg_t {
     uint32_t roi_start;
     uint32_t roi_size;
     // branch predictors
+    bp_t bp;
+    bp_t bp2;
     bp_t bp_active;
     std::string bp_active_name;
-    // combined predictor config
-    bp_t bp_combined_p1;
-    bp_t bp_combined_p2;
-    // optionally, run all predefined predictors
-    bool bp_run_all;
-    bool bp_dump_csv;
-    // branch predictor config
+    // supported predictors configurations
     bp_sttc_t bp_static_method;
-    uint8_t bp_bimodal_pc_bits;
-    uint8_t bp_bimodal_cnt_bits;
-    uint8_t bp_local_pc_bits;
-    uint8_t bp_local_cnt_bits;
-    uint8_t bp_local_hist_bits;
-    uint8_t bp_global_cnt_bits;
-    uint8_t bp_global_gr_bits;
-    uint8_t bp_gselect_cnt_bits;
-    uint8_t bp_gselect_gr_bits;
-    uint8_t bp_gselect_pc_bits;
-    uint8_t bp_gshare_cnt_bits;
-    uint8_t bp_gshare_gr_bits;
-    uint8_t bp_gshare_pc_bits;
+    uint8_t bp_pc_bits;
+    uint8_t bp_cnt_bits;
+    uint8_t bp_lhist_bits;
+    uint8_t bp_gr_bits;
+    bp_sttc_t bp2_static_method;
+    uint8_t bp2_pc_bits;
+    uint8_t bp2_cnt_bits;
+    uint8_t bp2_lhist_bits;
+    uint8_t bp2_gr_bits;
     uint8_t bp_combined_pc_bits;
     uint8_t bp_combined_cnt_bits;
+    // bp other configs
+    bool bp_run_all; // optionally, run all predefined predictors
+    bool bp_dump_csv;
 };
 
 struct logging_flags_t {
