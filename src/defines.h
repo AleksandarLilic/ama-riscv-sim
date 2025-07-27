@@ -3,7 +3,7 @@
 // default defines
 #ifndef DPI
 #define UART_EN // some tests require UART, will wait for ready indefinitely
-#define PROFILERS_EN // disable for 'hw_model_sweep.py' - faster and not needed
+#define PROFILERS_EN
 #define HW_MODELS_EN
 #else
 #define PROFILERS_EN

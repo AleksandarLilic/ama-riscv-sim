@@ -79,7 +79,15 @@ std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, hw_cfg_t hw_cfg) {
             break;
         case bp_t::combined:
             bp1 = create_predictor(bp_combined_p1_type, hw_cfg);
+
+            // temp workaround for bp2, works on hw_cfg copy anyway
+            hw_cfg.bp_static_method = hw_cfg.bp2_static_method;
+            hw_cfg.bp_pc_bits = hw_cfg.bp2_pc_bits;
+            hw_cfg.bp_cnt_bits = hw_cfg.bp2_cnt_bits;
+            hw_cfg.bp_lhist_bits = hw_cfg.bp2_lhist_bits;
+            hw_cfg.bp_gr_bits = hw_cfg.bp2_gr_bits;
             bp2 = create_predictor(bp_combined_p2_type, hw_cfg);
+
             bp_out = std::make_unique<
                 bp_combined,
                 bp_cfg_t,
