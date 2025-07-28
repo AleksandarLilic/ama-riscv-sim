@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 
-import os
-import subprocess
-import json
 import argparse
+import glob
+import json
+import os
 import re
-import concurrent.futures
-import numpy as np
-import matplotlib.pyplot as plt
-from itertools import product
+import subprocess
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple, List
-from utils import is_notebook, get_reporoot
+from datetime import timedelta
+from itertools import chain, combinations, product
+from typing import Any, Dict, List, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from utils import get_reporoot, is_notebook, is_headless
 
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
@@ -23,6 +28,17 @@ MK = "o"
 LW = 1
 
 CACHE_LINE_BYTES = 64
+
+class track_time:
+    def __init__(self) -> None:
+        self._last = time.time()
+
+    def __call__(self):
+        now = time.time()
+        now_str = time.strftime("%Y-%m-%d %H-%M-%S")
+        diff = now - self._last
+        self._last = now
+        return now_str, str(timedelta(seconds=diff)).split('.')[0]
 
 def get_test_name(app: str) -> str:
     test_name = app.split("/")
@@ -60,12 +76,24 @@ def convert_keys_to_int(obj):
     else:
         return obj
 
-def create_plot(title: str, sweep_name: str, ncols=2, nrows=1) -> Tuple:
+def create_plot(
+    title: str,
+    sweep_name: str,
+    ncols=2,
+    nrows=1,
+    title_2: str = "") \
+    -> Tuple:
+
     fs = [FIG_SIZE[0]*ncols, FIG_SIZE[1]*nrows]
     fig, axs = plt.subplots(
         ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True,
         num=sweep_name)
-    fig.suptitle(f"{title} sweep for {sweep_name}")
+
+    suptitle = f"{title} sweep for {sweep_name}"
+    if title_2 != "":
+        suptitle = f"{suptitle}: {title_2}"
+    fig.suptitle(suptitle)
+
     if ncols == 1 and nrows == 1:
         axs = [axs]
     return fig, axs
@@ -220,13 +248,13 @@ def run_cache_sweep(
         idx_c = 1
         PROG_BAT = 4 # progress batches
         if args.track and not running_single_best:
+            tt = track_time()
             print(INDENT,
                 f"Cache: {ck}, configs: {len(cache_params)}, progress: ",
                 end="")
             idx_c = (len(cache_params) // PROG_BAT) + 1
 
-        mw = args.max_workers
-        with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
+        with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
             futures = {
                 executor.submit(
                     run_workloads,
@@ -245,7 +273,7 @@ def run_cache_sweep(
 
             # get results as they come in
             cnt = 0
-            for future in concurrent.futures.as_completed(futures):
+            for future in as_completed(futures):
                 size, hr, ct, cp, msg = future.result()
 
                 cnt += 1
@@ -269,7 +297,8 @@ def run_cache_sweep(
                         "reads": ct[2], "writes": ct[3]}
 
         if args.track and not running_single_best:
-            print(f"{PROG_BAT}/{PROG_BAT}. Done.")
+            tt_now, tt_taken = tt()
+            print(f"{PROG_BAT}/{PROG_BAT}. Done at {tt_now}. Taken: {tt_taken}")
 
         # for each policy, sort by the keys: first sets then ways
         for cpolicy, pe in sr.items():
@@ -290,7 +319,8 @@ def run_cache_sweep(
     lbl = lambda x, y: f"{x}, sets: {y}"
     max_nrows = 3 if ck == "dcache" else 2
     nrows = max_nrows if len(workloads) == 1 else 1
-    fig, axs = create_plot(ck.capitalize(), f"{sweep_name}", nrows=nrows)
+    fig, axs = create_plot(
+        ck.capitalize(), f"{sweep_name}", nrows=nrows, title_2=args.chart_title)
     axs_hr = axs[0] if len(workloads) == 1 else axs
     ax = axs_hr[0]
     for cpolicy, pe in sr.items():
@@ -478,9 +508,9 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
         cnt_entries = 1 << (params["pc_bits"])
         return (cnt_entries*params["cnt_bits"] + 8) >> 3
     if bp == "local":
-        cnt_entries = 1 << (params["hist_bits"])
+        cnt_entries = 1 << (params["lhist_bits"])
         hist_entries = 1 << (params["pc_bits"])
-        return (hist_entries*params["hist_bits"] + \
+        return (hist_entries*params["lhist_bits"] + \
                 cnt_entries*params["cnt_bits"] + 8) >> 3
     if bp == "global":
         cnt_entries = 1 << (params["gr_bits"])
@@ -546,6 +576,253 @@ def gen_bp_final_params(sr: Dict) -> List[List[Tuple[str, Any]]]:
 
     return out
 
+# needed only for guided_bp_search_for_combined()
+# but needs to be at the top level for parallel processing to work
+def compute_max_cols(args):
+    col_pairs, df = args
+    return {
+        f"{col1}-{col2}": df[[col1, col2]].max(axis=1)
+        for col1, col2 in col_pairs
+    }
+
+def guided_bp_search_for_combined(
+    args: argparse.Namespace,
+    sweep_params: Dict[str, Any],
+    bp_handle: str
+):
+    wd = args.work_dir
+    bpc = sweep_params[bp_handle]
+    bp1 = bpc["predictors"][0]
+    bp2 = bpc["predictors"][1]
+    bp_csvs = glob.glob(os.path.join(wd, f"*{bp1}*", "branches.csv"))
+    if bp1 != bp2:
+        bp_csvs += glob.glob(os.path.join(wd, f"*{bp2}*", "branches.csv"))
+    bp_csvs.sort()
+
+    df_list = {} # a dict of lists
+    # put bp stats for all benchmarks in separate dfs
+    for csv in bp_csvs:
+        sim_dir = os.path.dirname(csv).split('/')[-1]
+        bench_name = sim_dir.split('_bp_')[0].replace('out_', '')
+        bp_sweep_name = f"bp_{sim_dir.split('_bp_')[1]}"
+        bp_id = bp_sweep_name.split('_')[1]
+        og_bp_name = f'P_{bp_id}'
+        dfl = pd.read_csv(csv, usecols=['PC', 'All', og_bp_name])
+        dfl['bench'] = bench_name
+        dfl = dfl.loc[:, ['bench', 'PC', 'All', og_bp_name]]
+        dfl = dfl.rename(columns={og_bp_name : bp_sweep_name})
+        if bench_name not in df_list:
+            df_list[bench_name] = []
+        df_list[bench_name].append(dfl)
+
+    # first merge all dfs for different predictors for the same benchmark
+    merge_columns = ['bench', 'PC', 'All']
+    df_dict = {}
+    for bench,bench_dfs in df_list.items():
+        df_dict[bench] = pd.merge(bench_dfs[0], bench_dfs[1], on=merge_columns)
+        for d in bench_dfs[2:]:
+            df_dict[bench] = pd.merge(df_dict[bench], d, on=merge_columns)
+
+    # then concatenate all benchmarks into single df
+    dfc = pd.concat(df_dict.values(), ignore_index=True)
+
+    # sort columns by prefix priority, fallback to original order
+    prefix_order = [
+        'bench', 'PC', 'All',
+        'bp_static', 'bp_bimodal', 'bp_local',
+        'bp_global', 'bp_gselect', 'bp_gshare']
+
+    sorted_cols = sorted(
+        dfc.columns,
+        key=lambda col: next((i for i, p in enumerate(prefix_order)
+                              if col.startswith(p)), len(prefix_order))
+    )
+
+    dfc = dfc[sorted_cols]
+
+    # find max in parallel
+    iter_cols = dfc.columns.tolist()[3:]
+    all_combinations = list(combinations(iter_cols, 2))
+    n_workers = args.max_workers
+    chunk_size = (len(all_combinations) + n_workers - 1) // n_workers
+    chunks = [all_combinations[i:i+chunk_size]
+              for i in range(0, len(all_combinations), chunk_size)]
+
+    with ProcessPoolExecutor(max_workers=n_workers) as executor:
+        results = executor.map(compute_max_cols,
+                               [(chunk, dfc) for chunk in chunks])
+
+    max_cols = dict(chain.from_iterable(d.items() for d in results))
+    dfc = pd.concat([dfc, pd.DataFrame(max_cols)], axis=1)
+
+    def get_size(two_bps_str):
+        try:
+            bp1, bp2 = two_bps_str.split('-')
+        except:
+            # assume only one bp passed in, may be wrong, tbd
+            bp1 = two_bps_str
+            bp2 = "a_b_c"
+        size = 0
+        for bp in [bp1, bp2]:
+            try:
+                _, bp_type, bp_params = bp.split('_')
+            except:
+                raise ValueError(f"cant parse bp: {bp}")
+            if bp_type == 'static':
+                size += get_bp_size(bp_type, {})
+            elif bp_type == 'bimodal':
+                size += get_bp_size(bp_type, {"pc_bits": int(bp_params[0]),
+                                              "cnt_bits": int(bp_params[1])})
+            elif bp_type == 'local':
+                size += get_bp_size(bp_type, {"pc_bits": int(bp_params[0]),
+                                              "lhist_bits": int(bp_params[1]),
+                                              "cnt_bits": int(bp_params[2])})
+            elif bp_type == 'global':
+                size += get_bp_size(bp_type, {"gr_bits": int(bp_params[0]),
+                                              "cnt_bits": int(bp_params[1])})
+            elif bp_type in ['gselect', 'gshare']:
+                size += get_bp_size(bp_type, {"pc_bits": int(bp_params[0]),
+                                              "gr_bits": int(bp_params[1]),
+                                              "cnt_bits": int(bp_params[2])})
+            else:
+                size += 0 # placeholder, maybe error out?
+        return size
+
+    def get_sim_args(two_bps_str):
+        try:
+            bp1, bp2 = two_bps_str.split('-')
+        except:
+            # assume only one bp passed in, may be wrong, tbd
+            bp1 = two_bps_str
+            bp2 = " _none_ "
+
+        out = []
+        out_args = []
+        for idx,bp in enumerate([bp1, bp2]):
+            _, bp_type, bp_params = bp.split('_')
+
+            out.append(bp_type)
+            bp_arg = '--bp' if idx == 0 else '--bp2'
+            out_args += [bp_arg, bp_type]
+
+            if bp_type == 'static':
+                out_args += [f"{bp_arg}_static_method", bp_params]
+            elif bp_type == 'bimodal':
+                out_args += [f"{bp_arg}_pc_bits", bp_params[0],
+                             f"{bp_arg}_cnt_bits", bp_params[1]]
+            elif bp_type == 'local':
+                out_args += [f"{bp_arg}_pc_bits", bp_params[0],
+                             f"{bp_arg}_lhist_bits", bp_params[1],
+                             f"{bp_arg}_cnt_bits", bp_params[2]]
+            elif bp_type == 'global':
+                out_args += [f"{bp_arg}_gr_bits", bp_params[0],
+                             f"{bp_arg}_cnt_bits", bp_params[1]]
+            elif bp_type in ['gselect', 'gshare']:
+                out_args += [f"{bp_arg}_pc_bits", bp_params[0],
+                             f"{bp_arg}_gr_bits", bp_params[1],
+                             f"{bp_arg}_cnt_bits", bp_params[2]]
+            else:
+                pass # placeholder, maybe error out?
+
+        out.append(out_args)
+        return(out)
+
+    # per bench
+    df_max_list = []
+    bench_df_columns = ['bp_tag', 'acc']
+    for b in dfc.bench.unique().tolist():
+        dfcb = dfc.loc[dfc.bench == b]
+        bench_df = pd.DataFrame(
+            (dfcb.drop(columns=['All'])
+            .sum(numeric_only=True)
+            .sort_values(ascending=False) / dfcb.All.sum()*100
+            ).round(2)
+            ).reset_index()
+        bench_df.columns = bench_df_columns
+        bench_df['bench'] = b
+        bench_df['bp_size'] = bench_df.bp_tag.apply(get_size)
+        bp_sim_args = bench_df.bp_tag.apply(get_sim_args)
+        bench_df[['bp_type', 'bp2_type', 'bp_sim_args']] = pd.DataFrame(
+            bp_sim_args.tolist(), index=bench_df.index)
+        bench_df = bench_df[~(bench_df.bp2_type == 'none')]
+        if bp1 != bp2:
+            # not allowed to take the same bp for both unless specified
+            bench_df = bench_df[~(bench_df.bp_type == bench_df.bp2_type)]
+        df_max_list.append(bench_df)
+
+    def get_top_n(dfs, columns, top_n, sort_bench=False, size_limit=None):
+        # columns = [name, value]
+
+        # get top-N names from each df
+        #top_sets = [set(df.nlargest(n, columns[1])[columns[0]]) for df in dfs]
+        top_sets = [set(df[columns[0]]) for df in dfs]
+
+        if size_limit is not None:
+            dfs = [df[df['bp_size'] <= size_limit].copy() for df in dfs]
+
+        # intersect all sets to get best_bp names
+        best_bp = set.intersection(*top_sets)
+
+        # filter each df to only include those best_bp names
+        filtered_all = [df[df[columns[0]].isin(best_bp)].copy() for df in dfs]
+
+        # concatenate and group to compute average value
+        all_common = pd.concat(filtered_all, ignore_index=True)
+        avg_df = (
+            all_common.groupby(columns[0], as_index=False)
+            .agg(
+                avg_acc=(columns[1], 'mean'),
+                bp_size=('bp_size', 'first'),
+                bp_type=('bp_type', 'first'),
+                bp2_type=('bp2_type', 'first'),
+                bp_sim_args=('bp_sim_args', 'first')
+            )
+            .sort_values('avg_acc', ascending=False)
+        )
+
+        top_bps = set(avg_df.head(top_n)[columns[0]])
+        filtered = [df[df[columns[0]].isin(top_bps)].copy()
+                    for df in filtered_all]
+        avg_df = avg_df.head(top_n).reset_index(drop=True)
+
+        if sort_bench:
+            name_order = avg_df[columns[0]].tolist()
+            filtered = [df.set_index(columns[0])
+                        .loc[name_order]
+                        .reset_index() for df in filtered]
+
+        return filtered, avg_df
+
+    TOP_N_PREDICTORS = bpc['use_max_top_n']
+    best_bp_list = []
+    sizes = sweep_params['common_settings']['size_bins']
+    for sz in sizes:
+        filtered, best_bp = get_top_n(
+            df_max_list, bench_df_columns, TOP_N_PREDICTORS, True, sz
+        )
+        best_bp = best_bp.copy()
+        best_bp['avg_acc'] = best_bp['avg_acc'].round(2)
+
+        for df in filtered:
+            bench_name = df['bench'].iloc[0]
+            col_name = f'acc_{bench_name}'
+            tmp = df[['bp_tag', 'acc']].rename(columns={'acc': col_name})
+            best_bp = pd.merge(best_bp, tmp, on='bp_tag', how='left')
+
+        best_bp_list.append(best_bp)
+
+    # combine all sizes and drop duplicate bp_tags, if any
+    best_bp_combined = pd.concat(best_bp_list, ignore_index=True)
+    best_bp_combined = best_bp_combined.drop_duplicates(subset='bp_tag',
+                                                        keep='first')
+
+    bp12_p_all = [
+        [size, args]
+        for size, args
+        in zip(best_bp_combined['bp_size'], best_bp_combined['bp_sim_args'])]
+
+    return bp12_p_all
+
 def run_bp_sweep(
     args: argparse.Namespace,
     workloads: List[str],
@@ -588,6 +865,8 @@ def run_bp_sweep(
 
         if running_best:
             bp_params = best_params[bp_handle]
+            if bp == "bp_combined":
+                bp_act = [""]# sim auto sets act=comb when second bp is provided
 
         # sweep runs
         elif bp == "bp_combined":
@@ -595,35 +874,51 @@ def run_bp_sweep(
             bpc_sizes, bpc_params = gen_bp_sweep_params(bp, bpc, SIZE_LIM)
             bp1 = bpc["predictors"][0]
             bp2 = bpc["predictors"][1]
-            bp_act =  [""] # sim auto sets act=comb when second bp is provided
+            bp_act = [""] # sim auto sets act=comb when second bp is provided
 
-            if bpc["exhaustive"][0]:
-                bp1_p_all = save_bpp_for_combined_e[bp1]
-            else:
-                bp1_params = save_bpp_for_combined[bp1]
-                # split into two lists: keys(sizes) and values(params)
-                bp1_p_all = [[k, v] for k, v in bp1_params.items()]
+            if "use_max_top_n" in bpc: # guided approach with theoretical max
+                bp12_p_all = guided_bp_search_for_combined(
+                    args, sweep_params, bp_handle)
 
-            if bpc["exhaustive"][1]:
-                bp2_p_all = save_bpp_for_combined_e[bp2]
-            else:
-                bp2_params = save_bpp_for_combined[bp2]
-                bp2_p_all = [[k, v] for k, v in bp2_params.items()]
+                bp_params = [
+                    bp12_p + bpc_p
+                    for (bp12_s, bp12_p), (bpc_s, bpc_p)
+                    in product(bp12_p_all, zip(bpc_sizes, bpc_params))
+                    if within_size(bp12_s + bpc_s, SIZE_LIM)
+                ]
 
-            bp_params_list = [
-                bp1_p + bp2_p + bpc_p
-                for (bp1_s, bp1_p), (bp2_s, bp2_p), (bpc_s, bpc_p)
-                in product(bp1_p_all, bp2_p_all, zip(bpc_sizes, bpc_params))
-                if within_size(bp1_s + bp2_s + bpc_s, SIZE_LIM)
-            ]
+            else: # approximation for best, or brute force
+                if bpc["exhaustive"][0]:
+                    bp1_p_all = save_bpp_for_combined_e[bp1]
+                else:
+                    bp1_params = save_bpp_for_combined[bp1]
+                    # split into two lists: keys(sizes) and values(params)
+                    bp1_p_all = [[k, v] for k, v in bp1_params.items()]
 
-            bp1_arg = [f"--bp", bp1.replace("bp_", "", 1)]
-            bp2_arg = [f"--bp2", bp2.replace("bp_", "", 1)]
-            for m in bp_params_list:
-                # add the combined predictor args into each command
-                m.extend(bp1_arg)
-                m.extend(bp2_arg)
-            bp_params = bp_params_list
+                if bpc["exhaustive"][1]:
+                    bp2_p_all = save_bpp_for_combined_e[bp2]
+                else:
+                    bp2_params = save_bpp_for_combined[bp2]
+                    bp2_p_all = [[k, v] for k, v in bp2_params.items()]
+
+                bp2_p_all = [
+                    [size, [s.replace("--bp_", "--bp2_") for s in alst]]
+                    for size, alst in bp2_p_all]
+
+                bp_params_list = [
+                    bp1_p + bp2_p + bpc_p
+                    for (bp1_s, bp1_p), (bp2_s, bp2_p), (bpc_s, bpc_p)
+                    in product(bp1_p_all, bp2_p_all, zip(bpc_sizes, bpc_params))
+                    if within_size(bp1_s + bp2_s + bpc_s, SIZE_LIM)
+                ]
+
+                bp1_arg = [f"--bp", bp1.replace("bp_", "", 1)]
+                bp2_arg = [f"--bp2", bp2.replace("bp_", "", 1)]
+                for m in bp_params_list:
+                    # add the combined predictor args into each command
+                    m.extend(bp1_arg)
+                    m.extend(bp2_arg)
+                bp_params = bp_params_list
 
         else:
             save_bpp_for_combined[bp_handle] = {}
@@ -634,13 +929,13 @@ def run_bp_sweep(
         idx_c = 1
         PROG_BAT = 4 # progress batches
         if args.track and not running_single_best:
+            tt = track_time()
             print(INDENT,
                   f"BP: {bp_handle}, configs: {len(bp_params)}, progress: ",
                   end="")
             idx_c = (len(bp_params) // PROG_BAT) + 1
 
-        mw = args.max_workers
-        with concurrent.futures.ProcessPoolExecutor(max_workers=mw) as executor:
+        with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
             futures = {
                 executor.submit(
                     run_workloads,
@@ -650,7 +945,7 @@ def run_bp_sweep(
                         args=bpp + bp_act,
                         msg=f"==> SWEEP: {bp_handle} {bpp} <==",
                         save_sim=args.save_sim,
-                        ignore_thr=(bp == "bp_static"),
+                        ignore_thr=(bp == "bp_static" or running_best),
                         tag=f"{bp_handle}_" + "".join(bpp[1::2]), # every even index is a number
                         ret_list=bpp
                     )
@@ -659,7 +954,7 @@ def run_bp_sweep(
 
             # get results as they come in
             cnt = 0
-            for future in concurrent.futures.as_completed(futures):
+            for future in as_completed(futures):
                 bp_size, acc, bpp, msg = future.result()
 
                 cnt += 1
@@ -685,7 +980,9 @@ def run_bp_sweep(
                         save_bpp_for_combined[bp_handle][bp_size] = bpp
 
         if args.track and not running_single_best:
-            print(f"{PROG_BAT}/{PROG_BAT}. Done.")
+            tt_now, tt_taken = tt()
+            print(f"{PROG_BAT}/{PROG_BAT}. Done at {tt_now}. Taken: {tt_taken}")
+
         # sort the best dict by accuracy
         sr_best[bp_handle] = dict(
             sorted(best.items(), key=lambda x: x[1]["acc"], reverse=True))
@@ -719,6 +1016,7 @@ def run_bp_sweep(
             prev_bin = bin
 
         sr_bin[bp_handle] = best_binned
+        # TODO: save to disk as each bp/cache is finished
 
     sr_bin_out = sweep_log.replace(".log", "_binned.json")
     sr_best_out = sweep_log.replace(".log", "_best.json")
@@ -735,7 +1033,8 @@ def run_bp_sweep(
 
     # plot accuracy wrt size
     ncols = 1 if running_best else 2
-    fig, axs = create_plot(bpk.capitalize(), sweep_name, ncols)
+    fig, axs = create_plot(
+        bpk.capitalize(), sweep_name, ncols, title_2=args.chart_title)
     for sr,ax in zip([sr_bin, sr_best], axs):
         title_add = ""
         for bp_h,entry in sr.items():
@@ -800,6 +1099,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--work_dir", default=os.getcwd(), help="Path to run the sweep in and store results. Either absolute, or relative to this script")
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
+    parser.add_argument("--chart_title", type=str, default="", help="Adds this string to each chart's title")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
@@ -850,62 +1150,80 @@ def run_main(args: argparse.Namespace) -> None:
 
     sweep_params = sweep_dict["hw_params"][args.sweep]
     if "cache" in args.sweep:
+        tt = track_time()
         sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
-        if single_wl_sweep:
+        sweep_wrapper_end(tt, "\n")
+        if single_wl_sweep or args.skip_complete_workloads:
             return
 
-        if args.skip_complete_workloads:
-            return
         # FIXME: redundant to run all workloads and standalone workloads
         # as these are the same results, just plotted differently
         params = gen_cache_final_params(args.sweep, sr_best)
         if workloads_all != workloads_sweep:
-            print(f"Sweeping best {args.sweep} configs for all workloads")
+            sweep_best_wrapper_start(args.sweep, "all worklaods")
             run_cache_sweep(args, workloads_all, sweep_params, params)
+            sweep_wrapper_end(tt)
+
         if args.skip_per_workload:
             return
 
         for wl in workloads_all:
-            if args.track:
-                print(f"Sweeping best {args.sweep} configs for {wl['app']}")
+            sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
             run_cache_sweep(args, [wl], sweep_params, params)
+            sweep_wrapper_end(tt)
+
         return
 
     if "bp" in args.sweep:
+        tt = track_time()
         sr_bin = run_bp_sweep(args, workloads_sweep, sweep_params)
-        if single_wl_sweep:
+        sweep_wrapper_end(tt, "\n")
+        if single_wl_sweep or args.skip_complete_workloads:
             return
 
-        if args.skip_complete_workloads:
-            return
         # FIXME: same as above
         params = gen_bp_final_params(sr_bin)
         if workloads_all != workloads_sweep:
-            print(f"Sweeping best {args.sweep} configs for all workloads")
+            sweep_best_wrapper_start(args.sweep, "all worklaods")
             run_bp_sweep(args, workloads_all, sweep_params, params)
+            sweep_wrapper_end(tt)
+
         if args.skip_per_workload:
             return
 
         for wl in workloads_all:
-            if args.track:
-                print(f"Sweeping best {args.sweep} configs for {wl['app']}")
+            sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
             run_bp_sweep(args, [wl], sweep_params, params)
+            sweep_wrapper_end(tt)
+
         return
 
     raise ValueError("Unknown sweep type and impossible to reach")
 
+def sweep_best_wrapper_start(sweep: str, workload: str):
+    print(f"Sweeping best '{sweep}' configs for '{workload}'", end='. ')
+
+def sweep_wrapper_end(tt: track_time, append_str: str = ""):
+    tt_now, tt_taken = tt()
+    print(f"Done at {tt_now}. Taken: {tt_taken}{append_str}")
+
 if __name__ == "__main__":
     if not os.path.exists(SIM):
         raise FileNotFoundError(f"Simulator not found at: {SIM}")
+    tt = track_time()
     args = parse_args()
     if not args.load_stats:
         args.max_workers = min(MAX_WORKERS, args.max_workers)
         #print(f"Running sweep with {args.max_workers} workers"
         #      f"(max: {MAX_WORKERS})")
     run_main(args)
+    print("\nAll sweeps finished. ", end="")
+    sweep_wrapper_end(tt, "\n")
 
     if not args.silent:
         plt.show(block=False)
-        if not is_notebook():
+        if not is_notebook() and not is_headless():
+            # for notebook session, no need to wait
+            # headless doesn't display charts anyway
             input("Press Enter to close all plots...")
     plt.close("all")
