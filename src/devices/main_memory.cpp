@@ -72,22 +72,22 @@ void main_memory::burn_elf(std::string test_elf) {
 
     uint64_t addr = load_seg->get_physical_address();
     if (addr != BASE_ADDR) {
-        std::cerr << "ERROR: Segment address is not at base address."
-                  << " Address: 0x" << std::hex << addr
-                  << " Base address: 0x" << BASE_ADDR << std::dec
+        std::cerr << "ERROR: ELF start address is not at the CPU's base address"
+                  << " ELF start address: 0x" << std::hex << addr
+                  << " CPU's base address: 0x" << BASE_ADDR << std::dec
                   << std::endl;
         throw std::runtime_error(
-            "Segment address is not at base address.");
+            "ELF start address is not at base address.");
     }
 
     uint64_t size = load_seg->get_file_size();
     if (size > MEM_SIZE) {
-        std::cerr << "ERROR: Segment size is greater than memory size."
+        std::cerr << "ERROR: ELF segment size is greater than memory size"
                   << " Segment size: 0x" << std::hex << size << " B"
                   << " Memory size: 0x" << std::hex << MEM_SIZE << " B"
                   << std::dec << std::endl;
         throw std::runtime_error(
-            "Segment size is greater than memory size.");
+            "ELF segment size is greater than memory size.");
     }
 
     const char* data = load_seg->get_data();

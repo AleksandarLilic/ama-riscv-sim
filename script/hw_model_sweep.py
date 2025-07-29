@@ -185,7 +185,8 @@ def run_workloads(wp: workload_params):
             app_thr_hr = 0
             if "thr" in workload:
                 app_thr_hr = workload["thr"][f"thr_{wp.sweep}_hr"]
-            hits = hw_stats[wp.sweep]["hits"]
+            hits_d = hw_stats[wp.sweep]["hits"]
+            hits = hits_d['reads'] + hits_d['writes']
             references = hw_stats[wp.sweep]["references"]
             if references == 0:
                 raise RuntimeError(f"No cache references logged for {app}")

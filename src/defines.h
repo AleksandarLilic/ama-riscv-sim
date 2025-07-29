@@ -43,14 +43,18 @@ static_assert(0, "DPI requires profilers");
 #define TO_U2(x) static_cast<uint8_t>(x & 0x3)
 #define TO_I2(x) static_cast<int8_t>((x & 0x3) | ((x & 0x2) ? 0xFC : 0x00))
 
+constexpr int const_log2(int n, int p = 0) {
+    return (n <= 1) ? p : const_log2(n >> 1, p + 1);
+}
+
 // Memory
-#define BASE_ADDR 0x10000
-#define ADDR_BITS 17 // 128KB address space
+#define BASE_ADDR 0x4'0000
 #define MEM_ADDR_BITWIDTH 5 // digits in hex printout
 //#define MEM_SIZE 16384
 //#define MEM_SIZE 32768
-#define MEM_SIZE 65536
+#define MEM_SIZE 65536 // 0x1'0000
 //#define MEM_SIZE 131072
+constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define UART0_ADDR (BASE_ADDR + MEM_SIZE)
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
 #define CLINT_ADDR (BASE_ADDR + MEM_SIZE + 32)

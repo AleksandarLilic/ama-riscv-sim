@@ -1,10 +1,10 @@
 {
     "hw_params": {
-        "icache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8, 10, 12, 16], "policy": ["lru"], "max_size": 4096},
-        "dcache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8, 10, 12, 16], "policy": ["lru"], "max_size": 4096}
+        "icache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "policy": ["lru"], "max_size": 4096},
+        "dcache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "policy": ["lru"], "max_size": 4096}
     },
     "workloads": {
-        "stream_int": [["stream"],   {"thr_icache_hr": 90, "thr_dcache_hr": 0}, {"sim_args": "--log_pc_single_match 4"}, {"skip_search": false}],
+        "stream_int": [["stream"],   {"thr_icache_hr": 90, "thr_dcache_hr": 0}, {"sim_args": "--prof_pc_single_match 4"}, {"skip_search": false}],
 
         "embench/crc32": [["bench"],          {"thr_icache_hr": 70, "thr_dcache_hr": 0}, {"sim_args": ""}, {"skip_search": false}],
         "embench/matmult-int": [["bench"],    {"thr_icache_hr": 70, "thr_dcache_hr": 0}, {"sim_args": ""}, {"skip_search": false}],
@@ -30,19 +30,19 @@
         "embench/ud": [["bench"],             {"thr_icache_hr": 70, "thr_dcache_hr": 75}, {"sim_args": ""}, {"skip_search": false}],
         "embench/wikisort": [["bench"],       {"thr_icache_hr": 70, "thr_dcache_hr": 80}, {"sim_args": ""}, {"skip_search": false}],
 
-        "dhrystone": [["dhrystone"], {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9 --log_pc_start 115a0 --log_pc_stop 11674"}, {"skip_search": false}],
-        "coremark": [["coremark"],   {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 2 --log_pc_start 115ac --log_pc_stop 115e8"}, {"skip_search": false}],
+        "dhrystone": [["dhrystone"], {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9 --prof_pc_start 415a0 --prof_pc_stop 41674"}, {"skip_search": false}],
+        "coremark": [["coremark"],   {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 2 --prof_pc_start 41670 --prof_pc_stop 416ac"}, {"skip_search": false}],
 
-        "fibonacci": [["n_18"],            {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": false}],
-        "prime_numbers": [["n_3000"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": false}],
-        "gcd_lcm": [["n_large"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": false}],
-        "factorial": [["n_20"],            {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--log_pc_single_match 9"}, {"skip_search": false}],
+        "fibonacci": [["n_18"],            {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
+        "prime_numbers": [["n_3000"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
+        "gcd_lcm": [["n_large"],           {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
+        "factorial": [["n_20"],            {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
         "mlp": [["w8a8"],                  {"thr_icache_hr": 90, "thr_dcache_hr": 85}, {"sim_args": ""}, {"skip_search": false}],
-        "sorting_str": [["quicker_large"], {"thr_icache_hr": 80, "thr_dcache_hr": 80}, {"sim_args": "--log_pc_single_match 2"}, {"skip_search": false}],
+        "sorting_str": [["quicker_large"], {"thr_icache_hr": 80, "thr_dcache_hr": 80}, {"sim_args": "--prof_pc_single_match 2"}, {"skip_search": false}],
         "sorting_num": [
             ["merge_int32_large",
              "quick_int32_large",
              "heap_int32_large",
-             "quicker_int32_large"],  {"thr_icache_hr": 80, "thr_dcache_hr": 80}, {"sim_args": "--log_pc_single_match 2"}, {"skip_search": false}]
+             "quicker_int32_large"],  {"thr_icache_hr": 80, "thr_dcache_hr": 80}, {"sim_args": "--prof_pc_single_match 2"}, {"skip_search": false}]
     }
 }

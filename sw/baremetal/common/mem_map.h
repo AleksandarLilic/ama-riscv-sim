@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define BASE_ADDR 0x10000
+#define BASE_ADDR 0x40000
 //#define RAM_SIZE 0x8000 // 32K
 #define RAM_SIZE 0x10000 // 64K
 
