@@ -31,7 +31,7 @@
         "embench/wikisort": [["bench"],       {"thr_icache_hr": 70, "thr_dcache_hr": 80}, {"sim_args": ""}, {"skip_search": false}],
 
         "dhrystone": [["dhrystone"], {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9 --prof_pc_start 415a0 --prof_pc_stop 41674"}, {"skip_search": false}],
-        "coremark": [["coremark"],   {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 2 --prof_pc_start 41670 --prof_pc_stop 416ac"}, {"skip_search": false}],
+        "coremark": [["coremark"],   {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 2 --prof_pc_start 415ac --prof_pc_stop 415e8"}, {"skip_search": false}],
 
         "fibonacci": [["n_18"],            {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
         "prime_numbers": [["n_3000"],      {"thr_icache_hr": 90, "thr_dcache_hr": 90}, {"sim_args": "--prof_pc_single_match 9"}, {"skip_search": false}],
