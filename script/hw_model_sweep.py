@@ -16,19 +16,31 @@ from typing import Any, Dict, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from utils import get_reporoot, is_notebook, is_headless
+from utils import get_reporoot, is_headless, is_notebook
 
+# globals
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
-PASS_STRING = "    0x051e tohost    : 0x00000001"
+SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
+SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
 INDENT = "  "
 FIG_SIZE = (8, 8)
-MK = "o"
-LW = 1
+MK = [["o", 6, 25], ["^", 6, 25]]
+LW = .5
+
+BP_COLORS = {
+    "static": "k", # not used
+    "bimodal": "#4275b1", # blue
+    "local": "#ea862a", # orange
+    "global": "#579e3a", # green
+    "gselect": "#c03a2d", # dark red
+    "gshare": "#8c69b9", # purple
+}
 
 CACHE_LINE_BYTES = 64
 
+# utility functions
 class track_time:
     def __init__(self) -> None:
         self._last = time.time()
@@ -100,11 +112,13 @@ def create_plot(
 
 def run_sim(cmd: List) -> Dict[str, Any]:
     res = subprocess.run(cmd, capture_output=True, text=True)
-    if PASS_STRING not in res.stdout:
+    if (SIM_PASS_STRING not in res.stdout and
+        SIM_EARLY_EXIT_STRING not in res.stdout):
         raise RuntimeError("Simulation failed. Check the logs. Sim output: \n\n"
                            f"{cmd}\n {res.stderr}\n {res.stdout}")
     return res
 
+# functions
 @dataclass
 class workload_params:
     workloads: List[Dict[str, Any]]
@@ -328,7 +342,7 @@ def run_cache_sweep(
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             ax.plot(se.keys(), hit_rate,
-                    label=lbl(cpolicy, cset), marker=MK, lw=LW)
+                    label=lbl(cpolicy, cset), marker=MK[0][0], lw=LW)
     ax.set_xlabel("Ways")
     ax.set_xticks(sweep_params["ways"])
     ax.set_title(f"Hit Rate vs Number of Ways")
@@ -339,7 +353,8 @@ def run_cache_sweep(
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             sizes = np.array([se[way]["size"] for way in se.keys()])
-            ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset), marker=MK, lw=LW)
+            ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset),
+                    marker=MK[0][0], lw=LW)
     ax.set_xlabel("Size [B]")
     ax.set_xticks(XTICKS)
     ax.set_xticklabels(XLABELS, rotation=45)
@@ -368,12 +383,12 @@ def run_cache_sweep(
                 for cset, se in pe.items():
                     ct_mem_read = np.array(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
-                    ax.plot(se.keys(), ct_mem_read,
-                            label=lbl(cpolicy, cset), marker=MK, lw=LW)
+                    ax.plot(se.keys(), ct_mem_read, label=lbl(cpolicy, cset),
+                            marker=MK[0][0], lw=LW)
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
             y_ct = ct_core
-            if args.plot_skip_ct_thr and ax.get_ylim()[1] < ct_core:
+            if args.plot_no_ct_thr and ax.get_ylim()[1] < ct_core:
                 y_ct = np.nan
             ax.axhline(y=y_ct, color="r", linestyle="--",
                        label=f"{ctct} = {ct_core_str}")
@@ -389,7 +404,7 @@ def run_cache_sweep(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
                     sizes = np.array([se[way]["size"]for way in se.keys()])
                     ax.plot(sizes, ct_mem_read,
-                            label=lbl(cpolicy, cset), marker=MK, lw=LW)
+                            label=lbl(cpolicy, cset), marker=MK[0][0], lw=LW)
             ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
             ax.set_xticklabels(XLABELS, rotation=45)
@@ -565,7 +580,7 @@ def gen_bp_final_params(sr: Dict) -> List[List[Tuple[str, Any]]]:
             #print(f"Size: {size} B, Acc: {d['acc']}%")
             command = []
             for k, v in d.items():
-                if all(x not in k for x in ["bits", "method", "bp_combined_p"]):
+                if 'bp' not in k: # only keys starting with bp are cli args
                     continue
                 command.append(f"--{k}")
                 command.append(f"{v}")
@@ -1019,6 +1034,7 @@ def run_bp_sweep(
         sr_bin[bp_handle] = best_binned
         # TODO: save to disk as each bp/cache is finished
 
+    # sweep results
     sr_bin_out = sweep_log.replace(".log", "_binned.json")
     sr_best_out = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
@@ -1041,13 +1057,20 @@ def run_bp_sweep(
         for bp_h,entry in sr.items():
             if len(entry.keys()) == 0: # below thr limit for all available sizes
                 continue
+            if bp_h not in sweep_params:
+                # e.g. input config changed between search and plot runs
+                continue
 
             fmt = lambda x: x.replace("bp_", "", 1)
+            mk = MK[0]
             label = fmt(bp_h)
+            clr = BP_COLORS.get(label, 'k')
             if "bp_combined" in bp_h:
                 bp1 = fmt(sweep_params[bp_h]["predictors"][0])
                 bp2 = fmt(sweep_params[bp_h]["predictors"][1])
                 label = f"{label}\n{bp1} & {bp2}"
+                mk = MK[1]
+                clr = BP_COLORS.get(bp2, 'k') # bp2 assumed as differentiator
 
             if "static" in bp_h:
                 fk = list(entry.keys())[0] # first key
@@ -1057,15 +1080,17 @@ def run_bp_sweep(
                 continue
 
             accs = [entry[s]["acc"] for s in entry.keys()]
-            if sr == sr_bin: # bins are keys, sizes stored separately
+            if sr == sr_bin: # bins are keys, sizes stored as entry
                 sizes = [entry[s]["size"] for s in entry.keys()]
                 title_add = "Best per bin size"
-                ax.plot(sizes, accs, label=label, marker=MK, lw=LW)
+                ax.plot(sizes, accs, label=label, color=clr,
+                        marker=mk[0], markersize=mk[1], lw=LW)
             else: # sizes are keys
                 sizes = entry.keys()
                 title_add = f"Best {args.bp_top_num} " \
                             f"and all above {args.bp_top_thr}%"
-                ax.scatter(sizes, accs, label=label, marker=MK, s=40)
+                ax.scatter(sizes, accs, label=label, color=clr,
+                           marker=mk[0], s=mk[2])
 
         ax.set_title(title_add)
 
@@ -1104,12 +1129,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_skip_ct_thr", action="store_true", help="Skip setting the upper limit for the plot y-axis for cache traffic")
+    parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
     parser.add_argument("--bp_top_thr", type=int, default=80, help="Accuracy threshold for the best branch predictor configs to always include")
-    parser.add_argument("--skip_complete_workloads", action="store_true", default=False, help="Skip complete workloads sweep (i.e. don't run again with skip_search=True workloads). Skips per workloads as well")
-    parser.add_argument("--skip_per_workload", action="store_true", default=False, help="Skip the per workload sweep of the best configs after the main sweep")
+    parser.add_argument("--add_all_workloads", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates a single chart as average values across all workloads. Used to validate HW model across all benchmarks")
+    parser.add_argument("--add_per_workload", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates one chart per workload. Used to validate HW model across all benchmarks")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of workers")
 
     return parser.parse_args()
@@ -1154,55 +1179,52 @@ def run_main(args: argparse.Namespace) -> None:
         tt = track_time()
         sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
         sweep_wrapper_end(tt, "\n")
-        if single_wl_sweep or args.skip_complete_workloads:
+        if single_wl_sweep:
             return
 
-        # FIXME: redundant to run all workloads and standalone workloads
+        # FIXME: redundant to run 'all workloads' and 'per workload'
         # as these are the same results, just plotted differently
+        # ideally, save from 'all' run, and plot for 'per workload'
         params = gen_cache_final_params(args.sweep, sr_best)
-        if workloads_all != workloads_sweep:
-            sweep_best_wrapper_start(args.sweep, "all worklaods")
+        if args.add_all_workloads and workloads_all != workloads_sweep:
+            sweep_best_wrapper_start(args.sweep, "all workloads", "\n")
             run_cache_sweep(args, workloads_all, sweep_params, params)
             sweep_wrapper_end(tt)
 
-        if args.skip_per_workload:
-            return
+        if args.add_per_workload:
+            for wl in workloads_all:
+                sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
+                run_cache_sweep(args, [wl], sweep_params, params)
+                sweep_wrapper_end(tt)
 
-        for wl in workloads_all:
-            sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
-            run_cache_sweep(args, [wl], sweep_params, params)
-            sweep_wrapper_end(tt)
-
-        return
+        return # only one sweep type at a time
 
     if "bp" in args.sweep:
         tt = track_time()
         sr_bin = run_bp_sweep(args, workloads_sweep, sweep_params)
         sweep_wrapper_end(tt, "\n")
-        if single_wl_sweep or args.skip_complete_workloads:
+        if single_wl_sweep:
             return
 
         # FIXME: same as above
         params = gen_bp_final_params(sr_bin)
-        if workloads_all != workloads_sweep:
-            sweep_best_wrapper_start(args.sweep, "all worklaods")
+        if args.add_all_workloads and workloads_all != workloads_sweep:
+            sweep_best_wrapper_start(args.sweep, "all workloads", "\n")
             run_bp_sweep(args, workloads_all, sweep_params, params)
             sweep_wrapper_end(tt)
 
-        if args.skip_per_workload:
-            return
+        if args.add_per_workload:
+            for wl in workloads_all:
+                sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
+                run_bp_sweep(args, [wl], sweep_params, params)
+                sweep_wrapper_end(tt)
 
-        for wl in workloads_all:
-            sweep_best_wrapper_start(args.sweep, get_test_name(wl['app']))
-            run_bp_sweep(args, [wl], sweep_params, params)
-            sweep_wrapper_end(tt)
-
-        return
+        return # only one sweep type at a time
 
     raise ValueError("Unknown sweep type and impossible to reach")
 
-def sweep_best_wrapper_start(sweep: str, workload: str):
-    print(f"Sweeping best '{sweep}' configs for '{workload}'", end='. ')
+def sweep_best_wrapper_start(sweep: str, workload: str, end: str = ''):
+    print(f"Sweeping best '{sweep}' configs for '{workload}'. ", end=end)
 
 def sweep_wrapper_end(tt: track_time, append_str: str = ""):
     tt_now, tt_taken = tt()
