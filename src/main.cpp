@@ -116,6 +116,7 @@ struct defs_t {
     static constexpr char prof_pc_start[] = "0";
     static constexpr char prof_pc_stop[] = "0";
     static constexpr char prof_pc_sm[] = "0";
+    static constexpr char exit_on_prof_stop[] = "false";
     static constexpr char prof_trace[] = "false";
     static constexpr char perf_event[] = "inst";
     static constexpr char rf_usage[] = "false";
@@ -208,6 +209,11 @@ int main(int argc, char* argv[]) {
         ("prof_pc_single_match",
          "Run profiling only for match number (0 for all matches)",
          CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_sm))
+        ("exit_on_prof_stop",
+         "Exit simulation immediately after profiling finishes."
+         "Exits on the first 'prof_pc_stop' if 'prof_pc_single_match' is unused"
+         "Otherwise exits on the 'prof_pc_stop' of the 'prof_pc_single_match'",
+         CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_prof_stop))
         ("t,prof_trace", "Record profiler trace",
          CXXOPTS_VAL_BOOL->default_value(defs_t::prof_trace))
         ("e,perf_event",
@@ -343,6 +349,7 @@ int main(int argc, char* argv[]) {
         cfg.prof_pc.start = TO_HEX(result["prof_pc_start"]);
         cfg.prof_pc.stop = TO_HEX(result["prof_pc_stop"]);
         cfg.prof_pc.single_match_num = TO_SIZE(result["prof_pc_single_match"]);
+        cfg.prof_pc.exit_on_prof_stop = TO_BOOL(result["exit_on_prof_stop"]);
         cfg.prof_trace = TO_BOOL(result["prof_trace"]);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
         cfg.rf_usage = TO_BOOL(result["rf_usage"]);

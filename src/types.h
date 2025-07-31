@@ -301,18 +301,19 @@ struct prof_pc_t {
         uint32_t stop;
         uint32_t single_match_num;
         uint64_t inst_cnt;
+        bool exit_on_prof_stop;
     private:
         uint32_t current_match = 0;
         bool ran_once = false;
     public:
         bool should_start() {
-            if (!single_match_num) return true;
+            if (!single_match_num) return true; // dc if not single matching
             current_match++;
-            if (!ran_once && (current_match == single_match_num)) {
+            if (current_match == single_match_num) { // count matched
                 ran_once = true;
                 return true;
             }
-            return false;
+            return false; // single matching, but count not yet matched
         }
         bool should_start(uint32_t pc) {
             if (!(pc == start)) return false;
@@ -321,6 +322,16 @@ struct prof_pc_t {
         bool should_stop(uint32_t pc) {
             if (pc == stop) return true;
             return false;
+        }
+        bool should_exit() {
+            if (!exit_on_prof_stop) return false; // dc if inactive
+            if (!single_match_num) return true;// exit on first stop if no match
+            if (ran_once) return true; // exit if single match and ran once
+            return false; // single matching, but not run yet
+        }
+        bool should_exit(uint32_t pc) {
+            if (pc != stop) return false; // dc if not at stop pc
+            return should_exit();
         }
 };
 

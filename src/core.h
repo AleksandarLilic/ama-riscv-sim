@@ -205,6 +205,7 @@ class core {
                 return 0;
             } else if (inst == INST_HINT_LOG_END) {
                 prof_state(false);
+                running = !prof_pc.should_exit();
                 return 0;
             }
             return al_slt(a, b);

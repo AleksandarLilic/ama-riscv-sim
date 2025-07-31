@@ -113,8 +113,15 @@ void core::exec_inst() {
     #ifdef HW_MODELS_EN
     hwrs.rst();
     #endif
-    if (prof_pc.should_start(pc)) prof_state(true);
-    else if (prof_pc.should_stop(pc)) prof_state(false);
+    if (prof_pc.should_start(pc)) {
+        prof_state(true);
+    } else if (prof_pc.should_stop(pc)) {
+        prof_state(false);
+        if (prof_pc.should_exit(pc)) {
+            running = false;
+            return;
+        }
+    }
 
     // TODO: DPI needs to handle this separately based on the simulation time
     mem->update_mtime();
