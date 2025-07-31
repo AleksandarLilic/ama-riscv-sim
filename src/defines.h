@@ -144,6 +144,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define INST_HINT_LOG_END 0x01102013 // slti x0, x0, 0x11
 
 #define CSR_TOHOST 0x51E
+#define CSR_TOHOST_EARLY_EXIT 0xF0000000
 
 // Machine-level CSR addresses
 // Machine Information Registers

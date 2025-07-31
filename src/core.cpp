@@ -1835,10 +1835,16 @@ void core::dump() {
     if (!cfg.sink_uart) std::cout << "=== UART END ===\n";
     #endif
     std::cout << "SIMULATION FINISHED\n\n";
-    uint32_t tohost = csr.at(CSR_TOHOST).value;
-    if (tohost != 1) {
-        std::cout << "Failed test ID: " << (tohost >> 1);
-        std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
+
+    if (prof_pc.exit_on_prof_stop) {
+        std::cout << "Early exit on profiler stop, TOHOST invalid\n";
+        csr.at(CSR_TOHOST).value = CSR_TOHOST_EARLY_EXIT;
+    } else {
+        uint32_t tohost = csr.at(CSR_TOHOST).value;
+        if (tohost != 1) {
+            std::cout << "Failed test ID: " << (tohost >> 1);
+            std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
+        }
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
               << ", logged: " << prof_pc.inst_cnt << "\n";
