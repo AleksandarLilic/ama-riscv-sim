@@ -182,6 +182,10 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
     if (active && rf_usage) prof_rf_usage[reg][TO_U8(reg_use)]++;
 }
 
+void profiler::track_sp(const uint32_t sp) {
+    if (sp != 0 && sp < min_sp) min_sp = sp;
+}
+
 void profiler::log_to_file_and_print() {
     cnt_t cnt;
     std::string pt = "";
@@ -203,12 +207,7 @@ void profiler::log_to_file_and_print() {
         cnt.tot += e.count_taken + e.count_not_taken;
     }
 
-    uint32_t min_sp = BASE_ADDR + MEM_SIZE;
-    for (const auto& t : trace) {
-        if (t.sp != 0 && t.sp < min_sp) min_sp = t.sp;
-    }
-    min_sp = BASE_ADDR + MEM_SIZE - min_sp;
-
+    min_sp = BASE_ADDR + MEM_SIZE - min_sp; // remove offset
     ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
     if (prof_src == profiler_source_t::clock) {
         ofs << "\"_profiled_cycles\": " << cnt.tot;

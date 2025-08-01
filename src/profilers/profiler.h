@@ -206,12 +206,14 @@ class profiler {
         sparsity_cnt_t sparsity_cnt;
         bool trace_en;
         bool rf_usage;
+        uint32_t min_sp = BASE_ADDR + MEM_SIZE; // add offset
 
     public:
         profiler() = delete;
         profiler(std::string out_dir, profiler_source_t prof_src);
         void new_inst(uint32_t inst) { this->inst = inst; }
         void add_te();
+        void track_sp(const uint32_t sp);
         void log_inst(opc_g opc, uint64_t inc);
         void log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);

@@ -217,6 +217,7 @@ void core::exec_inst() {
     }
 
     #ifdef PROFILERS_EN
+    prof.track_sp(rf[2]);
     if (prof_act && prof_trace) {
         prof.te.pc = pc - BASE_ADDR;
         prof.te.sp = rf[2];
