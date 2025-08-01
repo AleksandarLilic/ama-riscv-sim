@@ -542,6 +542,30 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
 
     return 1 # can't help you
 
+def valid_bp_bits(bp: str, params: Dict[str, Any]) -> bool:
+    bp = bp.replace("bp_", "", 1) # in case it's passed with the prefix
+    valid = True
+    if bp == "static":
+        return valid
+    valid &= (params.get('cnt_bits', 0) > 0)
+    if bp == "local":
+        valid &= (params.get('pc_bits', 0) > 0)
+        valid &= (params.get('lhist_bits', 0) > 0)
+    elif bp == "bimodal" or bp == "combined":
+        valid &= (params.get('pc_bits', 0) > 0)
+    elif bp == "local":
+        valid &= (params.get('gr_bits', 0) > 0)
+    elif bp == "gselect" or bp == "gshare":
+        # can play around a bit with these
+        # gr_bits == 0 -> bp_bimodal, pc_bits == 0 -> bp_global
+        #valid &= ((params.get('pc_bits', 0) + params.get('gr_bits', 0)) > 0)
+
+        # but in general, both have to be > 1
+        valid &= (params.get('pc_bits', 0) > 0)
+        valid &= (params.get('gr_bits', 0) > 0)
+
+    return valid
+
 def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 -> List[List[Tuple[str, Any]]]:
     sk = bp_sweep.keys()
@@ -554,10 +578,14 @@ def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
     cmds = []
     sizes = []
     for bp_prod in bp_products:
+        if not valid_bp_bits(bp, dict(zip(bp_args, bp_prod))):
+            continue
+
         bp_size = get_bp_size(bp, dict(zip(bp_args, bp_prod)))
         if not within_size(bp_size, size_lim):
             if bp != "bp_static": # static is always included
                 continue
+
         command = []
         for k, v in zip(bp_args, bp_prod):
             if "method" in k or "combined" in bp:
@@ -867,8 +895,8 @@ def run_bp_sweep(
         bins = [2**i for i
                 in range(SIZE_LIM[0].bit_length(), SIZE_LIM[1].bit_length()+1)]
 
-    save_bpp_for_combined = {}
-    save_bpp_for_combined_e = {}
+    save_bpp_best = {}
+    save_bpp_all = {}
     for bp_handle in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading previous stats
@@ -905,16 +933,19 @@ def run_bp_sweep(
 
             else: # approximation for best, or brute force
                 if bpc["exhaustive"][0]:
-                    bp1_p_all = save_bpp_for_combined_e[bp1]
+                    bp1_params = save_bpp_all[bp1]
+                    # dc about accuracy (1st element in sublist)
+                    bp1_p_all = [sublist[1:] for sublist in bp1_params]
                 else:
-                    bp1_params = save_bpp_for_combined[bp1]
+                    bp1_params = save_bpp_best[bp1]
                     # split into two lists: keys(sizes) and values(params)
                     bp1_p_all = [[k, v] for k, v in bp1_params.items()]
 
                 if bpc["exhaustive"][1]:
-                    bp2_p_all = save_bpp_for_combined_e[bp2]
+                    bp2_params = save_bpp_all[bp2]
+                    bp2_p_all = [sublist[1:] for sublist in bp2_params]
                 else:
-                    bp2_params = save_bpp_for_combined[bp2]
+                    bp2_params = save_bpp_best[bp2]
                     bp2_p_all = [[k, v] for k, v in bp2_params.items()]
 
                 bp2_p_all = [
@@ -937,8 +968,8 @@ def run_bp_sweep(
                 bp_params = bp_params_list
 
         else:
-            save_bpp_for_combined[bp_handle] = {}
-            save_bpp_for_combined_e[bp_handle] = []
+            save_bpp_best[bp_handle] = {}
+            save_bpp_all[bp_handle] = []
             _, bp_params = gen_bp_sweep_params(
                 bp, sweep_params[bp_handle], SIZE_LIM)
 
@@ -962,7 +993,8 @@ def run_bp_sweep(
                         msg=f"==> SWEEP: {bp_handle} {bpp} <==",
                         save_sim=args.save_sim,
                         ignore_thr=(bp == "bp_static" or running_best),
-                        tag=f"{bp_handle}_" + "".join(bpp[1::2]), # every even index is a number
+                        # every even index is a number, use as tag
+                        tag=f"{bp_handle}_" + "".join(bpp[1::2]),
                         ret_list=bpp
                     )
                 ): bpp for bpp in bp_params
@@ -980,7 +1012,7 @@ def run_bp_sweep(
                     f.write(msg)
 
                 if bp != "bp_combined" and not running_best:
-                    save_bpp_for_combined_e[bp_handle].append([bp_size, bpp])
+                    save_bpp_all[bp_handle].append([acc, bp_size, bpp])
                 if acc == None:
                     continue
 
@@ -993,7 +1025,7 @@ def run_bp_sweep(
                         best[bp_size][k] = v
                     best[bp_size]["acc"] = acc
                     if bp != "bp_combined" and not running_best:
-                        save_bpp_for_combined[bp_handle][bp_size] = bpp
+                        save_bpp_best[bp_handle][bp_size] = bpp
 
         if args.track and not running_single_best:
             tt_now, tt_taken = tt()
@@ -1074,9 +1106,12 @@ def run_bp_sweep(
 
             if "static" in bp_h:
                 fk = list(entry.keys())[0] # first key
+                acc = entry[fk]["acc"]
+                if acc < args.plot_acc_thr_min:
+                    continue
                 method = entry[fk]["bp_static_method"]
-                ax.axhline(y=entry[fk]["acc"], color="r", linestyle="--",
-                           label=f"{label} {method} ({entry[fk]['acc']:.0f}%)")
+                ax.axhline(y=acc, color="r", linestyle="--",
+                           label=f"{label} {method} ({acc:.0f}%)")
                 continue
 
             accs = [entry[s]["acc"] for s in entry.keys()]
@@ -1103,10 +1138,9 @@ def run_bp_sweep(
         a.legend(loc="upper left")
         a.grid(True)
         a.margins(x=0.02)
-        ymin = a.get_ylim()[0] * 0.99
-        if args.plot_acc_thr:
-            ymin = max(args.plot_acc_thr, ymin)
-        a.set_ylim(ymin, 100.1)
+        ymin = a.get_ylim()[0] * 0.99 if not args.plot_acc_thr_min else \
+               args.plot_acc_thr_min
+        a.set_ylim(ymin, args.plot_acc_thr_max+.1)
 
     if args.save_png:
         fig.savefig(sweep_log.replace(".log", ".png"))
@@ -1130,7 +1164,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_acc_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_acc_thr_min", type=int, default=0, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_acc_thr_max", type=int, default=100, help="Set the upper limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
     parser.add_argument("--bp_top_thr", type=int, default=80, help="Accuracy threshold for the best branch predictor configs to always include")
     parser.add_argument("--add_all_workloads", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates a single chart as average values across all workloads. Used to validate HW model across all benchmarks")
@@ -1170,9 +1205,9 @@ def run_main(args: argparse.Namespace) -> None:
 
     single_wl_sweep = len(workloads_sweep) == 1
     if single_wl_sweep:
-        print(f"Sweep: {args.sweep} for {workloads_sweep[0]['app']}")
+        print(f"Sweep: '{args.sweep}' for {workloads_sweep[0]['app']}")
     else:
-        print(f"Sweep: {args.sweep} with {len(workloads_sweep)} workload(s)")
+        print(f"Sweep: '{args.sweep}' with {len(workloads_sweep)} workload(s)")
 
     sweep_params = sweep_dict["hw_params"][args.sweep]
     if "cache" in args.sweep:
@@ -1233,12 +1268,14 @@ def sweep_wrapper_end(tt: track_time, append_str: str = ""):
 if __name__ == "__main__":
     if not os.path.exists(SIM):
         raise FileNotFoundError(f"Simulator not found at: {SIM}")
+
     tt = track_time()
     args = parse_args()
     if not args.load_stats:
         args.max_workers = min(MAX_WORKERS, args.max_workers)
-        #print(f"Running sweep with {args.max_workers} workers"
-        #      f"(max: {MAX_WORKERS})")
+
+    print(f"Running with config '{args.params}' in '{args.work_dir}'" +
+          f" with {args.max_workers} workers")
     run_main(args)
     print("\nAll sweeps finished. ", end="")
     sweep_wrapper_end(tt, "\n")
