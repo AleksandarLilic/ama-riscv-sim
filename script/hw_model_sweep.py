@@ -579,7 +579,7 @@ def valid_bp_bits(bp: str, params: Dict[str, Any]) -> bool:
 def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
 -> List[List[Tuple[str, Any]]]:
     sk = bp_sweep.keys()
-    sk = [k for k in sk if "bits" in k or "method" in k]
+    sk = [k for k in sk if "bits" in k or "method" in k or "fold_pc" in k]
 
     bp_args = list(sk)
     # cartesian product of all the params
@@ -602,6 +602,7 @@ def gen_bp_sweep_params(bp, bp_sweep, size_lim) \
                 command.append(f"--{bp}_{k}")
             else:
                 command.append(f"--bp_{k}")
+
             command.append(str(v))
 
         cmds.append(command)
@@ -777,6 +778,11 @@ def guided_bp_search_for_combined(
                              f"{bp_arg}_cnt_bits", bp_params[2]]
             else:
                 pass # placeholder, maybe error out?
+
+            # fold pc not available for static, otherwise always present
+            if bp_type != "static":
+                # relies on [2:] being all/none, which is true atm
+                out_args += [f"{bp_arg}_fold_pc", bp_params[2:]]
 
         out.append(out_args)
         return(out)

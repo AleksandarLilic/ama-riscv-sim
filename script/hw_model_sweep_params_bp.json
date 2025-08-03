@@ -2,37 +2,37 @@
     "hw_params": {
         "bpred": {
             "bp_static":  {"method": ["at", "ant", "btfn"]},
-            "bp_bimodal": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8],                                         "cnt_bits": [1, 2, 3]},
-            "bp_local":   {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "lhist_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_global":  {                                     "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_bimodal": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8],                                         "cnt_bits": [1, 2, 3], "fold_pc": ["none", "all"]},
+            "bp_local":   {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "lhist_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none", "all"]},
+            "bp_global":  {                                     "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none", "all"]},
+            "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none", "all"]},
+            "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none", "all"]},
 
-            "bp_combined-sttc_bmdl": {"predictors": ["bp_static", "bp_bimodal"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-sttc-locl": {"predictors": ["bp_static", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-sttc_gshr": {"predictors": ["bp_static", "bp_gshare"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-sttc_gsel": {"predictors": ["bp_static", "bp_gselect"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-sttc_glbl": {"predictors": ["bp_static", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-sttc_bmdl": {"predictors": ["bp_static", "bp_bimodal"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-sttc-locl": {"predictors": ["bp_static", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-sttc_gshr": {"predictors": ["bp_static", "bp_gshare"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-sttc_gsel": {"predictors": ["bp_static", "bp_gselect"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-sttc_glbl": {"predictors": ["bp_static", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
-            "bp_combined-bmdl_bmdl": {"predictors": ["bp_bimodal", "bp_bimodal"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-bmdl-locl": {"predictors": ["bp_bimodal", "bp_local"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-bmdl_gshr": {"predictors": ["bp_bimodal", "bp_gshare"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-bmdl_gsel": {"predictors": ["bp_bimodal", "bp_gselect"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-bmdl_glbl": {"predictors": ["bp_bimodal", "bp_global"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-bmdl_bmdl": {"predictors": ["bp_bimodal", "bp_bimodal"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-bmdl-locl": {"predictors": ["bp_bimodal", "bp_local"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-bmdl_gshr": {"predictors": ["bp_bimodal", "bp_gshare"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-bmdl_gsel": {"predictors": ["bp_bimodal", "bp_gselect"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-bmdl_glbl": {"predictors": ["bp_bimodal", "bp_global"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
-            "bp_combined-gshr-locl": {"predictors": ["bp_gshare", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-gshr_gshr": {"predictors": ["bp_gshare", "bp_gshare"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-gshr_gsel": {"predictors": ["bp_gshare", "bp_gselect"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-gshr_glbl": {"predictors": ["bp_gshare", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-gshr-locl": {"predictors": ["bp_gshare", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-gshr_gshr": {"predictors": ["bp_gshare", "bp_gshare"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-gshr_gsel": {"predictors": ["bp_gshare", "bp_gselect"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-gshr_glbl": {"predictors": ["bp_gshare", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
-            "bp_combined-gsel-locl": {"predictors": ["bp_gselect", "bp_local"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-gsel_gsel": {"predictors": ["bp_gselect", "bp_gselect"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-gsel_glbl": {"predictors": ["bp_gselect", "bp_global"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-gsel-locl": {"predictors": ["bp_gselect", "bp_local"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-gsel_gsel": {"predictors": ["bp_gselect", "bp_gselect"], "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-gsel_glbl": {"predictors": ["bp_gselect", "bp_global"],  "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
-            "bp_combined-glbl-locl": {"predictors": ["bp_global", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
-            "bp_combined-glbl_glbl": {"predictors": ["bp_global", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-glbl-locl": {"predictors": ["bp_global", "bp_local"],    "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
+            "bp_combined-glbl_glbl": {"predictors": ["bp_global", "bp_global"],   "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
-            "bp_combined-locl-locl": {"predictors": ["bp_local", "bp_local"],     "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3]},
+            "bp_combined-locl-locl": {"predictors": ["bp_local", "bp_local"],     "exhaustive": [0,0], "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8], "cnt_bits": [1, 2, 3], "fold_pc": ["none"]},
 
             "_common_settings": { "min_size": 1, "max_size": 80, "size_bins": [2, 4, 8, 16, 24, 32, 48, 64, 80]}
         }
