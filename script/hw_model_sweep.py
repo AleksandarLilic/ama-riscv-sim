@@ -26,11 +26,21 @@ SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
 SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
 INDENT = "  "
 FIG_SIZE = (8, 8)
-MK = [["o", 6, 25], ["^", 6, 25]]
+MK = "o"
 LW = .5
 
-BP_COLORS = {
-    "static": "k", # not used
+MARKERS_BP = {
+    "any": ".",
+    "static": "d",
+    "bimodal": "^",
+    "local": "v",
+    "global": "*",
+    "gselect": "x",
+    "gshare": "+",
+}
+
+COLORS_BP = {
+    "static": "k",
     "bimodal": "#4275b1", # blue
     "local": "#ea862a", # orange
     "global": "#579e3a", # green
@@ -342,7 +352,7 @@ def run_cache_sweep(
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             ax.plot(se.keys(), hit_rate,
-                    label=lbl(cpolicy, cset), marker=MK[0][0], lw=LW)
+                    label=lbl(cpolicy, cset), marker=MK, lw=LW)
     ax.set_xlabel("Ways")
     ax.set_xticks(sweep_params["ways"])
     ax.set_title(f"Hit Rate vs Number of Ways")
@@ -354,7 +364,7 @@ def run_cache_sweep(
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             sizes = np.array([se[way]["size"] for way in se.keys()])
             ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset),
-                    marker=MK[0][0], lw=LW)
+                    marker=MK, lw=LW)
     ax.set_xlabel("Size [B]")
     ax.set_xticks(XTICKS)
     ax.set_xticklabels(XLABELS, rotation=45)
@@ -384,7 +394,7 @@ def run_cache_sweep(
                     ct_mem_read = np.array(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
                     ax.plot(se.keys(), ct_mem_read, label=lbl(cpolicy, cset),
-                            marker=MK[0][0], lw=LW)
+                            marker=MK, lw=LW)
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
             y_ct = ct_core
@@ -404,7 +414,7 @@ def run_cache_sweep(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
                     sizes = np.array([se[way]["size"]for way in se.keys()])
                     ax.plot(sizes, ct_mem_read,
-                            label=lbl(cpolicy, cset), marker=MK[0][0], lw=LW)
+                            label=lbl(cpolicy, cset), marker=MK, lw=LW)
             ax.set_xlabel("Size [B]")
             ax.set_xticks(XTICKS)
             ax.set_xticklabels(XLABELS, rotation=45)
@@ -839,7 +849,7 @@ def guided_bp_search_for_combined(
 
     TOP_N_PREDICTORS = bpc['use_max_top_n']
     best_bp_list = []
-    sizes = sweep_params['common_settings']['size_bins']
+    sizes = sweep_params['_common_settings']['size_bins']
     for sz in sizes:
         filtered, best_bp = get_top_n(
             df_max_list, bench_df_columns, TOP_N_PREDICTORS, True, sz
@@ -848,6 +858,9 @@ def guided_bp_search_for_combined(
         best_bp['avg_acc'] = best_bp['avg_acc'].round(2)
 
         for df in filtered:
+            # might happen that none of the combinations are under size_limit
+            if (df.empty):
+                continue
             bench_name = df['bench'].iloc[0]
             col_name = f'acc_{bench_name}'
             tmp = df[['bp_tag', 'acc']].rename(columns={'acc': col_name})
@@ -857,8 +870,8 @@ def guided_bp_search_for_combined(
 
     # combine all sizes and drop duplicate bp_tags, if any
     best_bp_combined = pd.concat(best_bp_list, ignore_index=True)
-    best_bp_combined = best_bp_combined.drop_duplicates(subset='bp_tag',
-                                                        keep='first')
+    best_bp_combined = best_bp_combined \
+                      .drop_duplicates(subset='bp_tag', keep='first')
 
     bp12_p_all = [
         [size, args]
@@ -886,21 +899,21 @@ def run_bp_sweep(
     sr_bin = {}
     sr_best = {}
 
-    SIZE_LIM = [int(sweep_params["common_settings"]["min_size"]),
-                int(sweep_params["common_settings"]["max_size"])]
-    if "size_bins" in sweep_params["common_settings"]:
-        bins = sweep_params["common_settings"]["size_bins"]
+    SIZE_LIM = [int(sweep_params["_common_settings"]["min_size"]),
+                int(sweep_params["_common_settings"]["max_size"])]
+    if "size_bins" in sweep_params["_common_settings"]:
+        bins = sweep_params["_common_settings"]["size_bins"]
     else:
         # create bins as powers of 2 within the size limits
         bins = [2**i for i
                 in range(SIZE_LIM[0].bit_length(), SIZE_LIM[1].bit_length()+1)]
 
-    save_bpp_best = {}
     save_bpp_all = {}
+    save_bpp_best = {}
     for bp_handle in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading previous stats
-        if bp_handle == "common_settings":
+        if bp_handle == "_common_settings":
             continue
 
         best = {}
@@ -967,9 +980,11 @@ def run_bp_sweep(
                     m.extend(bp2_arg)
                 bp_params = bp_params_list
 
-        else:
-            save_bpp_best[bp_handle] = {}
             save_bpp_all[bp_handle] = []
+
+        else:
+            save_bpp_all[bp_handle] = []
+            save_bpp_best[bp_handle] = {}
             _, bp_params = gen_bp_sweep_params(
                 bp, sweep_params[bp_handle], SIZE_LIM)
 
@@ -1011,7 +1026,7 @@ def run_bp_sweep(
                 with open(sweep_log, "a") as f:
                     f.write(msg)
 
-                if bp != "bp_combined" and not running_best:
+                if not running_best:
                     save_bpp_all[bp_handle].append([acc, bp_size, bpp])
                 if acc == None:
                     continue
@@ -1026,6 +1041,26 @@ def run_bp_sweep(
                     best[bp_size]["acc"] = acc
                     if bp != "bp_combined" and not running_best:
                         save_bpp_best[bp_handle][bp_size] = bpp
+
+        # save all searched BPs for heatmap later
+        if bp not in ["bp_static"] and not running_best:
+            rows_all = []
+            for a_acc, a_size, a_cli_args in save_bpp_all[bp_handle]:
+                parsed = {
+                    a_cli_args[i].lstrip('-'): (a_cli_args[i + 1])
+                    for i in range(0, len(a_cli_args), 2)
+                }
+                parsed['acc'] = a_acc
+                parsed['size'] = a_size
+                rows_all.append(parsed)
+
+            dfa = pd.DataFrame(rows_all)
+            # sort values with the priority taken from the column order
+            dfa = dfa.sort_values(list(dfa.columns)).reset_index(drop=True)
+            dfa.to_pickle(os.path.join(
+                os.path.dirname(sweep_log),
+                f"all_configs_{bp_handle}.pkl")
+            )
 
         if args.track and not running_single_best:
             tt_now, tt_taken = tt()
@@ -1066,7 +1101,7 @@ def run_bp_sweep(
         sr_bin[bp_handle] = best_binned
         # TODO: save to disk as each bp/cache is finished
 
-    # sweep results
+    # save sweep results
     sr_bin_out = sweep_log.replace(".log", "_binned.json")
     sr_best_out = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
@@ -1094,15 +1129,15 @@ def run_bp_sweep(
                 continue
 
             fmt = lambda x: x.replace("bp_", "", 1)
-            mk = MK[0]
+            mk = MARKERS_BP['any']
             label = fmt(bp_h)
-            clr = BP_COLORS.get(label, 'k')
+            clr = COLORS_BP.get(label, 'k')
             if "bp_combined" in bp_h:
                 bp1 = fmt(sweep_params[bp_h]["predictors"][0])
                 bp2 = fmt(sweep_params[bp_h]["predictors"][1])
                 label = f"{label}\n{bp1} & {bp2}"
-                mk = MK[1]
-                clr = BP_COLORS.get(bp2, 'k') # bp2 assumed as differentiator
+                mk = MARKERS_BP.get(bp1, '.')
+                clr = COLORS_BP.get(bp2, 'k') # bp2 assumed as differentiator
 
             if "static" in bp_h:
                 fk = list(entry.keys())[0] # first key
@@ -1119,13 +1154,13 @@ def run_bp_sweep(
                 sizes = [entry[s]["size"] for s in entry.keys()]
                 title_add = "Best per bin size"
                 ax.plot(sizes, accs, label=label, color=clr,
-                        marker=mk[0], markersize=mk[1], lw=LW)
+                        marker=mk, markersize=7, lw=LW)
             else: # sizes are keys
                 sizes = entry.keys()
                 title_add = f"Best {args.bp_top_num} " \
                             f"and all above {args.bp_top_thr}%"
                 ax.scatter(sizes, accs, label=label, color=clr,
-                           marker=mk[0], s=mk[2])
+                           marker=mk, s=25)
 
         ax.set_title(title_add)
 
