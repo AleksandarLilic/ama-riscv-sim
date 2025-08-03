@@ -50,7 +50,7 @@
     hw_cfg.bp_cnt_bits, \
     0, \
     hw_cfg.bp_gr_bits, \
-    hw_cfg.bp_fold_pc, \
+    bp_pc_folds_t::none, \
     hw_cfg.bp_active_name.c_str() \
 }
 
