@@ -26,9 +26,7 @@ class bp_bimodal : public bp {
             cnt_ptr = &cnt;
         }
 
-        uint32_t get_idx(uint32_t pc) {
-            return (pc >> BP_PC_CUTOFF_BITS) & cnt.get_mask();
-        }
+        uint32_t get_idx(uint32_t pc) { return get_pc(pc, cnt.get_idx_mask()); }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
             idx_last = get_idx(pc);

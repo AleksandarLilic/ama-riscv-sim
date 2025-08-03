@@ -11,27 +11,44 @@
 #endif
 
 struct bp_cfg_t {
-    const uint8_t pc_bits;
-    const uint8_t cnt_bits;
-    const uint8_t hist_bits;
-    const uint8_t gr_bits;
-    //const std::string type_name;
-    const char* type_name;
+    public:
+        const uint8_t pc_bits;
+        const uint8_t cnt_bits;
+        const uint8_t hist_bits;
+        const uint8_t gr_bits;
+        const bp_pc_folds_t fold_pc;
+        //const std::string type_name;
+        const char* type_name;
 };
 
 class bp {
     public:
         const std::string type_name;
         bp_cnt* cnt_ptr = nullptr;
+        const uint8_t pc_bits;
+        const bp_pc_folds_t fold_pc;
 
     protected:
         uint32_t predicted_pc;
         b_dir_t b_dir_last;
         uint32_t size;
         bp_stats_t stats;
+        uint8_t pc_folds;
 
     public:
-        bp(bp_cfg_t cfg) : type_name(cfg.type_name), stats(cfg.type_name) {}
+        bp(bp_cfg_t cfg) :
+            type_name(cfg.type_name),
+            pc_bits(cfg.pc_bits),
+            fold_pc(cfg.fold_pc),
+            stats(cfg.type_name)
+        {
+            pc_folds = 0;
+            // the most possible # of folds, without going past ADDR_BITS
+            if (fold_pc == bp_pc_folds_t::all) {
+                pc_folds = TO_U32((ADDR_BITS - BP_PC_CUTOFF_BITS) / pc_bits);
+                //pc_folds -= 1;
+            }
+        }
 
         virtual ~bp() = default;
 
@@ -40,6 +57,14 @@ class bp {
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) = 0;
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) = 0;
+
+        virtual uint32_t get_pc(uint32_t pc, uint32_t mask) {
+            uint32_t pc_part = 0;
+            for (size_t p = 0; p <= pc_folds; p++) {
+                pc_part ^= (pc >> (BP_PC_CUTOFF_BITS + (pc_bits * p))) & mask;
+            }
+            return pc_part;
+        }
 
         virtual void update_stats(uint32_t pc, uint32_t next_pc) {
             bool correct = (next_pc == predicted_pc);

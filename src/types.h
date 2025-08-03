@@ -165,6 +165,7 @@ enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
                  ideal, none, combined, _count };
 enum class bp_sttc_t { at, ant, btfn, _count };
 enum class bp_bits_t { pc, cnt, hist, gr, _count };
+enum class bp_pc_folds_t { none, all, _count };
 
 enum class hw_status_t { miss, hit, none };
 
@@ -376,13 +377,16 @@ struct hw_cfg_t {
     uint8_t bp_cnt_bits;
     uint8_t bp_lhist_bits;
     uint8_t bp_gr_bits;
+    bp_pc_folds_t bp_fold_pc;
     bp_sttc_t bp2_static_method;
     uint8_t bp2_pc_bits;
     uint8_t bp2_cnt_bits;
     uint8_t bp2_lhist_bits;
     uint8_t bp2_gr_bits;
+    bp_pc_folds_t bp2_fold_pc;
     uint8_t bp_combined_pc_bits;
     uint8_t bp_combined_cnt_bits;
+    bp_pc_folds_t bp_combined_fold_pc;
     // bp other configs
     bool bp_run_all; // optionally, run all predefined predictors
     bool bp_dump_csv;

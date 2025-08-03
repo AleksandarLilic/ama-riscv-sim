@@ -73,7 +73,7 @@ class bp_cnt {
         }
 
         uint32_t get_bit_size() { return bit_size; }
-        uint32_t get_mask() { return cnt_entries_mask; }
+        uint32_t get_idx_mask() { return cnt_entries_mask; }
 
         bool thr_check(uint32_t idx) { return cnt_table[idx] >= thr_taken; }
 

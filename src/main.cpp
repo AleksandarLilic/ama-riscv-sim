@@ -99,6 +99,11 @@ const std::unordered_map<std::string, bp_t> bp_names_map = {
     //{"combined", bp_t::combined}
 };
 
+const std::unordered_map<std::string, bp_pc_folds_t> bp_pc_folds_map = {
+    {"none", bp_pc_folds_t::none},
+    {"all", bp_pc_folds_t::all}
+};
+
 #endif
 
 // defaults
@@ -149,13 +154,16 @@ struct hw_defs_t {
     static constexpr char bp_cnt_bits[] = "2";
     static constexpr char bp_lhist_bits[] = "5";
     static constexpr char bp_gr_bits[] = "5";
+    static constexpr char bp_fold_pc[] = "none";
     static constexpr char bp2_static_method[] = "at";
     static constexpr char bp2_pc_bits[] = "5";
     static constexpr char bp2_cnt_bits[] = "2";
     static constexpr char bp2_lhist_bits[] = "5";
     static constexpr char bp2_gr_bits[] = "5";
+    static constexpr char bp2_fold_pc[] = "none";
     static constexpr char bp_combined_pc_bits[] = "6";
     static constexpr char bp_combined_cnt_bits[] = "3";
+    static constexpr char bp_combined_fold_pc[] = "none";
     // bp other configs
     static constexpr char bp_run_all[] = "false";
     static constexpr char bp_dump_csv[] = "false";
@@ -282,6 +290,11 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_lhist_bits))
         ("bp_gr_bits", "Branch predictor - global register bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_gr_bits))
+        ("bp_fold_pc",
+         "Branch predictor - Fold higher order PC bits for indexing"
+         "\nOptions: " +
+         gen_help_list(bp_pc_folds_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_fold_pc))
 
         ("bp2_static_method",
          "Static predictor - method. \nOptions: " +
@@ -295,11 +308,21 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_lhist_bits))
         ("bp2_gr_bits", "Branch predictor 2 - global register bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_gr_bits))
+        ("bp2_fold_pc",
+         "Branch predictor 2 - Fold higher order PC bits for indexing"
+         "\nOptions: " +
+         gen_help_list(bp_pc_folds_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_fold_pc))
 
         ("bp_combined_pc_bits", "Combined predictor - PC bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_combined_pc_bits))
         ("bp_combined_cnt_bits", "Combined predictor - counter bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_combined_cnt_bits))
+        ("bp_combined_fold_pc",
+         "Combined predictor - Fold higher order PC bits for indexing"
+         "\nOptions: " +
+         gen_help_list(bp_pc_folds_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_combined_fold_pc))
 
         // bp other configs
         ("bp_run_all", "Run all branch predictors",
@@ -388,14 +411,19 @@ int main(int argc, char* argv[]) {
         hw_cfg.bp_cnt_bits = TO_SIZE(result["bp_cnt_bits"]);
         hw_cfg.bp_lhist_bits = TO_SIZE(result["bp_lhist_bits"]);
         hw_cfg.bp_gr_bits = TO_SIZE(result["bp_gr_bits"]);
+        hw_cfg.bp_fold_pc = RESOLVE_ARG("bp_fold_pc", bp_pc_folds_map);
         hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
         hw_cfg.bp2_pc_bits = TO_SIZE(result["bp2_pc_bits"]);
         hw_cfg.bp2_cnt_bits = TO_SIZE(result["bp2_cnt_bits"]);
         hw_cfg.bp2_lhist_bits = TO_SIZE(result["bp2_lhist_bits"]);
         hw_cfg.bp2_gr_bits = TO_SIZE(result["bp2_gr_bits"]);
+        hw_cfg.bp2_fold_pc = RESOLVE_ARG("bp2_fold_pc", bp_pc_folds_map);
 
         hw_cfg.bp_combined_pc_bits = TO_SIZE(result["bp_combined_pc_bits"]);
         hw_cfg.bp_combined_cnt_bits = TO_SIZE(result["bp_combined_cnt_bits"]);
+        hw_cfg.bp_combined_fold_pc =
+            RESOLVE_ARG("bp_combined_fold_pc", bp_pc_folds_map);
+
         // bp other configs
         hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
         hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);

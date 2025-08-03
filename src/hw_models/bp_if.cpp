@@ -1,29 +1,85 @@
 #include "bp_if.h"
 
-// { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
-#define BP_CFG_NONE { 0, 0, 0, 0, hw_cfg.bp_active_name.c_str() }
+// {
+//     pc_bits,
+//     cnt_bits,
+//     hist_bits,
+//     gr_bits,
+//     type_name
+// }
+
+#define BP_CFG_NONE { \
+    0, \
+    0, \
+    0, \
+    0, \
+    bp_pc_folds_t::none, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 // reuse cnt bits as method for static
 #define BP_CFG_STATIC { \
-    0, TO_U8(hw_cfg.bp_static_method), 0, 0, \
-    hw_cfg.bp_active_name.c_str() }
+    0, \
+    TO_U8(hw_cfg.bp_static_method), \
+    0, \
+    0, \
+    bp_pc_folds_t::none, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_BIMODAL_CFG { \
-    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, 0, \
-    hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, \
+    hw_cfg.bp_cnt_bits, \
+    0, \
+    0, \
+    hw_cfg.bp_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_LOCAL_CFG { \
-    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, hw_cfg.bp_lhist_bits, 0, \
-    hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, \
+    hw_cfg.bp_cnt_bits, \
+    hw_cfg.bp_lhist_bits, \
+    0, \
+    hw_cfg.bp_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_GLOBAL_CFG { \
-    0, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
-    hw_cfg.bp_active_name.c_str() }
+    0, \
+    hw_cfg.bp_cnt_bits, \
+    0, \
+    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_GSELECT_CFG { \
-    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
-    hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, \
+    hw_cfg.bp_cnt_bits, \
+    0, \
+    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_GSHARE_CFG { \
-    hw_cfg.bp_pc_bits, hw_cfg.bp_cnt_bits, 0, hw_cfg.bp_gr_bits, \
-    hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_pc_bits, \
+    hw_cfg.bp_cnt_bits, \
+    0, \
+    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
+
 #define BP_COMBINED_CFG { \
-    hw_cfg.bp_combined_pc_bits, hw_cfg.bp_combined_cnt_bits, 0, 0, \
-    hw_cfg.bp_active_name.c_str() }
+    hw_cfg.bp_combined_pc_bits, \
+    hw_cfg.bp_combined_cnt_bits, \
+    0, \
+    0, \
+    hw_cfg.bp_combined_fold_pc, \
+    hw_cfg.bp_active_name.c_str() \
+}
 
 bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     bp_name(name),
@@ -86,6 +142,7 @@ std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, hw_cfg_t hw_cfg) {
             hw_cfg.bp_cnt_bits = hw_cfg.bp2_cnt_bits;
             hw_cfg.bp_lhist_bits = hw_cfg.bp2_lhist_bits;
             hw_cfg.bp_gr_bits = hw_cfg.bp2_gr_bits;
+            hw_cfg.bp_fold_pc = hw_cfg.bp2_fold_pc;
             bp2 = create_predictor(bp_combined_p2_type, hw_cfg);
 
             bp_out = std::make_unique<

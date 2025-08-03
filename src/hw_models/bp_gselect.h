@@ -33,7 +33,7 @@ class bp_gselect : public bp {
         }
 
         virtual uint32_t get_idx(uint32_t pc, uint32_t gr) {
-            uint32_t pc_part = (pc >> BP_PC_CUTOFF_BITS) & pc_mask;
+            uint32_t pc_part = get_pc(pc, cnt.get_idx_mask());
             uint32_t gr_part = gr & gr_mask;
             // concat with pc top, gr bottom
             return ((pc_part << gr_bits) | gr_part) & idx_mask;

@@ -58,41 +58,59 @@ class bp_if {
 
     private:
         // predefined branch predictors
-        // { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
-        static constexpr std::array<bp_def_t, 15> arch_bp_defs = {{
-            {bp_t::sttc,
-             bp_cfg_t{ 0, TO_U8(bp_sttc_t::at), 0, 0, "d_static_at" }},
-            {bp_t::sttc,
-             bp_cfg_t{ 0, TO_U8(bp_sttc_t::ant), 0, 0, "d_static_ant" }},
-            {bp_t::sttc,
-             bp_cfg_t{ 0, TO_U8(bp_sttc_t::btfn), 0, 0, "d_static_btfn" }},
-            {bp_t::none, bp_cfg_t{ 0, 0, 0, 0, "d_none" }},
-            {bp_t::ideal, bp_cfg_t{ 0, 0, 0, 0, "d_ideal_" }},
-            {bp_t::bimodal, bp_cfg_t{ 7, 3, 0, 0, "d_bimodal_v1" }},
-            {bp_t::local, bp_cfg_t{ 5, 3, 5, 0, "d_local_v1" }},
-            {bp_t::global, bp_cfg_t{ 0, 3, 0, 7, "d_global_v1" }},
-            {bp_t::gselect, bp_cfg_t{ 1, 3, 0, 6, "d_gselect_v1" }},
-            {bp_t::gshare, bp_cfg_t{ 8, 1, 0, 8, "d_gshare_v1" }},
-            {bp_t::bimodal, bp_cfg_t{ 8, 3, 0, 0, "d_bimodal_v2" }},
-            {bp_t::local, bp_cfg_t{ 5, 3, 9, 0, "d_local_v2" }},
-            {bp_t::global, bp_cfg_t{ 0, 3, 0, 9, "d_global_v2" }},
-            {bp_t::gselect, bp_cfg_t{ 3, 3, 0, 6, "d_gselect_v2" }},
-            {bp_t::gshare, bp_cfg_t{ 8, 3, 0, 8, "d_gshare_v2" }},
+        // e.g. some good performing predictors that can be used as a starting
+        // point for further evaluation or quick comparison with the cli bp
+        // but without the need to go all out on the sweep flow
+        // more should be added as needed
+
+        #define FN bp_pc_folds_t::none
+        #define FA bp_pc_folds_t::all
+        #define STTC(x) TO_U8(bp_sttc_t::x)
+
+        inline static const
+        std::array<bp_def_t, 15> arch_bp_defs = {{
+            // {pc_bits, cnt_bits, hist_bits, gr_bits, pc_fold_bits, type_name}
+            // statics
+            {bp_t::sttc, bp_cfg_t{0, STTC(at), 0, 0, FN, "d_static_at"}},
+            {bp_t::sttc, bp_cfg_t{0, STTC(ant), 0, 0, FN, "d_static_ant"}},
+            {bp_t::sttc, bp_cfg_t{0, STTC(btfn), 0, 0, FN, "d_static_btfn"}},
+            // all or nothing
+            {bp_t::none, bp_cfg_t{0, 0, 0, 0, FN, "d_none"}},
+            {bp_t::ideal, bp_cfg_t{0, 0, 0, 0, FN, "d_ideal_"}},
+            // smaller
+            {bp_t::bimodal, bp_cfg_t{7, 3, 0, 0, FN, "d_bimodal_v1"}},
+            {bp_t::local, bp_cfg_t{5, 3, 5, 0, FN, "d_local_v1"}},
+            {bp_t::global, bp_cfg_t{0, 3, 0, 7, FN, "d_global_v1"}},
+            {bp_t::gselect, bp_cfg_t{1, 3, 0, 6, FN, "d_gselect_v1"}},
+            {bp_t::gshare, bp_cfg_t{8, 1, 0, 8, FN, "d_gshare_v1"}},
+            // a bit larger
+            {bp_t::bimodal, bp_cfg_t{8, 3, 0, 0, FN, "d_bimodal_v2"}},
+            {bp_t::local, bp_cfg_t{5, 3, 9, 0, FN, "d_local_v2"}},
+            {bp_t::global, bp_cfg_t{0, 3, 0, 9, FN, "d_global_v2"}},
+            {bp_t::gselect, bp_cfg_t{3, 3, 0, 6, FN, "d_gselect_v2"}},
+            {bp_t::gshare, bp_cfg_t{8, 3, 0, 8, FN, "d_gshare_v2"}},
         }};
 
-        static constexpr std::array<std::array<bp_def_t, 3>, 2> arch_bpc_defs =
+        inline static const
+        std::array<std::array<bp_def_t, 3>, 3> arch_bpc_defs = {{
+        // {pc_bits, cnt_bits, hist_bits, gr_bits, pc_fold_bits, type_name}
         {{
-            // { pc_bits, cnt_bits, hist_bits, gr_bits, type_name }
-            {{
-                {bp_t::combined, bp_cfg_t{ 4, 4, 0, 0, "d_combined_v1" }},
-                {bp_t::sttc, bp_cfg_t{ 0, 0, 0, 0, "d_static_cv1" }},
-                {bp_t::gshare, bp_cfg_t{ 8, 1, 0, 8, "d_gshare_cv1" }},
-            }},
-            {{
-                {bp_t::combined, bp_cfg_t{ 5, 4, 0, 0, "d_combined_v2" }},
-                {bp_t::sttc, bp_cfg_t{ 0, 0, 0, 0, "d_static_cv2" }},
-                {bp_t::gshare, bp_cfg_t{ 8, 3, 0, 8, "d_gshare_cv2" }},
-            }},
+            // combined predictor 1
+            {bp_t::combined, bp_cfg_t{4, 4, 0, 0, FN, "d_combined_v1"}},
+            {bp_t::sttc, bp_cfg_t{0, 0, 0, 0, FN, "d_static_cv1"}},
+            {bp_t::gshare, bp_cfg_t{8, 1, 0, 8, FN, "d_gshare_cv1"}},
+        }},
+        {{
+            // combined predictor 2
+            {bp_t::combined, bp_cfg_t{5, 4, 0, 0, FN, "d_combined_v2"}},
+            {bp_t::sttc, bp_cfg_t{0, 0, 0, 0, FN, "d_static_cv2"}},
+            {bp_t::gshare, bp_cfg_t{8, 3, 0, 8, FN, "d_gshare_cv2"}},
+        }},
+        {{
+            // combined predictor 3
+            {bp_t::combined, bp_cfg_t{4, 4, 0, 0, FN, "d_combined_v3"}},
+            {bp_t::sttc, bp_cfg_t{STTC(btfn), 0, 0, 0, FN, "d_static_cv3"}},
+            {bp_t::gselect, bp_cfg_t{2, 1, 0, 6, FN, "d_gselect_cv3"}},
+        }},
         }};
-
 };
