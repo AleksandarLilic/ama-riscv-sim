@@ -41,7 +41,7 @@ clean_tests:
 	$(PYVER) prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
 
 build_sim:
-	make -C ../src --no-print-directory BDIR=$(BDIR) NO_LINK=1 -j $(SIM_FLAGS)
+	make -C ../src --no-print-directory BDIR=$(BDIR) NO_SYMLINK=1 -j $(SIM_FLAGS)
 	@echo "Simulator build done."
 
 cleanlogs:

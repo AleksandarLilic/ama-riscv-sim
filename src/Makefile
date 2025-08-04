@@ -36,10 +36,10 @@ all: $(TARGET)
 
 obj: $(OBJECTS)
 
-NO_LINK ?= 0
+NO_SYMLINK ?= 0 # to skip symlinking into the parent directory, e.g. for test build
 $(TARGET): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-	@if [ "$(NO_LINK)" = "0" ]; then \
+	@if [ "$(NO_SYMLINK)" = "0" ]; then \
 		ln -sf $@ $(BIN); \
 	fi
 
