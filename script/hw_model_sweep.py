@@ -760,29 +760,34 @@ def guided_bp_search_for_combined(
             bp_arg = '--bp' if idx == 0 else '--bp2'
             out_args += [bp_arg, bp_type]
 
+            fold_pc_idx = 0
             if bp_type == 'static':
                 out_args += [f"{bp_arg}_static_method", bp_params]
             elif bp_type == 'bimodal':
                 out_args += [f"{bp_arg}_pc_bits", bp_params[0],
                              f"{bp_arg}_cnt_bits", bp_params[1]]
+                fold_pc_idx = 2
             elif bp_type == 'local':
                 out_args += [f"{bp_arg}_pc_bits", bp_params[0],
                              f"{bp_arg}_lhist_bits", bp_params[1],
                              f"{bp_arg}_cnt_bits", bp_params[2]]
+                fold_pc_idx = 3
             elif bp_type == 'global':
                 out_args += [f"{bp_arg}_gr_bits", bp_params[0],
                              f"{bp_arg}_cnt_bits", bp_params[1]]
+                fold_pc_idx = 2
             elif bp_type in ['gselect', 'gshare']:
                 out_args += [f"{bp_arg}_pc_bits", bp_params[0],
                              f"{bp_arg}_gr_bits", bp_params[1],
                              f"{bp_arg}_cnt_bits", bp_params[2]]
+                fold_pc_idx = 3
             else:
                 pass # placeholder, maybe error out?
 
             # fold pc not available for static, otherwise always present
             if bp_type != "static":
-                # relies on [2:] being all/none, which is true atm
-                out_args += [f"{bp_arg}_fold_pc", bp_params[2:]]
+                # relies on [fold_pc_idx:] being all/none, which is true atm
+                out_args += [f"{bp_arg}_fold_pc", bp_params[fold_pc_idx:]]
 
         out.append(out_args)
         return(out)
@@ -1141,7 +1146,7 @@ def run_bp_sweep(
             if "bp_combined" in bp_h:
                 bp1 = fmt(sweep_params[bp_h]["predictors"][0])
                 bp2 = fmt(sweep_params[bp_h]["predictors"][1])
-                label = f"{label}\n{bp1} & {bp2}"
+                label = f"{label}" # {bp1} & {bp2}"
                 mk = MARKERS_BP.get(bp1, '.')
                 clr = COLORS_BP.get(bp2, 'k') # bp2 assumed as differentiator
 
@@ -1155,14 +1160,18 @@ def run_bp_sweep(
                            label=f"{label} {method} ({acc:.0f}%)")
                 continue
 
-            accs = [entry[s]["acc"] for s in entry.keys()]
+            accs = [entry[s]["acc"] for s in entry.keys()
+                    if entry[s]["acc"] >= args.bp_top_thr]
             if sr == sr_bin: # bins are keys, sizes stored as entry
-                sizes = [entry[s]["size"] for s in entry.keys()]
+                sizes = [entry[s]["size"] for s in entry.keys()
+                         if entry[s]["acc"] >= args.bp_top_thr]
                 title_add = "Best per bin size"
                 ax.plot(sizes, accs, label=label, color=clr,
                         marker=mk, markersize=7, lw=LW)
             else: # sizes are keys
                 sizes = entry.keys()
+                sizes = [k for k in entry.keys()
+                         if entry[k]["acc"] >= args.bp_top_thr]
                 title_add = f"Best {args.bp_top_num} " \
                             f"and all above {args.bp_top_thr}%"
                 ax.scatter(sizes, accs, label=label, color=clr,
@@ -1177,6 +1186,7 @@ def run_bp_sweep(
         a.set_xticklabels(a.get_xticks(), rotation=45)
         a.set_ylabel("Accuracy [%]")
         a.legend(loc="upper left")
+        #a.legend(loc="lower right", ncol=2)
         a.grid(True)
         a.margins(x=0.02)
         ymin = a.get_ylim()[0] * 0.99 if not args.plot_acc_thr_min else \
