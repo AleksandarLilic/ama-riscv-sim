@@ -51,7 +51,7 @@ struct cache_size_t {
             metadata = ((sets * ways * metadata_bits_num) >> 3) + 1;
         }
         void show() const {
-            std::cout << " (W/S: " << ways << "/" << sets
+            std::cout << " (S/W: " << sets << "/" << ways
                       << ", D/T/M: " << data << "/" << tags << "/" << metadata
                       << " B): ";
         }
