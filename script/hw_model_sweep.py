@@ -559,23 +559,23 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
         return 0
     if bp == "bimodal" or bp == "combined":
         cnt_entries = 1 << (params["pc_bits"])
-        return (cnt_entries*params["cnt_bits"] + 8) >> 3
+        return (cnt_entries*params["cnt_bits"] + 4) >> 3
     if bp == "local":
         cnt_entries = 1 << (params["lhist_bits"])
         hist_entries = 1 << (params["pc_bits"])
         return (hist_entries*params["lhist_bits"] + \
-                cnt_entries*params["cnt_bits"] + 8) >> 3
+                cnt_entries*params["cnt_bits"] + 4) >> 3
     if bp == "global":
         cnt_entries = 1 << (params["gr_bits"])
         idx_bits = params["gr_bits"]
-        return (cnt_entries*params["cnt_bits"] + idx_bits + 8) >> 3
+        return (cnt_entries*params["cnt_bits"] + idx_bits + 4) >> 3
     if bp == "gselect":
         cnt_entries = 1 << (params["gr_bits"] + params["pc_bits"])
-        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 8) >> 3
+        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 4) >> 3
     if bp == "gshare":
         idx_bits = max(params["pc_bits"], params["gr_bits"])
         cnt_entries = 1 << idx_bits
-        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 8) >> 3
+        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 4) >> 3
 
     return 1 # can't help you
 
