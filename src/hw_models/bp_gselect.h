@@ -28,7 +28,7 @@ class bp_gselect : public bp {
             gr(0)
         {
             size = cnt.get_bit_size() + cfg.gr_bits;
-            size = (size + 8) >> 3; // to bytes, round up
+            size = (size + 4) >> 3;
             cnt_ptr = &cnt;
         }
 

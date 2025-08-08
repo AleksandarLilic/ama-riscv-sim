@@ -58,7 +58,7 @@ class bp_local : public bp {
             for (auto& e : hist_table) e.hist_pattern = 0;
             size = hist_table.size() * hist_bits;
             size += cnt.get_bit_size();
-            size = (size + 8) >> 3; // to bytes, round up
+            size = (size + 4) >> 3;
             cnt_ptr = &cnt;
         }
 

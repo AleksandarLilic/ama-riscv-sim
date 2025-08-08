@@ -23,7 +23,7 @@ class bp_combined : public bp {
         {
             bpsn = std::move(bps_in);
             size = bpsn[0]->get_size() + bpsn[1]->get_size();
-            size += (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
+            size += (cnt.get_bit_size() + 4) >> 3;
         }
 
         virtual ~bp_combined() = default;

@@ -22,7 +22,7 @@ class bp_bimodal : public bp {
             bp(cfg),
             cnt({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
         {
-            size = (cnt.get_bit_size() + 8) >> 3; // to bytes, round up
+            size = (cnt.get_bit_size() + 4) >> 3; // to bytes, round up
             cnt_ptr = &cnt;
         }
 

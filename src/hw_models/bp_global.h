@@ -20,7 +20,7 @@ class bp_global : public bp {
             gr(0)
         {
             size = cnt.get_bit_size() + idx_bits;
-            size = (size + 8) >> 3; // to bytes, round up
+            size = (size + 4) >> 3;
             cnt_ptr = &cnt;
         }
 
