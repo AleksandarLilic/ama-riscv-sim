@@ -114,9 +114,12 @@ struct inst_prof_j {
 // TODO: add instruction dasm to the profiler as another entry?
 struct trace_entry {
     uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
+    uint32_t inst;
     uint32_t pc;
+    uint32_t next_pc;
     uint32_t dmem;
     uint32_t sp;
+    uint8_t taken;
     uint8_t ic_hm;
     uint8_t dc_hm;
     uint8_t bp_hm;
@@ -236,7 +239,7 @@ class profiler {
 
     private:
         void log_to_file_and_print();
-        void rst_te() { te = {0, 0, 0, 0, 0, 0, 0, 0, 0}; }
+        void rst_te() { te = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; }
 
     private:
         // all compressed instructions

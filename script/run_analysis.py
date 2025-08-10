@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 
-import os
-import json
 import argparse
+import json
+import math
+import os
 import textwrap
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from typing import Dict, Any, Tuple, List
-from matplotlib.ticker import MultipleLocator, FuncFormatter, LogFormatter, \
-                              LogFormatterSciNotation, MaxNLocator
+from typing import Any, Dict, List, Tuple
 
+import matplotlib.patches as patches
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.ticker import (FuncFormatter, LogFormatter,
+                               LogFormatterSciNotation, MaxNLocator,
+                               MultipleLocator)
 from utils import is_notebook
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -30,7 +32,7 @@ MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
 CACHE_LINE_BYTES = 64
-BASE_ADDR = 0x10000
+BASE_ADDR = 0x40000
 MEM_SIZE = 65536
 
 inst_t_mem = {
@@ -104,7 +106,7 @@ inst_mem_bd = {
 }
 
 def get_base_int_addr(addr) -> int:
-    return int(addr,16) - int(BASE_ADDR)
+    return int(addr,16) # - int(BASE_ADDR)
 
 def get_count(parts, df) -> Tuple[int, int]:
     pc = get_base_int_addr(parts[0].strip())
@@ -168,7 +170,7 @@ def ctype_check(ctype:str) -> Tuple[List[str], str]:
         ylabel = "Program Counter"
     elif ctype == 'dmem':
         cols = ['dmem', 'dsz', 'count']
-        ylabel = "Data Memory Address"
+        ylabel = "Data Memory"
     else:
         raise ValueError(f"Invalid chart type '{ctype}'. " + \
                          f"Available types are: 'pc', 'dmem'")
@@ -627,6 +629,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
 
     hc = 0
     if ctype == 'pc':
+        trace_type = "Execution"
         hl_off = .15
         for hl_g in hl_groups:
             x_val_hl = []
@@ -647,6 +650,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
             add_legend_for_hl_groups(ax_t, "trace")
 
     elif ctype == 'dmem':
+        trace_type = "Data Memory"
         for hl_g in ['load', 'store']:
             x_val_hl = []
             y_val_hl = []
@@ -688,7 +692,7 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
 
     # label
-    ax_t.set_title(f"Execution profile for {title}")
+    ax_t.set_title(f"{trace_type} profile for {title}")
     ax_t.set_ylabel(ylabel)
     ax_sp.set_ylabel('Stack Pointer')
     ax_ic.set_ylabel('ICache')
@@ -700,27 +704,32 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     return fig
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
-    h = ['smp', 'pc', 'dmem', 'sp', 'ic', 'dc', 'bp', 'isz', 'dsz',
-         'padding8' , 'padding16', 'padding32']
+    h = ['smp', # 64b - [0]
+         'inst', 'pc', 'next_pc', 'dmem', # 128b - [1:4]
+         'sp', # 32b - [5]
+         'b_taken', 'ic', 'dc', 'bp', 'isz', 'dsz', # 48b - [6:11]
+         'padding16', 'padding32'] # 48b [12:13]
 
     dtype = np.dtype([
-        (h[0], np.uint64), # smp
-        (h[1], np.uint32), # pc
-        (h[2], np.uint32), # dmem
-        (h[3], np.uint32), # sp
-        (h[4], np.uint8), # ic
-        (h[5], np.uint8), # dc
-        (h[6], np.uint8), # bp
-        (h[7], np.uint8), # isz
-        (h[8], np.uint8), # dsz
-        (h[9], np.uint8), # padding
-        (h[10], np.uint16), # padding
-        (h[11], np.uint32), # padding
+        (h[ 0], np.uint64), # smp
+        (h[ 1], np.uint32), # inst
+        (h[ 2], np.uint32), # pc
+        (h[ 3], np.uint32), # next_pc
+        (h[ 4], np.uint32), # dmem
+        (h[ 5], np.uint32), # sp
+        (h[ 6], np.uint8 ), # taken
+        (h[ 7], np.uint8 ), # ic
+        (h[ 8], np.uint8 ), # dc
+        (h[ 9], np.uint8 ), # bp
+        (h[10], np.uint8 ), # isz
+        (h[11], np.uint8 ), # dsz
+        (h[12], np.uint16), # padding16
+        (h[13], np.uint32), # padding32
     ])
 
     data = np.fromfile(bin_log, dtype=dtype)
     df = pd.DataFrame(data, columns=h)
-    df = df.drop(columns=h[9:]) # drop padding columns
+    df = df.drop(columns=[c for c in h if 'padding' in c]) # drop padding cols
 
     # enum class hw_status_t { miss, hit, none };
     hw_status_t_none = 2
@@ -731,8 +740,18 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
         lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
-    if args.save_converted_bin:
-        df.to_csv(bin_log.replace('.bin', '.csv'), index=False)
+
+    if args.save_converted_trace:
+        dfs = df.copy()
+        # some columns to hex
+        for c in ["inst"]:
+            dfs[c] = dfs[c].apply(lambda x: f'{x:08X}')
+        for c in ["pc", "next_pc", "dmem", "sp"]:
+            digits = int(math.ceil(np.log2(BASE_ADDR)/4))
+            dfs[c] = dfs[c].apply(lambda x: f'{x:0{digits}X}')
+        for c in ["isz", "dsz"]:
+            dfs[c] = dfs[c].apply(lambda x: f'{x:01X}')
+        dfs.to_csv(bin_log.replace('.bin', '.csv'), index=False)
 
     df_start = int(args.sample_begin) if args.sample_begin else 0
     df_end = int(args.sample_end) if args.sample_end else df.smp.max()
@@ -856,7 +875,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
-    parser.add_argument('--save_converted_bin', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
+    parser.add_argument('--save_converted_trace', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")

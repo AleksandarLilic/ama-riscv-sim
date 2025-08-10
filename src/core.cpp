@@ -139,6 +139,7 @@ void core::exec_inst() {
         inst_fetch();
         #ifdef PROFILERS_EN
         prof.new_inst(inst);
+        branch_taken = false;
         #endif
 
         uint32_t op_c = ip.copcode();
@@ -219,8 +220,11 @@ void core::exec_inst() {
     #ifdef PROFILERS_EN
     prof.track_sp(rf[2]);
     if (prof_act && prof_trace) {
-        prof.te.pc = pc - BASE_ADDR;
+        prof.te.inst = inst;
+        prof.te.pc = pc;
+        prof.te.next_pc = next_pc;
         prof.te.sp = rf[2];
+        prof.te.taken = branch_taken;
         prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
         #ifdef DPI
         prof.te.sample_cnt = clk_src.get_cr();
@@ -429,6 +433,7 @@ void core::branch() {
     #ifdef PROFILERS_EN
     prof_perf.update_branch(next_pc, taken);
     prof_perf.set_perf_event_flag(perf_event_t::branches);
+    branch_taken = taken;
     #endif
 
     #ifdef DASM_EN
@@ -488,6 +493,7 @@ void core::jalr() {
     #ifdef PROFILERS_EN
     bool tail_call = (ip.rd() == 0);
     prof_perf.update_jalr(next_pc, ret_inst, tail_call, ra);
+    branch_taken = true;
     #endif
 
     #ifdef DASM_EN
@@ -521,6 +527,7 @@ void core::jal() {
     //bool pc_match = (pc == 0x19118); // known noreturn call
     bool tail_call = (ip.rd() == 0); // || pc_match;
     prof_perf.update_jal(next_pc, tail_call, ra);
+    branch_taken = true;
     #endif
 
     #ifdef DASM_EN
@@ -1718,6 +1725,9 @@ void core::c_beqz() {
         next_pc = pc + 2;
         PROF_B_NT(c_beqz, _c_b)
     }
+    #ifdef PROFILERS_EN
+    branch_taken = (next_pc != (pc + 2));
+    #endif
     DASM_OP(c.beqz)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
@@ -1732,6 +1742,9 @@ void core::c_bnez() {
         next_pc = pc + 2;
         PROF_B_NT(c_beqz, _c_b)
     }
+    #ifdef PROFILERS_EN
+    branch_taken = (next_pc != (pc + 2));
+    #endif
     DASM_OP(c.bnez)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
@@ -1744,6 +1757,7 @@ void core::c_j() {
     PROF_J(c_j)
     #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, true, false);
+    branch_taken = true;
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
@@ -1758,6 +1772,7 @@ void core::c_jal() {
     PROF_J(c_jal)
     #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, false, false);
+    branch_taken = true;
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
@@ -1777,6 +1792,7 @@ void core::c_jr() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, ret_inst, true, pc + 2); // no ra, tail calls
+    branch_taken = true;
     #endif
 
     #ifdef DASM_EN
@@ -1798,6 +1814,7 @@ void core::c_jalr() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, false, false, ra);
+    branch_taken = true;
     #endif
 
     #ifdef DASM_EN

@@ -523,7 +523,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define PROF_DMEM(size) \
     prof.te.dmem_size = size; \
-    prof.te.dmem = addr - BASE_ADDR;
+    prof.te.dmem = addr;
 
 #else
 #define PROF_G(op)

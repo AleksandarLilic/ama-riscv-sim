@@ -426,6 +426,7 @@ class core {
         profiler prof;
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
+        bool branch_taken;
         #ifdef DPI
         clock_source_t clk_src;
         #endif
