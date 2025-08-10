@@ -3,8 +3,8 @@
 *.log
 *.dot
 *.pkl
-sweep_*_best.json
-sweep_*_binned.json
+sweep_*_best*.json
+sweep_*_binned*.json
 sweep_*.png
 script/**/out_*/
 
