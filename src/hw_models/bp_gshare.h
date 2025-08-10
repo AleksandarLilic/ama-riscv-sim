@@ -35,7 +35,7 @@ class bp_gshare : public bp {
         }
 
         virtual uint32_t get_idx(uint32_t pc, uint32_t gr) {
-            uint32_t pc_part = get_pc(pc, cnt.get_idx_mask());
+            uint32_t pc_part = get_pc(pc, pc_mask);
             uint32_t gr_part = gr & gr_mask;
             // xor with top PC bits, fit within the mask length
             // TODO: slide XORs bits L/R?
