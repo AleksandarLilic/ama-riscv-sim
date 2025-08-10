@@ -175,6 +175,7 @@ def run_workloads(wp: workload_params):
         agg_acc = [] # aggregate accuracy across all workloads
         per_app_acc = {}
         bp_size = None
+        below_thr = False
     elif cache_sweep:
         agg_hr = [] # aggregate hit rate across all workloads
         per_app_hr = {}
@@ -221,9 +222,12 @@ def run_workloads(wp: workload_params):
             if b_tot == 0:
                 raise RuntimeError(f"No branches logged for {app}")
             acc = round(b_pred/b_tot*100, 2)
-            if acc < app_thr_acc and not wp.ignore_thr:
-                agg_acc = []
-                break # skip the rest of the workloads if acc is too low on any
+            if acc < app_thr_acc:
+                below_thr = True
+                if not wp.ignore_thr:
+                    # skip the rest of the workloads if acc is too low on any
+                    agg_acc = []
+                    break
             agg_acc.append(acc)
             per_app_acc[get_test_name(app)] = acc
 
@@ -255,7 +259,7 @@ def run_workloads(wp: workload_params):
         avg_acc = None
         if len(agg_acc) > 0:
             avg_acc = round(sum(agg_acc)/len(agg_acc), 2)
-        return bp_size, avg_acc, per_app_acc, wp.ret_list, msg_out
+        return bp_size, avg_acc, per_app_acc, wp.ret_list, below_thr, msg_out
 
     elif cache_sweep:
         avg_hr = None
@@ -890,6 +894,7 @@ def guided_bp_search_for_combined(
 
     TOP_N_PREDICTORS = bpc['use_max_top_n']
     best_bp_list = []
+    #sizes = sweep_params['_common_settings']['size_bins_comb_guided_search']
     sizes = sweep_params['_common_settings']['size_bins']
     for sz in sizes:
         filtered, best_bp = get_top_n(
@@ -962,7 +967,7 @@ def run_bp_sweep(
         if bp_handle == "_common_settings":
             continue
 
-        best = {}
+        best_bps = {}
         bp = bp_handle.split("-")[0]
         bp_act =  ["--bp", bp.replace("bp_", "", 1)]
 
@@ -1049,6 +1054,10 @@ def run_bp_sweep(
         # 2b. but don't ignore anything other that static when 'running_best'
         ignore_thr = (bp == "bp_static") or \
                      ((bp != "bp_combined") and not running_best)
+
+        # FIXME: this has tendency to deadlock itself if too may bp_params are
+        # passed in. Needs to be reworked with safer dispatch methods to spawn
+        # new jobs (instead of fork), and limit the number of inflight jobs
         with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
             futures = {
                 executor.submit(
@@ -1070,7 +1079,7 @@ def run_bp_sweep(
             # get results as they come in
             cnt = 0
             for future in as_completed(futures):
-                bp_size, acc, per_app_acc, bpp, msg = future.result()
+                bp_size, acc, per_app_acc, bpp, below_thr, msg = future.result()
 
                 cnt += 1
                 if args.track and cnt % idx_c == 0 and not running_single_best:
@@ -1082,16 +1091,22 @@ def run_bp_sweep(
                     save_bpp_all[bp_handle].append([acc, bp_size, bpp])
                 if acc == None:
                     continue
+                if below_thr and bp != "bp_static":
+                    # 2a. from above, part 2
+                    # special case when thr is ignored for component predictors
+                    # but now once collected for save_bpp_all, remove if needed
+                    # static always included as usual
+                    continue
 
                 d = {}
                 for i in range(0,len(bpp),2):
                     d[bpp[i].replace("--", "", 1)] = bpp[i+1]
-                if (bp_size not in best or acc > best[bp_size]["acc"]):
-                    best[bp_size] = {}
+                if (bp_size not in best_bps or acc > best_bps[bp_size]["acc"]):
+                    best_bps[bp_size] = {}
                     for k, v in d.items():
-                        best[bp_size][k] = v
-                    best[bp_size]["acc"] = acc
-                    best[bp_size]["per_app_acc"] = per_app_acc # only for best?
+                        best_bps[bp_size][k] = v
+                    best_bps[bp_size]["acc"] = acc
+                    best_bps[bp_size]["per_app_acc"] = per_app_acc
                     if bp != "bp_combined" and not running_best:
                         save_bpp_best[bp_handle][bp_size] = bpp
 
@@ -1119,19 +1134,26 @@ def run_bp_sweep(
             tt_now, tt_taken = tt()
             print(f"{PROG_BAT}/{PROG_BAT}. Done at {tt_now}. Taken: {tt_taken}")
 
-        # sort the best dict by accuracy
+        # sort the best dict by accuracy, highest at the top
         sr_best[bp_handle] = dict(
-            sorted(best.items(), key=lambda x: x[1]["acc"], reverse=True))
-        # take only if above the threshold for accuracy
-        sr_best_thr = dict(
-            filter(lambda x: x[1]["acc"] >= args.bp_top_thr,
-                   sr_best[bp_handle].items()))
+            sorted(best_bps.items(), key=lambda x: x[1]["acc"], reverse=True))
+
         # get the top N configs
-        sr_best_num = dict(
-            list(sr_best[bp_handle].items())[:args.bp_top_num])
-        # merge the two dicts
-        sr_best[bp_handle] = {**sr_best_thr, **sr_best_num}
-        # sort again in ascending order (more intuitive)
+        sr_best_num = dict(list(sr_best[bp_handle].items())[:args.bp_top_num])
+
+        if args.bp_top_thr != None:
+            # take more only if above the threshold for accuracy
+            sr_best_thr = dict(
+                filter(lambda x: x[1]["acc"] >= args.bp_top_thr,
+                       sr_best[bp_handle].items()))
+            # merge two dicts
+            sr_best[bp_handle] = {**sr_best_thr, **sr_best_num}
+
+        else:
+            # just one dict
+            sr_best[bp_handle] = sr_best_num
+
+        # sort again but in ascending order (more intuitive to read)
         sr_best[bp_handle] = dict(
             sorted(sr_best[bp_handle].items(), key=lambda x: x[1]["acc"]))
 
@@ -1139,19 +1161,7 @@ def run_bp_sweep(
         #sr_best[bp_handle] = dict(
         #    sorted(sr_best[bp_handle].items(), key=lambda x: x[0]))
 
-        # for each bin, find the best config for accuracy
-        prev_bin = -1 # 0 valid size for static bp
-        best_binned = {}
-        for bin in bins:
-            for bp_size, d in best.items():
-                if prev_bin < bp_size <= bin:
-                    if ((bin not in best_binned or
-                        d["acc"] > best_binned[bin]["acc"])):
-                        best_binned[bin] = d.copy() # so size is not added to og
-                        best_binned[bin]["size"] = bp_size
-            prev_bin = bin
-
-        sr_bin[bp_handle] = best_binned
+        sr_bin[bp_handle] = bin_bp_results(bins, best_bps)
         # TODO: save to disk as each bp/cache is finished
 
     # save sweep results
@@ -1161,11 +1171,14 @@ def run_bp_sweep(
     if args.load_stats:
         with open(sr_bin_out, "r") as f:
             sr_bin = convert_keys_to_int(json.load(f))
-        if not running_best: # bin and best are the same thing for 'best' run
+        # bin and best are the same thing for 'best' run
+        if not running_best or args.bp_run_best_for_all_workloads:
+            # unelss 'bp_run_best_for_all_workloads == True'
             with open(sr_best_out, "r") as f:
                 sr_best = convert_keys_to_int(json.load(f))
 
         if running_best:
+            # FIXME: best not filtered again if used for all workloads
             at_least_one = False
             # filter again if config thr changed for stats loading
             for wl in workloads:
@@ -1192,12 +1205,13 @@ def run_bp_sweep(
     elif args.save_stats:
         with open(sr_bin_out, "w") as f:
             f.write(reformat_json(sr_bin))
-        if not running_best:
+        if not running_best or args.bp_run_best_for_all_workloads:
             with open(sr_best_out, "w") as f:
                 f.write(reformat_json(sr_best))
 
     # plot accuracy wrt size
-    ncols = 1 if running_best else 2
+    ncols = 1 if (running_best and not args.bp_run_best_for_all_workloads) \
+           else 2
     fig, axs = create_plot(
         bpk.capitalize(), sweep_name, ncols, title_2=args.chart_title)
     plot_bp_results(axs, [sr_bin, sr_best], sweep_params)
@@ -1205,10 +1219,33 @@ def run_bp_sweep(
     if args.save_png:
         fig.savefig(sweep_log.replace(".log", ".png"))
 
-    return sr_bin
+    return [sr_bin, sr_best]
+
+def bin_bp_results(bins, best):
+    # for each bin, find the best config for accuracy
+    prev_bin_size = -1 # 0 valid size for static bp
+    best_per_bin = {}
+    for bin_size in bins:
+        for bp_size, d in best.items():
+            within_size = (prev_bin_size < int(bp_size) <= bin_size)
+            doesnt_exist = (bin_size not in best_per_bin)
+            higher_acc = False
+            if not doesnt_exist:
+                higher_acc = (d["acc"] > best_per_bin[bin_size]["acc"])
+            if within_size and (doesnt_exist or higher_acc):
+                # copy so it doesn't touch the original dict
+                best_per_bin[bin_size] = d.copy()
+                best_per_bin[bin_size]["size"] = bp_size
+        prev_bin_size = bin_size
+
+    return best_per_bin
 
 def plot_bp_results(axs, sweep_results, sweep_params):
     size_lim, bins = create_bp_bins(sweep_params)
+    # make room to see all points at both ends
+    margin_add = size_lim[-1]/80
+    size_lim[-1] += margin_add
+    size_lim[0] -= margin_add
 
     for idx,(sr,ax) in enumerate(zip(sweep_results, axs)):
         title_add = ""
@@ -1240,22 +1277,19 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                            label=f"{label} {method} ({acc:.0f}%)")
                 continue
 
-            accs = [entry[s]["acc"] for s in entry.keys()
-                    if entry[s]["acc"] >= args.bp_top_thr]
-
+            accs = [entry[s]["acc"] for s in entry.keys()]
             if idx == 0: # for 1st list, bins are keys, sizes stored as entry
-                sizes = [entry[s]["size"] for s in entry.keys()
-                         if entry[s]["acc"] >= args.bp_top_thr]
+                sizes = [entry[s]["size"] for s in entry.keys()]
                 title_add = "Best per bin size"
                 ax.plot(sizes, accs, label=label, color=clr,
                         marker=mk, markersize=7, lw=LW)
 
             else: # sizes are keys
                 sizes = entry.keys()
-                sizes = [k for k in entry.keys()
-                         if entry[k]["acc"] >= args.bp_top_thr]
-                title_add = f"Best {args.bp_top_num} " \
-                            f"and all above {args.bp_top_thr}%"
+                sizes = [k for k in entry.keys()]
+                title_add = f"Up to {args.bp_top_num} best"
+                if args.bp_top_thr != None:
+                    title_add += f", and all above {args.bp_top_thr}% average"
                 ax.scatter(sizes, accs, label=label, color=clr,
                            marker=mk, s=25)
 
@@ -1275,9 +1309,52 @@ def plot_bp_results(axs, sweep_results, sweep_params):
         a.grid(which='major', axis='y', linestyle='-', linewidth=0.75)
         a.grid(which='minor', axis='y', linestyle=':', linewidth=0.5)
         a.margins(x=0.02)
-        ymin = a.get_ylim()[0] * 0.99 if not args.plot_acc_thr_min else \
-               args.plot_acc_thr_min
+        ymin = a.get_ylim()[0] * 0.99 \
+               if not args.plot_acc_thr_min \
+               else args.plot_acc_thr_min
         a.set_ylim(ymin, args.plot_acc_thr_max+.1)
+
+def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
+    sr_bin_all = sr[0]
+    sr_best_all = sr[1]
+
+    def reformat_per_app_acc(v_entry):
+        cr_bp_d = {}
+        for bpsz,v_bpsz in v_entry.items(): # bp size, bits and res
+            # get existing entry with bp params and per app acc
+            cr_bp_d[bpsz] = dict(v_bpsz)
+            # move this app's acc to the main acc
+            cr_bp_d[bpsz]['acc'] = v_bpsz['per_app_acc'][app]
+            # finally, drop the entire dict with per app acc
+            del cr_bp_d[bpsz]['per_app_acc']
+        return cr_bp_d
+
+    for wl in workloads_all:
+        app, log = gen_sweep_log_name(
+            args.sweep, args.work_dir, [wl], True)
+        per_app_bin_sr = {}
+        per_app_sr = {}
+
+        for bpn,v_bpn in sr_bin_all.items(): # bp name, bp per size dict
+            per_app_bin_sr[bpn] = reformat_per_app_acc(v_bpn)
+
+        for bpn,v_bpn in sr_best_all.items(): # bp name, bp per size dict
+            # need to add size as entry to fit the parser below
+            # sort per key (also size) to fit the bin dict ordering
+            v_entry = dict(sorted(
+                ((k, {**v, "size": k}) for k, v in v_bpn.items())
+            ))
+            per_app_sr[bpn] = reformat_per_app_acc(v_entry)
+
+        ncols = 2 if args.bp_run_best_for_all_workloads else 1
+        _, axs = create_plot(
+            args.sweep.capitalize(), app, ncols, title_2=args.chart_title)
+        plot_bp_results(axs, [per_app_bin_sr, per_app_sr], sweep_params)
+
+        if args.save_stats and not args.load_stats:
+            sr_bin_out = log.replace(".log", "_binned.json")
+            with open(sr_bin_out, "w") as f:
+                f.write(reformat_json(per_app_sr))
 
 MAX_WORKERS = int(os.cpu_count())
 def parse_args() -> argparse.Namespace:
@@ -1293,8 +1370,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of parallel workers to be dispatched, if the sweep allows it")
     # branch predictor sweep additional switches
-    parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy")
-    parser.add_argument("--bp_top_thr", type=int, default=70, help="Accuracy threshold for the best branch predictor configs to always include")
+    parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy. Useful to ensure at least this many will be included regardless of their accuracy. Combined with --bp_top_thr results, if used together")
+    parser.add_argument("--bp_top_thr", type=int, default=None, help="Accuracy threshold for the best branch predictor configs to always include. Applies to average accuracy if run for multiple workloads. Useful to ensure all good predictors are included. Combined with --bp_top_num results, if used together")
+    parser.add_argument("--bp_run_best_for_all_workloads", action="store_true", default=False, help="Use 'best' predictors instead of 'binned' for the all workloads run. In general, this means more predictors to run for all workloads, and will bias towards better performing (and usually larger) predictors. Useful for very contrained runs, but will significantly increase runtime for large runs")
     # additional workloads
     parser.add_argument("--add_all_workloads", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates a single chart as average values across all workloads. Used to validate HW model across all benchmarks")
     # plotting-only switches
@@ -1379,7 +1457,7 @@ def run_main(args: argparse.Namespace) -> None:
 
     if "bp" in args.sweep:
         tt = track_time()
-        sr_bin = run_bp_sweep(args, workloads_sweep, sweep_params)
+        sr_bin, sr_best = run_bp_sweep(args, workloads_sweep, sweep_params)
         sweep_wrapper_end(tt, "\n")
         if single_wl_sweep:
             return
@@ -1387,41 +1465,22 @@ def run_main(args: argparse.Namespace) -> None:
         if args.add_all_workloads:
             if (workloads_all != workloads_sweep): # need to run them all first
                 sweep_best_wrapper_start(args.sweep, "\n")
-                params = gen_bp_final_params(sr_bin)
-                sr_bin_all = run_bp_sweep(
+                sr_to_use = sr_best if args.bp_run_best_for_all_workloads \
+                            else sr_bin
+                params = gen_bp_final_params(sr_to_use)
+                sr_bin_all, sr_best_all = run_bp_sweep(
                     args, workloads_all, sweep_params, params)
                 sweep_wrapper_end(tt, "\n")
             else:
                 # 'sweep' and 'all' are the same set of workloads
                 # i.e. there is no "skip_search: true" in the config
                 sr_bin_all = sr_bin
+                sr_best_all = sr_best
 
         if args.plot_per_workload:
             add_charts_wrapper_start(args.sweep, "\n")
-            for wl in workloads_all:
-                app, log = gen_sweep_log_name(
-                    args.sweep, args.work_dir, [wl], True)
-                per_app_sr = {}
-
-                for k, v in sr_bin_all.items(): # k: bp size, v: bp params dict
-                    per_app_sr[k] = {}
-                    for kp,vp in v.items():
-                        # get existing entry with bp params and per app acc
-                        per_app_sr[k][kp] = dict(vp)
-                        # move this workload's acc to the main acc
-                        per_app_sr[k][kp]['acc'] = vp['per_app_acc'][app]
-                        # finally, drop the entire dict with per app acc
-                        del per_app_sr[k][kp]['per_app_acc']
-
-                _, axs = create_plot(
-                    args.sweep.capitalize(), app, 1, title_2=args.chart_title)
-                plot_bp_results(axs, [per_app_sr], sweep_params)
-
-                if args.save_stats and not args.load_stats:
-                    sr_bin_out = log.replace(".log", "_binned.json")
-                    with open(sr_bin_out, "w") as f:
-                        f.write(reformat_json(per_app_sr))
-
+            bp_plot_per_workload(
+                args, sweep_params, workloads_all, [sr_bin_all, sr_best_all])
             sweep_wrapper_end(tt, "\n")
 
         return # only one sweep type at a time
