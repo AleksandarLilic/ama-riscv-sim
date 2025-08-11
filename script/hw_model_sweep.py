@@ -3,6 +3,7 @@
 import argparse
 import glob
 import json
+import math
 import os
 import re
 import subprocess
@@ -894,8 +895,8 @@ def guided_bp_search_for_combined(
 
     TOP_N_PREDICTORS = bpc['use_max_top_n']
     best_bp_list = []
-    #sizes = sweep_params['_common_settings']['size_bins_comb_guided_search']
-    sizes = sweep_params['_common_settings']['size_bins']
+    #sizes = sweep_params['_common']['size_bins_comb_guided_search']
+    sizes = sweep_params['_common']['size_bins']
     for sz in sizes:
         filtered, best_bp = get_top_n(
             df_max_list, bench_df_columns, TOP_N_PREDICTORS, True, sz
@@ -927,10 +928,10 @@ def guided_bp_search_for_combined(
     return bp12_p_all
 
 def create_bp_bins(sweep_params):
-    size_lim = [int(sweep_params["_common_settings"]["min_size"]),
-                int(sweep_params["_common_settings"]["max_size"])]
-    if "size_bins" in sweep_params["_common_settings"]:
-        bins = sweep_params["_common_settings"]["size_bins"]
+    size_lim = [int(sweep_params["_common"]["min_size"]),
+                int(sweep_params["_common"]["max_size"])]
+    if "size_bins" in sweep_params["_common"]:
+        bins = sweep_params["_common"]["size_bins"]
     else:
         # create bins as powers of 2 within the size limits
         bins = [2**i
@@ -964,7 +965,7 @@ def run_bp_sweep(
     for bp_handle in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading existing stats
-        if bp_handle == "_common_settings":
+        if bp_handle == "_common":
             continue
 
         best_bps = {}
@@ -1246,6 +1247,9 @@ def plot_bp_results(axs, sweep_results, sweep_params):
     margin_add = size_lim[-1]/80
     size_lim[-1] += margin_add
     size_lim[0] -= margin_add
+    r_ymin = 100
+    r_ymax = 0
+    NO_STATIC = True # disabled for now
 
     for idx,(sr,ax) in enumerate(zip(sweep_results, axs)):
         title_add = ""
@@ -1268,9 +1272,12 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 clr = COLORS_BP.get(bp2, 'k') # bp2 assumed as differentiator
 
             if "static" in bp_h:
+                if NO_STATIC:
+                    continue
                 fk = list(entry.keys())[0] # first key
                 acc = entry[fk]["acc"]
-                if acc < args.plot_acc_thr_min:
+                if args.plot_acc_thr_min != None and \
+                   acc < args.plot_acc_thr_min:
                     continue
                 method = entry[fk]["bp_static_method"]
                 ax.axhline(y=acc, color="r", linestyle="--",
@@ -1294,25 +1301,44 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                            marker=mk, s=25)
 
         ax.set_title(title_add)
+        # left and right plot to have the same limits
+        r_ymin = min(r_ymin, ax.get_ylim()[0])
+        r_ymax = max(r_ymax, ax.get_ylim()[1])
 
+    # figure out a range
+    r_ymin = math.floor(r_ymin)
+    r_ymax = math.ceil(r_ymax)
+    ymin = r_ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
+    ymax = r_ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
+    range = ymax - ymin
+    if range <= 5:
+        major_ticks_loc = 1
+        minor_ticks_loc = .5
+        if range <= 2:
+            minor_ticks_loc = .2
+    elif range <= 20:
+        major_ticks_loc = 2
+        minor_ticks_loc = 1
+    else:
+        major_ticks_loc = 5
+        minor_ticks_loc = 1
+
+    # finish both subplots
     for a in axs:
         a.set_xlim(size_lim)
         a.set_xlabel("Size (B)")
         a.set_xticks(bins)
         a.set_xticklabels(a.get_xticks(), rotation=45)
         a.set_ylabel("Accuracy [%]")
-        a.yaxis.set_major_locator(MultipleLocator(5))
-        a.yaxis.set_minor_locator(MultipleLocator(1))
+        a.yaxis.set_major_locator(MultipleLocator(major_ticks_loc))
+        a.yaxis.set_minor_locator(MultipleLocator(minor_ticks_loc))
         a.legend(loc="upper left")
         #a.legend(loc="lower right", ncol=2)
         a.grid(which='major', axis='x', linestyle='-', linewidth=0.75)
         a.grid(which='major', axis='y', linestyle='-', linewidth=0.75)
         a.grid(which='minor', axis='y', linestyle=':', linewidth=0.5)
         a.margins(x=0.02)
-        ymin = a.get_ylim()[0] * 0.99 \
-               if not args.plot_acc_thr_min \
-               else args.plot_acc_thr_min
-        a.set_ylim(ymin, args.plot_acc_thr_max+.1)
+        a.set_ylim(ymin, ymax)
 
 def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
     sr_bin_all = sr[0]
@@ -1380,8 +1406,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
     parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_acc_thr_min", type=int, default=0, help="Set the lower limit for the plot y-axis for branch predictor accuracy")
-    parser.add_argument("--plot_acc_thr_max", type=int, default=100, help="Set the upper limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_acc_thr_min", type=int, default=None, help="Override the lower limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_acc_thr_max", type=int, default=None, help="Override the upper limit for the plot y-axis for branch predictor accuracy")
     parser.add_argument("--plot_per_workload", action="store_true", default=False, help="Plot results from '--add_all_workloads' with one workload per chart. Used to validate HW model across all benchmarks. Requires running with '--add_all_workloads'")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
