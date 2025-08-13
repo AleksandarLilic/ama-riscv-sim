@@ -26,19 +26,19 @@ SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
 SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
-INDENT = "  "
+INDENT = "    "
 FIG_SIZE = (8, 8)
 MK = "o"
 LW = .5
 
 MARKERS_BP = {
     "any": ".",
-    "static": "d",
-    "bimodal": "^",
-    "local": "v",
-    "global": "*",
-    "gselect": "x",
-    "gshare": "+",
+    "static": "_", # as in, always the same prediction - hline
+    "bimodal": "d", # as in, up or down, diamond
+    "local": "1", # 'Y' (tri_down), as in two levels, idk
+    "gselect": "+", # as in concatenates pc and gr
+    "gshare": "x", # as in xors pc and gr
+    "global": "*", # whatever, it's different
 }
 
 COLORS_BP = {
@@ -304,9 +304,9 @@ def run_cache_sweep(
         PROG_BAT = 4 # progress batches
         if args.track and not running_single_best:
             tt = track_time()
-            print(INDENT,
-                f"Cache: {ck}, configs: {len(cache_params)}, progress: ",
-                end="")
+            print(f"{INDENT}"
+                  f"Cache: {ck},\tconfigs: {len(cache_params):3},  progress: ",
+                  end="")
             idx_c = (len(cache_params) // PROG_BAT) + 1
 
         with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
@@ -1040,12 +1040,16 @@ def run_bp_sweep(
             _, bp_params = gen_bp_sweep_params(
                 bp, sweep_params[bp_handle], size_lim)
 
+        if len(bp_params) == 0:
+            # usually happens for 'best for all' sweep if heavily constrained
+            continue
+
         idx_c = 1
         PROG_BAT = 4 # progress batches
         if args.track and not running_single_best:
             tt = track_time()
-            print(INDENT,
-                  f"BP: {bp_handle}, configs: {len(bp_params)}, progress: ",
+            print(f"{INDENT}"
+                  f"BP: {bp_handle},\tconfigs: {len(bp_params):4},  progress: ",
                   end="")
             idx_c = (len(bp_params) // PROG_BAT) + 1
 
@@ -1300,18 +1304,22 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 ax.scatter(sizes, accs, label=label, color=clr,
                            marker=mk, s=25)
 
+            # left and right plot to have the same limits
+            r_ymin = min(r_ymin, min(accs))
+            r_ymax = max(r_ymax, max(accs))
         ax.set_title(title_add)
-        # left and right plot to have the same limits
-        r_ymin = min(r_ymin, ax.get_ylim()[0])
-        r_ymax = max(r_ymax, ax.get_ylim()[1])
 
     # figure out a range
-    r_ymin = math.floor(r_ymin)
-    r_ymax = math.ceil(r_ymax)
-    ymin = r_ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
-    ymax = r_ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
+    ymin = math.floor(r_ymin)
+    ymax = math.ceil(r_ymax)
+    range1p = (ymax - ymin) * .1
+    ymin = ymin if r_ymin - ymin > range1p else ymin - range1p
+    ymax = ymax if ymax - r_ymax > range1p else ymax + range1p
+    # override if user-specified
+    ymin = ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
+    ymax = ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
     range = ymax - ymin
-    if range <= 5:
+    if range <= 6:
         major_ticks_loc = 1
         minor_ticks_loc = .5
         if range <= 2:

@@ -30,7 +30,6 @@
             "bp_combined-gsel_glbl": {"predictors": ["bp_gselect", "bp_global"],  "use_max_top_n": 16, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
 
             "bp_combined-glbl-locl": {"predictors": ["bp_global", "bp_local"],    "use_max_top_n": 16, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-glbl_glbl": {"predictors": ["bp_global", "bp_global"],   "use_max_top_n": 16, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
 
             "bp_combined-locl-locl": {"predictors": ["bp_local", "bp_local"],     "use_max_top_n": 16, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
 
@@ -39,33 +38,33 @@
     },
     "workloads": {
         "embench/qrduino": [["bench"],        {"thr_bpred_acc": 77}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
-        "embench/ud": [["bench"],             {"thr_bpred_acc": 77}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
+        "embench/ud": [["bench"],             {"thr_bpred_acc": 80}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
         "embench/aha-mont64": [["bench"],     {"thr_bpred_acc": 79}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
-        "embench/minver": [["bench"],         {"thr_bpred_acc": 80}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
+        "embench/minver": [["bench"],         {"thr_bpred_acc": 82}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
         "embench/huffbench": [["bench"],      {"thr_bpred_acc": 84}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
         "embench/nettle-sha256": [["bench"],  {"thr_bpred_acc": 88}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
         "embench/nettle-aes": [["bench"],     {"thr_bpred_acc": 90}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
-        "embench/nsichneu": [["bench"],       {"thr_bpred_acc": 95}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
+        "embench/nsichneu": [["bench"],       {"thr_bpred_acc": 97}, {"sim_args": "--exit_on_prof_stop --bp_dump_csv"}, {"skip_search": false}],
 
-        "embench/nbody": [["bench"],          {"thr_bpred_acc": 70}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/cubic": [["bench"],          {"thr_bpred_acc": 75}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/st": [["bench"],             {"thr_bpred_acc": 75}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/sglib-combined": [["bench"], {"thr_bpred_acc": 78}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/nbody": [["bench"],          {"thr_bpred_acc": 74}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/cubic": [["bench"],          {"thr_bpred_acc": 77}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/st": [["bench"],             {"thr_bpred_acc": 77}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/sglib-combined": [["bench"], {"thr_bpred_acc": 79}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
 
-        "embench/wikisort": [["bench"],       {"thr_bpred_acc": 83}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/primecount": [["bench"],     {"thr_bpred_acc": 85}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/slre": [["bench"],           {"thr_bpred_acc": 85}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/picojpeg": [["bench"],       {"thr_bpred_acc": 89}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/wikisort": [["bench"],       {"thr_bpred_acc": 85}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/slre": [["bench"],           {"thr_bpred_acc": 86}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/primecount": [["bench"],     {"thr_bpred_acc": 87}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/picojpeg": [["bench"],       {"thr_bpred_acc": 90}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/statemate": [["bench"],      {"thr_bpred_acc": 90}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/matmult-int": [["bench"],    {"thr_bpred_acc": 93}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/tarfind": [["bench"],        {"thr_bpred_acc": 95}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
-        "embench/edn": [["bench"],            {"thr_bpred_acc": 95}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
+        "embench/edn": [["bench"],            {"thr_bpred_acc": 96}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/md5sum": [["bench"],         {"thr_bpred_acc": 96}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/crc32": [["bench"],          {"thr_bpred_acc": 99}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
 
-        "coremark": [["coremark"],            {"thr_bpred_acc": 85}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match  2 --prof_pc_start 415ac --prof_pc_stop 415e8 --bp_dump_csv"}, {"skip_search": false}],
-        "dhrystone": [["dhrystone"],          {"thr_bpred_acc": 90}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 10 --prof_pc_start 415a4 --prof_pc_stop 4167c --bp_dump_csv"}, {"skip_search": false}],
+        "coremark": [["coremark"],            {"thr_bpred_acc": 90}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 2 --prof_pc_start 415ac --prof_pc_stop 415e8 --bp_dump_csv"}, {"skip_search": false}],
+        "dhrystone": [["dhrystone"],          {"thr_bpred_acc": 92}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 10 --prof_pc_start 415a4 --prof_pc_stop 4167c --bp_dump_csv"}, {"skip_search": false}],
 
-        "mlp": [["w8a8"],                     {"thr_bpred_acc": 95}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}]
+        "mlp": [["w8a8"],                     {"thr_bpred_acc": 97}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}]
     }
 }
