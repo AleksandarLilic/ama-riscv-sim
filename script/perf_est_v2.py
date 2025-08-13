@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import sys
-import json
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 from run_analysis import json_prof_to_df
 
 DELIM = "\n    "
@@ -100,7 +101,8 @@ class perf:
         self.bp_stats = {
             "pred": hw_bp["predicted"],
             "mispred": hw_bp["mispredicted"],
-            "acc": (hw_bp["predicted"] / hw_bp["branches"]) * 100,
+            "acc": hw_bp["accuracy"],
+            "mpki": hw_bp["mpki"],
             "type": hw_bp["type"]
         }
         hw_ic = self.hw_stats[self.ic_name]
@@ -256,31 +258,32 @@ class perf:
         out_ic.append(self._cache_stats_str(self.ic_name, self.ic_stats))
 
         out_dc.append(
-            f"DMEM inst: {self.dc_inst} - " + \
-            f"L/S: {self.ld_inst}/{self.st_inst} " + \
+            f"DMEM inst: {self.dc_inst} - "
+            f"L/S: {self.ld_inst}/{self.st_inst} "
             f"({self.ls_perc:.2f}% instructions)"
             )
         out_dc.append(self._cache_stats_str(self.dc_name, self.dc_stats))
 
         out_b.append(
-            f"Branches: {self.b_inst} " + \
+            f"Branches: {self.b_inst} "
             f"({self.branches_perc:.2f}% instructions)"
             )
         #out_b.append(
-        #    f"Taken: {self.b['taken']}, " + \
-        #    f"Forwards: {self.b['taken_fwd']}, " + \
+        #    f"Taken: {self.b['taken']}, "
+        #    f"Forwards: {self.b['taken_fwd']}, "
         #    f"Backwards: {self.b['taken_bwd']}"
         #    )
         #out_b.append(
-        #    f"Not taken: {self.b['not_taken']}, " + \
-        #    f"Forwards: {self.b['not_taken_fwd']}, " + \
+        #    f"Not taken: {self.b['not_taken']}, "
+        #    f"Forwards: {self.b['not_taken_fwd']}, "
         #    f"Backwards: {self.b['not_taken_bwd']}"
         #    )
         out_b.append(
-            f"Branch Predictor ({self.bp_stats['type']}): " + \
-            f"Predicted: {self.bp_stats['pred']}, " + \
-            f"Mispredicted: {self.bp_stats['mispred']}, " + \
-            f"Accuracy: {self.bp_stats['acc']:.2f}%"
+            f"Branch Predictor ({self.bp_stats['type']}): "
+            f"Predicted: {self.bp_stats['pred']}, "
+            f"Mispredicted: {self.bp_stats['mispred']}, "
+            f"Accuracy: {self.bp_stats['acc']:.2f}%, "
+            f"MPKI: {self.bp_stats['mpki']}"
             )
 
         out_stalls = f"Pipeline stalls (max): " + \
