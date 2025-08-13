@@ -154,7 +154,7 @@ def run_sim(cmd: List) -> Dict[str, Any]:
 @dataclass
 class workload_params:
     workloads: List[Dict[str, Any]]
-    sweep: str
+    sweep: str # icache/dcache/bpred
     args: List[str]
     msg: str
     save_sim: bool
@@ -173,10 +173,10 @@ def run_workloads(wp: workload_params):
         raise ValueError("Unknown sweep type")
 
     if bp_sweep:
-        agg_acc = [] # aggregate accuracy across all workloads
-        per_app_acc = {}
+        bp_agg = {"acc": [], "mpki": []} # aggregate across all workloads
+        bp_per_app = {"acc": {}, "mpki": {}}
         bp_size = None
-        below_thr = False
+        violated_thr = False
     elif cache_sweep:
         agg_hr = [] # aggregate hit rate across all workloads
         per_app_hr = {}
@@ -213,24 +213,32 @@ def run_workloads(wp: workload_params):
         #subprocess.run(["rm", "-r", out_dir])
 
         if bp_sweep:
+            if hw_stats[wp.sweep]["branches"] == 0:
+                raise RuntimeError(f"No branches logged for {app}")
             if bp_size is None: # bp, and therefore size, is constant
                 bp_size = hw_stats[wp.sweep]["size"]
-            app_thr_acc = 0 # per app threshold, if any
-            if "thr" in workload:
+
+            # per app threshold, if any
+            app_thr_acc = 0
+            if "thr_bpred_acc" in workload:
                 app_thr_acc = workload["thr"]["thr_bpred_acc"]
-            b_pred = hw_stats[wp.sweep]["predicted"]
-            b_tot = hw_stats[wp.sweep]["branches"]
-            if b_tot == 0:
-                raise RuntimeError(f"No branches logged for {app}")
-            acc = round(b_pred/b_tot*100, 2)
-            if acc < app_thr_acc:
-                below_thr = True
+            app_thr_mpki = 1000
+            if "thr_bpred_mpki" in workload:
+                app_thr_mpki = workload["thr"]["thr_bpred_mpki"]
+
+            acc = hw_stats[wp.sweep]["accuracy"]
+            mpki = hw_stats[wp.sweep]["mpki"]
+            if acc < app_thr_acc or mpki > app_thr_mpki:
+                violated_thr = True
                 if not wp.ignore_thr:
-                    # skip the rest of the workloads if acc is too low on any
-                    agg_acc = []
+                    # skip rest of workloads if acc/mpki is violated on any
+                    bp_agg = []
                     break
-            agg_acc.append(acc)
-            per_app_acc[get_test_name(app)] = acc
+
+            bp_agg['acc'].append(acc)
+            bp_agg['mpki'].append(mpki)
+            bp_per_app['acc'][get_test_name(app)] = acc
+            bp_per_app['mpki'][get_test_name(app)] = mpki
 
         elif cache_sweep:
             if cache_size is None:
@@ -257,10 +265,11 @@ def run_workloads(wp: workload_params):
 
     os.chdir(start_dir)
     if bp_sweep:
-        avg_acc = None
-        if len(agg_acc) > 0:
-            avg_acc = round(sum(agg_acc)/len(agg_acc), 2)
-        return bp_size, avg_acc, per_app_acc, wp.ret_list, below_thr, msg_out
+        bp_avg = {"acc": None, "mpki": None}
+        if len(bp_agg['acc']) > 0:
+            bp_avg['acc'] = round(sum(bp_agg['acc'])/len(bp_agg['acc']), 2)
+            bp_avg['mpki'] = round(sum(bp_agg['mpki'])/len(bp_agg['mpki']), 2)
+        return bp_size, bp_avg, bp_per_app, wp.ret_list, violated_thr, msg_out
 
     elif cache_sweep:
         avg_hr = None
@@ -1084,7 +1093,8 @@ def run_bp_sweep(
             # get results as they come in
             cnt = 0
             for future in as_completed(futures):
-                bp_size, acc, per_app_acc, bpp, below_thr, msg = future.result()
+                bp_size, avg, per_app, bpp, violated_thr, msg = future.result()
+                acc = avg['acc']
 
                 cnt += 1
                 if args.track and cnt % idx_c == 0 and not running_single_best:
@@ -1096,7 +1106,7 @@ def run_bp_sweep(
                     save_bpp_all[bp_handle].append([acc, bp_size, bpp])
                 if acc == None:
                     continue
-                if below_thr and bp != "bp_static":
+                if violated_thr and bp != "bp_static":
                     # 2a. from above, part 2
                     # special case when thr is ignored for component predictors
                     # but now once collected for save_bpp_all, remove if needed
@@ -1111,7 +1121,9 @@ def run_bp_sweep(
                     for k, v in d.items():
                         best_bps[bp_size][k] = v
                     best_bps[bp_size]["acc"] = acc
-                    best_bps[bp_size]["per_app_acc"] = per_app_acc
+                    best_bps[bp_size]["mpki"] = avg['mpki']
+                    best_bps[bp_size]["per_app_acc"] = per_app['acc']
+                    best_bps[bp_size]["per_app_mpki"] = per_app['mpki']
                     if bp != "bp_combined" and not running_best:
                         save_bpp_best[bp_handle][bp_size] = bpp
 
@@ -1217,8 +1229,9 @@ def run_bp_sweep(
     # plot accuracy wrt size
     ncols = 1 if (running_best and not args.bp_run_best_for_all_workloads) \
            else 2
+    nrows = 2 # top acc, bottom mpki
     fig, axs = create_plot(
-        bpk.capitalize(), sweep_name, ncols, title_2=args.chart_title)
+        bpk.capitalize(), sweep_name, ncols, nrows, title_2=args.chart_title)
     plot_bp_results(axs, [sr_bin, sr_best], sweep_params)
 
     if args.save_png:
@@ -1251,116 +1264,138 @@ def plot_bp_results(axs, sweep_results, sweep_params):
     margin_add = size_lim[-1]/80
     size_lim[-1] += margin_add
     size_lim[0] -= margin_add
-    r_ymin = 100
-    r_ymax = 0
     NO_STATIC = True # disabled for now
+    axs_f = axs.flatten()
+    half = len(axs_f) >> 1
+    metrics = {'acc': "Accuracy", 'mpki': "MPKI"}
 
-    for idx,(sr,ax) in enumerate(zip(sweep_results, axs)):
-        title_add = ""
-        for bp_h,entry in sr.items():
-            if len(entry.keys()) == 0: # below thr limit for all available sizes
-                continue
-            if bp_h not in sweep_params:
-                # e.g. input config changed between search and plot runs
-                continue
-
-            fmt = lambda x: x.replace("bp_", "", 1)
-            mk = MARKERS_BP['any']
-            label = fmt(bp_h)
-            clr = COLORS_BP.get(label, 'k')
-            if "bp_combined" in bp_h:
-                bp1 = fmt(sweep_params[bp_h]["predictors"][0])
-                bp2 = fmt(sweep_params[bp_h]["predictors"][1])
-                label = f"{label}" # {bp1} & {bp2}"
-                mk = MARKERS_BP.get(bp1, '.')
-                clr = COLORS_BP.get(bp2, 'k') # bp2 assumed as differentiator
-
-            if "static" in bp_h:
-                if NO_STATIC:
+    for mt,mt_str in metrics.items():
+        r_ymin = 1000
+        r_ymax = 0
+        axs_slice = axs_f[:half] if mt == 'acc' else axs_f[half:]
+        for idx,(sr,ax) in enumerate(zip(sweep_results, axs_slice)):
+            title_add = ""
+            for bp_h,entry in sr.items():
+                if len(entry.keys()) == 0:
+                    # below thr limit for all available sizes
                     continue
-                fk = list(entry.keys())[0] # first key
-                acc = entry[fk]["acc"]
-                if args.plot_acc_thr_min != None and \
-                   acc < args.plot_acc_thr_min:
+                if bp_h not in sweep_params:
+                    # e.g. input config changed between search and plot runs
                     continue
-                method = entry[fk]["bp_static_method"]
-                ax.axhline(y=acc, color="r", linestyle="--",
-                           label=f"{label} {method} ({acc:.0f}%)")
-                continue
 
-            accs = [entry[s]["acc"] for s in entry.keys()]
-            if idx == 0: # for 1st list, bins are keys, sizes stored as entry
-                sizes = [entry[s]["size"] for s in entry.keys()]
-                title_add = "Best per bin size"
-                ax.plot(sizes, accs, label=label, color=clr,
-                        marker=mk, markersize=7, lw=LW)
+                fmt = lambda x: x.replace("bp_", "", 1)
+                mk = MARKERS_BP['any']
+                label = fmt(bp_h)
+                clr = COLORS_BP.get(label, 'k')
+                if "bp_combined" in bp_h:
+                    bp1 = fmt(sweep_params[bp_h]["predictors"][0])
+                    bp2 = fmt(sweep_params[bp_h]["predictors"][1])
+                    label = f"{label}" # {bp1} & {bp2}"
+                    mk = MARKERS_BP.get(bp1, '.')
+                    clr = COLORS_BP.get(bp2, 'k')
 
-            else: # sizes are keys
-                sizes = entry.keys()
-                sizes = [k for k in entry.keys()]
-                title_add = f"Up to {args.bp_top_num} best"
-                if args.bp_top_thr != None:
-                    title_add += f", and all above {args.bp_top_thr}% average"
-                ax.scatter(sizes, accs, label=label, color=clr,
-                           marker=mk, s=25)
+                if "static" in bp_h:
+                    if NO_STATIC:
+                        continue
+                    fk = list(entry.keys())[0] # first key
+                    acc = entry[fk]['acc']
+                    if args.plot_acc_thr_min != None and \
+                    acc < args.plot_acc_thr_min:
+                        continue
+                    method = entry[fk]["bp_static_method"]
+                    res = entry[fk][mt]
+                    if mt == 'acc':
+                        res_str = f"({res:.0f}%)"
+                    elif mt == 'mpki':
+                        res_str = f"({res})"
+                    ax.axhline(y=res, color="r", linestyle="--",
+                               label=f"{label} {method} {res_str}")
+                    continue
 
-            # left and right plot to have the same limits
-            r_ymin = min(r_ymin, min(accs))
-            r_ymax = max(r_ymax, max(accs))
-        ax.set_title(title_add)
+                res_all = [entry[s][mt] for s in entry.keys()]
+                if idx == 0: # for 1st list, bins are keys, size stored as entry
+                    sizes = [entry[s]["size"] for s in entry.keys()]
+                    title_add = f"Best per bin size - {mt_str}"
+                    ax.plot(sizes, res_all, label=label, color=clr,
+                            marker=mk, markersize=7, lw=LW)
 
-    # figure out a range
-    ymin = math.floor(r_ymin)
-    ymax = math.ceil(r_ymax)
-    range1p = (ymax - ymin) * .1
-    ymin = ymin if r_ymin - ymin > range1p else ymin - range1p
-    ymax = ymax if ymax - r_ymax > range1p else ymax + range1p
-    # override if user-specified
-    ymin = ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
-    ymax = ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
-    range = ymax - ymin
-    if range <= 6:
-        major_ticks_loc = 1
-        minor_ticks_loc = .5
-        if range <= 2:
-            minor_ticks_loc = .2
-    elif range <= 20:
-        major_ticks_loc = 2
-        minor_ticks_loc = 1
-    else:
-        major_ticks_loc = 5
-        minor_ticks_loc = 1
+                else: # sizes are keys
+                    sizes = entry.keys()
+                    sizes = [k for k in entry.keys()]
+                    title_add = f"Up to {args.bp_top_num} best - {mt_str}"
+                    if args.bp_top_thr != None:
+                        title_add += \
+                            f", and all above {args.bp_top_thr}% average"
+                    ax.scatter(sizes, res_all, label=label, color=clr,
+                               marker=mk, s=25)
 
-    # finish both subplots
-    for a in axs:
-        a.set_xlim(size_lim)
-        a.set_xlabel("Size (B)")
-        a.set_xticks(bins)
-        a.set_xticklabels(a.get_xticks(), rotation=45)
-        a.set_ylabel("Accuracy [%]")
-        a.yaxis.set_major_locator(MultipleLocator(major_ticks_loc))
-        a.yaxis.set_minor_locator(MultipleLocator(minor_ticks_loc))
-        a.legend(loc="upper left")
-        #a.legend(loc="lower right", ncol=2)
-        a.grid(which='major', axis='x', linestyle='-', linewidth=0.75)
-        a.grid(which='major', axis='y', linestyle='-', linewidth=0.75)
-        a.grid(which='minor', axis='y', linestyle=':', linewidth=0.5)
-        a.margins(x=0.02)
-        a.set_ylim(ymin, ymax)
+                # left and right plot to have the same limits
+                r_ymin = min(r_ymin, min(res_all))
+                r_ymax = max(r_ymax, max(res_all))
+            ax.set_title(title_add)
+
+        # figure out a range
+        ymin = math.floor(r_ymin)
+        ymax = math.ceil(r_ymax)
+        range1p = (ymax - ymin) * .1
+        ymin = ymin if r_ymin - ymin > range1p else ymin - range1p
+        ymax = ymax if ymax - r_ymax > range1p else ymax + range1p
+
+        # override if user-specified
+        #ymin = ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
+        #ymax = ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
+        range = ymax - ymin
+        if range <= 6:
+            major_ticks_loc = 1
+            minor_ticks_loc = .5
+            if range <= 2:
+                minor_ticks_loc = .2
+        elif range <= 20:
+            major_ticks_loc = 2
+            minor_ticks_loc = 1
+        elif range <= 50:
+            major_ticks_loc = 5
+            minor_ticks_loc = 1
+        elif range <= 100:
+            major_ticks_loc = 10
+            minor_ticks_loc = 2
+        else:
+            major_ticks_loc = 20
+            minor_ticks_loc = 4
+
+        # finish both subplots
+        legend_loc = "upper left" if mt == 'acc' else "upper right"
+        for a in axs_slice:
+            a.set_xlim(size_lim)
+            a.set_xlabel("Size (B)")
+            a.set_xticks(bins)
+            a.set_xticklabels(a.get_xticks(), rotation=45)
+            a.set_ylabel(f"{mt_str} [%]" if mt == "acc" else f"{mt_str}")
+            a.yaxis.set_major_locator(MultipleLocator(major_ticks_loc))
+            a.yaxis.set_minor_locator(MultipleLocator(minor_ticks_loc))
+            a.legend(loc=legend_loc)
+            #a.legend(loc="lower right", ncol=2)
+            a.grid(which='major', axis='x', linestyle='-', linewidth=0.75)
+            a.grid(which='major', axis='y', linestyle='-', linewidth=0.75)
+            a.grid(which='minor', axis='y', linestyle=':', linewidth=0.5)
+            a.margins(x=0.02)
+            a.set_ylim(ymin, ymax)
 
 def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
     sr_bin_all = sr[0]
     sr_best_all = sr[1]
 
-    def reformat_per_app_acc(v_entry):
+    def reformat_per_app(v_entry):
         cr_bp_d = {}
         for bpsz,v_bpsz in v_entry.items(): # bp size, bits and res
-            # get existing entry with bp params and per app acc
+            # get existing entry with bp params and per app results
             cr_bp_d[bpsz] = dict(v_bpsz)
-            # move this app's acc to the main acc
+            # move this app's results to the main results
             cr_bp_d[bpsz]['acc'] = v_bpsz['per_app_acc'][app]
-            # finally, drop the entire dict with per app acc
+            cr_bp_d[bpsz]['mpki'] = v_bpsz['per_app_mpki'][app]
+            # finally, drop the entire dict with per app results
             del cr_bp_d[bpsz]['per_app_acc']
+            del cr_bp_d[bpsz]['per_app_mpki']
         return cr_bp_d
 
     for wl in workloads_all:
@@ -1370,7 +1405,7 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
         per_app_sr = {}
 
         for bpn,v_bpn in sr_bin_all.items(): # bp name, bp per size dict
-            per_app_bin_sr[bpn] = reformat_per_app_acc(v_bpn)
+            per_app_bin_sr[bpn] = reformat_per_app(v_bpn)
 
         for bpn,v_bpn in sr_best_all.items(): # bp name, bp per size dict
             # need to add size as entry to fit the parser below
@@ -1378,11 +1413,11 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
             v_entry = dict(sorted(
                 ((k, {**v, "size": k}) for k, v in v_bpn.items())
             ))
-            per_app_sr[bpn] = reformat_per_app_acc(v_entry)
+            per_app_sr[bpn] = reformat_per_app(v_entry)
 
         ncols = 2 if args.bp_run_best_for_all_workloads else 1
         _, axs = create_plot(
-            args.sweep.capitalize(), app, ncols, title_2=args.chart_title)
+            args.sweep.capitalize(), app, ncols, 2, title_2=args.chart_title)
         plot_bp_results(axs, [per_app_bin_sr, per_app_sr], sweep_params)
 
         if args.save_stats and not args.load_stats:
