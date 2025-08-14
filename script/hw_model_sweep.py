@@ -209,8 +209,15 @@ def run_workloads(wp: workload_params):
         with open(json_hw_stats, "r") as f:
             hw_stats = json.load(f)
 
-        # TODO: no longer needed, outputs are required for combined bp prep
-        #subprocess.run(["rm", "-r", out_dir])
+        branches_csv = os.path.join(out_dir, "branches.csv")
+        if os.path.exists(branches_csv):
+            # if branches exist, remove everything else, save as pkl/gz and cont
+            branches = pd.read_csv(branches_csv)
+            subprocess.run(["rm", "-rf"] + glob.glob(f"{out_dir}/*"), check=True)
+            branches.to_pickle(os.path.join(out_dir, "branches.pkl.gz"))
+        else:
+            # if not, remove the entire dir, nothing to keep
+            subprocess.run(["rm", "-r", out_dir])
 
         if bp_sweep:
             if hw_stats[wp.sweep]["branches"] == 0:
@@ -690,20 +697,21 @@ def guided_bp_search_for_combined(
     bpc = sweep_params[bp_handle]
     bp1 = bpc["predictors"][0]
     bp2 = bpc["predictors"][1]
-    bp_csvs = glob.glob(os.path.join(wd, f"*{bp1}*", "branches.csv"))
+    bp_pkls = glob.glob(os.path.join(wd, f"*{bp1}*", "branches.pkl.gz"))
     if bp1 != bp2:
-        bp_csvs += glob.glob(os.path.join(wd, f"*{bp2}*", "branches.csv"))
-    bp_csvs.sort()
+        bp_pkls += glob.glob(os.path.join(wd, f"*{bp2}*", "branches.pkl.gz"))
+    bp_pkls.sort()
 
     df_list = {} # a dict of lists
     # put bp stats for all benchmarks in separate dfs
-    for csv in bp_csvs:
-        sim_dir = os.path.dirname(csv).split('/')[-1]
+    for pkl in bp_pkls:
+        sim_dir = os.path.dirname(pkl).split('/')[-1]
         bench_name = sim_dir.split('_bp_')[0].replace('out_', '')
         bp_sweep_name = f"bp_{sim_dir.split('_bp_')[1]}"
         bp_id = bp_sweep_name.split('_')[1]
         og_bp_name = f'P_{bp_id}'
-        dfl = pd.read_csv(csv, usecols=['PC', 'All', og_bp_name])
+        dfl = pd.read_pickle(pkl)
+        dfl = dfl[['PC', 'All', og_bp_name]] # filter out other columns
         dfl['bench'] = bench_name
         dfl = dfl.loc[:, ['bench', 'PC', 'All', og_bp_name]]
         dfl = dfl.rename(columns={og_bp_name : bp_sweep_name})
@@ -1142,9 +1150,10 @@ def run_bp_sweep(
             dfa = pd.DataFrame(rows_all)
             # sort values with the priority taken from the column order
             dfa = dfa.sort_values(list(dfa.columns)).reset_index(drop=True)
-            dfa.to_pickle(os.path.join(
-                os.path.dirname(sweep_log),
-                f"all_configs_{bp_handle}.pkl")
+            dfa.to_pickle(
+                os.path.join(
+                    os.path.dirname(sweep_log),
+                    f"all_configs_{bp_handle}.pkl.gz")
             )
 
         if args.track and not running_single_best:
