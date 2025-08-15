@@ -226,12 +226,8 @@ def run_workloads(wp: workload_params):
                 bp_size = hw_stats[wp.sweep]["size"]
 
             # per app threshold, if any
-            app_thr_acc = 0
-            if "thr_bpred_acc" in workload:
-                app_thr_acc = workload["thr"]["thr_bpred_acc"]
-            app_thr_mpki = 1000
-            if "thr_bpred_mpki" in workload:
-                app_thr_mpki = workload["thr"]["thr_bpred_mpki"]
+            app_thr_acc = workload["thr"].get("thr_bpred_acc", 0)
+            app_thr_mpki = workload["thr"].get("thr_bpred_mpki", 1000)
 
             acc = hw_stats[wp.sweep]["accuracy"]
             mpki = hw_stats[wp.sweep]["mpki"]
@@ -386,6 +382,9 @@ def run_cache_sweep(
     elif args.save_stats:
         with open(sweep_results, "w") as f:
             f.write(reformat_json(sr, max_depth=3))
+
+    if args.load_stats and args.plot_skip_searched and not running_best:
+        return sr
 
     # plot HR wrt num of ways
     lbl = lambda x, y: f"{x}, sets: {y}"
@@ -1204,29 +1203,48 @@ def run_bp_sweep(
                 sr_best = convert_keys_to_int(json.load(f))
 
         if running_best:
-            # FIXME: best not filtered again if used for all workloads
-            at_least_one = False
             # filter again if config thr changed for stats loading
+            at_least_one = False
             for wl in workloads:
-                acc_thr = wl['thr']['thr_bpred_acc']
+                acc_thr = wl["thr"].get("thr_bpred_acc", 0)
+                mpki_thr = wl["thr"].get("thr_bpred_mpki", 1000)
                 app = get_test_name(wl['app'])
                 for bp_handle,bp_results in sr_bin.items():
                     keys_to_remove = []
-                    for bp_size,bp_params in bp_results.items():
+                    for bp_size_bin,bp_params in bp_results.items():
                         app_acc = bp_params['per_app_acc'][app]
-                        if app_acc < acc_thr:
-                            keys_to_remove.append(bp_size)
+                        app_mpki = bp_params['per_app_mpki'][app]
+                        if app_acc < acc_thr or app_mpki > mpki_thr:
+                            keys_to_remove.append(bp_size_bin)
 
                     # remove all entries that were too low on acc
                     for k in keys_to_remove:
                         at_least_one = True
                         del bp_results[k]
 
+                if args.bp_run_best_for_all_workloads: # filter 'all' as well
+                    for bp_handle,bp_results in sr_best.items():
+                        keys_to_remove = []
+                        for bp_size,bp_params in bp_results.items():
+                            app_acc = bp_params['per_app_acc'][app]
+                            if app_acc < acc_thr:
+                                keys_to_remove.append(bp_size)
+
+                        # remove all entries that were too low on acc
+                        for k in keys_to_remove:
+                            at_least_one = True
+                            del bp_results[k]
+
             if at_least_one:
-                # save again as a separate json
-                sr_bin_f_out = sr_bin_out.replace("_binned", "_binned_filtered")
+                # save again as a separate json(s)
+                sr_bin_f_out = sr_bin_out.replace("_binned", "_binned_filter")
                 with open(sr_bin_f_out, "w") as f:
                     f.write(reformat_json(sr_bin))
+
+                if args.bp_run_best_for_all_workloads:
+                    sr_best_f_out = sr_best_out.replace("_best", "_best_filter")
+                    with open(sr_best_f_out, "w") as f:
+                        f.write(reformat_json(sr_best))
 
     elif args.save_stats:
         with open(sr_bin_out, "w") as f:
@@ -1235,18 +1253,22 @@ def run_bp_sweep(
             with open(sr_best_out, "w") as f:
                 f.write(reformat_json(sr_best))
 
+    sweep_results = [sr_bin, sr_best]
+    if args.load_stats and args.plot_skip_searched and not running_best:
+        return sweep_results
+
     # plot accuracy wrt size
     ncols = 1 if (running_best and not args.bp_run_best_for_all_workloads) \
-           else 2
+            else 2
     nrows = 2 # top acc, bottom mpki
     fig, axs = create_plot(
         bpk.capitalize(), sweep_name, ncols, nrows, title_2=args.chart_title)
-    plot_bp_results(axs, [sr_bin, sr_best], sweep_params)
+    plot_bp_results(axs, sweep_results, sweep_params)
 
     if args.save_png:
         fig.savefig(sweep_log.replace(".log", ".png"))
 
-    return [sr_bin, sr_best]
+    return sweep_results
 
 def bin_bp_results(bins, best):
     # for each bin, find the best config for accuracy
@@ -1268,11 +1290,10 @@ def bin_bp_results(bins, best):
     return best_per_bin
 
 def plot_bp_results(axs, sweep_results, sweep_params):
-    size_lim, bins = create_bp_bins(sweep_params)
+    _, bins = create_bp_bins(sweep_params)
     # make room to see all points at both ends
-    margin_add = size_lim[-1]/80
-    size_lim[-1] += margin_add
-    size_lim[0] -= margin_add
+    margin_add = bins[-1]/80
+    xlim = [bins[0] - margin_add, bins[-1] + margin_add]
     NO_STATIC = True # disabled for now
     axs_f = axs.flatten()
     half = len(axs_f) >> 1
@@ -1282,9 +1303,14 @@ def plot_bp_results(axs, sweep_results, sweep_params):
         r_ymin = 1000
         r_ymax = 0
         axs_slice = axs_f[:half] if mt == 'acc' else axs_f[half:]
+        plot_empty = [True, True]
         for idx,(sr,ax) in enumerate(zip(sweep_results, axs_slice)):
             title_add = ""
             for bp_h,entry in sr.items():
+                if args.plot_name_filter:
+                    match = bool(re.search(args.plot_name_filter, bp_h))
+                    if not match:
+                        continue
                 if len(entry.keys()) == 0:
                     # below thr limit for all available sizes
                     continue
@@ -1301,6 +1327,7 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                     bp2 = fmt(sweep_params[bp_h]["predictors"][1])
                     label = f"{label}" # {bp1} & {bp2}"
                     mk = MARKERS_BP.get(bp1, '.')
+                    #cnt_num = bp_h.split('_')[-1]
                     clr = COLORS_BP.get(bp2, 'k')
 
                 if "static" in bp_h:
@@ -1324,14 +1351,14 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 res_all = [entry[s][mt] for s in entry.keys()]
                 if idx == 0: # for 1st list, bins are keys, size stored as entry
                     sizes = [entry[s]["size"] for s in entry.keys()]
-                    title_add = f"Best per bin size - {mt_str}"
+                    title_add = f"Best per bin size"
                     ax.plot(sizes, res_all, label=label, color=clr,
                             marker=mk, markersize=7, lw=LW)
 
                 else: # sizes are keys
                     sizes = entry.keys()
                     sizes = [k for k in entry.keys()]
-                    title_add = f"Up to {args.bp_top_num} best - {mt_str}"
+                    title_add = f"Up to {args.bp_top_num} best"
                     if args.bp_top_thr != None:
                         title_add += \
                             f", and all above {args.bp_top_thr}% average"
@@ -1341,6 +1368,8 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 # left and right plot to have the same limits
                 r_ymin = min(r_ymin, min(res_all))
                 r_ymax = max(r_ymax, max(res_all))
+                plot_empty[idx] = (len(res_all) == 0)
+
             ax.set_title(title_add)
 
         # figure out a range
@@ -1351,8 +1380,13 @@ def plot_bp_results(axs, sweep_results, sweep_params):
         ymax = ymax if ymax - r_ymax > range1p else ymax + range1p
 
         # override if user-specified
-        #ymin = ymin if args.plot_acc_thr_min == None else args.plot_acc_thr_min
-        #ymax = ymax if args.plot_acc_thr_max == None else args.plot_acc_thr_max
+        if mt == 'acc':
+            ymin = args.plot_acc_thr_min if args.plot_acc_thr_min else ymin
+            ymax = args.plot_acc_thr_max if args.plot_acc_thr_max else ymax
+        elif mt == 'mpki':
+            ymin = args.plot_mpki_thr_min if args.plot_mpki_thr_min else ymin
+            ymax = args.plot_mpki_thr_max if args.plot_mpki_thr_max else ymax
+
         range = ymax - ymin
         if range <= 6:
             major_ticks_loc = 1
@@ -1373,22 +1407,27 @@ def plot_bp_results(axs, sweep_results, sweep_params):
             minor_ticks_loc = 4
 
         # finish both subplots
-        legend_loc = "upper left" if mt == 'acc' else "upper right"
-        for a in axs_slice:
-            a.set_xlim(size_lim)
+        for i,a in enumerate(axs_slice):
+            if plot_empty[i] == True:
+                print(f"WARNING: No results to plot for '{mt_str}'. "
+                      "Check the constraints")
+                continue
+            a.set_xlim(xlim)
             a.set_xlabel("Size (B)")
             a.set_xticks(bins)
             a.set_xticklabels(a.get_xticks(), rotation=45)
             a.set_ylabel(f"{mt_str} [%]" if mt == "acc" else f"{mt_str}")
             a.yaxis.set_major_locator(MultipleLocator(major_ticks_loc))
             a.yaxis.set_minor_locator(MultipleLocator(minor_ticks_loc))
-            a.legend(loc=legend_loc)
-            #a.legend(loc="lower right", ncol=2)
             a.grid(which='major', axis='x', linestyle='-', linewidth=0.75)
             a.grid(which='major', axis='y', linestyle='-', linewidth=0.75)
             a.grid(which='minor', axis='y', linestyle=':', linewidth=0.5)
             a.margins(x=0.02)
             a.set_ylim(ymin, ymax)
+            if i == 0: # only left (binned) plot has legends
+                a.legend(fontsize=9)
+                #a.legend(loc='upper left', fontsize=9)
+                #a.legend(ncol=3, fontsize=9)
 
 def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
     sr_bin_all = sr[0]
@@ -1455,14 +1494,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--add_all_workloads", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates a single chart as average values across all workloads. Used to validate HW model across all benchmarks")
     # plotting-only switches
     parser.add_argument("--chart_title", type=str, default="", help="Adds this string to each chart's title")
-    parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
-    parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_acc_thr_min", type=int, default=None, help="Override the lower limit for the plot y-axis for branch predictor accuracy")
-    parser.add_argument("--plot_acc_thr_max", type=int, default=None, help="Override the upper limit for the plot y-axis for branch predictor accuracy")
-    parser.add_argument("--plot_per_workload", action="store_true", default=False, help="Plot results from '--add_all_workloads' with one workload per chart. Used to validate HW model across all benchmarks. Requires running with '--add_all_workloads'")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
+    parser.add_argument("--plot_skip_searched", action="store_true", help="Don't plot searched workloads. Applicable only when stats are loaded with --load_stats")
+    # plot - caches
+    parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
+    parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
+    parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't set the upper limit for the plot y-axis for cache traffic")
+    # plot - bp
+    parser.add_argument("--plot_name_filter", type=str, default=None, help="Filter (regex) for this string only during plotting") # FIXME: should be applied to caches for completeness, but with so few cache configs, no real need?
+    parser.add_argument("--plot_acc_thr_min", type=int, default=None, help="Override the lower limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_acc_thr_max", type=int, default=None, help="Override the upper limit for the plot y-axis for branch predictor accuracy")
+    parser.add_argument("--plot_mpki_thr_min", type=int, default=None, help="Override the lower limit for the plot y-axis for branch predictor MPKI")
+    parser.add_argument("--plot_mpki_thr_max", type=int, default=None, help="Override the upper limit for the plot y-axis for branch predictor MPKI")
+    parser.add_argument("--plot_per_workload", action="store_true", default=False, help="Plot results from '--add_all_workloads' with one workload per chart. Used to validate HW model across all benchmarks. Requires running with '--add_all_workloads'")
 
     return parser.parse_args()
 
@@ -1484,17 +1529,17 @@ def run_main(args: argparse.Namespace) -> None:
     workloads_all = []
     workloads_sweep = []
     workloads_dict = sweep_dict["workloads"]
-    for wl,flavors in workloads_dict.items():
-        for flavor in flavors[0]:
+    for wl,wl_params in workloads_dict.items():
+        for flavor in wl_params[0]:
             elf = os.path.join(APPS_DIR, wl, f"{flavor}.elf")
             if not os.path.exists(elf) and not args.load_stats:
                 raise FileNotFoundError(f"elf not found at: {elf}")
             else:
-                for_sweep = not flavors[3]['skip_search']
-                wl_args = flavors[2]["sim_args"].split(" ") # args as list
-                e = {"app": elf, "thr": flavors[1], "args": wl_args}
+                use_for_sweep = not wl_params[3]['skip_search']
+                wl_args = wl_params[2]["sim_args"].split(" ") # args as list
+                e = {"app": elf, "thr": wl_params[1], "args": wl_args}
                 workloads_all.append(e)
-                if for_sweep:
+                if use_for_sweep:
                     workloads_sweep.append(e)
 
     if len(workloads_sweep) == 0:
