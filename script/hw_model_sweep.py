@@ -1227,7 +1227,7 @@ def run_bp_sweep(
                         keys_to_remove = []
                         for bp_size,bp_params in bp_results.items():
                             app_acc = bp_params['per_app_acc'][app]
-                            if app_acc < acc_thr:
+                            if app_acc < acc_thr or app_mpki > mpki_thr:
                                 keys_to_remove.append(bp_size)
 
                         # remove all entries that were too low on acc
