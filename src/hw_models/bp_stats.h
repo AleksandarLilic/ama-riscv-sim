@@ -44,7 +44,7 @@ struct bp_stats_t {
         uint64_t total_branches;
         uint64_t total_insts;
         float_t accuracy = -1.0; // i.e. never seen a branch
-        float_t mpki = 0.0; // mispredicted per 1k instruction
+        float_t mpki = -1.0; // mispredicted per 1k instruction
         const std::string type_name;
 
     public:
@@ -74,7 +74,11 @@ struct bp_stats_t {
                 accuracy = TO_F32(predicted) / TO_F32(total_branches) * 100.0;
             }
             if (total_insts > 0) {
-                mpki = TO_F32(mispredicted) / (TO_F32(total_insts) / 1000.0);
+                mpki = 0;
+                if (mispredicted > 0) {
+                    mpki = TO_F32(mispredicted) /
+                           (TO_F32(total_insts) / 1000.0);
+                }
             }
         }
         uint32_t get_predicted(uint32_t pc) const {
