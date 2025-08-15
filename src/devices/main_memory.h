@@ -60,5 +60,12 @@ class main_memory : public dev {
                 perf_event_t::dcache_miss);
         }
         #endif
+        #ifdef DASM_EN
+        void set_hwmi(hwmi_str* h) {
+            icache.set_hwmi(h);
+            dcache.set_hwmi(h);
+        }
+
+        #endif
         #endif
 };

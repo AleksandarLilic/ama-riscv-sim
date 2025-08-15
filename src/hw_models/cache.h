@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "hw_model_types.h"
 #include "cache_stats.h"
 #include "profiler_perf.h"
 
@@ -111,6 +112,10 @@ class cache {
         perf_event_t ref_event;
         perf_event_t miss_event;
         #endif
+        bool temp_profiling = false;
+        #ifdef DASM_EN
+        hwmi_str* hwmi_ptr;
+        #endif
 
     public:
         cache() = delete;
@@ -127,6 +132,7 @@ class cache {
 
         // prof
         void profiling(bool enable) {
+            temp_profiling = enable;
             stats.profiling(enable);
             roi.stats.profiling(enable);
             for (auto& set : cache_entries) {
@@ -143,6 +149,9 @@ class cache {
             this->ref_event = ref_event;
             this->miss_event = miss_event;
         }
+        #endif
+        #ifdef DASM_EN
+        void set_hwmi(hwmi_str* h) { hwmi_ptr = h; }
         #endif
 
         // stats

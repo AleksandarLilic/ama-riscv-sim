@@ -130,6 +130,7 @@ struct defs_t {
     static constexpr char log[] = "false";
     static constexpr char log_always[] = "false";
     static constexpr char log_state[] = "false";
+    static constexpr char log_hw_models[] = "false";
     #endif
 };
 
@@ -241,6 +242,10 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_always))
         ("log_state", "Log state after each executed instruction",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_state))
+        #ifdef HW_MODELS_EN
+        ("log_hw_models", "Log HW model stats for each executed instruction",
+         CXXOPTS_VAL_BOOL->default_value(defs_t::log_hw_models))
+        #endif
         #endif
 
         #ifdef HW_MODELS_EN
@@ -382,6 +387,7 @@ int main(int argc, char* argv[]) {
         cfg.log = TO_BOOL(result["log"]);
         cfg.log_always = TO_BOOL(result["log_always"]);
         cfg.log_state = TO_BOOL(result["log_state"]);
+        cfg.log_hw_models = TO_BOOL(result["log_hw_models"]);
         #endif
 
         #ifdef HW_MODELS_EN

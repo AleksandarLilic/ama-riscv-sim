@@ -97,8 +97,22 @@ cache_ref_t cache::reference(
 
     for (uint32_t way = 0; way < ways; way++) {
         auto& line = cache_entries[ccl.index][way];
-        if (line.metadata.valid && line.tag == ccl.tag) {
+        if (line.metadata.valid && (line.tag == ccl.tag)) {
             // hit, doesn't go to main mem
+
+            #ifdef DASM_EN
+            hwmi_ptr->log_cache({
+                cache_name,
+                addr,
+                ccl.tag,
+                ccl.index,
+                way,
+                ccl.byte_addr,
+                atype,
+                true
+            });
+            #endif
+
             scp_status = update_scp(scp_mode, line, ccl.index);
             // don't update lru on release
             if (scp_mode == scp_mode_t::m_rel) {
@@ -109,6 +123,7 @@ cache_ref_t cache::reference(
             line.referenced();
             stats.hit(atype);
             if (roi.has(addr)) roi.stats.hit(atype);
+
             #if CACHE_MODE == CACHE_MODE_FUNC
             if (atype == mem_op_t::write) {
                 write_to_cache(ccl.byte_addr, size, line);
@@ -118,11 +133,12 @@ cache_ref_t cache::reference(
             #else
             if (atype == mem_op_t::write) line.metadata.dirty = true;
             #endif
+
             *hws = hw_status_t::hit;
             return cache_ref_t::hit;
 
         } else {
-            if (line.metadata.lru_cnt > ccl.victim.lru_cnt &&
+            if ((line.metadata.lru_cnt > ccl.victim.lru_cnt) &&
                 !line.metadata.scp) {
                 ccl.victim = {way, line.metadata.lru_cnt};
             }
@@ -145,8 +161,22 @@ void cache::miss(
     // miss, goes to main mem
     stats.miss(atype);
     if (roi.has(addr)) roi.stats.miss(atype);
+
     #ifdef PROFILERS_EN
     prof_perf->set_perf_event_flag(miss_event);
+    #endif
+
+    #ifdef DASM_EN
+    hwmi_ptr->log_cache({
+        cache_name,
+        addr,
+        ccl.tag,
+        ccl.index,
+        ccl.victim.way_idx,
+        ccl.byte_addr,
+        atype,
+        false
+    });
     #endif
 
     // evict the line

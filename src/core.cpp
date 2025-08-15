@@ -14,7 +14,7 @@ core::core(
     , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
     #ifdef HW_MODELS_EN
-    , bp("bpred", hw_cfg)
+    , bp(bp_name, hw_cfg)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
 {
@@ -36,7 +36,9 @@ core::core(
     #endif
 
     #ifdef DASM_EN
-    mem->set_dasm(&dasm);
+    #ifdef HW_MODELS_EN
+    mem->set_hwmi(&hwmi);
+    #endif
     tu.set_dasm(&dasm);
     logf = {cfg.log, cfg.log_always, cfg.log_always, cfg.log_state};
     logf.activate(false);
@@ -95,8 +97,6 @@ void core::prof_state([[maybe_unused]] bool enable) {
 
     #ifdef DASM_EN
     logf.activate(enable);
-    dasm.asm_ss.str(""); // clear the string stream on start/stop
-    dasm.simd_ss.str("");
     if (logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
@@ -110,9 +110,19 @@ void core::prof_state([[maybe_unused]] bool enable) {
 
 void core::exec_inst() {
     tu.clear_trap();
+
+    // clear everything from previous instruction
+    #ifdef DASM_EN
+    dasm.clear_str();
+    #ifdef HW_MODELS_EN
+    hwmi.clear_str();
+    #endif
+    #endif
+
     #ifdef HW_MODELS_EN
     hwrs.rst();
     #endif
+
     if (prof_pc.should_start(pc)) {
         prof_state(true);
     } else if (prof_pc.should_stop(pc)) {
@@ -143,7 +153,7 @@ void core::exec_inst() {
         #endif
 
         uint32_t op_c = ip.copcode();
-        if (op_c != 0x3) {
+        if (op_c != 0x3) { // compressed ISA
             #ifdef RV32C
             INST_W(4);
             inst = inst & 0xffff;
@@ -157,7 +167,8 @@ void core::exec_inst() {
             #else // !RV32C
             tu.e_unsupported_inst("RV32C unsupported");
             #endif
-        } else {
+
+        } else { // 32-bit ISA
             INST_W(8);
             switch (ip.opcode()) {
                 CASE_DECODER(al_reg)
@@ -187,10 +198,8 @@ void core::exec_inst() {
 
     #ifdef DASM_EN
     // dasm string always available, logged to the file conditionally
-    dasm.asm_ss << dasm.simd_ss.str();
-    dasm.asm_str = dasm.asm_ss.str();
-    dasm.asm_ss.str("");
-    dasm.simd_ss.str("");
+    DASM_ALIGN;
+    dasm.finish_inst();
     if (logf.act) {
         if (tu.is_trapped()) {
             // log changed callstack and return
@@ -204,7 +213,12 @@ void core::exec_inst() {
         if (prof_act) log_ofstream << prof_pc.inst_cnt;
         else log_ofstream << "";
         log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
-                     << dasm.asm_str << "\n";
+                     << dasm.asm_str;
+
+        #ifdef HW_MODELS_EN
+        if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
+        #endif
+        log_ofstream << "\n";
 
         if (logf.state) {
             log_ofstream << print_state(csr_updated) << "\n";
@@ -356,8 +370,9 @@ void core::al_imm() {
     if (is_shift) dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
     else dasm.asm_ss << TO_I32(ip.imm_i());
     DASM_RD_UPDATE;
-    if (alu_op_sel == TO_U8(alu_i_op_t::op_addi) && (inst == INST_NOP)) {
-        dasm.asm_ss = std::ostringstream("nop");
+    if (inst == INST_NOP) {
+        dasm.clear_str();
+        dasm.asm_ss << "nop";
     }
     #endif
 }
@@ -375,11 +390,12 @@ void core::load() {
         CASE_LOAD(lhu)
         default: tu.e_unsupported_inst("load"); return;
     }
+    next_pc = pc + 4;
+
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
-    next_pc = pc + 4;
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
     DASM_RD_UPDATE;
@@ -446,11 +462,13 @@ void core::branch() {
     hw_status_t save_ic_hm = hwrs.ic_hm; // next fetch will override the stat
     last_inst_branch = true;
     bp.ideal(next_pc);
+
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b(), ip.funct3());
     if (!no_bp) { // not accessing icache in case there is no bp, stall instead
         //mem->speculative_exec(speculative_t::enter);
         inst_speculative = mem->rd_inst(speculative_next_pc);
     }
+
     next_ic_hm = hwrs.ic_hm; // count speculative access, not the resolution
     bp.update(pc, next_pc);
     bool correct = (next_pc == speculative_next_pc);
@@ -464,10 +482,16 @@ void core::branch() {
         //mem->speculative_exec(speculative_t::exit_commit);
         inst_resolved = inst_speculative;
     }
+
     hwrs.bp_hm = static_cast<hw_status_t>(correct);
     //next_ic_hm = hwrs.ic_hm;
     hwrs.ic_hm = save_ic_hm;
+
+    #ifdef DASM_EN
+    hwmi.log_bp({bp_name, b_dir_t::forward, correct, taken});
     #endif
+
+    #endif // HW_MODELS_EN
 }
 
 void core::jalr() {
@@ -1293,25 +1317,25 @@ void core::simd_ss_append(int32_t c, int32_t a, int32_t b) {
 
 void core::simd_ss_finish(std::string a) {
     dasm.simd_a << a;
-    dasm.simd_ss << "; " << dasm.simd_c.str()
-                 << ", " << dasm.simd_a.str();
+    dasm.simd_ss << "; RD = " << dasm.simd_c.str()
+                 << ", RS1 = " << dasm.simd_a.str();
 }
 
 void core::simd_ss_finish(std::string a, std::string b, int32_t res) {
     dasm.simd_a << a;
     dasm.simd_b << b;
-    dasm.simd_ss << "; " << res
-                 << ", " << dasm.simd_a.str()
-                 << ", " << dasm.simd_b.str();
+    dasm.simd_ss << "; RD = " << res
+                 << ", RS1 = " << dasm.simd_a.str()
+                 << ", RS2 = " << dasm.simd_b.str();
 }
 
 void core::simd_ss_finish(std::string c, std::string a, std::string b) {
     dasm.simd_a << a;
     dasm.simd_b << b;
     dasm.simd_c << c;
-    dasm.simd_ss << "; " << dasm.simd_c.str()
-                 << ", " << dasm.simd_a.str()
-                 << ", " << dasm.simd_b.str();
+    dasm.simd_ss << "; RD = " << dasm.simd_c.str()
+                 << ", RS1 = " << dasm.simd_a.str()
+                 << ", RS2 = " << dasm.simd_b.str();
 }
 #endif
 

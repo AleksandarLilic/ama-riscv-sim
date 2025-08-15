@@ -28,9 +28,6 @@ class memory {
         dev *dev_ptr;
         std::array<mem_entry, MEM_MAP_SIZE> mem_map;
         trap *tu;
-        #ifdef DASM_EN
-        dasm_str* dasm;
-        #endif
 
     private:
         uint32_t set_addr(uint32_t address, mem_op_t access, uint32_t size);
@@ -48,9 +45,6 @@ class memory {
         uint64_t get_mtime_shadow() { return clint0.get_mtime_shadow(); }
         void set_mip(uint32_t* csr_mip) { clint0.set_mip(csr_mip); }
         void update_mtime() { clint0.update_mtime(); }
-        #ifdef DASM_EN
-        void set_dasm(dasm_str* d) { dasm = d; }
-        #endif
         uint32_t rd_inst(uint32_t address);
         uint32_t just_inst(uint32_t address);
         uint32_t rd(uint32_t address, uint32_t size);
@@ -78,6 +72,11 @@ class memory {
         #ifdef PROFILERS_EN
         void set_perf_profiler(profiler_perf* prof_perf) {
             mm.set_perf_profiler(prof_perf);
+        }
+        #endif
+        #ifdef DASM_EN
+        void set_hwmi(hwmi_str* h) {
+            mm.set_hwmi(h);
         }
         #endif
         #endif

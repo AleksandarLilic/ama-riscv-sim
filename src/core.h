@@ -13,6 +13,7 @@
 
 #ifdef HW_MODELS_EN
 #include "bp_if.h"
+#include "hw_model_types.h"
 #endif
 
 class core {
@@ -106,7 +107,7 @@ class core {
                 next_ic_hm = hw_status_t::none;
             }
             last_inst_branch = false;
-            #else
+            #else // !HW_MODELS_EN
             inst = mem->rd_inst(pc);
             #endif
             ip.inst = inst;
@@ -379,6 +380,7 @@ class core {
         std::ofstream log_ofstream;
         bool csr_updated = false;
         dasm_str dasm;
+        hwmi_str hwmi;
         logging_flags_t logf;
         #endif
         cfg_t cfg;
@@ -434,6 +436,7 @@ class core {
 
         #ifdef HW_MODELS_EN
         bp_if bp;
+        std::string bp_name = "bpred";
         uint32_t inst_speculative;
         uint32_t inst_resolved;
         bool last_inst_branch;

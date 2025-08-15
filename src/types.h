@@ -149,25 +149,8 @@ enum class csr_perm_t {
 };
 
 enum class rf_names_t { mode_x, mode_abi };
-
-// caches
-enum class cache_policy_t { lru, _count };
-enum class cache_ref_t { hit, miss, ignore, _count };
 enum class mem_op_t { read, write };
-enum class scp_mode_t { m_none, m_lcl, m_rel };
-// success always 0, fail 1 for now, use values >0 for error codes if needed
-enum class scp_status_t { success, fail };
-enum class speculative_t { enter, exit_commit, exit_flush };
-
-// branches
-enum class b_dir_t { backward, forward};
-enum class bp_t {sttc, bimodal, local, global, gselect, gshare,
-                 ideal, none, combined, _count };
-enum class bp_sttc_t { at, ant, btfn, _count };
-enum class bp_bits_t { pc, cnt, hist, gr, _count };
-enum class bp_pc_folds_t { none, all, _count };
-
-enum class hw_status_t { miss, hit, none };
+enum class b_dir_t { backward, forward };
 
 // profilers
 enum class profiler_source_t { inst, clock };
@@ -202,17 +185,6 @@ struct symbol_tracking_t {
     std::vector<uint16_t> idx_callstack_prev;
     uint32_t fallthrough_pc;
     bool updated;
-};
-
-struct hw_running_stats_t {
-    hw_status_t ic_hm;
-    hw_status_t dc_hm;
-    hw_status_t bp_hm;
-    void rst() {
-        ic_hm = hw_status_t::none;
-        dc_hm = hw_status_t::none;
-        bp_hm = hw_status_t::none;
-    }
 };
 
 // perf events
@@ -263,13 +235,23 @@ perf_event_names = {
 
 // dasm
 struct dasm_str {
-    std::ostringstream asm_ss;
-    std::ostringstream simd_ss;
-    std::ostringstream simd_a;
-    std::ostringstream simd_b;
-    std::ostringstream simd_c;
-    std::string asm_str;
-    std::string op;
+    public:
+        std::ostringstream asm_ss;
+        std::ostringstream simd_ss;
+        std::ostringstream simd_a;
+        std::ostringstream simd_b;
+        std::ostringstream simd_c;
+        std::string asm_str;
+        std::string op;
+    public:
+        void finish_inst() {
+            asm_ss << simd_ss.str();
+            asm_str = asm_ss.str();
+        }
+        void clear_str() {
+            asm_ss.str("");
+            simd_ss.str("");
+        }
 };
 
 // RF
@@ -348,48 +330,13 @@ struct cfg_t {
     bool log;
     bool log_always;
     bool log_state;
+    bool log_hw_models;
     bool end_dump_state;
     bool exit_on_trap;
     #ifdef UART_EN
     bool sink_uart;
     #endif
     std::string out_dir;
-};
-
-struct hw_cfg_t {
-    // caches
-    uint32_t icache_sets;
-    uint32_t icache_ways;
-    cache_policy_t icache_policy;
-    uint32_t dcache_sets;
-    uint32_t dcache_ways;
-    cache_policy_t dcache_policy;
-    uint32_t roi_start;
-    uint32_t roi_size;
-    // branch predictors
-    bp_t bp;
-    bp_t bp2;
-    bp_t bp_active;
-    std::string bp_active_name;
-    // supported predictors configurations
-    bp_sttc_t bp_static_method;
-    uint8_t bp_pc_bits;
-    uint8_t bp_cnt_bits;
-    uint8_t bp_lhist_bits;
-    uint8_t bp_gr_bits;
-    bp_pc_folds_t bp_fold_pc;
-    bp_sttc_t bp2_static_method;
-    uint8_t bp2_pc_bits;
-    uint8_t bp2_cnt_bits;
-    uint8_t bp2_lhist_bits;
-    uint8_t bp2_gr_bits;
-    bp_pc_folds_t bp2_fold_pc;
-    uint8_t bp_combined_pc_bits;
-    uint8_t bp_combined_cnt_bits;
-    bp_pc_folds_t bp_combined_fold_pc;
-    // bp other configs
-    bool bp_run_all; // optionally, run all predefined predictors
-    bool bp_dump_csv;
 };
 
 struct logging_flags_t {

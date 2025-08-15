@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "hw_model_types.h"
 #include "bp_stats.h"
 #include "bp_cnt.h"
 
@@ -9,17 +10,6 @@
 #else
 #define BP_PC_CUTOFF_BITS 2
 #endif
-
-struct bp_cfg_t {
-    public:
-        const uint8_t pc_bits;
-        const uint8_t cnt_bits;
-        const uint8_t hist_bits;
-        const uint8_t gr_bits;
-        const bp_pc_folds_t fold_pc;
-        //const std::string type_name;
-        const char* type_name;
-};
 
 class bp {
     public:
