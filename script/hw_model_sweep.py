@@ -981,7 +981,8 @@ def run_bp_sweep(
     for bp_handle in sweep_params.keys():
         if args.load_stats:
             break # skip the sweep if loading existing stats
-        if bp_handle == "_common":
+        if bp_handle.startswith("_"):
+            # common and other settings, not a bp handle
             continue
 
         best_bps = {}
@@ -1159,28 +1160,42 @@ def run_bp_sweep(
             tt_now, tt_taken = tt()
             print(f"{PROG_BAT}/{PROG_BAT}. Done at {tt_now}. Taken: {tt_taken}")
 
+        # get BP configs based on accuracy
         # sort the best dict by accuracy, highest at the top
-        sr_best[bp_handle] = dict(
+        b_acc = dict(
             sorted(best_bps.items(), key=lambda x: x[1]["acc"], reverse=True))
 
-        # get the top N configs
-        sr_best_num = dict(list(sr_best[bp_handle].items())[:args.bp_top_num])
-
-        if args.bp_top_thr != None:
+        # get the top N configs for accuracy
+        b_acc_num = dict(list(b_acc.items())[:args.bp_top_acc_num])
+        b_acc_thr = {}
+        if args.bp_top_acc_thr != None:
             # take more only if above the threshold for accuracy
-            sr_best_thr = dict(
-                filter(lambda x: x[1]["acc"] >= args.bp_top_thr,
-                       sr_best[bp_handle].items()))
-            # merge two dicts
-            sr_best[bp_handle] = {**sr_best_thr, **sr_best_num}
+            b_acc_thr = dict(
+                filter(lambda x: x[1]["acc"] >= args.bp_top_acc_thr,
+                       b_acc.items()))
 
-        else:
-            # just one dict
-            sr_best[bp_handle] = sr_best_num
+        sr_best_acc = {**b_acc_num, **b_acc_thr}
 
-        # sort again but in ascending order (more intuitive to read)
+        # get BP configs based on MPKI
+        # sort the best dict by MPKI, lowest number of misses at the top
+        b_mpki = dict(
+            sorted(best_bps.items(), key=lambda x: x[1]["mpki"], reverse=False))
+
+        # get the top N configs for MPKI
+        b_mpki_num = dict(list(b_mpki.items())[:args.bp_top_mpki_num])
+        b_mpki_thr = {}
+        if args.bp_top_mpki_thr != None:
+            # take more only if above the threshold for MPKI
+            b_mpki_thr = dict(
+                filter(lambda x: x[1]["mpki"] <= args.bp_top_mpki_thr,
+                       b_mpki.items()))
+
+        sr_best_mpki = {**b_mpki_num, **b_mpki_thr}
+
+        # finally merge both and sort for MPKI (lowest at the bottom)
+        all_best = {**sr_best_mpki, **sr_best_acc}
         sr_best[bp_handle] = dict(
-            sorted(sr_best[bp_handle].items(), key=lambda x: x[1]["acc"]))
+            sorted(all_best.items(), key=lambda x: x[1]["mpki"], reverse=True))
 
         # sort the best dict by size
         #sr_best[bp_handle] = dict(
@@ -1227,6 +1242,7 @@ def run_bp_sweep(
                         keys_to_remove = []
                         for bp_size,bp_params in bp_results.items():
                             app_acc = bp_params['per_app_acc'][app]
+                            app_mpki = bp_params['per_app_mpki'][app]
                             if app_acc < acc_thr or app_mpki > mpki_thr:
                                 keys_to_remove.append(bp_size)
 
@@ -1358,10 +1374,10 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 else: # sizes are keys
                     sizes = entry.keys()
                     sizes = [k for k in entry.keys()]
-                    title_add = f"Up to {args.bp_top_num} best"
-                    if args.bp_top_thr != None:
+                    title_add = f"Up to {args.bp_top_acc_num} best"
+                    if args.bp_top_acc_thr != None:
                         title_add += \
-                            f", and all above {args.bp_top_thr}% average"
+                            f", and all above {args.bp_top_acc_thr}% average"
                     ax.scatter(sizes, res_all, label=label, color=clr,
                                marker=mk, s=25)
 
@@ -1487,9 +1503,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--track", action="store_true", help="Print the sweep progress")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of parallel workers to be dispatched, if the sweep allows it")
     # branch predictor sweep additional switches
-    parser.add_argument("--bp_top_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy. Useful to ensure at least this many will be included regardless of their accuracy. Combined with --bp_top_thr results, if used together")
-    parser.add_argument("--bp_top_thr", type=int, default=None, help="Accuracy threshold for the best branch predictor configs to always include. Applies to average accuracy if run for multiple workloads. Useful to ensure all good predictors are included. Combined with --bp_top_num results, if used together")
-    parser.add_argument("--bp_run_best_for_all_workloads", action="store_true", default=False, help="Use 'best' predictors instead of 'binned' for the all workloads run. In general, this means more predictors to run for all workloads, and will bias towards better performing (and usually larger) predictors. Useful for very contrained runs, but will significantly increase runtime for large runs")
+    parser.add_argument("--bp_top_acc_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on accuracy. Ignored for --load_stats. Useful to ensure at least this many will be included. Combined with other --bp_top_* results, if used together")
+    parser.add_argument("--bp_top_acc_thr", type=int, default=None, help="Accuracy threshold for the best branch predictor configs to always include. Ignored for --load_stats. Applies to average accuracy if run for multiple workloads. Useful to ensure all good predictors are included. Combined with other --bp_top_* results, if used together")
+    parser.add_argument("--bp_top_mpki_num", type=int, default=16, help="Number of top branch predictor configs to always include based only on MPKI. Ignored for --load_stats. Useful to ensure at least this many will be included. Combined with other --bp_top_* results, if used together")
+    parser.add_argument("--bp_top_mpki_thr", type=int, default=None, help="MPKI threshold for the best branch predictor configs to always include. Ignored for --load_stats. Applies to average MPKI if run for multiple workloads. Useful to ensure all good predictors are included. Combined with other --bp_top_* results, if used together")
+    parser.add_argument("--bp_run_best_for_all_workloads", action="store_true", default=False, help="Use 'best' predictors instead of 'binned' for the all workloads run. In general, this means more predictors to run for all workloads, and will bias towards better performing (and usually larger) predictors. Useful for very contrained runs, but will (significantly) increase runtime for larger runs")
     # additional workloads
     parser.add_argument("--add_all_workloads", action="store_true", default=False, help="Run with all workloads from the config (i.e. including 'skip_search: true' ones) after the main sweep finished. Creates a single chart as average values across all workloads. Used to validate HW model across all benchmarks")
     # plotting-only switches
