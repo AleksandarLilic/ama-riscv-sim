@@ -1,38 +1,34 @@
 {
     "hw_params": {
         "bpred": {
-            "bp_static":  {"method": ["at", "ant", "btfn"]},
             "bp_bimodal": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9],                                            "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
             "bp_local":   {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "lhist_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
             "bp_global":  {                                        "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none"]       },
             "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
             "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
 
-            "bp_combined-sttc_bmdl": {"predictors": ["bp_static", "bp_bimodal"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-sttc-locl": {"predictors": ["bp_static", "bp_local"],    "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-sttc_gshr": {"predictors": ["bp_static", "bp_gshare"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-sttc_gsel": {"predictors": ["bp_static", "bp_gselect"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-sttc_glbl": {"predictors": ["bp_static", "bp_global"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_gshr_2": {"predictors": ["bp_bimodal", "bp_gshare"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_glbl_2": {"predictors": ["bp_bimodal", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr-locl_2": {"predictors": ["bp_gshare", "bp_local"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr_glbl_2": {"predictors": ["bp_gshare", "bp_global"],   "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
+            "bp_combined-gsel_glbl_2": {"predictors": ["bp_gselect", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
+            "bp_combined-glbl-locl_2": {"predictors": ["bp_local", "bp_global"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [2], "fold_pc": ["none", "all"]},
 
-            "bp_combined-bmdl-locl": {"predictors": ["bp_bimodal", "bp_local"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-bmdl_gshr": {"predictors": ["bp_bimodal", "bp_gshare"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-bmdl_gsel": {"predictors": ["bp_bimodal", "bp_gselect"], "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-bmdl_glbl": {"predictors": ["bp_bimodal", "bp_global"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_gshr_3": {"predictors": ["bp_bimodal", "bp_gshare"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_glbl_3": {"predictors": ["bp_bimodal", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr-locl_3": {"predictors": ["bp_gshare", "bp_local"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr_glbl_3": {"predictors": ["bp_gshare", "bp_global"],   "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
+            "bp_combined-gsel_glbl_3": {"predictors": ["bp_gselect", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
+            "bp_combined-glbl-locl_3": {"predictors": ["bp_local", "bp_global"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3], "fold_pc": ["none", "all"]},
 
-            "bp_combined-gshr-locl": {"predictors": ["bp_gshare", "bp_local"],    "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-gshr_gshr": {"predictors": ["bp_gshare", "bp_gshare"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-gshr_gsel": {"predictors": ["bp_gshare", "bp_gselect"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-gshr_glbl": {"predictors": ["bp_gshare", "bp_global"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_gshr_4": {"predictors": ["bp_bimodal", "bp_gshare"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
+            "bp_combined-bmdl_glbl_4": {"predictors": ["bp_bimodal", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr-locl_4": {"predictors": ["bp_gshare", "bp_local"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
+            "bp_combined-gshr_glbl_4": {"predictors": ["bp_gshare", "bp_global"],   "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
+            "bp_combined-gsel_glbl_4": {"predictors": ["bp_gselect", "bp_global"],  "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
+            "bp_combined-glbl-locl_4": {"predictors": ["bp_local", "bp_global"],    "use_max_top_n": 64, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [4], "fold_pc": ["none", "all"]},
 
-            "bp_combined-gsel-locl": {"predictors": ["bp_gselect", "bp_local"],   "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-gsel_gsel": {"predictors": ["bp_gselect", "bp_gselect"], "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-            "bp_combined-gsel_glbl": {"predictors": ["bp_gselect", "bp_global"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-
-            "bp_combined-glbl-locl": {"predictors": ["bp_global", "bp_local"],    "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-
-            "bp_combined-locl-locl": {"predictors": ["bp_local", "bp_local"],     "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
-
-            "_common": { "min_size": 0, "max_size": 96, "size_bins": [20, 32, 40, 48, 56, 64, 72, 80, 88, 96] }
+            "_common": { "min_size": 0, "max_size": 96, "size_bins": [50, 64, 72, 80, 88, 96] }
         }
     },
     "workloads": {
