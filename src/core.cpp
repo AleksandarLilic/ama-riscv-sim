@@ -1317,25 +1317,25 @@ void core::simd_ss_append(int32_t c, int32_t a, int32_t b) {
 
 void core::simd_ss_finish(std::string a) {
     dasm.simd_a << a;
-    dasm.simd_ss << "; RD = " << dasm.simd_c.str()
-                 << ", RS1 = " << dasm.simd_a.str();
+    dasm.simd_ss << "RD = " << dasm.simd_c.str()
+                 << ", RS1 = " << dasm.simd_a.str() << "; ";
 }
 
 void core::simd_ss_finish(std::string a, std::string b, int32_t res) {
     dasm.simd_a << a;
     dasm.simd_b << b;
-    dasm.simd_ss << "; RD = " << res
+    dasm.simd_ss << "RD = " << res
                  << ", RS1 = " << dasm.simd_a.str()
-                 << ", RS2 = " << dasm.simd_b.str();
+                 << ", RS2 = " << dasm.simd_b.str() << "; ";
 }
 
 void core::simd_ss_finish(std::string c, std::string a, std::string b) {
     dasm.simd_a << a;
     dasm.simd_b << b;
     dasm.simd_c << c;
-    dasm.simd_ss << "; RD = " << dasm.simd_c.str()
+    dasm.simd_ss << "RD = " << dasm.simd_c.str()
                  << ", RS1 = " << dasm.simd_a.str()
-                 << ", RS2 = " << dasm.simd_b.str();
+                 << ", RS2 = " << dasm.simd_b.str() << "; ";
 }
 #endif
 

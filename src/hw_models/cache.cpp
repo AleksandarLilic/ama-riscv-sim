@@ -90,15 +90,19 @@ cache_ref_t cache::reference(
         prof_perf->set_perf_event_flag(ref_event);
         #endif
     }
-    ccl.init((addr>>CACHE_BYTE_ADDR_BITS) & index_mask, addr>>tag_off, {0, 0});
-    #if CACHE_MODE == CACHE_MODE_FUNC
-    ccl.byte_addr = addr & CACHE_BYTE_ADDR_MASK;
-    #endif
+    ccl.init(
+        (addr>>CACHE_BYTE_ADDR_BITS) & index_mask,
+        addr>>tag_off,
+        {0, 0},
+        addr & CACHE_BYTE_ADDR_MASK
+    );
 
     for (uint32_t way = 0; way < ways; way++) {
         auto& line = cache_entries[ccl.index][way];
         if (line.metadata.valid && (line.tag == ccl.tag)) {
             // hit, doesn't go to main mem
+
+            scp_status = update_scp(scp_mode, line, ccl.index);
 
             #ifdef DASM_EN
             hwmi_ptr->log_cache({
@@ -109,11 +113,11 @@ cache_ref_t cache::reference(
                 way,
                 ccl.byte_addr,
                 atype,
+                (line.metadata.scp == true),
                 true
             });
             #endif
 
-            scp_status = update_scp(scp_mode, line, ccl.index);
             // don't update lru on release
             if (scp_mode == scp_mode_t::m_rel) {
                 *hws = hw_status_t::hit;
@@ -138,15 +142,27 @@ cache_ref_t cache::reference(
             return cache_ref_t::hit;
 
         } else {
-            if ((line.metadata.lru_cnt > ccl.victim.lru_cnt) &&
+            // potentially a miss, keep the largest lru count as victim line
+            if ((line.metadata.lru_cnt >= ccl.victim.lru_cnt) &&
                 !line.metadata.scp) {
+                // if there are ways-1 scp lines in the set, it can happen
+                // for lru 0 to be victim, hence the >= instead of > comparison
+                // as ccl is initialized to 0
                 ccl.victim = {way, line.metadata.lru_cnt};
             }
         }
     }
 
-    // can't release on miss, assume to be an erroneous attempt from SW
-    if (scp_mode == scp_mode_t::m_rel) return cache_ref_t::ignore;
+    if (scp_mode == scp_mode_t::m_rel) {
+        // can't release on miss, assume to be an erroneous attempt from SW
+        // e.g. lcl attempts in direct-mapped caches would always fail
+        // so there would be nothing to release, yet SW may try
+        SIM_WARNING << "Cache '" << cache_name
+                    << "' tried to release SCP line at address: 0x"
+                    << MEM_ADDR_FORMAT(addr)
+                    << " but cache missed, nothing has been released\n";
+        return cache_ref_t::ignore;
+    }
     *hws = hw_status_t::miss;
     return cache_ref_t::miss;
 }
@@ -175,6 +191,7 @@ void cache::miss(
         ccl.victim.way_idx,
         ccl.byte_addr,
         atype,
+        (scp_mode == scp_mode_t::m_lcl),
         false
     });
     #endif
@@ -406,12 +423,12 @@ void cache::dump() const {
         for (uint32_t way = 0; way < ways; way++) {
             auto& line = cache_entries[set][way];
             std::cout << "    s" << set << " w" << way
-                      << " tag: 0x" << std::hex << line.tag
-                      << " lru: " << std::dec << line.metadata.lru_cnt
-                      << " scp: " << line.metadata.scp
-                      << " valid: " << line.metadata.valid
-                      << " dirty: " << line.metadata.dirty
-                      << " reference_cnt: " << line.reference_cnt
+                      << ", tag: " << FHEXZ(line.tag, 4)
+                      << ", lru: " << line.metadata.lru_cnt
+                      << ", scp: " << line.metadata.scp
+                      << ", valid: " << line.metadata.valid
+                      << ", dirty: " << line.metadata.dirty
+                      << ", reference_cnt: " << line.reference_cnt
                       << std::endl;
             #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line

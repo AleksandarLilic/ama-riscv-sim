@@ -22,7 +22,8 @@ struct cache_access_stat {
     uint32_t byte_addr;
     mem_op_t atype;
     //cache_access_reason_t reason;
-    bool hit;
+    bool is_scp;
+    bool is_hit;
 };
 
 struct bp_access_stat {
@@ -72,23 +73,23 @@ struct hwmi_str { // hardware model info
         //};
     public:
         void log_cache(cache_access_stat cas) {
-            stat_ss << "HW model - " << cas.name << ": "
-                    << (cas.hit ? "HIT" : "MISS")
+            stat_ss << "HW - " << cas.name
+                    << " (" << (cas.is_scp ? "S" : "C" )
+                    << ") : " << (cas.is_hit ? "HIT " : "MISS")
                     << " (" << ((cas.atype == mem_op_t::write) ? "W" : "R" )
-                    << ") [A:T:I:W:B] ["
-                    << "0x" << MEM_ADDR_FORMAT(cas.addr)
-                    << ":" << FHEXZ(cas.tag, 4)
-                    << ":" << TO_U32(cas.index)
-                    << ":" << TO_U32(cas.way)
-                    << ":" << std::setw(2) << std::setfill('0')
-                    << TO_U32(cas.byte_addr) << "]; ";
+                    << ") [A:0x" << MEM_ADDR_FORMAT(cas.addr)
+                    << ", W:" << cas.way
+                    << ", T:" << FHEXZ(cas.tag, 4)
+                    << ", I:" << cas.index
+                    << ", B:" << std::setw(2) << std::setfill('0')
+                    << cas.byte_addr << "]; ";
         }
         void log_bp(bp_access_stat bpas) {
-            stat_ss << "HW model - " << bpas.name << ": "
-                    << (bpas.hit ? "HIT" : "MISS") << " - "
-                    << (bpas.taken ? "taken" : "not taken") << ", "
-                    << (bpas.dir == b_dir_t::backward ? "backward" : "forward")
-                    << "; ";
+            stat_ss << "HW - " << bpas.name << ": "
+                    << (bpas.hit ? "HIT" : "MISS") << " ["
+                    << (bpas.taken ? "T" : "N") << ", "
+                    << (bpas.dir == b_dir_t::backward ? "BWD" : "FWD")
+                    << "]; ";
         }
         //void log_bp(bp_access_stat bal) { }
         void clear_str() { stat_ss.str(""); }

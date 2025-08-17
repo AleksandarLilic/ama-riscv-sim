@@ -61,10 +61,12 @@ struct current_cache_line {
     victim_t victim;
     uint32_t byte_addr;
     public:
-        void init(uint32_t index, uint32_t tag, victim_t victim) {
+        void init(
+            uint32_t index, uint32_t tag, victim_t victim, uint32_t byte_addr) {
             this->index = index;
             this->tag = tag;
             this->victim = victim;
+            this->byte_addr = byte_addr;
         }
 };
 
