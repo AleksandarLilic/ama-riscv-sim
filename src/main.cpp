@@ -140,31 +140,31 @@ struct hw_defs_t {
     static constexpr char icache_sets[] = "2";
     static constexpr char icache_ways[] = "2";
     static constexpr char icache_policy[] = "lru";
-    static constexpr char dcache_sets[] = "8";
+    static constexpr char dcache_sets[] = "4";
     static constexpr char dcache_ways[] = "2";
     static constexpr char dcache_policy[] = "lru";
     // caches other configs
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
     // branch predictors
-    static constexpr char bp[] = "gshare";
-    static constexpr char bp2[] = "none";
+    static constexpr char bp[] = "bimodal";
+    static constexpr char bp2[] = "none"; // global
     // supported predictors configurations
     static constexpr char bp_static_method[] = "btfn";
     static constexpr char bp_pc_bits[] = "5";
-    static constexpr char bp_cnt_bits[] = "2";
+    static constexpr char bp_cnt_bits[] = "3";
     static constexpr char bp_lhist_bits[] = "5";
     static constexpr char bp_gr_bits[] = "5";
     static constexpr char bp_fold_pc[] = "none";
     static constexpr char bp2_static_method[] = "at";
     static constexpr char bp2_pc_bits[] = "5";
-    static constexpr char bp2_cnt_bits[] = "2";
+    static constexpr char bp2_cnt_bits[] = "1";
     static constexpr char bp2_lhist_bits[] = "5";
-    static constexpr char bp2_gr_bits[] = "5";
+    static constexpr char bp2_gr_bits[] = "9";
     static constexpr char bp2_fold_pc[] = "none";
-    static constexpr char bp_combined_pc_bits[] = "6";
-    static constexpr char bp_combined_cnt_bits[] = "3";
-    static constexpr char bp_combined_fold_pc[] = "none";
+    static constexpr char bp_combined_pc_bits[] = "4";
+    static constexpr char bp_combined_cnt_bits[] = "4";
+    static constexpr char bp_combined_fold_pc[] = "all";
     // bp other configs
     static constexpr char bp_run_all[] = "false";
     static constexpr char bp_dump_csv[] = "false";

@@ -73,8 +73,9 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
 }
 
 uint32_t run_inference(int8_t* input_img) {
-    int32_t layer_out[64];
-    int8_t layer_in[64];
+    // align so that both fit nicely on cache boundaries
+    int32_t __attribute__((aligned(64))) layer_out[64];
+    int8_t __attribute__((aligned(64))) layer_in[64];
 
     #ifdef CUSTOM_ISA
     //#pragma GCC unroll 4 // force if gcc doesn't unroll
@@ -87,7 +88,7 @@ uint32_t run_inference(int8_t* input_img) {
     for (int i = 0; i < 4; i++) RELEASE_SCP(input_img + 64*i);
     // and move 'layer_out' (allocated on the stack) to scp
     for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(layer_out + 16*i);
-    // more contention d$ if 'layer_in' is also moved to scp
+    // depending on the dcache config, there may be space for one more SCP line
     //LOAD_AND_RESERVE_SCP(layer_in);
     #endif
 
@@ -106,6 +107,7 @@ uint32_t run_inference(int8_t* input_img) {
     #ifdef CUSTOM_ISA
     // be a good citizen and release the scp
     for (int i = 0; i < 4; i++) RELEASE_SCP(layer_out + 16*i);
+    //RELEASE_SCP(layer_in);
     #endif
 
     return out;
