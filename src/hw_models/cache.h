@@ -90,6 +90,7 @@ class cache {
         uint32_t sets;
         uint32_t ways;
         cache_policy_t policy;
+        bool direct_mapped;
         uint32_t index_bits_num;
         uint32_t index_mask;
         uint32_t tag_bits_num;

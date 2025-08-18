@@ -61,9 +61,9 @@ scp_status_t memory::cache_hint(uint32_t address, scp_mode_t scp_mode) {
     return mm_ptr->scp(address, scp_mode);
     #else
     // hint ignored if caches are not enabled
-    SIM_WARNING << "Caches are not simulated but encoutered cache hint "
-                << "at 0x" << std::hex << address << std::dec
-                << " with mode " << TO_U32(scp_mode) << std::endl;
+    SIM_WARNING << "Caches are not simulated but encountered cache hint "
+                << "at 0x" << MEM_ADDR_FORMAT(address)
+                << " with mode " << TO_U32(scp_mode) << "\n";
     return scp_status_t::fail;
     #endif
 }
@@ -118,14 +118,14 @@ void memory::dump_as_bytes(uint32_t start, uint32_t size) {
     for (uint32_t i = aligned_start; i < aligned_start + size + offset; i++) {
         if (i % bytes_per_row == 0) {
             // insert address at the start of each row
-            std::cout << std::endl << MEM_ADDR_FORMAT(i) << ": ";
+            std::cout << "\n" << MEM_ADDR_FORMAT(i) << ": ";
         }
         addr = set_addr(i, mem_op_t::read, 1u);
         std::cout << std::hex << std::right << std::setw(2) << std::setfill('0')
                   << dev_ptr->rd(addr, 1u) << " ";
         if (i % word_boundary == 3) std::cout << "  ";
     }
-    std::cout << std::dec << std::left << std::endl;
+    std::cout << std::dec << std::left << "\n";
 }
 
 // word per line

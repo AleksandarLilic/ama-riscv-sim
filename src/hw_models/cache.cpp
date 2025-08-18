@@ -12,6 +12,7 @@ cache::cache(
         cache_name(cache_name)
     {
     validate_inputs(sets, ways, policy);
+    direct_mapped = (ways == 1);
 
     // first dim is number of sets
     cache_entries.resize(sets);
@@ -59,6 +60,11 @@ void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
 }
 
 scp_status_t cache::scp_lcl(uint32_t addr) {
+    if (direct_mapped) {
+        SIM_WARNING << "Cache '" << cache_name
+                    << "' is direct-mapped but tried to create SCP line. SCP "
+                       "needs at least 2-way set-associative cache\n";
+    }
     auto ret = reference(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
     if (ret == cache_ref_t::miss) {
         miss(addr, 0u, mem_op_t::read, scp_mode_t::m_lcl);
@@ -67,6 +73,11 @@ scp_status_t cache::scp_lcl(uint32_t addr) {
 }
 
 scp_status_t cache::scp_rel(uint32_t addr) {
+    if (direct_mapped) {
+        SIM_WARNING << "Cache '" << cache_name
+                    << "' is direct-mapped but tried to release SCP line. SCP "
+                       "needs at least 2-way set-associative cache\n";
+    }
     auto ret = reference(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
     if (ret == cache_ref_t::miss) {
         miss(addr, 0u, mem_op_t::read, scp_mode_t::m_rel);
