@@ -435,8 +435,8 @@ class core {
         #endif
 
         #ifdef HW_MODELS_EN
+        std::string bp_name;
         bp_if bp;
-        std::string bp_name = "bpred";
         uint32_t inst_speculative;
         uint32_t inst_resolved;
         bool last_inst_branch;

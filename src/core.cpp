@@ -14,6 +14,7 @@ core::core(
     , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
     #ifdef HW_MODELS_EN
+    , bp_name("bpred")
     , bp(bp_name, hw_cfg)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
