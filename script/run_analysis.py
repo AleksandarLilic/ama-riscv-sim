@@ -7,11 +7,12 @@ import os
 import textwrap
 from typing import Any, Dict, List, Tuple
 
+import matplotlib
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import (FuncFormatter, LogFormatter,
+from matplotlib.ticker import (FixedLocator, FuncFormatter, LogFormatter,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
 from utils import is_notebook
@@ -124,6 +125,9 @@ def to_k(val, pos) -> str:
         return f"{val//1000:.0f}k"
     return f"{val/1000:.3f}k"
 
+def to_v(val, pos) -> str:
+    return f"{val}"
+
 def inst_exists(inst) -> str:
     if inst not in all_inst:
         raise ValueError(f"Invalid instruction '{inst}'. " + \
@@ -148,7 +152,7 @@ def find_loc_range(ax) -> int:
         inc = 32
     return inc
 
-def wrap_label(arr:List[str], max_len:int) -> str:
+def wrap_text(arr:List[str], max_len:int) -> str:
     label = ', '.join(arr)
     wrapped = '\n'.join(textwrap.wrap(label, max_len))
     return wrapped
@@ -177,7 +181,7 @@ def ctype_check(ctype:str) -> Tuple[List[str], str]:
 
     return cols, ylabel
 
-def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
+def draw_inst_log(df, hl_inst_g, title, args) -> plt.Figure:
     inst_profiled = df['count'].sum()
     df['i_type'] = df['name'].map(inst_t_map)
     df['i_mem_type'] = df['name'].map(inst_t_mem_map)
@@ -231,14 +235,14 @@ def draw_inst_log(df, hl_groups, title, args) -> plt.Figure:
 
     # highlight specific instructions, if any
     hc = 0
-    for hl_g in hl_groups:
+    for hl_g in hl_inst_g:
         for i, r in enumerate(box[0]):
             if df.iloc[i]['name'] in hl_g:
                 r.set_color(hl_colors[hc])
         ax[0].barh(0, 0, color=hl_colors[hc], label=', '.join(hl_g))
         hc += 1
 
-    if len(hl_groups) > 0:
+    if len(hl_inst_g) > 0:
         add_legend_for_hl_groups(ax[0], "log")
 
     # add memory instructions breakdown, if any
@@ -273,11 +277,11 @@ def json_prof_to_df(log, allow_internal=False) -> pd.DataFrame:
     df = df.sort_values(by='count', ascending=True)
     return df
 
-def run_inst_log(log, hl_groups, title, args) -> \
+def run_inst_log(log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
 
     df = json_prof_to_df(log)
-    fig = draw_inst_log(df, hl_groups, title, args)
+    fig = draw_inst_log(df, hl_inst_g, title, args)
 
     return df, fig
 
@@ -380,11 +384,12 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                        f"{num_to_hex(v['addr_end'], None)}: " + \
                        f"{v['symbol_text']}")
 
-    print(f"Symbols found in {args.dasm} in '{section}' section:")
-    if filter_str:
-        print(f"Filtered by: {' and '.join(filter_str)}")
-    for sym in sym_log[::-1]:
-        print(sym)
+    if args.print_symbols:
+        print(f"Symbols found in {args.dasm} in '{section}' section:")
+        if filter_str:
+            print(f"Filtered by: {' and '.join(filter_str)}")
+        for sym in sym_log[::-1]:
+            print(sym)
 
     if args.save_symbols and section == "text":
         # convert to python types first
@@ -395,8 +400,10 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     v[k2] = int(v2)
             symbols_py[k] = dict(v)
 
-        with open(os.path.join(logs_path, 'symbols.json'), 'w') as symfile:
+        sym_json = os.path.join(logs_path, 'symbols.json')
+        with open(sym_json, 'w') as symfile:
             json.dump(symbols_py, symfile, indent=4)
+        print(f"Symbols saved in '{sym_json}'")
 
     if section == "data":
         os.remove(outfile_name) # remove the dummy file
@@ -409,8 +416,10 @@ def add_cache_line_spans(ax) -> None:
     top = (int(ax.get_ylim()[1]) & ~0x3F) + CACHE_LINE_BYTES
     bottom = int(ax.get_ylim()[0]) & ~0x3F
     for i in range(bottom, top, CACHE_LINE_BYTES):
-        color = 'k' if (i//CACHE_LINE_BYTES) % 2 == 0 else 'w'
-        ax.axhspan(i, i+CACHE_LINE_BYTES, color=color, alpha=0.08, zorder=0)
+        if (i//CACHE_LINE_BYTES) % 2 != 0:
+            # color every other line in gray
+            continue
+        ax.axhspan(i, i+CACHE_LINE_BYTES, color='k', alpha=0.05, zorder=0)
 
     return ax
 
@@ -428,7 +437,7 @@ plt.Axes:
                          f"Available types are: 'pc', 'dmem'")
 
     #symbol_pos = ax.get_xlim()[1]
-    symbol_pos = 1. # for transform=ax.get_yaxis_transform()
+    symbol_pos = 1.005 # used for transform=ax.get_yaxis_transform()
 
     # first apply execution limits
     if not largs['no_limit']:
@@ -453,23 +462,28 @@ plt.Axes:
         #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
         if (start < ymin) or (start > ymax and end > ymax):
             continue
-        ax.axhline(y=start, color='k', linestyle='-', alpha=0.5, lw=0.4)
-        ax.text(symbol_pos, start,
-                f" ^ {v['symbol_text']}", color='k',
-                fontsize=9, ha='left', va='center',
-                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-                transform=ax.get_yaxis_transform())
+        ax.axhline(y=start, color='k', linestyle='--', alpha=0.7, lw=0.8)
+        txt = ax.text(
+            symbol_pos, start,
+            f" ^ {v['symbol_text']}", color='k',
+            fontsize=9, ha='left', va='center',
+            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+            transform=ax.get_yaxis_transform(),
+            clip_on=False, # draw outside axes
+        )
+        # don't let constrained_layout/tight_layout expand spacing
+        txt.set_in_layout(False)
 
     # add line for the last symbol, if any
     if symbols:
         # ends after last dmem entry, FIXME: should be the size of last inst
-        ax.axhline(y=end+2, color='k', linestyle='-', alpha=0.5, lw=0.4)
+        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.5, lw=0.4)
 
     return ax
 
-def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
+def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
-    fig, ax = plt.subplots(figsize=(16,13), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(16,12), constrained_layout=True)
 
     rect_arr = []
     off = .25 if ctype == 'dmem' else .75
@@ -482,19 +496,20 @@ def draw_freq(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
     if ctype == 'pc':
         # highlight specific instructions, if any
         hc = 0
-        for hl_g in hl_groups:
+        for hl_g in hl_inst_g:
             for i in range(len(df)):
                 if df.iloc[i]['inst_mnm'] in hl_g:
                     rect_arr[i].set_color(hl_colors[hc])
             # add a dummy bar for the legend
-            ax.barh(0, 0, color=hl_colors[hc], label=wrap_label(hl_g, 24))
+            ax.barh(0, 0, color=hl_colors[hc], label=wrap_text(hl_g, 24))
             hc += 1
 
-        if len(hl_groups) > 0:
+        if len(hl_inst_g) > 0:
             add_legend_for_hl_groups(ax, "trace")
 
     ax = annotate_chart(df, symbols, ax, args, ctype)
-    ax = add_cache_line_spans(ax)
+    if args.add_cache_lines:
+        ax = add_cache_line_spans(ax)
 
     # update axis
     #formatter = LogFormatter(base=10, labelOnlyBase=True)
@@ -564,15 +579,32 @@ def progressive_lw(x):
     right_out = .3
     return map_value(x, left_bound, right_bound, left_out, right_out)
 
+def plot_sp(ax, df):
+    LW_OFF = .75
+    lw = progressive_lw(df.index.size) * LW_OFF
+    line, =  ax.step(
+        df.smp, df.sp_real, where='post', lw=lw, color=(0,.3,.6,.7))
+
+    def _on_xlim_changed(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span) * LW_OFF
+        line.set_linewidth(lw)
+
+    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+
 def plot_hw_hm(ax, df, col, hw_win_size):
-    offset = .3
-    hit = df[col].where(df[col] == 1, np.nan) + offset
-    miss = df[col].where(df[col] == 0, np.nan) - offset
+    H_OFFSET = .3
+    hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
+    miss = df[col].where(df[col] == 0, np.nan) - H_OFFSET
     alpha = progressive_alpha(df.index.size)
-    ax.plot(df.smp, hit,
-            ls='None', marker="|", ms=8, alpha=alpha, c='g', label='hit')
-    ax.plot(df.smp, miss,
-            ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
+    bars_hit, = ax.plot(
+        df.smp, hit,
+        ls='None', marker="|", ms=8, alpha=alpha, c='g', label='hit')
+    bars_miss, = ax.plot(
+        df.smp, miss,
+        ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
 
     # drop NaNs to have continuous mean
     running_avg = df[col] \
@@ -581,12 +613,27 @@ def plot_hw_hm(ax, df, col, hw_win_size):
                   .mean()
     # reindex and forward fill to account for NaNs in the source
     running_avg = running_avg.reindex(df.index, method='ffill')
-    lw = progressive_lw(df.index.size)
-    ax.plot(df.smp, running_avg, lw=lw, color=(0,.3,.6,.7), label='avg')
-    ax.set_ylim(-.8+offset, 1.8-offset)
+    LW_OFF = .75
+    lw = progressive_lw(df.index.size) * LW_OFF
+    line, = ax.plot(
+        df.smp, running_avg, lw=lw, color=(0,.3,.6,.7), label='avg')
+    ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
     ax.set_yticks([0, .5, 1])
     ax.set_yticklabels(['0%', '', '100%'])
     #ax.legend(loc='upper right', ncol=3)
+
+    def _on_xlim_changed(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span) * LW_OFF
+        line.set_linewidth(lw)
+        # alpha for hit/miss bars
+        alpha = progressive_alpha(span)
+        bars_hit.set_alpha(alpha)
+        bars_miss.set_alpha(alpha)
+
+    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
 
     metric = "ACC" if col == 'bp' else "HR"
     metric_mean = round(df[col].mean()*100,2)
@@ -596,42 +643,48 @@ def plot_hw_hm(ax, df, col, hw_win_size):
             bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
             transform=ax.get_yaxis_transform())
 
-def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
+def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
-    if len(df) > args.time_series_limit:
+    if len(df) > args.trace_limit:
         print(f"Warning: too many PC entries to display in the time series " + \
-              f"chart ({len(df)}). Limit is {args.time_series_limit} " + \
+              f"chart ({len(df)}). Limit is {args.trace_limit} " + \
               f"entries. Either increase the limit or filter the data.")
         return None
 
-    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=(25,20),
+    # set up figure
+    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=(25,12),
                            sharex=True, height_ratios=[10, 1.2, 1.2, 1.2, 1],
                            constrained_layout=True)
-
     ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
     ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
     for a in ax:
         a.grid(axis='both', linestyle='-', alpha=.6, which='major')
 
-    lw = progressive_lw(df.index.size)
-    ax_sp.step(df.smp, df.sp_real, where='post', lw=lw, color=(0,.3,.6,.7))
+    # add sp and hw model traces
+    plot_sp(ax_sp, df)
     plot_hw_hm(ax_bp, df, 'bp', args.hw_win_size)
     plot_hw_hm(ax_ic, df, 'ic', args.hw_win_size)
     plot_hw_hm(ax_dc, df, 'dc', args.hw_win_size)
 
     # add PC/DMEM trace
-    ax_t.step(df.smp, df[cols[0]], where='pre', lw=1.5, color=(0,.3,.6,.15))
+    LW_OFF_S = .75
+    LW_OFF_HL = 2
+    lw = progressive_lw(df.index.size)
+    step, = ax_t.step(
+        df.smp, df[cols[0]], where='pre', lw=lw*LW_OFF_S, color=(0,.3,.6,.10))
     x_val, y_val = [], []
     for x, y, s in zip(df.smp, df[cols[0]], df[cols[1]]):
         x_val.extend([x, x, None]) # 'None' used to break the line
         y_val.extend([y, y + s, None])
-    ax_t.plot(x_val, y_val, color='#649ac9', lw=2.)
+    line_mark, = ax_t.plot(x_val, y_val, color='#649ac9', lw=lw)
 
+    # add highlighted instructions
     hc = 0
+    lines_hl = []
     if ctype == 'pc':
         trace_type = "Execution"
         hl_off = .15
-        for hl_g in hl_groups:
+        for hl_g in hl_inst_g:
             x_val_hl = []
             y_val_hl = []
             for inst in hl_g:
@@ -639,34 +692,51 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
                 for x, y, s in zip(df_hl.smp, df_hl['pc'], df_hl['isz']):
                     x_val_hl.extend([x, x, None])
                     y_val_hl.extend([y+hl_off, y+s-hl_off, None])
-            ax_t.plot(x_val_hl, y_val_hl, color=hl_colors[hc], alpha=1, lw=3)
+            line, = ax_t.plot(
+                x_val_hl, y_val_hl, color=hl_colors[hc], lw=lw*LW_OFF_HL)
+            lines_hl.append(line)
 
             # add dummy scatter plot for the legend
-            ax_t.scatter([], [], color=hl_colors[hc],
-                         label=wrap_label(hl_g, 24))
+            ax_t.scatter(
+                [], [], color=hl_colors[hc], label=wrap_text(hl_g, 24))
             hc += 1
 
-        if len(hl_groups) > 0:
+        if len(hl_inst_g) > 0:
             add_legend_for_hl_groups(ax_t, "trace")
 
     elif ctype == 'dmem':
         trace_type = "Data Memory"
-        for hl_g in ['load', 'store']:
+        for hl_g in ['load', 'store']: # hardcoded highlighted instructions
             x_val_hl = []
             y_val_hl = []
             df_hl = df[df['dtyp'] == hl_g]
             for x, y, s in zip(df_hl.smp, df_hl['dmem'], df_hl['dsz']):
                 x_val_hl.extend([x, x, None])
                 y_val_hl.extend([y, y+s, None])
-            ax_t.plot(x_val_hl, y_val_hl, color=hl_colors[hc], lw=2)
+            line, = ax_t.plot(
+                x_val_hl, y_val_hl, color=hl_colors[hc], lw=lw*LW_OFF_HL)
+            lines_hl.append(line)
 
             # add dummy scatter plot for the legend
             ax_t.scatter([], [], color=hl_colors[hc], label=hl_g)
             hc += 2 # skip yellow for visibility
             add_legend_for_hl_groups(ax_t, "trace")
 
+    def _on_xlim_changed_lines(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span)
+        step.set_linewidth(lw*LW_OFF_S)
+        line_mark.set_linewidth(lw)
+        for line_hl in lines_hl:
+            line_hl.set_linewidth(lw*LW_OFF_HL)
+
+    ax_t.callbacks.connect("xlim_changed", _on_xlim_changed_lines)
+
     ax_t = annotate_chart(df, symbols, ax_t, args, ctype)
-    ax_t = add_cache_line_spans(ax_t)
+    if args.add_cache_lines:
+        ax_t = add_cache_line_spans(ax_t)
 
     ax_sp.text(1, df['sp_real'].max(),
                f"  SP max : {df['sp_real'].max()} bytes", color='k',
@@ -675,21 +745,44 @@ def draw_exec(df, hl_groups, title, symbols, args, ctype) -> plt.Figure:
                transform=ax_sp.get_yaxis_transform())
 
     # update axis
-    current_nbins = len(ax_t.get_xticks())
-    locator = MaxNLocator(nbins=current_nbins*4, integer=True)
-    ax_t.xaxis.set_major_locator(locator)
-    ax_t.xaxis.set_major_formatter(FuncFormatter(to_k))
+    # y
     inc = find_loc_range(ax_t)
     ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
     ax_t.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
     ax_t.margins(y=0.03, x=0.01)
-
+    # x
+    max_n_locator = MaxNLocator(nbins=20, integer=True)
+    ax_t.xaxis.set_major_locator(max_n_locator)
+    ax_t.xaxis.set_major_formatter(FuncFormatter(to_k))
     # add a second x-axis
     ax_top = ax_t.twiny()
     ax_top.set_xlim(ax_t.get_xlim())
-    ax_top.xaxis.set_major_locator(locator)
+    ax_top.xaxis.set_major_locator(max_n_locator)
     ax_top.xaxis.set_ticks_position('top')
     ax_top.xaxis.set_major_formatter(FuncFormatter(to_k))
+
+    def _on_xlim_changed_locator(a):
+        # on less than THR samples, fix at 1k
+        THR = 10_000
+        STEP = 1000
+        xmin, xmax = a.get_xlim()
+        samples = xmax - xmin
+        want_fixed = (samples <= THR)
+        have_fixed = isinstance(a.xaxis.get_major_locator(), FixedLocator)
+        if want_fixed == have_fixed:
+            return  # already in the right mode
+
+        start = np.floor(xmin / STEP) * STEP
+        stop  = np.ceil(xmax / STEP) * STEP
+        fixed_ticks = np.arange(start, stop + 0.5 * STEP, STEP)
+        if samples > THR:
+            #a.xaxis.set_major_formatter(FuncFormatter(to_k))
+            a.xaxis.set_major_locator(max_n_locator) # the og from above
+        else:
+            #a.xaxis.set_major_formatter(FuncFormatter(to_v))
+            a.xaxis.set_major_locator(FixedLocator(fixed_ticks))
+    ax_t.callbacks.connect('xlim_changed', _on_xlim_changed_locator)
+    ax_top.callbacks.connect('xlim_changed', _on_xlim_changed_locator)
 
     # label
     ax_t.set_title(f"{trace_type} profile for {title}")
@@ -759,23 +852,21 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
 
     return df
 
-def run_bin_trace(bin_log, hl_groups, title, args) -> \
+def run_bin_trace(bin_log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df = load_bin_trace(bin_log, args)
     df_out = None
     dict_out = {}
-    if not args.dmem_only:
-        df_out, fig_pc, fig2_pc = run_bin_trace_pc(df, hl_groups, title, args)
-        dict_out['pc'] = fig_pc
-        dict_out['pc_exec'] = fig2_pc
-    if not args.pc_only:
-        _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df, hl_groups, title, args)
-        dict_out['dmem'] = fig_dmem
-        dict_out['dmem_exec'] = fig2_dmem
+    df_out, fig_pc, fig2_pc = run_bin_trace_pc(df, hl_inst_g, title, args)
+    dict_out['pc'] = fig_pc
+    dict_out['pc_exec'] = fig2_pc
+    _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df, title, args)
+    dict_out['dmem'] = fig_dmem
+    dict_out['dmem_exec'] = fig2_dmem
 
     return df_out, dict_out
 
-def run_bin_trace_pc(df_og, hl_groups, title, args) -> \
+def run_bin_trace_pc(df_og, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     df = df_og.groupby('pc').agg(
@@ -789,37 +880,47 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     symbols = {}
     m_hl_groups = []
     if args.dasm:
-        m_hl_groups = hl_groups
+        m_hl_groups = hl_inst_g
         symbols, df_map = backannotate_dasm(args, df, "text")
         # merge df_map into df by keeping only records in the df
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
 
-    if args.symbols_only:
-        return df, None, None
+    fig, fig2 = None, None
+    if args.symbols_only or not (args.pc_freq or args.pc_trace):
+        # early exit, no plotting for PC
+        return df, fig, fig2
 
-    fig = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
-    fig2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
+    if args.pc_freq:
+        fig = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
+    if args.pc_trace:
+        fig2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
     return df, fig, fig2
 
-def run_bin_trace_dmem(df_og, hl_groups, title, args) -> \
+def expand_byte_accesses(df_og: pd.DataFrame) -> pd.DataFrame:
+    # Work only on rows with dsz > 0
+    df = df_og.loc[df_og['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
+
+    # repeat indices
+    rep_idx = np.repeat(df.index.to_numpy(), df['dsz'].to_numpy())
+    out = df.loc[rep_idx, ['dmem', 'dtyp']].copy()
+    out['dsz'] = 1
+
+    # offset within each original row
+    out['dmem'] = out['dmem'].to_numpy() + \
+        out.groupby(level=0).cumcount().to_numpy()
+
+    out.reset_index(drop=True, inplace=True)
+    return out
+
+def run_bin_trace_dmem(df_og, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     df_og['dtyp'] = df_og['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
     df_og['dsz'] = df_og['dsz'].apply(lambda x: x-8 if x >= 8 else x)
     df_og['dmem'] = df_og['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
-    # isa is byte addressable, expand each access to a single byte
-    exp_rows = []
-    for i, row in df_og.iterrows():
-        addr, sz = row['dmem'], row['dsz']
-        if sz > 1:
-            for i in range(sz):
-                exp_rows.append({'dmem': addr+i, 'dsz': 1, 'dtyp': row['dtyp']})
-        else:
-            exp_rows.append({'dmem': addr, 'dsz': sz, 'dtyp': row['dtyp']})
-
-    df_exp = pd.DataFrame(exp_rows)
+    df_exp = expand_byte_accesses(df_og)
     df = df_exp.groupby('dmem').agg(
         dsz=('dsz', 'first'), # get only the first value
         count=('dmem', 'size') # count them all (size of the group)
@@ -834,15 +935,18 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if args.dasm:
         symbols, _ = backannotate_dasm(args, df, "data")
 
-    if args.symbols_only:
-        return df, None, None
+    fig, fig2 = None, None
+    if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
+        return df, fig, fig2
 
-    fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
-    fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
+    if args.dmem_freq:
+        fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
+    if args.dmem_trace:
+        fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
     return df, fig, fig2
 
 def parse_args() -> argparse.Namespace:
-    TIME_SERIES_LIMIT = 50000
+    TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
     parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
     # either
     parser.add_argument('-i', '--inst_log', type=str, help="Path to JSON instruction count log with profiling data")
@@ -861,26 +965,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--sample_begin', type=str, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--sample_end', type=str, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
 
+    parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Trace only option")
+    parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Trace only option")
     parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
     parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
     parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
-    parser.add_argument('--pc_only', action='store_true', help="Only backannotate and display the PC trace. Trace only option")
 
+    parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Trace only option")
+    parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Trace only option")
     parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace. Same as --no_pc_limit but for DMEM. Trace only option")
     parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address. Input is a hex string. E.g. '0x80000200'. Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
-    parser.add_argument('--dmem_only', action='store_true', help="Only backannotate and display the DMEM trace. Trace only option")
 
     parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
+    parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
-    parser.add_argument('--time_series_limit', type=int, default=TIME_SERIES_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TIME_SERIES_LIMIT}. Trace only option")
+    parser.add_argument('--print_symbols', action='store_true', help="Print symbols from dasm to the stdout. Requires --dasm. Trace only option")
+    parser.add_argument('--trace_limit', type=int, default=TRACE_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TRACE_LIMIT}. Trace only option")
     parser.add_argument('--save_converted_trace', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
     # TODO: add highlighting for function calls/PC ?
-    parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s) in pop-up window")
+    parser.add_argument('-b', '--browser', action='store_true', help="Open plots in the web browser instead of a pop-up window")
+    parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
     parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
@@ -904,8 +1013,10 @@ def run_main(args) -> None:
     if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
-    if (args.pc_only and args.dmem_only and not args.symbols_only):
-        raise ValueError("--pc_only and --dmem_only cannot be used together")
+    if run_trace and \
+        not (args.pc_freq or args.pc_trace or args.dmem_freq or args.dmem_trace):
+        raise ValueError(
+            "At least one trace-based plot needs to be specified for trace run")
 
     # filtering args
     if args.sample_begin or args.sample_end or \
@@ -935,7 +1046,7 @@ def run_main(args) -> None:
     if not os.path.exists(args_log):
         raise FileNotFoundError(f"File {args_log} not found")
 
-    hl_groups = []
+    hl_inst_g = []
     if not (args.highlight == None):
         if len(args.highlight) > len(hl_colors):
             raise ValueError(f"Too many instructions to highlight " + \
@@ -943,30 +1054,27 @@ def run_main(args) -> None:
                              f"got {len(args.highlight)}")
         else:
             if len(args.highlight) == 1: # multiple arguments but 1 element
-                hl_groups = args.highlight[0].split()
+                hl_inst_g = args.highlight[0].split()
             else: # already split on whitespace (somehow?)
-                hl_groups = args.highlight
-            hl_groups = [ah.split(",") for ah in hl_groups]
+                hl_inst_g = args.highlight
+            hl_inst_g = [ah.split(",") for ah in hl_inst_g]
 
     fig_arr = []
     ext = os.path.splitext(args_log)[1]
     title = os.path.basename(os.path.dirname(args_log)).replace("out_", "")
     log_path = os.path.realpath(args_log)
 
+    if args.browser:
+        matplotlib.use("WebAgg")
+
     if run_trace:
-        df, figs_dict = run_bin_trace(args_log, hl_groups, title, args)
+        df, figs_dict = run_bin_trace(args_log, hl_inst_g, title, args)
         for name, fig in figs_dict.items():
             fig_arr.append([log_path.replace(ext, f"_{name}{ext}"), fig])
     else:
-        df, fig = run_inst_log(args_log, hl_groups, title, args)
+        df, fig = run_inst_log(args_log, hl_inst_g, title, args)
         fig_arr.append([log_path, fig])
         figs_dict = {"inst": fig}
-
-    if not args.silent:
-        plt.show(block=False)
-        if not is_notebook():
-            input("Press Enter to close all plots...")
-    plt.close('all')
 
     if args.save_csv:
         df.to_csv(args_log.replace(ext, "_out.csv"), index=False)
@@ -981,6 +1089,17 @@ def run_main(args) -> None:
     if args.save_svg: # each chart is saved as a separate SVG file
         for name, fig in (fig_arr):
             fig.savefig(name.replace(" ", "_").replace(ext, ".svg"))
+
+    if not args.silent:
+        if args.browser:
+            # for browser-based, just show the plots
+            plt.show()
+        else:
+            # if not, figure out the run env, add helper to close all windows
+            plt.show(block=False)
+            if not is_notebook():
+                input("Press Enter to close all plots...")
+        plt.close('all')
 
 if __name__ == "__main__":
     args = parse_args()
