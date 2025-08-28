@@ -15,6 +15,7 @@ import pandas as pd
 from matplotlib.ticker import (FixedLocator, FuncFormatter, LogFormatter,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
+from matplotlib.widgets import RangeSlider
 from utils import is_notebook
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -158,13 +159,13 @@ def wrap_text(arr:List[str], max_len:int) -> str:
     return wrapped
 
 def add_legend_for_hl_groups(ax, chart_type:str) -> None:
-    title = "Highlighted\nInstructions"
+    title = "Highlighted\nInstructions\n"
     if chart_type == "log":
         ax.legend(loc='lower right', title=title, framealpha=0.5)
     elif chart_type == "trace":
         # put legend in the top right corner, outside the plot
-        ax.legend(loc='upper left', title=title, framealpha=0.5,
-                  bbox_to_anchor=(1.01, 1.03), borderaxespad=0.)
+        ax.legend(title=title, framealpha=0.5, loc='upper right',
+                  bbox_to_anchor=(1.2, 1.03), borderaxespad=0.)
     else:
         raise ValueError(f"Invalid chart type '{chart_type}'")
 
@@ -481,6 +482,265 @@ plt.Axes:
 
     return ax
 
+# sliders
+def register_true_home(fig):
+    tb = getattr(fig.canvas.manager, "toolbar", None)
+    if tb is None:
+        return
+
+    # snapshot current view limits (skip slider axes)
+    homes = [(ax, ax.get_xlim(), ax.get_ylim())
+             for ax in fig.axes if not getattr(ax, "_is_slider_ax", False)]
+
+    def _home(*_):
+        # push the pre-Home view so Back goes here
+        tb.push_current()
+        # apply Home to all plot axes
+        for ax, xlim, ylim in homes:
+            ax.set_xlim(*xlim)
+            ax.set_ylim(*ylim)
+        fig.canvas.draw_idle()
+        # push the post-Home view so Forward goes here
+        tb.push_current()
+
+    tb.home = _home
+
+def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
+    fig = ax.figure
+    pos = ax.get_position()
+    slider_ax = fig.add_axes([pos.x0, pos.y0 - gap - h, pos.width, h])
+    slider_ax._is_slider_ax = True
+
+    xmin, xmax = ax.get_xlim()
+    rs = RangeSlider(
+        ax=slider_ax,
+        label="",
+        valmin=float(min(xmin, xmax)),
+        valmax=float(max(xmin, xmax)),
+        valinit=(float(min(xmin, xmax)), float(max(xmin, xmax))),
+        handle_style=dict(size=1, facecolor="w", edgecolor="w"),
+    )
+
+    # ticks copied from main X (snapshot)
+    slider_ax.set_axis_on()
+    slider_ax.yaxis.set_visible(False)
+    slider_ax.xaxis.set_visible(True)
+    slider_ax.set_xlim(rs.valmin, rs.valmax)
+    abs_ticks = ax.get_xticks()
+    slider_ax.xaxis.set_major_locator(FixedLocator(abs_ticks))
+    slider_ax.xaxis.set_major_formatter(ax.xaxis.get_major_formatter())
+
+    # spines: keep bottom only
+    for s in ("top", "left", "right"):
+        slider_ax.spines[s].set_visible(False)
+    slider_ax.spines["bottom"].set_visible(True)
+    slider_ax.tick_params(axis="x", pad=1, length=3)
+
+    # colors
+    rs.poly.set_facecolor("white"); rs.poly.set_alpha(0.8)
+    rs.track.set_facecolor("black"); rs.track.set_alpha(0.4)
+
+    # handles
+    barL = slider_ax.axvline(rs.valmin, 0, 1, linewidth=6, color="k")
+    barR = slider_ax.axvline(rs.valmax, 0, 1, linewidth=6, color="k")
+
+    # sync
+    _sync = {"slider": False, "axes": False}
+
+    def _on_slider(_):
+        if _sync["axes"]: return
+        _sync["slider"] = True
+        lo, hi = rs.val
+        ax.set_xlim(lo, hi)
+        ax_top.set_xlim(lo, hi)
+        barL.set_xdata([lo, lo]); barR.set_xdata([hi, hi])
+        fig.canvas.draw_idle()
+        _sync["slider"] = False
+
+    rs.on_changed(_on_slider)
+
+    def _on_xlim_changed(event_ax):
+        if _sync["slider"]: return
+        _sync["axes"] = True
+        lo, hi = event_ax.get_xlim()
+        rs.set_val((lo, hi))
+        barL.set_xdata([lo, lo]); barR.set_xdata([hi, hi])
+        _sync["axes"] = False
+
+    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+
+    # push slider views into nav history on mouse release
+    tb = getattr(fig.canvas.manager, "toolbar", None)
+    _last_view = [ax.get_xlim(), ax.get_ylim()] # closure box
+
+    def _on_release(ev):
+        if (ev.inaxes is slider_ax) and \
+           (tb is not None) and \
+           hasattr(tb, "push_current"):
+            cur = [ax.get_xlim(), ax.get_ylim()]
+            if cur != _last_view:
+                tb.push_current() # record current view for back/forward
+                _last_view[:] = cur # update snapshot
+
+    fig.canvas.mpl_connect("button_release_event", _on_release)
+
+    # format x values with ' for separator
+    def _fmt(lo, hi):
+        t = f"({int(lo):,d} - {int(hi):,d})" # ' not supported natively
+        return t.replace(",", "'") # so replace instead
+
+    # update on change
+    def _update_valtext(val):
+        rs.valtext.set_text(_fmt(*val))
+
+    # initial hex text
+    _update_valtext(rs.val)
+
+    rs.on_changed(_update_valtext)
+
+    return rs
+
+def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
+    fig = ax.figure
+    pos = ax.get_position()
+    if side == "right":
+        x0 = pos.x1 + gap
+        keep_spine = "right"
+        tick_left, tick_right = False, True
+    else:
+        x0 = pos.x0 - gap - w
+        keep_spine = "left"
+        tick_left, tick_right = True, False
+    slider_ax = fig.add_axes([x0, pos.y0, w, pos.height])
+    slider_ax._is_slider_ax = True
+
+    y0, y1 = ax.get_ylim()
+    inv = y0 > y1
+    vmin, vmax = (y1, y0) if inv else (y0, y1)
+
+    rs = RangeSlider(
+        ax=slider_ax,
+        label="",
+        valmin=float(vmin),
+        valmax=float(vmax),
+        valinit=(float(vmin), float(vmax)),
+        orientation="vertical",
+        handle_style=dict(size=1, facecolor="w", edgecolor="w"),
+    )
+
+    # ticks copied from main Y (snapshot)
+    slider_ax.set_axis_on()
+    slider_ax.xaxis.set_visible(False)
+    slider_ax.yaxis.set_visible(True)
+    slider_ax.set_ylim(vmin, vmax)
+    abs_ticks = ax.get_yticks()
+    slider_ax.yaxis.set_major_locator(FixedLocator(abs_ticks))
+    slider_ax.yaxis.set_major_formatter(ax.yaxis.get_major_formatter())
+
+    # spines: keep only chosen side
+    for s in ("top", "bottom", "left", "right"):
+        slider_ax.spines[s].set_visible(False)
+    slider_ax.spines[keep_spine].set_visible(True)
+    slider_ax.tick_params(
+        axis="y",
+        left=tick_left, labelleft=tick_left,
+        right=tick_right, labelright=tick_right,
+        pad=1, length=3
+    )
+
+    # colors
+    rs.poly.set_facecolor("white"); rs.poly.set_alpha(0.8)
+    rs.track.set_facecolor("black"); rs.track.set_alpha(0.4)
+
+    # bar handles (horizontal)
+    barB = slider_ax.axhline(vmin, 0, 1, linewidth=6, color="k")
+    barT = slider_ax.axhline(vmax, 0, 1, linewidth=6, color="k")
+
+    # sync
+    _sync = {"slider": False, "axes": False}
+
+    def _on_slider(_):
+        if _sync["axes"]: return
+        _sync["slider"] = True
+        lo, hi = rs.val
+        if inv:
+            ax.set_ylim(hi, lo)
+        else:
+            ax.set_ylim(lo, hi)
+        barB.set_ydata([lo, lo]); barT.set_ydata([hi, hi])
+        fig.canvas.draw_idle()
+        _sync["slider"] = False
+
+    rs.on_changed(_on_slider)
+
+    def _on_ylim_changed(event_ax):
+        if _sync["slider"]: return
+        _sync["axes"] = True
+        ylo, yhi = event_ax.get_ylim()
+        lo, hi = (min(ylo, yhi), max(ylo, yhi))
+        rs.set_val((lo, hi))
+        barB.set_ydata([lo, lo]); barT.set_ydata([hi, hi])
+        _sync["axes"] = False
+
+    ax.callbacks.connect("ylim_changed", _on_ylim_changed)
+
+    # push slider views into nav history on mouse release
+    tb = getattr(fig.canvas.manager, "toolbar", None)
+    _last_view = [ax.get_xlim(), ax.get_ylim()]
+
+    def _on_release(ev):
+        if (ev.inaxes is slider_ax) and \
+           (tb is not None) and \
+           hasattr(tb, "push_current"):
+            cur = [ax.get_xlim(), ax.get_ylim()]
+            if cur != _last_view:
+                tb.push_current()
+                _last_view[:] = cur
+
+    fig.canvas.mpl_connect("button_release_event", _on_release)
+
+    # format y values as hex - addresses
+    def _fmt_hex(lo, hi):
+        return f"(0x{int(lo):X} - 0x{int(hi):X})"
+
+    # update on change
+    def _update_valtext(val):
+        rs.valtext.set_text(_fmt_hex(*val))
+
+    # initial hex text
+    _update_valtext(rs.val)
+
+    rs.on_changed(_update_valtext)
+
+    return rs
+
+def link_xrange(ax1, rs1, ax2, rs2):
+    """
+    Keep two charts' X views in sync. Works across figures.
+    Pass rs1/rs2 if there are sliders; use None if a chart has no slider.
+    """
+    shared = {"lock": False}
+
+    def _copy_xlim(src_ax, dst_ax, dst_rs):
+        if shared["lock"]:
+            return
+        shared["lock"] = True
+        lo, hi = src_ax.get_xlim()
+        dst_ax.set_xlim(lo, hi)
+        if dst_rs is not None:
+            dst_rs.set_val((lo, hi))
+        shared["lock"] = False
+
+    def _xl1(_):
+        _copy_xlim(ax1, ax2, rs2)
+
+    def _xl2(_):
+        _copy_xlim(ax2, ax1, rs1)
+
+    ax1.callbacks.connect("xlim_changed", _xl1)
+    ax2.callbacks.connect("xlim_changed", _xl2)
+
+# drawing
 def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
     fig, ax = plt.subplots(figsize=(16,12), constrained_layout=True)
@@ -501,7 +761,7 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
                 if df.iloc[i]['inst_mnm'] in hl_g:
                     rect_arr[i].set_color(hl_colors[hc])
             # add a dummy bar for the legend
-            ax.barh(0, 0, color=hl_colors[hc], label=wrap_text(hl_g, 24))
+            ax.barh(0, 0, color=hl_colors[hc], label=wrap_text(hl_g, 16))
             hc += 1
 
         if len(hl_inst_g) > 0:
@@ -574,9 +834,9 @@ def progressive_alpha(x):
 
 def progressive_lw(x):
     left_bound = 1_000
-    right_bound = 100_000
+    right_bound = 1_000_000
     left_out = 1.5
-    right_out = .3
+    right_out = .2
     return map_value(x, left_bound, right_bound, left_out, right_out)
 
 def plot_sp(ax, df):
@@ -613,7 +873,7 @@ def plot_hw_hm(ax, df, col, hw_win_size):
                   .mean()
     # reindex and forward fill to account for NaNs in the source
     running_avg = running_avg.reindex(df.index, method='ffill')
-    LW_OFF = .75
+    LW_OFF = .5
     lw = progressive_lw(df.index.size) * LW_OFF
     line, = ax.plot(
         df.smp, running_avg, lw=lw, color=(0,.3,.6,.7), label='avg')
@@ -651,11 +911,15 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
               f"entries. Either increase the limit or filter the data.")
         return None
 
+    FS = (25,12)
     # set up figure
-    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=(25,12),
-                           sharex=True, height_ratios=[10, 1.2, 1.2, 1.2, 1],
-                           constrained_layout=True)
+    fig, ax = plt.subplots(
+        ncols=1, nrows=5, figsize=FS, sharex=True,
+        height_ratios=[10, 1.2, 1.2, 1.2, 1],
+        gridspec_kw={'top': .95, 'bottom': .1, 'left': .09, 'right': .84})
     ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
+
+    # add grid
     ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
     for a in ax:
         a.grid(axis='both', linestyle='-', alpha=.6, which='major')
@@ -668,7 +932,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     # add PC/DMEM trace
     LW_OFF_S = .75
-    LW_OFF_HL = 2
+    LW_OFF_HL = 1.
     lw = progressive_lw(df.index.size)
     step, = ax_t.step(
         df.smp, df[cols[0]], where='pre', lw=lw*LW_OFF_S, color=(0,.3,.6,.10))
@@ -698,7 +962,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
             # add dummy scatter plot for the legend
             ax_t.scatter(
-                [], [], color=hl_colors[hc], label=wrap_text(hl_g, 24))
+                [], [], color=hl_colors[hc], label=wrap_text(hl_g, 16))
             hc += 1
 
         if len(hl_inst_g) > 0:
@@ -749,7 +1013,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     inc = find_loc_range(ax_t)
     ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
     ax_t.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
-    ax_t.margins(y=0.03, x=0.01)
+    ax_t.margins(y=0.03, x=0.0)
     # x
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_t.xaxis.set_major_locator(max_n_locator)
@@ -794,7 +1058,14 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     ax[-1].set_xlabel('Sample Count')
 
-    return fig
+    S_GAP = 0.04
+    S_H = 0.03
+    S_W = (S_H / FS[0]) * FS[1]
+    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP, h=S_H)
+    attach_yrange_slider(ax_t, gap=S_GAP, w=S_W)
+    register_true_home(fig)
+
+    return fig, rsx
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
     h = ['smp', # 64b - [0]
@@ -857,12 +1128,20 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df = load_bin_trace(bin_log, args)
     df_out = None
     dict_out = {}
-    df_out, fig_pc, fig2_pc = run_bin_trace_pc(df, hl_inst_g, title, args)
+    df_out, fig_pc, fig2_pc, rsx2_pc = run_bin_trace_pc(df, hl_inst_g,
+                                                        title, args)
     dict_out['pc'] = fig_pc
     dict_out['pc_exec'] = fig2_pc
-    _, fig_dmem, fig2_dmem = run_bin_trace_dmem(df, title, args)
+    _, fig_dmem, fig2_dmem, rsx2_dmem = run_bin_trace_dmem(df, title, args)
     dict_out['dmem'] = fig_dmem
     dict_out['dmem_exec'] = fig2_dmem
+
+    if rsx2_pc != None and rsx2_dmem != None:
+        # link x ranges if both figures exist
+        link_xrange(
+            fig2_pc.get_axes()[0], rsx2_pc,
+            fig2_dmem.get_axes()[0], rsx2_dmem
+        )
 
     return df_out, dict_out
 
@@ -886,16 +1165,16 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
 
-    fig, fig2 = None, None
+    fig, fig2, rsx2 = None, None, None
     if args.symbols_only or not (args.pc_freq or args.pc_trace):
         # early exit, no plotting for PC
-        return df, fig, fig2
+        return df, fig, fig2, rsx2
 
     if args.pc_freq:
         fig = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
-        fig2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
-    return df, fig, fig2
+        fig2, rsx2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
+    return df, fig, fig2, rsx2
 
 def expand_byte_accesses(df_og: pd.DataFrame) -> pd.DataFrame:
     # Work only on rows with dsz > 0
@@ -935,15 +1214,15 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if args.dasm:
         symbols, _ = backannotate_dasm(args, df, "data")
 
-    fig, fig2 = None, None
+    fig, fig2, rsx2 = None, None, None
     if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
-        return df, fig, fig2
+        return df, fig, fig2, rsx2
 
     if args.dmem_freq:
         fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
     if args.dmem_trace:
-        fig2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
-    return df, fig, fig2
+        fig2, rsx2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
+    return df, fig, fig2, rsx2
 
 def parse_args() -> argparse.Namespace:
     TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
