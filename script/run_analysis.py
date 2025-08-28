@@ -1268,6 +1268,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
     # TODO: add highlighting for function calls/PC ?
     parser.add_argument('-b', '--browser', action='store_true', help="Open plots in the web browser instead of a pop-up window")
+    parser.add_argument('--host', action='store_true', help="Host server for all machines on LAN instead of local-only. Only applicable if used with --browser")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
@@ -1345,6 +1346,12 @@ def run_main(args) -> None:
 
     if args.browser:
         matplotlib.use("WebAgg")
+        if args.host:
+            import subprocess
+            host_ip = subprocess.check_output(
+                ["hostname", "-I"]).decode().split()[0]
+            matplotlib.rcParams['webagg.address'] = host_ip
+            matplotlib.rcParams['webagg.open_in_browser'] = False
 
     if run_trace:
         df, figs_dict = run_bin_trace(args_log, hl_inst_g, title, args)
