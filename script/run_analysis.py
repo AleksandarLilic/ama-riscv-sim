@@ -162,10 +162,15 @@ def add_legend_for_hl_groups(ax, chart_type:str) -> None:
     title = "Highlighted\nInstructions\n"
     if chart_type == "log":
         ax.legend(loc='lower right', title=title, framealpha=0.5)
-    elif chart_type == "trace":
-        # put legend in the top right corner, outside the plot
+
+    # put legend in the top right corner, outside the plot
+    elif chart_type == "trace_freq":
+        ax.legend(title=title, framealpha=0.5, loc='upper right',
+                  bbox_to_anchor=(1.52, 1.03), borderaxespad=0.)
+    elif chart_type == "trace_exec":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
                   bbox_to_anchor=(1.2, 1.03), borderaxespad=0.)
+
     else:
         raise ValueError(f"Invalid chart type '{chart_type}'")
 
@@ -175,7 +180,7 @@ def ctype_check(ctype:str) -> Tuple[List[str], str]:
         ylabel = "Program Counter"
     elif ctype == 'dmem':
         cols = ['dmem', 'dsz', 'count']
-        ylabel = "Data Memory"
+        ylabel = "Data"
     else:
         raise ValueError(f"Invalid chart type '{ctype}'. " + \
                          f"Available types are: 'pc', 'dmem'")
@@ -586,8 +591,10 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
 
     # format x values with ' for separator
     def _fmt(lo, hi):
-        t = f"({int(lo):,d} - {int(hi):,d})" # ' not supported natively
-        return t.replace(",", "'") # so replace instead
+        # ' separator not supported natively
+        # use , and replace at the end
+        t = f"({int(lo):,d} - {int(hi):,d}), {(hi-lo)/1000:.3f}k"
+        return t.replace(",", "'")
 
     # update on change
     def _update_valtext(val):
@@ -701,7 +708,16 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
 
     # format y values as hex - addresses
     def _fmt_hex(lo, hi):
-        return f"(0x{int(lo):X} - 0x{int(hi):X})"
+        diff = hi-lo
+        if diff >= 1024:
+            diff /= 1024
+            if diff < 10: digits = 2
+            elif diff < 100: digits = 1
+            else: digits=0
+            sdiff = f"{diff:.{digits}f}KB"
+        else:
+            sdiff = f"{int(diff)}B"
+        return f"(0x{int(lo):X} - 0x{int(hi):X})\n{sdiff}"
 
     # update on change
     def _update_valtext(val):
@@ -740,10 +756,41 @@ def link_xrange(ax1, rs1, ax2, rs2):
     ax1.callbacks.connect("xlim_changed", _xl1)
     ax2.callbacks.connect("xlim_changed", _xl2)
 
+def link_yrange(ax1, rs1, ax2, rs2):
+    """
+    Keep two charts' Y views in sync. Works across figures.
+    Pass rs1/rs2 if there are sliders; use None if a chart has no slider.
+    """
+    shared = {"lock": False}
+
+    def _copy_ylim(src_ax, dst_ax, dst_rs):
+        if shared["lock"]:
+            return
+        shared["lock"] = True
+        lo, hi = src_ax.get_ylim()
+        dst_ax.set_ylim(lo, hi)
+        if dst_rs is not None:
+            dst_rs.set_val((min(lo, hi), max(lo, hi)))
+        shared["lock"] = False
+
+    def _yl1(_):
+        _copy_ylim(ax1, ax2, rs2)
+
+    def _yl2(_):
+        _copy_ylim(ax2, ax1, rs1)
+
+    ax1.callbacks.connect("ylim_changed", _yl1)
+    ax2.callbacks.connect("ylim_changed", _yl2)
+
+
 # drawing
 def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
-    fig, ax = plt.subplots(figsize=(16,12), constrained_layout=True)
+    FS = (14,12)
+    fig, ax = plt.subplots(
+        figsize=FS,
+        gridspec_kw={'top': .95, 'bottom': .1, 'left': .18, 'right': .7}
+    )
 
     rect_arr = []
     off = .25 if ctype == 'dmem' else .75
@@ -765,7 +812,7 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             hc += 1
 
         if len(hl_inst_g) > 0:
-            add_legend_for_hl_groups(ax, "trace")
+            add_legend_for_hl_groups(ax, "trace_freq")
 
     ax = annotate_chart(df, symbols, ax, args, ctype)
     if args.add_cache_lines:
@@ -796,7 +843,12 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax.grid(axis='x', linestyle='-', alpha=1, which='major')
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
-    return fig
+    S_GAP = 0.08
+    S_W = 0.03
+    rsy = attach_yrange_slider(ax, gap=S_GAP, w=S_W)
+    register_true_home(fig)
+
+    return fig, rsy
 
 def map_value(x, left_x, right_x, left_y, right_y):
     """
@@ -966,10 +1018,10 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             hc += 1
 
         if len(hl_inst_g) > 0:
-            add_legend_for_hl_groups(ax_t, "trace")
+            add_legend_for_hl_groups(ax_t, "trace_exec")
 
     elif ctype == 'dmem':
-        trace_type = "Data Memory"
+        trace_type = "Data"
         for hl_g in ['load', 'store']: # hardcoded highlighted instructions
             x_val_hl = []
             y_val_hl = []
@@ -984,7 +1036,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             # add dummy scatter plot for the legend
             ax_t.scatter([], [], color=hl_colors[hc], label=hl_g)
             hc += 2 # skip yellow for visibility
-            add_legend_for_hl_groups(ax_t, "trace")
+            add_legend_for_hl_groups(ax_t, "trace_exec")
 
     def _on_xlim_changed_lines(a):
         xmin, xmax = a.get_xlim()
@@ -1062,10 +1114,10 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     S_H = 0.03
     S_W = (S_H / FS[0]) * FS[1]
     rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP, h=S_H)
-    attach_yrange_slider(ax_t, gap=S_GAP, w=S_W)
+    rsy = attach_yrange_slider(ax_t, gap=S_GAP, w=S_W)
     register_true_home(fig)
 
-    return fig, rsx
+    return fig, rsx, rsy
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
     h = ['smp', # 64b - [0]
@@ -1128,16 +1180,17 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df = load_bin_trace(bin_log, args)
     df_out = None
     dict_out = {}
-    df_out, fig_pc, fig2_pc, rsx2_pc = run_bin_trace_pc(df, hl_inst_g,
-                                                        title, args)
+    df_out, fig_pc, fig2_pc, rsx2_pc = \
+        run_bin_trace_pc(df, hl_inst_g, title, args)
     dict_out['pc'] = fig_pc
     dict_out['pc_exec'] = fig2_pc
-    _, fig_dmem, fig2_dmem, rsx2_dmem = run_bin_trace_dmem(df, title, args)
+    _, fig_dmem, fig2_dmem, rsx2_dmem = \
+        run_bin_trace_dmem(df, title, args)
     dict_out['dmem'] = fig_dmem
     dict_out['dmem_exec'] = fig2_dmem
 
+    # link x ranges if both figures exist
     if rsx2_pc != None and rsx2_dmem != None:
-        # link x ranges if both figures exist
         link_xrange(
             fig2_pc.get_axes()[0], rsx2_pc,
             fig2_dmem.get_axes()[0], rsx2_dmem
@@ -1165,15 +1218,23 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
         df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
 
-    fig, fig2, rsx2 = None, None, None
+    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
     if args.symbols_only or not (args.pc_freq or args.pc_trace):
         # early exit, no plotting for PC
         return df, fig, fig2, rsx2
 
     if args.pc_freq:
-        fig = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
+        fig, rsy = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
-        fig2, rsx2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
+        fig2, rsx2, rsy2 = draw_exec(df_og, m_hl_groups, title, symbols, args, 'pc')
+
+    # link y ranges if both figures exist
+    if rsy != None and rsy2 != None:
+        link_yrange(
+            fig.get_axes()[0], rsy,
+            fig2.get_axes()[0], rsy2
+        )
+
     return df, fig, fig2, rsx2
 
 def expand_byte_accesses(df_og: pd.DataFrame) -> pd.DataFrame:
@@ -1214,14 +1275,22 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if args.dasm:
         symbols, _ = backannotate_dasm(args, df, "data")
 
-    fig, fig2, rsx2 = None, None, None
+    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
     if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
         return df, fig, fig2, rsx2
 
     if args.dmem_freq:
-        fig = draw_freq(df, [], title, symbols, args, ctype='dmem')
+        fig, rsy = draw_freq(df, [], title, symbols, args, ctype='dmem')
     if args.dmem_trace:
-        fig2, rsx2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
+        fig2, rsx2, rsy2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
+
+    # link y ranges if both figures exist
+    if rsy != None and rsy2 != None:
+        link_yrange(
+            fig.get_axes()[0], rsy,
+            fig2.get_axes()[0], rsy2
+        )
+
     return df, fig, fig2, rsx2
 
 def parse_args() -> argparse.Namespace:
