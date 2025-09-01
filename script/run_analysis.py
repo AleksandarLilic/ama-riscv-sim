@@ -107,11 +107,11 @@ inst_mem_bd = {
     MEM_S : ["Store", colors["blue_light2"]],
 }
 
-def get_base_int_addr(addr) -> int:
+def hex2int(addr) -> int:
     return int(addr,16) # - int(BASE_ADDR)
 
 def get_count(parts, df) -> Tuple[int, int]:
-    pc = get_base_int_addr(parts[0].strip())
+    pc = hex2int(parts[0].strip())
     count_series  = df.loc[df["pc"] == pc, "count"]
     count = count_series.squeeze() if not count_series.empty else 0
     return count, pc
@@ -326,7 +326,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 if len(parts) == 2 and parts[1].startswith('\n'):
                     # detected symbol
                     parts = parts[0].split(" ")
-                    addr_start = get_base_int_addr(parts[0].strip())
+                    addr_start = hex2int(parts[0].strip())
                     symbol_name = parts[1][1:-1] # remove <> from symbol name
                     if current_sym: # close previous section
                         symbols[current_sym]['addr_end'] = prev_addr
@@ -347,14 +347,14 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                         inst_mn = line.split('\t')
                         inst_mn = [x.strip() for x in inst_mn]
                         pc_inst_map_arr.append(
-                            [get_base_int_addr(inst_mn[0].replace(':', '')), #pc
+                            [hex2int(inst_mn[0].replace(':', '')), #pc
                             inst_mn[2], # instruction mnemonic
                             ' '.join(inst_mn[2:]) # full instruction
                             ])
 
                     elif section == "data":
                         # outfile.write(line) # not annotating data section
-                        prev_addr = get_base_int_addr(parts[0].strip())
+                        prev_addr = hex2int(parts[0].strip())
 
                 else: # no instruction/data in line
                     outfile.write(line)
@@ -370,13 +370,13 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     if section == "text":
         if args.pc_begin:
             filter_str.append(f"PC >= {args.pc_begin}")
-            pc_begin = get_base_int_addr(args.pc_begin)
+            pc_begin = hex2int(args.pc_begin)
             symbols = {k: v for k, v in symbols.items()
                     if v['addr_start'] >= pc_begin}
 
         if args.pc_end:
             filter_str.append(f"PC <= {args.pc_end}")
-            pc_end = get_base_int_addr(args.pc_end)
+            pc_end = hex2int(args.pc_end)
             symbols = {k: v for k, v in symbols.items()
                     if v['addr_end'] <= pc_end}
 
@@ -433,11 +433,17 @@ def annotate_chart(df, symbols, ax, args, ctype) -> \
 plt.Axes:
     largs = {}
     if ctype == 'pc':
-        largs = {'begin': args.pc_begin, 'end': args.pc_end,
-                 'no_limit': args.no_pc_limit}
+        largs = {
+            'begin': args.pc_begin,
+            'end': args.pc_end,
+            'no_limit': args.no_pc_limit
+        }
     elif ctype == 'dmem':
-        largs = {'begin': args.dmem_begin, 'end': args.dmem_end,
-                 'no_limit': args.no_dmem_limit}
+        largs = {
+            'begin': args.dmem_begin,
+            'end': args.dmem_end,
+            'no_limit': args.no_dmem_limit
+        }
     else:
         raise ValueError(f"Invalid chart type '{ctype}'. " + \
                          f"Available types are: 'pc', 'dmem'")
@@ -445,18 +451,18 @@ plt.Axes:
     #symbol_pos = ax.get_xlim()[1]
     symbol_pos = 1.005 # used for transform=ax.get_yaxis_transform()
 
-    # first apply execution limits
-    if not largs['no_limit']:
+    # visual only, apply execution limits
+    if largs['no_limit']:
+        ax.set_ylim(bottom=0.0)
+    else:
         ax.set_ylim(top=(int(df[ctype].max()) & ~0x3F) + CACHE_LINE_BYTES)
         ax.set_ylim(bottom=int(df[ctype].min()) & ~0x3F)
-    else:
-        ax.set_ylim(bottom=0.0)
 
-    ## then apply user limits
+    # visual only, align with specified limits, if any
     if largs['begin']:
-        ax.set_ylim(bottom=get_base_int_addr(largs['begin']))
+        ax.set_ylim(bottom=hex2int(largs['begin']))
     if largs['end']:
-        ax.set_ylim(top=get_base_int_addr(largs['end']))
+        ax.set_ylim(top=hex2int(largs['end']))
 
     start, end = 0, 0
     ymin, ymax = ax.get_ylim()
@@ -593,7 +599,7 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
     def _fmt(lo, hi):
         # ' separator not supported natively
         # use , and replace at the end
-        t = f"({int(lo):,d} - {int(hi):,d}), {(hi-lo)/1000:.3f}k"
+        t = f"({int(lo):,d} - {int(hi):,d}) {(hi-lo)/1000:.3f}k"
         return t.replace(",", "'")
 
     # update on change
@@ -1209,6 +1215,11 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df['pc'] = df['pc'].astype(int)
     df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
 
+    if args.pc_begin:
+        df_og = df_og.loc[df_og.pc > hex2int(args.pc_begin)]
+    if args.pc_end:
+        df_og = df_og.loc[df_og.pc < hex2int(args.pc_end)]
+
     symbols = {}
     m_hl_groups = []
     if args.dasm:
@@ -1259,6 +1270,11 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df_og['dtyp'] = df_og['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
     df_og['dsz'] = df_og['dsz'].apply(lambda x: x-8 if x >= 8 else x)
     df_og['dmem'] = df_og['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
+
+    if args.dmem_begin:
+        df_og = df_og.loc[df_og.dmem > hex2int(args.dmem_begin)]
+    if args.dmem_end:
+        df_og = df_og.loc[df_og.dmem < hex2int(args.dmem_end)]
 
     df_exp = expand_byte_accesses(df_og)
     df = df_exp.groupby('dmem').agg(
@@ -1315,15 +1331,15 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Trace only option")
     parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Trace only option")
-    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC. Input is a hex string. E.g. '0x80000094'. Applied after --no_pc_limit. Trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC. Input is a hex string. E.g. '0x800000ec'. Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC (hex). Applied after --sample_begin/end. Trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC (hex). Applied after --sample_begin/end. Trace only option")
+    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --pc_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
 
     parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Trace only option")
     parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Trace only option")
-    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace. Same as --no_pc_limit but for DMEM. Trace only option")
-    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address. Input is a hex string. E.g. '0x80000200'. Applied after --no_dmem_limit. Trace only option")
-    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address. Input is a hex string. E.g. '0x800002f0'. Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --sample_begin/end. Trace only option")
+    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --sample_begin/end. Trace only option")
+    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --dmem_begin/end. Same as --no_pc_limit but for DMEM. Trace only option")
 
     parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
     parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
