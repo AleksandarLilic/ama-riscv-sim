@@ -1,0 +1,43 @@
+# autogen Makefile
+
+# autogen version header file
+VER_H := $(BDIR)/version_autogen.h
+
+# ISO-8601 UTC now, honoring reproducible build env var
+NOW_ISO_UTC := $(shell python3 -c "import os,time,datetime; e=int(os.getenv('SOURCE_DATE_EPOCH', '0')) or int(time.time()); print(datetime.datetime.utcfromtimestamp(e).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+
+# safe git helpers - don't fail if not a repo or missing some fields
+GIT_DESCRIBE   := $(shell git describe --tags --long --dirty 2>/dev/null || echo "v0.0.0-0-g0000000")
+GIT_SHA        := $(shell git rev-parse HEAD 2>/dev/null || echo "0000000000000000000000000000000000000000")
+GIT_SHORT      := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "000000000000")
+GIT_BRANCH     := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+GIT_TAG        := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+GIT_DIRTY      := $(shell test -n "$$(git status --porcelain 2>/dev/null)" && echo "dirty" || echo "clean")
+GIT_COMMIT_ISO := $(shell git show -s --date=iso-strict --format=%cd 2>/dev/null || echo "$(NOW_ISO_UTC)")
+GIT_REMOTE     := $(shell git config --get remote.origin.url 2>/dev/null || echo "unknown")
+
+# compiler info (filled at compile time too, but snapshot here)
+CC_ID := $(shell $(CXX) --version 2>&1 | head -n1 || echo "unknown comipler")
+
+# capture flags snapshot
+CXXFLAGS_SNAP := $(CXXFLAGS)
+LDFLAGS_SNAP := $(LDFLAGS)
+
+$(VER_H): | $(BDIR)
+	@echo "Generating $@"
+	@echo "// Auto-generated. Do not edit."                                             > $(VER_H)
+	@echo "#pragma once"                                                                >> $(VER_H)
+	@echo "namespace build_info {"                                                      >> $(VER_H)
+	@echo "    inline constexpr const char* version         = \"$(GIT_DESCRIBE)\";"     >> $(VER_H)
+	@echo "    inline constexpr const char* commit_sha      = \"$(GIT_SHA)\";"          >> $(VER_H)
+	@echo "    inline constexpr const char* commit_short    = \"$(GIT_SHORT)\";"        >> $(VER_H)
+	@echo "    inline constexpr const char* branch          = \"$(GIT_BRANCH)\";"       >> $(VER_H)
+	@echo "    inline constexpr const char* tag             = \"$(GIT_TAG)\";"          >> $(VER_H)
+	@echo "    inline constexpr const char* dirty           = \"$(GIT_DIRTY)\";"        >> $(VER_H)
+	@echo "    inline constexpr const char* repo_url        = \"$(GIT_REMOTE)\";"       >> $(VER_H)
+	@echo "    inline constexpr const char* commit_date_utc = \"$(GIT_COMMIT_ISO)\";"   >> $(VER_H)
+	@echo "    inline constexpr const char* build_date_utc  = \"$(NOW_ISO_UTC)\";"      >> $(VER_H)
+	@echo "    inline constexpr const char* compiler        = \"$(CC_ID)\";"            >> $(VER_H)
+	@echo "    inline constexpr const char* cxx_flags       = \"$(CXXFLAGS_SNAP)\";"    >> $(VER_H)
+	@echo "    inline constexpr const char* ld_flags        = \"$(LDFLAGS_SNAP)\";"     >> $(VER_H)
+	@echo "} // namespace build_info"                                                   >> $(VER_H)

@@ -24,6 +24,7 @@ SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
 INC := -I. -I./devices -I./profilers -I./hw_models
+INC += -I./$(BDIR)
 INC += -I./external/cxxopts/include
 INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 
@@ -35,6 +36,8 @@ DEFINES := -DDASM_EN
 all: $(TARGET)
 
 obj: $(OBJECTS)
+
+include Makefile.autogen
 
 NO_SYMLINK ?= 0 # to skip symlinking into the parent directory, e.g. for test build
 $(TARGET): $(OBJECTS)

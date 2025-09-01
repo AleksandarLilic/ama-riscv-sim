@@ -6,6 +6,7 @@
 #include "core.h"
 
 #include "utils.h"
+#include "build_info.h"
 
 #ifdef TEST_BUILD
 #define TRY_CATCH(x) \
@@ -337,7 +338,8 @@ int main(int argc, char* argv[]) {
 
         #endif
 
-        ("h,help", "Print usage");
+        ("h,help", "Print usage")
+        ("v,version", "Print version/build info and exit");
 
     options.positional_help("<path_to_elf_file>");
     options.parse_positional({"path"});
@@ -357,6 +359,11 @@ int main(int argc, char* argv[]) {
 
     if (result.count("help")) {
         show_help(options);
+        return 0;
+    }
+
+    if (result.count("version")) {
+        std::cout << build_info::as_text();
         return 0;
     }
 
