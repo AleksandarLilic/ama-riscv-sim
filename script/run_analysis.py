@@ -1215,10 +1215,10 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df['pc'] = df['pc'].astype(int)
     df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
 
-    if args.pc_begin:
-        df_og = df_og.loc[df_og.pc > hex2int(args.pc_begin)]
-    if args.pc_end:
-        df_og = df_og.loc[df_og.pc < hex2int(args.pc_end)]
+    #if args.pc_begin:
+    #    df_og = df_og.loc[df_og.pc > hex2int(args.pc_begin)]
+    #if args.pc_end:
+    #    df_og = df_og.loc[df_og.pc < hex2int(args.pc_end)]
 
     symbols = {}
     m_hl_groups = []
@@ -1271,10 +1271,10 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df_og['dsz'] = df_og['dsz'].apply(lambda x: x-8 if x >= 8 else x)
     df_og['dmem'] = df_og['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
-    if args.dmem_begin:
-        df_og = df_og.loc[df_og.dmem > hex2int(args.dmem_begin)]
-    if args.dmem_end:
-        df_og = df_og.loc[df_og.dmem < hex2int(args.dmem_end)]
+    #if args.dmem_begin:
+    #    df_og = df_og.loc[df_og.dmem > hex2int(args.dmem_begin)]
+    #if args.dmem_end:
+    #    df_og = df_og.loc[df_og.dmem < hex2int(args.dmem_end)]
 
     df_exp = expand_byte_accesses(df_og)
     df = df_exp.groupby('dmem').agg(
@@ -1331,15 +1331,15 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Trace only option")
     parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC (hex). Applied after --sample_begin/end. Trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC (hex). Applied after --sample_begin/end. Trace only option")
-    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --pc_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
+    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
+    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC (hex). Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC (hex). Applied after --no_pc_limit. Trace only option")
 
     parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Trace only option")
     parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Trace only option")
-    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --sample_begin/end. Trace only option")
-    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --sample_begin/end. Trace only option")
-    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --dmem_begin/end. Same as --no_pc_limit but for DMEM. Trace only option")
+    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Same as --no_pc_limit but for DMEM. Trace only option")
+    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. Trace only option")
 
     parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
     parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
