@@ -138,10 +138,10 @@ struct defs_t {
 #ifdef HW_MODELS_EN
 struct hw_defs_t {
     // caches
-    static constexpr char icache_sets[] = "2";
+    static constexpr char icache_sets[] = "4";
     static constexpr char icache_ways[] = "2";
     static constexpr char icache_policy[] = "lru";
-    static constexpr char dcache_sets[] = "4";
+    static constexpr char dcache_sets[] = "8";
     static constexpr char dcache_ways[] = "2";
     static constexpr char dcache_policy[] = "lru";
     // caches other configs
