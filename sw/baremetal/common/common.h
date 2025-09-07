@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #include "csr.h"
 #include "mem_map.h"
@@ -24,6 +25,13 @@
 // logging features
 #define LOG_START asm volatile ("slti x0, x0, 0x10")
 #define LOG_STOP asm volatile ("slti x0, x0, 0x11")
+
+// add symbol for callstack
+#define GLOBAL_SYMBOL(sym)  \
+asm(                        \
+    ".globl " #sym "\n"     \
+    #sym ":"                \
+)
 
 #ifdef CUSTOM_ISA
 #define LOAD_AND_RESERVE_SCP(addr) asm volatile("scp.lcl x0, %0" : : "r"(addr))

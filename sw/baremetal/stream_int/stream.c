@@ -240,18 +240,22 @@ main()
     for (k=0; k<NTIMES; k++) {
 		//LOG_START;
 		times[0][k] = mysecond();
+        GLOBAL_SYMBOL(stream_copy);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
 		times[0][k] = mysecond() - times[0][k];
 
 		times[1][k] = mysecond();
+        GLOBAL_SYMBOL(stream_scale);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) b[j] = scalar_reg*c[j];
 		times[1][k] = mysecond() - times[1][k];
 
 		times[2][k] = mysecond();
+        GLOBAL_SYMBOL(stream_add);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j]+b[j];
 		times[2][k] = mysecond() - times[2][k];
 
 		times[3][k] = mysecond();
+        GLOBAL_SYMBOL(stream_triad);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar_reg*c[j];
 		times[3][k] = mysecond() - times[3][k];
 		//LOG_STOP;
