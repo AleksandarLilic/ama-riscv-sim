@@ -47,7 +47,15 @@ MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany -static -fno-pic
 GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
+
+# aligning code and data
+CACHE_LINE_BYTES := 64
 GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
+#GCC_OPTS += -falign-functions=$(CACHE_LINE_BYTES)
+#GCC_OPTS += -falign-loops=$(CACHE_LINE_BYTES)
+#GCC_OPTS += -falign-jumps=$(CACHE_LINE_BYTES)
+#GCC_OPTS += -falign-labels=$(CACHE_LINE_BYTES)
+
 #GCC_OPTS += -fvisibility=hidden
 #GCC_OPTS += -save-temps
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
