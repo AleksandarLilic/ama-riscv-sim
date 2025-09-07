@@ -101,6 +101,8 @@ hl_colors = [
     "#538D85", # teal
 ]
 
+generic_blue = "#649ac9"
+
 # memory instructions breakdown store vs load
 inst_mem_bd = {
     MEM_L : ["Load", colors["blue_light1"]],
@@ -474,7 +476,7 @@ plt.Axes:
         #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
         if (start < ymin) or (start > ymax and end > ymax):
             continue
-        ax.axhline(y=start, color='k', linestyle='--', alpha=0.7, lw=0.8)
+        ax.axhline(y=start, color='k', linestyle='--', alpha=0.7, lw=0.5)
         txt = ax.text(
             symbol_pos, start,
             f" ^ {v['symbol_text']}", color='k',
@@ -489,7 +491,7 @@ plt.Axes:
     # add line for the last symbol, if any
     if symbols:
         # ends after last dmem entry, FIXME: should be the size of last inst
-        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.5, lw=0.4)
+        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.7, lw=0.5)
 
     return ax
 
@@ -788,7 +790,6 @@ def link_yrange(ax1, rs1, ax2, rs2):
     ax1.callbacks.connect("ylim_changed", _yl1)
     ax2.callbacks.connect("ylim_changed", _yl2)
 
-
 # drawing
 def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
@@ -798,23 +799,37 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
         gridspec_kw={'top': .95, 'bottom': .1, 'left': .18, 'right': .7}
     )
 
-    rect_arr = []
-    off = .25 if ctype == 'dmem' else .75
-    for y, width, height in zip(df[cols[0]], df[cols[2]], df[cols[1]]):
-        rect = patches.Rectangle((0, y+off), width, height-off, color='#649ac9')
-        ax.add_patch(rect)
-        rect_arr.append(rect)
+    lw = progressive_lw(df.index.size)
+    x_val, y_val = [], []
+    for y, count, h in zip(df[cols[0]], df[cols[2]], df[cols[1]]):
+        x_val.extend([count, count, np.nan])
+        y_val.extend([y, y+h, np.nan])
+    ax.plot(x_val, y_val, color=generic_blue, lw=lw)
+    ax.fill_betweenx(
+        y_val, 0, x_val, where=~np.isnan(x_val), color=generic_blue, alpha=.8)
     ax.set_xscale('log')
 
     if ctype == 'pc':
         # highlight specific instructions, if any
         hc = 0
         for hl_g in hl_inst_g:
-            for i in range(len(df)):
-                if df.iloc[i]['inst_mnm'] in hl_g:
-                    rect_arr[i].set_color(hl_colors[hc])
-            # add a dummy bar for the legend
-            ax.barh(0, 0, color=hl_colors[hc], label=wrap_text(hl_g, 16))
+            x_val_hl = []
+            y_val_hl = []
+            for inst in hl_g:
+                df_hl = df[df['inst_mnm'] == inst]
+                clr = hl_colors[hc]
+                zipped = zip(df_hl[cols[0]], df_hl[cols[2]], df_hl[cols[1]])
+                for y, count, h in zipped:
+                    x_val_hl.extend([count, count, np.nan])
+                    y_val_hl.extend([y, y+h, np.nan])
+            ax.plot(x_val_hl, y_val_hl, color=clr, lw=lw)
+            ax.fill_betweenx(
+                y_val_hl, 0, x_val_hl,
+                where=~np.isnan(x_val_hl), color=clr, alpha=.8
+            )
+
+            # add dummy scatter plot for the legend
+            ax.scatter([], [], color=clr, label=wrap_text(hl_g, 16))
             hc += 1
 
         if len(hl_inst_g) > 0:
@@ -996,9 +1011,9 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
         df.smp, df[cols[0]], where='pre', lw=lw*LW_OFF_S, color=(0,.3,.6,.10))
     x_val, y_val = [], []
     for x, y, s in zip(df.smp, df[cols[0]], df[cols[1]]):
-        x_val.extend([x, x, None]) # 'None' used to break the line
-        y_val.extend([y, y + s, None])
-    line_mark, = ax_t.plot(x_val, y_val, color='#649ac9', lw=lw)
+        x_val.extend([x, x, np.nan]) # 'np.nan' used to break the line
+        y_val.extend([y, y+s, np.nan])
+    line_mark, = ax_t.plot(x_val, y_val, color=generic_blue, lw=lw)
 
     # add highlighted instructions
     hc = 0
@@ -1011,9 +1026,9 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             y_val_hl = []
             for inst in hl_g:
                 df_hl = df[df['inst_mnm'] == inst]
-                for x, y, s in zip(df_hl.smp, df_hl['pc'], df_hl['isz']):
-                    x_val_hl.extend([x, x, None])
-                    y_val_hl.extend([y+hl_off, y+s-hl_off, None])
+                for x, y, s in zip(df_hl.smp, df_hl[cols[0]], df_hl[cols[1]]):
+                    x_val_hl.extend([x, x, np.nan])
+                    y_val_hl.extend([y+hl_off, y+s-hl_off, np.nan])
             line, = ax_t.plot(
                 x_val_hl, y_val_hl, color=hl_colors[hc], lw=lw*LW_OFF_HL)
             lines_hl.append(line)
@@ -1028,20 +1043,22 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     elif ctype == 'dmem':
         trace_type = "Data"
-        for hl_g in ['load', 'store']: # hardcoded highlighted instructions
+        # dummy legend for load as it already exists
+        ax_t.scatter([], [], color=generic_blue, label='load')
+        # and just highlight store in different color that load
+        for hl_g, hl_c in zip(['store'], [hl_colors[2]]):
             x_val_hl = []
             y_val_hl = []
             df_hl = df[df['dtyp'] == hl_g]
             for x, y, s in zip(df_hl.smp, df_hl['dmem'], df_hl['dsz']):
-                x_val_hl.extend([x, x, None])
-                y_val_hl.extend([y, y+s, None])
+                x_val_hl.extend([x, x, np.nan])
+                y_val_hl.extend([y, y+s, np.nan])
             line, = ax_t.plot(
-                x_val_hl, y_val_hl, color=hl_colors[hc], lw=lw*LW_OFF_HL)
+                x_val_hl, y_val_hl, color=hl_c, lw=lw*LW_OFF_HL)
             lines_hl.append(line)
 
             # add dummy scatter plot for the legend
-            ax_t.scatter([], [], color=hl_colors[hc], label=hl_g)
-            hc += 2 # skip yellow for visibility
+            ax_t.scatter([], [], color=hl_c, label=hl_g)
             add_legend_for_hl_groups(ax_t, "trace_exec")
 
     def _on_xlim_changed_lines(a):
