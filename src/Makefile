@@ -46,7 +46,7 @@ $(TARGET): $(OBJECTS)
 		ln -sf $@ $(BIN); \
 	fi
 
-$(BDIR)/%.o: %.cpp
+$(BDIR)/%.o: %.cpp | $(VER_H)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
 

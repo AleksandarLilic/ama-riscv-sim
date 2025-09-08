@@ -2,6 +2,7 @@
 
 # autogen version header file
 VER_H := $(BDIR)/version_autogen.h
+GIT_SHORT_SHA_LOG := $(BDIR)/git.sha
 
 # ISO-8601 UTC now, honoring reproducible build env var
 NOW_ISO_UTC := $(shell python3 -c "import os,time,datetime; e=int(os.getenv('SOURCE_DATE_EPOCH', '0')) or int(time.time()); print(datetime.datetime.utcfromtimestamp(e).strftime('%Y-%m-%dT%H:%M:%SZ'))")
@@ -16,6 +17,16 @@ GIT_DIRTY      := $(shell test -n "$$(git status --porcelain 2>/dev/null)" && ec
 GIT_COMMIT_ISO := $(shell git show -s --date=iso-strict --format=%cd 2>/dev/null || echo "$(NOW_ISO_UTC)")
 GIT_REMOTE     := $(shell git config --get remote.origin.url 2>/dev/null || echo "unknown")
 
+# trigger autogen on git commit change, or if it doesn't already exist
+IS_NEW := $(shell cat $(GIT_SHORT_SHA_LOG) 2>/dev/null || echo "1")
+ifeq ($(IS_NEW), 1)
+    $(info New build directory. Rebuilding autogen files)
+    $(shell echo $(GIT_SHORT) > $(GIT_SHORT_SHA_LOG))
+else ifneq ($(IS_NEW), $(GIT_SHORT))
+    $(info New commit. Rebuilding autogen files)
+    $(shell echo $(GIT_SHORT) > $(GIT_SHORT_SHA_LOG))
+endif
+
 # compiler info (filled at compile time too, but snapshot here)
 CC_ID := $(shell $(CXX) --version 2>&1 | head -n1 || echo "unknown comipler")
 
@@ -23,7 +34,7 @@ CC_ID := $(shell $(CXX) --version 2>&1 | head -n1 || echo "unknown comipler")
 CXXFLAGS_SNAP := $(CXXFLAGS)
 LDFLAGS_SNAP := $(LDFLAGS)
 
-$(VER_H): | $(BDIR)
+$(VER_H): $(GIT_SHORT_SHA_LOG)
 	@echo "Generating $@"
 	@echo "// Auto-generated. Do not edit."                                             > $(VER_H)
 	@echo "#pragma once"                                                                >> $(VER_H)
