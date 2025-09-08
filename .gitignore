@@ -1,3 +1,10 @@
+# build files
+src/build*/
+src/ama-riscv-sim
+src/out_*/
+src/gprof_out/
+src/*.out
+
 # checkers/logs/sim outputs
 *.check
 *.log
@@ -7,9 +14,11 @@ sweep_*_best*.json
 sweep_*_binned*.json
 sweep_*.png
 script/**/out_*/
+script/**/*pkl.gz
+script/*.out
 
 # test files
-test/out_*/
+test/testrun_*/
 test/gtest_testlist.txt
 test/ama-riscv-sim_test
 test/*.gcno

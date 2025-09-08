@@ -1,7 +1,0 @@
-# C++ files
-build*
-ama-riscv-sim
-
-# logs
-out_*/
-gprof_out/
