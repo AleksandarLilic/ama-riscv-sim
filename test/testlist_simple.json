@@ -1,0 +1,11 @@
+{
+    "asm_rv32i": ["basic"],
+    "asm_rv32i_zicsr": ["basic"],
+    "asm_rv32im": ["basic"],
+    "asm_rv32ic": ["basic"],
+
+    "factorial": [["n_20"], ["LOOPS=10"]],
+    "fibonacci": [["n_18"], ["LOOPS=10"]],
+    "gcd_lcm": [["n_large"], ["LOOPS=10"]],
+    "prime_numbers": [["n_3000"], ["LOOPS=10"]]
+}

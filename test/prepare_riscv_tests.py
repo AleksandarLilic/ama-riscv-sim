@@ -1,9 +1,11 @@
-import os
-import subprocess
-import glob
-import json
+#!/usr/bin/env python3
+
 import argparse
 import concurrent.futures
+import glob
+import json
+import os
+import subprocess
 
 GIT_ROOT = (subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
             .strip().decode('utf-8'))
