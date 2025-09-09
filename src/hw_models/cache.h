@@ -115,7 +115,6 @@ class cache {
         perf_event_t ref_event;
         perf_event_t miss_event;
         #endif
-        bool temp_profiling = false;
         #ifdef DASM_EN
         hwmi_str* hwmi_ptr;
         #endif
@@ -135,7 +134,6 @@ class cache {
 
         // prof
         void profiling(bool enable) {
-            temp_profiling = enable;
             stats.profiling(enable);
             roi.stats.profiling(enable);
             for (auto& set : cache_entries) {
@@ -160,7 +158,7 @@ class cache {
         // stats
         void set_roi(uint32_t start, uint32_t size);
         void show_stats();
-        void log_stats(std::ofstream& log_file);
+        void log_stats(std::ofstream& hw_ofs);
         float_t get_hr() { return stats.get_hr(); }
         void dump() const;
 

@@ -90,7 +90,7 @@ void cache::speculative_exec(speculative_t smode) {
     speculative_exec_active = (smode == speculative_t::enter);
 }
 
-// uses the real address so that the tags are appropriately set
+// uses real address so that the tags are appropriately set
 cache_ref_t cache::reference(
     uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp_mode) {
     // don't count reference for scp release, no data is referenced
@@ -420,12 +420,12 @@ void cache::show_stats() {
     // dump();
 }
 
-void cache::log_stats(std::ofstream& log_file) {
-    log_file << "\"" << cache_name << "\"" << ": {";
-    stats.log(log_file);
-    log_file << ", ";
-    size.log(log_file);
-    log_file << "\n}," << std::endl;
+void cache::log_stats(std::ofstream& hw_ofs) {
+    hw_ofs << "\"" << cache_name << "\"" << ": {";
+    stats.log(hw_ofs);
+    hw_ofs << ", ";
+    size.log(hw_ofs);
+    hw_ofs << "\n}," << std::endl;
 }
 
 void cache::dump() const {

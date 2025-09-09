@@ -54,8 +54,8 @@ class memory {
         scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
         #ifdef HW_MODELS_EN
         // propagating to caches
-        void log_cache_stats(std::ofstream& log_file) {
-            mm.log_cache_stats(log_file);
+        void log_cache_stats(std::ofstream& hw_ofs) {
+            mm.log_cache_stats(hw_ofs);
         }
         void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
             mm.set_cache_hws(ic, dc);

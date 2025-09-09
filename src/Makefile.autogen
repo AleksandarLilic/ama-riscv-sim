@@ -20,10 +20,10 @@ GIT_REMOTE     := $(shell git config --get remote.origin.url 2>/dev/null || echo
 # trigger autogen on git commit change, or if it doesn't already exist
 IS_NEW := $(shell cat $(GIT_SHORT_SHA_LOG) 2>/dev/null || echo "1")
 ifeq ($(IS_NEW), 1)
-    $(info New build directory. Rebuilding autogen files)
+    $(info New build directory detected. Rebuilding all autogen files)
     $(shell echo $(GIT_SHORT) > $(GIT_SHORT_SHA_LOG))
 else ifneq ($(IS_NEW), $(GIT_SHORT))
-    $(info New commit. Rebuilding autogen files)
+    $(info New commit detected. Rebuilding all autogen files)
     $(shell echo $(GIT_SHORT) > $(GIT_SHORT_SHA_LOG))
 endif
 

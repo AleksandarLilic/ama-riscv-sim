@@ -39,9 +39,9 @@ class main_memory : public dev {
             icache.speculative_exec(smode);
             dcache.speculative_exec(smode);
         }
-        void log_cache_stats(std::ofstream& log_file) {
-           icache.log_stats(log_file);
-           dcache.log_stats(log_file);
+        void log_cache_stats(std::ofstream& hw_ofs) {
+           icache.log_stats(hw_ofs);
+           dcache.log_stats(hw_ofs);
         }
         void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
             icache.set_hws(ic);

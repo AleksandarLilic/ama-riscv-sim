@@ -219,7 +219,7 @@ void profiler::log_to_file_and_print() {
 
     if (trace_en) {
         ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
-        ofs.write(reinterpret_cast<char*>(trace.data()),
+        ofs.write(reinterpret_cast<const char*>(trace.data()),
                 trace.size() * sizeof(trace_entry));
         ofs.close();
     }
@@ -227,7 +227,7 @@ void profiler::log_to_file_and_print() {
     if (rf_usage) {
         ofs.open(out_dir + "rf_usage" +  pt + ".bin", std::ios::binary);
         ofs.write(
-            reinterpret_cast<char*>(prof_rf_usage.data()),
+            reinterpret_cast<const char*>(prof_rf_usage.data()),
             prof_rf_usage.size() * prof_rf_usage[0].size() * sizeof(uint32_t));
         ofs.close();
     }

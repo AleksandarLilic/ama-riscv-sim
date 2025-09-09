@@ -164,8 +164,8 @@ struct cache_stats_t {
                       << "core " << ct_core.to_string()
                       << ", mem " << ct_mem.to_string();
         }
-        void log(std::ofstream& log_file) const {
-            log_file << CACHE_STATS_JSON_ENTRY(this);
+        void log(std::ofstream& hw_ofs) const {
+            hw_ofs << CACHE_STATS_JSON_ENTRY(this);
         }
 };
 
