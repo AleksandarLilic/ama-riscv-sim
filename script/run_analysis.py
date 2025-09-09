@@ -112,14 +112,14 @@ inst_mem_bd = {
 def hex2int(addr) -> int:
     return int(addr,16) # - int(BASE_ADDR)
 
+def int2hex(val, pos) -> str:
+    return f"0x{int(val):04X}"
+
 def get_count(parts, df) -> Tuple[int, int]:
     pc = hex2int(parts[0].strip())
     count_series  = df.loc[df["pc"] == pc, "count"]
     count = count_series.squeeze() if not count_series.empty else 0
     return count, pc
-
-def num_to_hex(val, pos) -> str:
-    return f"0x{int(val):04X}"
 
 def to_k(val, pos) -> str:
     if val == 0:
@@ -388,8 +388,8 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         if section == "text":
             v['symbol_text'] += f" ({v['exec_count']})"
 
-        sym_log.append(f"{num_to_hex(v['addr_start'], None)} - " + \
-                       f"{num_to_hex(v['addr_end'], None)}: " + \
+        sym_log.append(f"{int2hex(v['addr_start'], None)} - " + \
+                       f"{int2hex(v['addr_end'], None)}: " + \
                        f"{v['symbol_text']}")
 
     if args.print_symbols:
@@ -845,7 +845,7 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax.xaxis.set_major_formatter(formatter)
     inc = find_loc_range(ax)
     ax.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
-    ax.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
+    ax.yaxis.set_major_formatter(FuncFormatter(int2hex))
     ax.set_xlim(left=0.5)
     ax.margins(y=0.01, x=0.1)
 
@@ -1087,7 +1087,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     # y
     inc = find_loc_range(ax_t)
     ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
-    ax_t.yaxis.set_major_formatter(FuncFormatter(num_to_hex))
+    ax_t.yaxis.set_major_formatter(FuncFormatter(int2hex))
     ax_t.margins(y=0.03, x=0.0)
     # x
     max_n_locator = MaxNLocator(nbins=20, integer=True)
@@ -1190,7 +1190,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
             dfs[c] = dfs[c].apply(lambda x: f'{x:0{digits}X}')
         for c in ["isz", "dsz"]:
             dfs[c] = dfs[c].apply(lambda x: f'{x:01X}')
-        dfs.to_csv(bin_log.replace('.bin', '.csv'), index=False)
+        dfs.to_csv(bin_log.replace('.bin', '.bin.csv'), index=False)
 
     df_start = int(args.sample_begin) if args.sample_begin else 0
     df_end = int(args.sample_end) if args.sample_end else df.smp.max()
@@ -1293,6 +1293,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     #if args.dmem_end:
     #    df_og = df_og.loc[df_og.dmem < hex2int(args.dmem_end)]
 
+    # to bytes as ISA is byte addressable, accesses are combined for freq plot
     df_exp = expand_byte_accesses(df_og)
     df = df_exp.groupby('dmem').agg(
         dsz=('dsz', 'first'), # get only the first value
@@ -1346,14 +1347,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--sample_begin', type=str, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--sample_end', type=str, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
 
-    parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Trace only option")
-    parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Trace only option")
+    parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Each instruction as a separate entry. Trace only option")
+    parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). Trace only option")
     parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
     parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC (hex). Applied after --no_pc_limit. Trace only option")
     parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC (hex). Applied after --no_pc_limit. Trace only option")
 
-    parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Trace only option")
-    parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Trace only option")
+    parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Each byte is plotted as a separate entry. Trace only option")
+    parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Each accessed memory location is plotted using its respective size (1/2/4 B). Trace only option")
     parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Same as --no_pc_limit but for DMEM. Trace only option")
     parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. Trace only option")
@@ -1363,7 +1364,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
     parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
     parser.add_argument('--print_symbols', action='store_true', help="Print symbols from dasm to the stdout. Requires --dasm. Trace only option")
-    parser.add_argument('--trace_limit', type=int, default=TRACE_LIMIT, help=F"Limit the number of address entries to display in the time series chart. Default is {TRACE_LIMIT}. Trace only option")
+    parser.add_argument('--trace_limit', type=int, default=TRACE_LIMIT, help=f"Limit the number of address entries to display in the time series chart. Default is {TRACE_LIMIT}. Trace only option")
     parser.add_argument('--save_converted_trace', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
 
     # common options
@@ -1374,7 +1375,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
-    parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
+    parser.add_argument('--save_csv', action='store_true', help="Save summary data used for charts formatted as CSV")
 
     return parser.parse_args()
 
@@ -1395,10 +1396,12 @@ def run_main(args) -> None:
     if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
-    if run_trace and \
-        not (args.pc_freq or args.pc_trace or args.dmem_freq or args.dmem_trace):
-        raise ValueError(
-            "At least one trace-based plot needs to be specified for trace run")
+    at_least_one = \
+        args.pc_freq or args.pc_trace or args.dmem_freq or args.dmem_trace
+    data_run = args.save_converted_trace or args.save_csv
+    if run_trace and not at_least_one and not data_run:
+        raise ValueError("At least one trace-based plot needs to be specified "
+                         "or trace needs to be saved for trace run")
 
     # filtering args
     if args.sample_begin or args.sample_end or \
@@ -1465,7 +1468,7 @@ def run_main(args) -> None:
         figs_dict = {"inst": fig}
 
     if args.save_csv:
-        df.to_csv(args_log.replace(ext, "_out.csv"), index=False)
+        df.to_csv(args_log.replace(ext, "_summary.csv"), index=False)
 
     if args.symbols_only and run_trace:
         return
