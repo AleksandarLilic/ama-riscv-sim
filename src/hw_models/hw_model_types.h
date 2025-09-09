@@ -109,6 +109,7 @@ struct hw_cfg_t {
     cache_policy_t dcache_policy;
     uint32_t roi_start;
     uint32_t roi_size;
+    bool show_cache_state;
     // branch predictors
     bp_t bp;
     bp_t bp2;

@@ -15,6 +15,7 @@ class main_memory : public dev {
         #ifdef HW_MODELS_EN
         cache icache;
         cache dcache;
+        const bool show_state;
         #endif
 
     public:
@@ -47,7 +48,10 @@ class main_memory : public dev {
             icache.set_hws(ic);
             dcache.set_hws(dc);
         }
-        void finish() { icache.show_stats(); dcache.show_stats(); }
+        void finish() {
+            icache.show_stats(show_state);
+            dcache.show_stats(show_state);
+        }
         #ifdef PROFILERS_EN
         void set_perf_profiler(profiler_perf* prof_perf) {
             icache.set_perf_profiler(

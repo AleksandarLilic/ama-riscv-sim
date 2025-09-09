@@ -13,7 +13,8 @@ main_memory::main_memory(
         #ifdef HW_MODELS_EN
         ,
         icache(ICACHE_CFG),
-        dcache(DCACHE_CFG)
+        dcache(DCACHE_CFG),
+        show_state(hw_cfg.show_cache_state)
         #endif
 {
     burn_elf(test_elf);

@@ -246,8 +246,7 @@ void cache::miss(
             (act_line.tag == TO_U32((0x17200 + 128)>>CACHE_BYTE_ADDR_BITS)) ||
             (act_line.tag == TO_U32((0x17200 + 192)>>CACHE_BYTE_ADDR_BITS))) {
             act_line.metadata.scp = true; // converted to scratchpad
-            std::cout << "Converted to scratchpad: " << std::hex << addr
-                      << std::endl;
+            std::cout << "Converted to scratchpad: " << std::hex << addr <<"\n";
         }
     }
     // release all if the roi is done
@@ -256,7 +255,7 @@ void cache::miss(
             for (uint32_t way = 0; way < ways; way++) {
                 if (cache_entries[set][way].metadata.scp) {
                     std::cout << "Releasing: " << std::hex
-                              << cache_entries[set][way].tag << std::endl;
+                              << cache_entries[set][way].tag << "\n";
                     cache_entries[set][way].metadata.scp = false;
                 }
             }
@@ -384,30 +383,32 @@ void cache::write_to_cache(
 // stats
 void cache::set_roi(uint32_t start, uint32_t size) { roi.set(start, size); }
 
-void cache::show_stats() {
+void cache::show_stats(bool show_state) {
     std::cout << cache_name;
     size.show();
     std::cout << "\n" << INDENT;
     stats.show();
-    std::cout << std::endl;
+    std::cout << "\n";
 
-    // find n as a largest number of digits - for alignment in stdout
-    int32_t n = 0;
-    for (uint32_t set = 0; set < sets; set++) {
-        for (uint32_t way = 0; way < ways; way++) {
-            uint32_t cnt = cache_entries[set][way].reference_cnt;
-            n = std::max(n, TO_I32(std::to_string(cnt).size()));
+    if (show_state) {
+        // find n as a largest number of digits - for alignment in stdout
+        int32_t n = 0;
+        for (uint32_t set = 0; set < sets; set++) {
+            for (uint32_t way = 0; way < ways; way++) {
+                uint32_t cnt = cache_entries[set][way].reference_cnt;
+                n = std::max(n, TO_I32(std::to_string(cnt).size()));
+            }
         }
-    }
 
-    for (uint32_t set = 0; set < sets; set++) {
-        std::cout << INDENT << "s" << std::left << std::setw(2) << set << ": ";
-        std::cout << std::right;
-        for (uint32_t way = 0; way < ways; way++) {
-            std::cout << " w" << way << " [" << std::setw(n)
-                      << cache_entries[set][way].reference_cnt << "] ";
+        for (uint32_t set = 0; set < sets; set++) {
+            std::cout << INDENT << "s" << std::left << std::setw(2) << set
+                      << ": " << std::right;
+            for (uint32_t way = 0; way < ways; way++) {
+                std::cout << " w" << way << " [" << std::setw(n)
+                        << cache_entries[set][way].reference_cnt << "] ";
+            }
+            std::cout << "\n";
         }
-        std::cout << std::endl;
     }
 
     if (!(roi.start == 0 && roi.end == 0)) {
@@ -415,7 +416,7 @@ void cache::show_stats() {
                   << "(0x" << std::hex << roi.start
                   << " - 0x" << roi.end << "): " << std::dec;
         roi.stats.show();
-        std::cout << std::endl;
+        std::cout << "\n";
     }
     // dump();
 }
@@ -429,7 +430,7 @@ void cache::log_stats(std::ofstream& hw_ofs) {
 }
 
 void cache::dump() const {
-    std::cout << "  state:" << std::endl;
+    std::cout << "  state:" << "\n";
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
             auto& line = cache_entries[set][way];
@@ -440,7 +441,7 @@ void cache::dump() const {
                       << ", valid: " << line.metadata.valid
                       << ", dirty: " << line.metadata.dirty
                       << ", reference_cnt: " << line.reference_cnt
-                      << std::endl;
+                      << "\n";
             #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line
             std::cout << "     ";
@@ -448,10 +449,10 @@ void cache::dump() const {
                 std::cout << " " << std::hex << std::setw(2)
                           << std::setfill('0') << TO_U32(line.data[i]);
                 if (i % 4 == 3) std::cout << " ";
-                if (i % 64 == 63) std::cout << std::endl;
+                if (i % 64 == 63) std::cout << "\n";
             }
             #endif
         }
     }
-    std::cout << std::dec << std::endl;
+    std::cout << std::dec << "\n";
 }

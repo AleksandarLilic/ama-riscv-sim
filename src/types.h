@@ -331,7 +331,7 @@ struct cfg_t {
     bool log_always;
     bool log_state;
     bool log_hw_models;
-    bool end_dump_state;
+    bool show_state;
     bool exit_on_trap;
     #ifdef UART_EN
     bool sink_uart;

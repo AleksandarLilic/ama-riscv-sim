@@ -110,7 +110,7 @@ const std::unordered_map<std::string, bp_pc_folds_t> bp_pc_folds_map = {
 // defaults
 struct defs_t {
     static constexpr char rf_names[] = "abi";
-    static constexpr char end_dump_state[] = "false";
+    static constexpr char show_state[] = "false";
     static constexpr char exit_on_trap[] = "false";
     static constexpr char mem_dump_start[] = "0";
     static constexpr char mem_dump_size[] = "0";
@@ -144,6 +144,7 @@ struct hw_defs_t {
     static constexpr char dcache_sets[] = "8";
     static constexpr char dcache_ways[] = "2";
     static constexpr char dcache_policy[] = "lru";
+    static constexpr char show_cache_state[] = "false";
     // caches other configs
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
@@ -190,8 +191,8 @@ int main(int argc, char* argv[]) {
          "Register file names used for output. Options: " +
          gen_help_list(rf_names_map),
          CXXOPTS_VAL_STR->default_value(defs_t::rf_names))
-        ("end_dump_state", "Dump all registers at the end of simulation",
-         CXXOPTS_VAL_BOOL->default_value(defs_t::end_dump_state))
+        ("show_state", "Show architectural state at the end of simulation",
+         CXXOPTS_VAL_BOOL->default_value(defs_t::show_state))
         ("exit_on_trap",
          "Exit sim on trap instead of going to trap handler",
          CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_trap))
@@ -270,6 +271,9 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_start))
         ("roi_size", "Region of interest size",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_size))
+        ("show_cache_state",
+         "Show per cache line references at the end of simulation",
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state))
 
         // branch predictors
         ("bp",
@@ -370,7 +374,7 @@ int main(int argc, char* argv[]) {
     try {
         test_elf = result["path"].as<std::string>();
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
-        cfg.end_dump_state = TO_BOOL(result["end_dump_state"]);
+        cfg.show_state = TO_BOOL(result["show_state"]);
         cfg.exit_on_trap = TO_BOOL(result["exit_on_trap"]);
         cfg.mem_dump_start = TO_HEX(result["mem_dump_start"]);
         cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
@@ -408,6 +412,7 @@ int main(int argc, char* argv[]) {
         // caches other configs
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
+        hw_cfg.show_cache_state = TO_BOOL(result["show_cache_state"]);
         // branch predictors
         hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);
         hw_cfg.bp2 = RESOLVE_ARG("bp2", bp_names_map);

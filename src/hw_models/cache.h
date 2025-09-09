@@ -157,7 +157,7 @@ class cache {
 
         // stats
         void set_roi(uint32_t start, uint32_t size);
-        void show_stats();
+        void show_stats(bool show_state);
         void log_stats(std::ofstream& hw_ofs);
         float_t get_hr() { return stats.get_hr(); }
         void dump() const;

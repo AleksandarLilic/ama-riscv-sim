@@ -22,7 +22,6 @@ core::core(
     rf[0] = 0;
     rf_names_idx = TO_U8(cfg.rf_names);
     rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
-    end_dump_state = cfg.end_dump_state;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
     this->cfg = cfg;
@@ -1891,7 +1890,7 @@ void core::dump() {
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
               << ", logged: " << prof_pc.inst_cnt << "\n";
-    if (end_dump_state) std::cout << print_state(true) << "\n";
+    if (cfg.show_state) std::cout << print_state(true) << "\n";
     else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
 
     #ifdef CHECK_LOG
