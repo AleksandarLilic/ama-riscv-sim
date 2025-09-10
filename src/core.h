@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "hw_model_types.h"
 #include "memory.h"
 #include "inst_parser.h"
 #include "trap.h"
@@ -13,7 +14,6 @@
 
 #ifdef HW_MODELS_EN
 #include "bp_if.h"
-#include "hw_model_types.h"
 #endif
 
 class core {

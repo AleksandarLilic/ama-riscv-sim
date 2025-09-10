@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "hw_model_types.h"
 #include "dev.h"
 #include "external/ELFIO/elfio/elfio.hpp"
 #ifdef HW_MODELS_EN

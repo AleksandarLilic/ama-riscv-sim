@@ -27,6 +27,8 @@ else ifneq ($(IS_NEW), $(GIT_SHORT))
     $(shell echo $(GIT_SHORT) > $(GIT_SHORT_SHA_LOG))
 endif
 
+autogen: $(VER_H)
+
 # compiler info (filled at compile time too, but snapshot here)
 CC_ID := $(shell $(CXX) --version 2>&1 | head -n1 || echo "unknown comipler")
 
@@ -52,3 +54,5 @@ $(VER_H): $(GIT_SHORT_SHA_LOG)
 	@echo "    inline constexpr const char* cxx_flags       = \"$(CXXFLAGS_SNAP)\";"    >> $(VER_H)
 	@echo "    inline constexpr const char* ld_flags        = \"$(LDFLAGS_SNAP)\";"     >> $(VER_H)
 	@echo "} // namespace build_info"                                                   >> $(VER_H)
+
+.PHONY: autogen

@@ -333,9 +333,7 @@ struct cfg_t {
     bool log_hw_models;
     bool show_state;
     bool exit_on_trap;
-    #ifdef UART_EN
     bool sink_uart;
-    #endif
     std::string out_dir;
 };
 

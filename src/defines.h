@@ -5,7 +5,7 @@
 #define UART_EN // some tests require UART, will wait for ready indefinitely
 #define PROFILERS_EN
 #define HW_MODELS_EN
-#else
+#else // DPI mode
 #define PROFILERS_EN
 #define DASM_EN
 #endif

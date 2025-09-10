@@ -2,7 +2,7 @@
 
 memory::memory(
     std::string test_elf,
-    cfg_t cfg,
+    [[maybe_unused]] cfg_t cfg,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         // create devices
         mm(MEM_SIZE, test_elf, hw_cfg),
