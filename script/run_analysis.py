@@ -96,9 +96,10 @@ colors = {
 hl_colors = [
     "#3ECCBB", # turquoise
     "#EED595", # peach yellow
-    "#f4a261", # orange
-    "#e76f51", # red
-    "#538D85", # teal
+    "#f4a261", # sandy brown
+    "#c03a2d", # persian red
+    "#457B74", # myrtle green
+    "#ADA7C9", # rose quartz
 ]
 
 generic_blue = "#649ac9"
@@ -146,14 +147,8 @@ def inst_type_exists(inst_type) -> str:
 def find_loc_range(ax) -> int:
     ymin, ymax = ax.get_ylim()
     yrange = ymax - ymin
-    inc = 1
-    if yrange > 1000:
-        inc = 4
-    if yrange > 10_000:
-        inc = 16
-    if yrange > 100_000:
-        inc = 32
-    return inc
+    # find the integer power of 2 at or smaller than the range in KB
+    return 2**int(math.log2(max(1, yrange//1024)))
 
 def wrap_text(arr:List[str], max_len:int) -> str:
     label = ', '.join(arr)
@@ -550,8 +545,10 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
     slider_ax.tick_params(axis="x", pad=1, length=3)
 
     # colors
-    rs.poly.set_facecolor("white"); rs.poly.set_alpha(0.8)
-    rs.track.set_facecolor("black"); rs.track.set_alpha(0.4)
+    rs.poly.set_facecolor("white")
+    rs.poly.set_alpha(0.8)
+    rs.track.set_facecolor("black")
+    rs.track.set_alpha(0.4)
 
     # handles
     barL = slider_ax.axvline(rs.valmin, 0, 1, linewidth=6, color="k")
@@ -566,7 +563,8 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
         lo, hi = rs.val
         ax.set_xlim(lo, hi)
         ax_top.set_xlim(lo, hi)
-        barL.set_xdata([lo, lo]); barR.set_xdata([hi, hi])
+        barL.set_xdata([lo, lo])
+        barR.set_xdata([hi, hi])
         fig.canvas.draw_idle()
         _sync["slider"] = False
 
@@ -577,7 +575,8 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
         _sync["axes"] = True
         lo, hi = event_ax.get_xlim()
         rs.set_val((lo, hi))
-        barL.set_xdata([lo, lo]); barR.set_xdata([hi, hi])
+        barL.set_xdata([lo, lo])
+        barR.set_xdata([hi, hi])
         _sync["axes"] = False
 
     ax.callbacks.connect("xlim_changed", _on_xlim_changed)
@@ -664,8 +663,10 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
     )
 
     # colors
-    rs.poly.set_facecolor("white"); rs.poly.set_alpha(0.8)
-    rs.track.set_facecolor("black"); rs.track.set_alpha(0.4)
+    rs.poly.set_facecolor("white")
+    rs.poly.set_alpha(0.8)
+    rs.track.set_facecolor("black")
+    rs.track.set_alpha(0.4)
 
     # bar handles (horizontal)
     barB = slider_ax.axhline(vmin, 0, 1, linewidth=6, color="k")
@@ -682,7 +683,8 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
             ax.set_ylim(hi, lo)
         else:
             ax.set_ylim(lo, hi)
-        barB.set_ydata([lo, lo]); barT.set_ydata([hi, hi])
+        barB.set_ydata([lo, lo])
+        barT.set_ydata([hi, hi])
         fig.canvas.draw_idle()
         _sync["slider"] = False
 
@@ -694,7 +696,8 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
         ylo, yhi = event_ax.get_ylim()
         lo, hi = (min(ylo, yhi), max(ylo, yhi))
         rs.set_val((lo, hi))
-        barB.set_ydata([lo, lo]); barT.set_ydata([hi, hi])
+        barB.set_ydata([lo, lo])
+        barT.set_ydata([hi, hi])
         _sync["axes"] = False
 
     ax.callbacks.connect("ylim_changed", _on_ylim_changed)
@@ -725,7 +728,7 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
             sdiff = f"{diff:.{digits}f}KB"
         else:
             sdiff = f"{int(diff)}B"
-        return f"(0x{int(lo):X} - 0x{int(hi):X})\n{sdiff}"
+        return f"(0x{int(lo):X} -\n0x{int(hi):X}) \n{sdiff}"
 
     # update on change
     def _update_valtext(val):
@@ -793,11 +796,9 @@ def link_yrange(ax1, rs1, ax2, rs2):
 # drawing
 def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
-    FS = (14,12)
-    fig, ax = plt.subplots(
-        figsize=FS,
-        gridspec_kw={'top': .95, 'bottom': .1, 'left': .18, 'right': .7}
-    )
+    FS = (14,13)
+    GS = {'top': .95, 'bottom': .06, 'left': .18, 'right': .7}
+    fig, ax = plt.subplots(figsize=FS, gridspec_kw=GS)
 
     lw = progressive_lw(df.index.size)
     x_val, y_val = [], []
@@ -984,12 +985,12 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
               f"entries. Either increase the limit or filter the data.")
         return None
 
-    FS = (25,12)
+    FS = (24.7,13)
+    GS = {'top': .95, 'bottom': .1, 'left': .09, 'right': .84, 'hspace': .05}
     # set up figure
-    fig, ax = plt.subplots(
-        ncols=1, nrows=5, figsize=FS, sharex=True,
-        height_ratios=[10, 1.2, 1.2, 1.2, 1],
-        gridspec_kw={'top': .95, 'bottom': .1, 'left': .09, 'right': .84})
+    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=FS, sharex=True,
+                           height_ratios=[12, 1, 1, 1, .6], gridspec_kw=GS)
+
     ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
 
     # add grid
@@ -1126,10 +1127,10 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     # label
     ax_t.set_title(f"{trace_type} profile for {title}")
     ax_t.set_ylabel(ylabel)
-    ax_sp.set_ylabel('Stack Pointer')
+    ax_sp.set_ylabel('Stack\nPointer')
     ax_ic.set_ylabel('ICache')
     ax_dc.set_ylabel('DCache')
-    ax_bp.set_ylabel('Branch\nPredictor')
+    ax_bp.set_ylabel('BP')
 
     ax[-1].set_xlabel('Sample Count')
 
