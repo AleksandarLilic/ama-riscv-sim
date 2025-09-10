@@ -74,22 +74,25 @@ static void fc_layer(int8_t* activations, const int8_t* weights,
 
 uint32_t run_inference(int8_t* input_img) {
     // align so that both fit nicely on cache boundaries
-    int32_t __attribute__((aligned(64))) layer_out[64];
-    int8_t __attribute__((aligned(64))) layer_in[64];
+    int32_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_out[64];
+    int8_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_in[64];
+    size_t stride;
 
     #ifdef CUSTOM_ISA
     //#pragma GCC unroll 4 // force if gcc doesn't unroll
-    for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(input_img + 64*i);
+    stride = CACHE_LINE_SIZE/sizeof(input_img[0]);
+    for (int i = 0; i < 4; i++) SCP_LCL(input_img + stride*i);
     #endif
 
     fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
 
     #ifdef CUSTOM_ISA
-    for (int i = 0; i < 4; i++) RELEASE_SCP(input_img + 64*i);
+    for (int i = 0; i < 4; i++) SCP_REL(input_img + stride*i);
     // and move 'layer_out' (allocated on the stack) to scp
-    for (int i = 0; i < 4; i++) LOAD_AND_RESERVE_SCP(layer_out + 16*i);
+    stride = CACHE_LINE_SIZE/sizeof(layer_out[0]);
+    for (int i = 0; i < 4; i++) SCP_LCL(layer_out + stride*i);
     // depending on the dcache config, there may be space for one more SCP line
-    //LOAD_AND_RESERVE_SCP(layer_in);
+    //SCP_LCL(layer_in);
     #endif
 
     relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT, false);
@@ -106,8 +109,8 @@ uint32_t run_inference(int8_t* input_img) {
 
     #ifdef CUSTOM_ISA
     // be a good citizen and release the scp
-    for (int i = 0; i < 4; i++) RELEASE_SCP(layer_out + 16*i);
-    //RELEASE_SCP(layer_in);
+    for (int i = 0; i < 4; i++) SCP_REL(layer_out + stride*i);
+    //SCP_REL(layer_in);
     #endif
 
     return out;

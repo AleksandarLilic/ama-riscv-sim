@@ -34,11 +34,16 @@ asm(                        \
 )
 
 #ifdef CUSTOM_ISA
-#define LOAD_AND_RESERVE_SCP(addr) asm volatile("scp.lcl x0, %0" : : "r"(addr))
+#define SCP_LCL(addr) asm volatile("scp.lcl x0, %0" : : "r"(addr))
 // TODO: can reserve with rd!=0 if success/fail status is needed
-#define RELEASE_SCP(addr) asm volatile("scp.rel x0, %0" : : "r"(addr))
+#define SCP_REL(addr) asm volatile("scp.rel x0, %0" : : "r"(addr))
 // TODO: same as above for scp.rel
 #endif
+
+// HW specific
+#define CACHE_LINE_SIZE 64 // bytes
+#define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
+#define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
 
 // custom data types
 typedef union {

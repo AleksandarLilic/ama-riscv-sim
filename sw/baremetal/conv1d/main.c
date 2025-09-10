@@ -7,7 +7,7 @@
 #endif
 
 #ifdef ALIGNED
-#define ALIGN __attribute__((aligned(64)))
+#define ALIGN __attribute__((aligned(CACHE_LINE_SIZE)))
 #else
 #define ALIGN
 #endif
@@ -80,9 +80,9 @@ void conv1d_int16(
 void main(void) {
     for (size_t i = 0; i < LOOPS; i++) {
         LOG_START;
-        LOAD_AND_RESERVE_SCP(in);
+        SCP_LCL(in);
         conv1d_int16(in, IN_LEN, filter, F_LEN, out);
-        RELEASE_SCP(in);
+        SCP_REL(in);
         LOG_STOP;
 
         for (size_t j = 0; j < OUT_LEN; j++) {

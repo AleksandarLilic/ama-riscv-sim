@@ -6,7 +6,7 @@
 #define ARR_LEN 16
 
 #ifdef CACHE_ALIGNED
-#define ALIGN __attribute__((aligned(64)))
+#define ALIGN __attribute__((aligned(CACHE_LINE_SIZE)))
 #else
 #define ALIGN
 #endif
