@@ -26,8 +26,9 @@ class bp_if {
         bp_t bp_combined_p2_type;
         bool bp_run_all;
         std::unique_ptr<bp> active_bp;
-        bp_ideal* ideal_bp;
-        std::vector<std::unique_ptr<bp>> all_predictors;
+        bp_ideal* bp_ideal_arch;
+        bool bp_ideal_is_active;
+        std::vector<std::unique_ptr<bp>> all_bps;
         std::map<uint32_t, bi_app_stats_t> bi_app_stats;
         bool to_dump_csv = false;
 
@@ -40,8 +41,8 @@ class bp_if {
         void log_stats(std::ofstream& log_file);
         void finish(std::string out_dir, uint64_t profiled_insts);
         void ideal(uint32_t correct_pc) {
-            if (ideal_bp) ideal_bp->goto_future(correct_pc);
-            if (bp_active_type == bp_t::ideal) active_bp->goto_future(correct_pc);
+            if (bp_ideal_arch) bp_ideal_arch->goto_future(correct_pc);
+            if (bp_ideal_is_active) active_bp->goto_future(correct_pc);
         }
         // for predictor from cli args
         std::unique_ptr<bp> create_predictor(bp_t bp_type, hw_cfg_t hw_cfg);

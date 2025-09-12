@@ -90,19 +90,21 @@ bp_if::bp_if(std::string name, hw_cfg_t hw_cfg) :
     to_dump_csv(hw_cfg.bp_dump_csv)
     {
         active_bp = create_predictor(bp_active_type, hw_cfg);
+        bp_ideal_is_active = (bp_active_type == bp_t::ideal);
 
         if (!bp_run_all) return;
 
         for (size_t i = 0; i < arch_bp_defs.size(); i++) {
-            all_predictors.push_back(
+            all_bps.push_back(
                 create_predictor(arch_bp_defs[i].type, arch_bp_defs[i].cfg));
             if (arch_bp_defs[i].type == bp_t::ideal) {
-                ideal_bp = dynamic_cast<bp_ideal*>(all_predictors[i].get());
+                // get pointer to call goto_future on branch
+                bp_ideal_arch = dynamic_cast<bp_ideal*>(all_bps[i].get());
             }
         }
 
         for (size_t i = 0; i < arch_bpc_defs.size(); i++) {
-            all_predictors.push_back(create_predictor(arch_bpc_defs[i]));
+            all_bps.push_back(create_predictor(arch_bpc_defs[i]));
         }
 }
 
@@ -221,20 +223,20 @@ uint32_t bp_if::predict(uint32_t pc, int32_t offset, uint32_t funct3) {
             bi_app_stats[pc] = {dir, TO_U8(funct3), 0, 0, {}};
         }
     }
-    for (auto& p : all_predictors) p->predict(target_pc, pc);
+    for (auto& p : all_bps) p->predict(target_pc, pc);
     return active_bp->predict(target_pc, pc);
 }
 
 void bp_if::update(uint32_t pc, uint32_t next_pc) {
     bool taken = next_pc != pc + 4;
     active_bp->eval_and_update(taken, next_pc);
-    for (auto& p : all_predictors) p->eval_and_update(taken, next_pc);
+    for (auto& p : all_bps) p->eval_and_update(taken, next_pc);
 
     // only update stats if profiling is active
     if (!prof_active) return;
 
     active_bp->update_stats(pc, next_pc);
-    for (auto& p : all_predictors) p->update_stats(pc, next_pc);
+    for (auto& p : all_bps) p->update_stats(pc, next_pc);
     // no need to update app stats if csv is not dumped at the end
     if (to_dump_csv) update_app_stats(pc, taken);
 }
@@ -247,7 +249,7 @@ void bp_if::update_app_stats(uint32_t pc, bool taken) {
 }
 
 void bp_if::finish(std::string out_dir, uint64_t profiled_insts) {
-    for (auto& p : all_predictors) p->summarize_stats(profiled_insts);
+    for (auto& p : all_bps) p->summarize_stats(profiled_insts);
     active_bp->summarize_stats(profiled_insts);
     show_stats(out_dir);
 }
@@ -259,15 +261,18 @@ void bp_if::show_stats(std::string out_dir) {
     std::cout << bp_name << " (active: " << active_bp->type_name << ")"
               << std::endl;
 
-    all_predictors.insert(all_predictors.begin(), std::move(active_bp));
+    // put active in a list an iterate over all of them to show stats
+    all_bps.insert(all_bps.begin(), std::move(active_bp));
     if (to_dump_csv) dump_csv(out_dir);
-    for (auto& p : all_predictors) p->show_stats();
-    active_bp = std::move(all_predictors[0]); // restore active_bp
-    all_predictors.erase(all_predictors.begin()); // remove invalid pointer
+    for (auto& p : all_bps) p->show_stats();
+    active_bp = std::move(all_bps[0]); // restore active_bp
+    all_bps.erase(all_bps.begin()); // remove invalid pointer
     return;
+
+    // TODO: dump as cli switch? useful to have BP state at the end at all?
     std::cout << "Predictors internal state:" << std::endl;
     active_bp->dump();
-    for (auto& p : all_predictors) p->dump();
+    for (auto& p : all_bps) p->dump();
 }
 
 void bp_if::dump_csv(std::string out_dir) {
@@ -276,8 +281,8 @@ void bp_if::dump_csv(std::string out_dir) {
     std::ofstream bcsv;
     bcsv.open(out_dir + "branches.csv");
     bcsv << "PC,Direction,Funct3,Funct3_mn,Taken,Not_Taken,All,Taken%";
-    for (auto& p : all_predictors) bcsv << ",P_" << p->type_name;
-    for (auto& p : all_predictors) bcsv << ",P_" << p->type_name << "%";
+    for (auto& p : all_bps) bcsv << ",P_" << p->type_name;
+    for (auto& p : all_bps) bcsv << ",P_" << p->type_name << "%";
     //bcsv << ",P_Bimodal_idx,P_Local_idx";
     bcsv << ",Best,P_best,P_best%,Pattern" << std::endl;
 
@@ -286,14 +291,14 @@ void bp_if::dump_csv(std::string out_dir) {
         size_t idx_best = 0; // defaults to first, the active_bp
         std::vector<uint32_t> pred;
         std::vector<float_t> acc;
-        for (uint8_t i = 0; i < all_predictors.size(); i++) {
-            pred.push_back(all_predictors[i]->get_predicted_stats(pc));
+        for (uint8_t i = 0; i < all_bps.size(); i++) {
+            pred.push_back(all_bps[i]->get_predicted_stats(pc));
             acc.push_back((TO_F32(pred[i])/branches_total)*100);
-            if (all_predictors[i].get() == ideal_bp) continue;
+            if (all_bps[i].get() == bp_ideal_arch) continue;
             if (pred[i] > pred[idx_best]) idx_best = i;
         }
 
-        std::string best_name = all_predictors[idx_best]->type_name;
+        std::string best_name = all_bps[idx_best]->type_name;
         uint32_t best_p = pred[idx_best];
         float_t best_acc = acc[idx_best];
         float_t taken_ratio = (TO_F32(stats.taken)/branches_total)*100;
