@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "utils.h"
 
 #include <cassert>
 
@@ -202,7 +203,12 @@ class profiler {
         uint64_t inst_cnt_exec;
         stack_access_t stack_access;
         uint32_t inst;
+        #ifdef PROF_MEM_USAGE
+        logging_resource logres;
+        std::pmr::vector<trace_entry> trace{ &logres };
+        #else
         std::vector<trace_entry> trace;
+        #endif
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_j, TO_U32(opc_j::_count)> prof_j_arr;
         std::array<std::array<uint32_t, 3>, 32> prof_rf_usage = {0};

@@ -3,6 +3,7 @@
 profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     inst = 0;
     inst_cnt_exec = 0;
+    trace.reserve(1<<14); // reserve 16K entries to start with
     rst_te();
     this->out_dir = out_dir;
     this->prof_src = prof_src;
