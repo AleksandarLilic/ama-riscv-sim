@@ -600,7 +600,7 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
     def _fmt(lo, hi):
         # ' separator not supported natively
         # use , and replace at the end
-        t = f"({int(lo):,d} - {int(hi):,d}) {(hi-lo)/1000:.3f}k"
+        t = f"({int(lo):,d} - {int(hi):,d}) {(hi+1-lo)/1000:.3f}k"
         return t.replace(",", "'")
 
     # update on change
@@ -928,6 +928,31 @@ def plot_sp(ax, df):
 
     ax.callbacks.connect("xlim_changed", _on_xlim_changed)
 
+def plot_ipc(ax, df):
+    LW_OFF = .75
+    lw = progressive_lw(df.index.size) * LW_OFF
+    line, =  ax.plot(df.smp, df.ipc_rolling, lw=lw, color=(0,.3,.6,.7))
+    H_OFFSET = .05
+    ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
+    ax.set_yticks([0, .5, 1])
+
+    cpi = round(df.smp.values[-1]/(df.index.values[-1]+1),3) # 0 indexed, so +1
+    ipc = round(1/cpi, 3)
+    ax.text(1.001, .8,
+            f"   IPC: {ipc}\n  (CPI: {cpi})", color='k',
+            fontsize=9, ha='left', va='center',
+            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+            transform=ax.get_yaxis_transform())
+
+    def _on_xlim_changed(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span) * LW_OFF
+        line.set_linewidth(lw)
+
+    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+
 def plot_hw_hm(ax, df, col, hw_win_size):
     H_OFFSET = .3
     hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
@@ -971,7 +996,7 @@ def plot_hw_hm(ax, df, col, hw_win_size):
 
     metric = "ACC" if col == 'bp' else "HR"
     metric_mean = round(df[col].mean()*100,2)
-    ax.text(1, 1,
+    ax.text(1.001, 1,
             f"  {metric}: {metric_mean}%", color='k',
             fontsize=9, ha='left', va='center',
             bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
@@ -987,11 +1012,19 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     FS = (24.7,13)
     GS = {'top': .95, 'bottom': .1, 'left': .09, 'right': .84, 'hspace': .05}
+    nrows = 5
+    hrat = [12, 1, 1, 1, .6]
+    if args.clk:
+        nrows = 6
+        hrat.insert(1, 1.2)
     # set up figure
-    fig, ax = plt.subplots(ncols=1, nrows=5, figsize=FS, sharex=True,
-                           height_ratios=[12, 1, 1, 1, .6], gridspec_kw=GS)
+    fig, ax = plt.subplots(ncols=1, nrows=nrows, figsize=FS, sharex=True,
+                           height_ratios=hrat, gridspec_kw=GS)
 
-    ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
+    if args.clk:
+        ax_t, ax_ipc, ax_bp, ax_ic, ax_dc, ax_sp = ax
+    else:
+        ax_t, ax_bp, ax_ic, ax_dc, ax_sp = ax
 
     # add grid
     ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
@@ -1003,6 +1036,8 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     plot_hw_hm(ax_bp, df, 'bp', args.hw_win_size)
     plot_hw_hm(ax_ic, df, 'ic', args.hw_win_size)
     plot_hw_hm(ax_dc, df, 'dc', args.hw_win_size)
+    if args.clk:
+        plot_ipc(ax_ipc, df)
 
     # add PC/DMEM trace
     LW_OFF_S = .75
@@ -1078,7 +1113,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     if args.add_cache_lines:
         ax_t = add_cache_line_spans(ax_t)
 
-    ax_sp.text(1, df['sp_real'].max(),
+    ax_sp.text(1.001, df['sp_real'].max(),
                f"  SP max : {df['sp_real'].max()} bytes", color='k',
                fontsize=9, ha='left', va='center',
                bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
@@ -1094,6 +1129,8 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_t.xaxis.set_major_locator(max_n_locator)
     ax_t.xaxis.set_major_formatter(FuncFormatter(to_k))
+    if not args.sample_begin:
+        ax_t.set_xlim(0,ax_t.get_xlim()[1])
     # add a second x-axis
     ax_top = ax_t.twiny()
     ax_top.set_xlim(ax_t.get_xlim())
@@ -1131,6 +1168,8 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax_ic.set_ylabel('ICache')
     ax_dc.set_ylabel('DCache')
     ax_bp.set_ylabel('BP')
+    if args.clk:
+        ax_ipc.set_ylabel('IPC')
 
     ax[-1].set_xlabel('Sample Count')
 
@@ -1176,7 +1215,14 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df.ic = df.ic.replace(hw_status_t_none, np.nan)
     df.dc = df.dc.replace(hw_status_t_none, np.nan)
     df.bp = df.bp.replace(hw_status_t_none, np.nan)
-    df['smp_taken'] = df['smp'].diff().fillna(df['smp']).astype(int)
+    df['cpi'] = df['smp'].diff().fillna(df['smp']).astype(int)
+    if args.clk:
+        # only applicable to time sim
+        df['ipc_inst'] = 1/df['cpi']
+        df['ipc_rolling'] = df['ipc_inst'] \
+                            .rolling(window=args.hw_win_size, min_periods=1) \
+                            .mean() \
+                            .round(3)
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
         lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
@@ -1227,7 +1273,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     df = df_og.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
-        count=('smp_taken', 'sum') # count them all (size of the group)
+        count=('cpi', 'sum') # count them all (size of the group)
     ).reset_index()
     df = df.sort_values(by='pc', ascending=True)
     df['pc'] = df['pc'].astype(int)
@@ -1347,6 +1393,7 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument('--sample_begin', type=str, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--sample_end', type=str, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
+    parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
 
     parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Each instruction as a separate entry. Trace only option")
     parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). Trace only option")
