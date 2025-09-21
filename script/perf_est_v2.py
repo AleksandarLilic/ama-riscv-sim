@@ -15,9 +15,9 @@ R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
 # | rd  | wr  | mem cfg |
 # | --- | --- | ------- |
-# | 0   | 0   | 2R 1W   | - no contention
+# | 0   | 0   | 2R 1W   | - no contention, no arbitration
 # | >0  | 0   | 1R 1W   | - IMEM and DMEM contend only for read port
-# | 0   | >0  | 1R 1RW  | - DMEM read and write ports contend within a few clks
+# | 0   | >0  | 1R 1RW  | - DMEM read and write ports contend on dc writeback
 # | >0  | >0  | 1RW     | - as above, and contention with IMEM read
 
 # write contention is likely to be very small, as it's not easy to occur
@@ -37,12 +37,18 @@ class perf:
     csr_inst_a = ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
-        "bpred", "icache", "dcache", "rd_port_contention", "wr_port_contention",
+        "bpred", "icache", "dcache",
+        "mem_rd_port_contention", "mem_wr_port_contention",
         "mem", "mul", "div", "dot",
         "icache_name", "dcache_name", "bpred_name"]
 
-    def __init__(self, inst_profiler_path, hw_stats_path, hw_perf_metrics_path,
-                 realistic=False):
+    def __init__(
+            self,
+            inst_profiler_path,
+            hw_stats_path,
+            hw_perf_metrics_path,
+            realistic=False
+        ):
         self.inst_profiler_path = inst_profiler_path
         self.name = inst_profiler_path
         self.realistic = realistic
@@ -85,8 +91,8 @@ class perf:
         self.c_bp = hwpm["bpred"]
         self.c_ic = hwpm['icache']
         self.c_dc = hwpm['dcache']
-        self.rdc = hwpm["rd_port_contention"]
-        self.wrc = hwpm["wr_port_contention"]
+        self.rdc = hwpm["mem_rd_port_contention"]
+        self.wrc = hwpm["mem_wr_port_contention"]
         self.c_mem = hwpm['mem']
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
@@ -150,18 +156,23 @@ class perf:
         self.j_stalls = (self.c_jump_res - 1) * self.j_inst
         self.ic_stalls = (self.c_ic - 1) * hw_ic["hits"]["reads"]
         self.ic_stalls += self.c_mem * hw_ic["misses"]["reads"]
+        # dc miss incurs c_mem clk always, like ic
+        # if dc can't handle read and write to the same cache line at once
+        # or main mem has only 1 R/W port to dc
+        # writeback incurs another c_mem clk to first write evicted cache line
         self.dc_stalls = (self.c_dc - 1) * sd(hw_dc["hits"])
         self.dc_stalls += self.c_mem * sd(hw_dc["misses"])
+        self.dc_stalls += self.c_mem * hw_dc["writebacks"]
 
         self.rdc_stalls = 0
         self.wrc_stalls = 0
         if self.rdc > 0:
-            occurences = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
-            self.rdc_stalls = int(occurences * self.c_mem * self.rdc)
+            cont_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
+            self.rdc_stalls = int(cont_num * self.c_mem * self.rdc)
 
         if self.wrc > 0:
-            occurences = min(hw_dc["misses"]["reads"],hw_dc["misses"]["writes"])
-            self.wrc_stalls = int(occurences * self.c_mem * self.wrc)
+            cont_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
+            self.wrc_stalls = int(cont_num * self.c_mem * self.wrc)
 
         # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
 
@@ -192,7 +203,7 @@ class perf:
         #   fe stalls never overlap with dc stalls or alu hazard stall
         #   alu hazard stall on each multi cycle instruction
         self.total_cycles_wc = self.ipc_1_cycles
-        if not realistic:
+        if not self.realistic:
             self.total_cycles_wc += \
                 self.fe_stalls + self.dc_stalls + self.alu_stalls
         else:
@@ -209,7 +220,7 @@ class perf:
         #   fe stalls overlap with dc stalls completely
         #   no alu hazard stall (e.g. best possible inst scheduling)
         self.total_cycles_bc = self.ipc_1_cycles
-        if not realistic:
+        if not self.realistic:
             self.total_cycles_bc += max(self.dc_stalls, self.fe_stalls)
         else:
             alu_h = self.alu_stalls * (R["hazard_freq"] - R["hazard_range"])
@@ -229,10 +240,11 @@ class perf:
         cpi = cycles / self.inst_total
         exec_time_us = cycles * self.period
         mips = self.inst_total / exec_time_us
-        self.est["cpi"] = round(cpi, 2)
+        self.est["cpi"] = round(cpi, 3)
+        self.est["ipc"] = round(1/cpi, 3)
         self.est["exec_time_us"] = round(exec_time_us, 2)
         self.est["mips"] = round(mips, 2)
-        out = f"Cycles: {cycles}, CPI: {cpi:.2f}, " + \
+        out = f"Cycles: {cycles}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
               f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
         return out
 
