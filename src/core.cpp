@@ -509,8 +509,7 @@ void core::jalr() {
     uint32_t ra = pc + 4;
     write_rf(ip.rd(), ra);
     bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
-    if (ret_inst) { DASM_OP(ret) }
-    else { DASM_OP(jalr) }
+    DASM_OP(jalr)
     PROF_J(jalr)
     PROF_RD_RS1
 
@@ -521,11 +520,8 @@ void core::jalr() {
     #endif
 
     #ifdef DASM_EN
-    if (ret_inst) {
-        dasm.asm_ss << dasm.op;
-    } else {
-        DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
-    }
+    DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
+    if (ret_inst) dasm.asm_ss << " # ret";
     DASM_RD_UPDATE;
     #endif
 }
@@ -1810,8 +1806,7 @@ void core::c_jr() {
     if (ip.rd() == 0x0) tu.e_illegal_inst("c.jr (rd=0)", 4);
     next_pc = rf[ip.rd()];
     bool ret_inst = (inst == INST_C_RET);
-    if (ret_inst) { DASM_OP(ret) }
-    else { DASM_OP(c.jr) }
+    DASM_OP(c.jr)
     PROF_J(c_jr)
 
     #ifdef PROFILERS_EN
@@ -1820,11 +1815,8 @@ void core::c_jr() {
     #endif
 
     #ifdef DASM_EN
-    if (ret_inst) {
-        dasm.asm_ss << dasm.op;
-    } else {
-        DASM_OP_RD;
-    }
+    DASM_OP_RD;
+    if (ret_inst) dasm.asm_ss << " # ret";
     #endif
 }
 
