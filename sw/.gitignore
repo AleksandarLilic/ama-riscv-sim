@@ -3,7 +3,7 @@
 *.dump
 *.map
 *.elf*
-*.hex
+*.hex*
 *.o
 *.d
 *.i

@@ -34,6 +34,10 @@ gmon.out
 analysis.gprof.ipynb
 *.nm
 *.grep
+script/analysis.ipynb
+script/analysis_all.py
+script/bp.ipynb
+script/hw_analysis.ipynb
 
 # python files
 __pycache__/
