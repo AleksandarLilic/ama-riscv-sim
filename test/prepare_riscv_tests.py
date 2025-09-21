@@ -55,7 +55,7 @@ def build_test(test):
         run_make(["make", "codegen"], cwd=test_dir)
     make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make", "-j", "build_common"]
+    make_cmd = ["make", "-j", "-B", "build_common"] + test_opts
     run_make(make_cmd, cwd=test_dir)
     make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
     run_make(make_cmd, cwd=test_dir)
