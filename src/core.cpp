@@ -448,7 +448,7 @@ void core::branch() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_branch(next_pc, taken);
-    prof_perf.set_perf_event_flag(perf_event_t::branches);
+    prof_perf.set_perf_event_flag(perf_event_t::branch);
     branch_taken = taken;
     #endif
 

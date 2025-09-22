@@ -63,7 +63,7 @@ const std::unordered_map<std::string, rf_names_t> rf_names_map = {
 
 const std::unordered_map<std::string, perf_event_t> perf_event_map = {
     {"inst", perf_event_t::inst},
-    {"branches", perf_event_t::branches},
+    {"branch", perf_event_t::branch},
     {"mem", perf_event_t::mem},
     {"simd", perf_event_t::simd},
     #ifdef HW_MODELS_EN

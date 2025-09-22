@@ -191,12 +191,12 @@ struct symbol_tracking_t {
 enum class perf_event_t {
     inst,
     #ifdef DPI
-    cycles,
+    cycle,
     #endif
-    branches,
+    branch,
     mem,
-    //mem_loads,
-    //mem_stores,
+    //mem_load,
+    //mem_store,
     simd,
     #ifdef HW_MODELS_EN
     //cache_reference, // only applicable for multi-level caches
@@ -213,14 +213,14 @@ enum class perf_event_t {
 static const
 std::array<std::string, static_cast<uint32_t>(perf_event_t::_count)>
 perf_event_names = {
-    "exec",
+    "inst",
     #ifdef DPI
-    "cycles",
+    "cycle",
     #endif
-    "branches",
+    "branch",
     "mem",
-    //"mem_loads",
-    //"mem_stores",
+    //"mem_load",
+    //"mem_store",
     "simd",
     #ifdef HW_MODELS_EN
     //"cache_reference",
