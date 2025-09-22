@@ -1538,7 +1538,7 @@ def run_main(args) -> None:
             plt.show(block=False)
             if not is_notebook():
                 input("Press Enter to close all plots...")
-        plt.close('all')
+    plt.close('all')
 
 if __name__ == "__main__":
     args = parse_args()
