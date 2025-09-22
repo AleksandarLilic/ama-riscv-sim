@@ -100,7 +100,7 @@ void profiler_perf::inc_callstack_cnt() {
     if (perf_event == perf_event_t::inst) {
         callstack_cnt += 1;
     #ifdef DPI
-    } else if (perf_event == perf_event_t::cycles) {
+    } else if (perf_event == perf_event_t::cycle) {
         callstack_cnt += clk_src->get_diff();
     #endif
     } else {
