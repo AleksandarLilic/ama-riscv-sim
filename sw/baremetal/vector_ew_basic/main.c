@@ -74,7 +74,7 @@ void main(void) {
 
         asm(".global compute");
         asm("compute:");
-        LOG_START;
+        PROF_START;
 
         #ifdef NO_SIMD
         // generic scalar version
@@ -84,7 +84,7 @@ void main(void) {
         FUNC(a, b, c, ARR_LEN);
         #endif
 
-        LOG_STOP;
+        PROF_STOP;
         asm(".global check");
         asm("check:");
         for (size_t j = 0; j < ARR_LEN; j++) {

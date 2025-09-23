@@ -97,9 +97,9 @@ _Static_assert(0, "Unsupported number format: ref");
 
 void main(void) {
     for (size_t i = 0; i < LOOPS; i++) {
-        LOG_START;
+        PROF_START;
         int32_t result = FUNC(a, b, ARR_LEN);
-        LOG_STOP;
+        PROF_STOP;
         //printf("%d\n",result);
         //printf("%d\n",ref);
         if (result != ref) {

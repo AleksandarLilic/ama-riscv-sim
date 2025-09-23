@@ -22,9 +22,14 @@
 #define TOSTR(x) STRINGIFY(x)
 #define TESTNUM_REG x28
 
-// logging features
-#define LOG_START asm volatile ("slti x0, x0, 0x10")
-#define LOG_STOP asm volatile ("slti x0, x0, 0x11")
+// profiling features
+#ifdef NO_PROF
+#define PROF_START
+#define PROF_STOP
+#else
+#define PROF_START asm volatile ("slti x0, x0, 0x10")
+#define PROF_STOP asm volatile ("slti x0, x0, 0x11")
+#endif
 
 // add symbol for callstack
 #define GLOBAL_SYMBOL(sym)  \

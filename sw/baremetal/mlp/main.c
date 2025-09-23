@@ -12,9 +12,9 @@ void main(void) {
     // read both clk and time, though only one can be used for known fixed freq
     set_cpu_cycles(0);
     uint32_t start_time = get_cpu_time();
-    LOG_START;
+    PROF_START;
     uint32_t predicted = run_inference(input_img_0);
-    LOG_STOP;
+    PROF_STOP;
     uint32_t clks = get_cpu_cycles();
     uint32_t end_time = get_cpu_time();
     uint32_t time_diff = (end_time - start_time) / 1000;

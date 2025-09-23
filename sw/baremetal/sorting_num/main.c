@@ -215,13 +215,13 @@ void main(void) {
         for (uint32_t j = 0; j < ARR_LEN; j++) work_a[j] = a[j];
         uint32_t n = sizeof(work_a)/sizeof(work_a[0]);
 
-        LOG_START;
+        PROF_START;
         #if defined(ALG_MERGE) || defined(ALG_QUICK)
         FUNC_NAME(work_a, 0, n-1);
         #else
         FUNC_NAME(work_a, n);
         #endif
-        LOG_STOP;
+        PROF_STOP;
 
         asm(".global check");
         asm("check:");

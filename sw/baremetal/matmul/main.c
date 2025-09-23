@@ -20,7 +20,7 @@ void set_c() {
 void main(void) {
     for (uint32_t i = 0; i < LOOPS; i++) {
         set_c();
-        LOG_START;
+        PROF_START;
 
         asm(".global compute");
         asm("compute:");
@@ -61,7 +61,7 @@ void main(void) {
             }
         }
         #endif
-        LOG_STOP;
+        PROF_STOP;
 
         /*
         printf("Result of matrix multiplication (C = A * B):\n");

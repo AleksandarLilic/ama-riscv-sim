@@ -20,11 +20,11 @@ void initialise_board (void) {};
 void start_trigger (void) {
   set_cpu_cycles(0);
   start_time = get_cpu_time();
-  //LOG_START;
+  //PROF_START;
 }
 
 void stop_trigger (void) {
-   //LOG_STOP;
+   //PROF_STOP;
    uint32_t clks = get_cpu_cycles();
    uint32_t end_time = get_cpu_time();
    uint32_t time_diff = (end_time - start_time) / 1000;

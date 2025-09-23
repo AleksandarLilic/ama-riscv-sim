@@ -79,11 +79,11 @@ void conv1d_int16(
 
 void main(void) {
     for (size_t i = 0; i < LOOPS; i++) {
-        LOG_START;
+        PROF_START;
         SCP_LCL(in);
         conv1d_int16(in, IN_LEN, filter, F_LEN, out);
         SCP_REL(in);
-        LOG_STOP;
+        PROF_STOP;
 
         for (size_t j = 0; j < OUT_LEN; j++) {
             //printf("out[%d] = %d, ref[%d] = %d\n", j, out[j], j, ref[j]);

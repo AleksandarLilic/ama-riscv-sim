@@ -238,7 +238,7 @@ main()
     scalar = 3; // volatile to avoid compiler optimization
 	register uint32_t scalar_reg = scalar; // but put in reg to avoid hitting memory every time
     for (k=0; k<NTIMES; k++) {
-		//LOG_START;
+		//PROF_START;
 		times[0][k] = mysecond();
         GLOBAL_SYMBOL(stream_copy);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) c[j] = a[j];
@@ -258,7 +258,7 @@ main()
         GLOBAL_SYMBOL(stream_triad);
 		for (j=0; j<STREAM_ARRAY_SIZE; j++) a[j] = b[j]+scalar_reg*c[j];
 		times[3][k] = mysecond() - times[3][k];
-		//LOG_STOP;
+		//PROF_STOP;
 	}
 
     /*	--- SUMMARY --- */

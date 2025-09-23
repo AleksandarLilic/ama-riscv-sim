@@ -25,9 +25,9 @@ void unpack16u(uint16_t* in, uint32_t* out, size_t len) {
 
 void main() {
     uint32_t out[ARR_LEN];
-    LOG_START;
+    PROF_START;
     unpack16u(a, out, ARR_LEN);
-    LOG_STOP;
+    PROF_STOP;
     for (size_t i = 0; i < ARR_LEN; i++) {
         if (a[i] != out[i]) {
             fail();

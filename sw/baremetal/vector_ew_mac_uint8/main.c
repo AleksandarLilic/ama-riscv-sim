@@ -25,11 +25,11 @@ void set_c() {
 void main(void) {
     for (uint32_t i = 0; i < LOOPS; i++) {
         set_c();
-        LOG_START;
+        PROF_START;
         for (uint8_t j = 0; j < 64; j++) {
             for (uint8_t k = 0; k < ARR_LEN; k++) c[k] += a[k] * b[k];
         }
-        LOG_STOP;
+        PROF_STOP;
 
         for (uint8_t j = 0; j < ARR_LEN; j++) {
             if (c[j] != ref[j]) {
