@@ -1,11 +1,11 @@
 {
-    "asm_rv32i": ["basic"],
-    "factorial": [["n_20"], ["LOOPS=1"]],
-    "fibonacci": [["n_18"], ["LOOPS=1"]],
-    "gcd_lcm": [["n_large"], ["LOOPS=1"]],
-    "prime_numbers": [["n_3000"], ["LOOPS=1"]],
+    "asm_rv32i": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "factorial": [["n_20"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "fibonacci": [["n_18"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "gcd_lcm": [["n_large"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "prime_numbers": [["n_3000"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
-    "vector_ew_al_uint8": ["basic"],
-    "vector_ew_mac_uint8": ["basic"],
-    "vector_ew_basic": [["all"], ["MATH_LIB_FLAGS="]]
+    "vector_ew_al_uint8": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "vector_ew_mac_uint8": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "vector_ew_basic": [["all"], ["MATH_LIB_FLAGS=", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]]
 }
