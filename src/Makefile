@@ -28,6 +28,8 @@ INC += -I./$(BDIR)
 INC += -I./external/cxxopts/include
 INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 
+COSIM_OBJECTS := $(filter-out $(BDIR)/hw_models/%.o $(BDIR)/main.o, $(OBJECTS))
+
 USER_DEFINES =
 DEFINES := -DDASM_EN
 #DEFINES += -DRV32C
@@ -36,6 +38,8 @@ DEFINES := -DDASM_EN
 all: $(TARGET)
 
 obj: $(OBJECTS)
+
+obj_for_cosim: $(COSIM_OBJECTS)
 
 include Makefile.autogen
 
