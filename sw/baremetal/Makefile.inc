@@ -38,12 +38,11 @@ INC_PATHS += $(COMMON_SRC_PATH)
 INC_H := $(wildcard $(addsuffix /*.h, $(INC_PATHS)))
 INC := $(addprefix -I, $(INC_PATHS))
 LIBS += -lgcc
-USER_DEFINES =
+USER_DEFINES ?=
 
 # if not set in test's Makefile, default to all supported ISA extensions
 #MARCH ?= rv32imc_zicsr_zifencei_zicntr
 MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
-#MARCH ?= rv32i_zicsr
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany -static -fno-pic
 GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
@@ -98,7 +97,7 @@ BUILD_APP = \
 	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
 
 HEX_GEN = \
-	$(Q)if [ "$(HEX)" = "1" ]; then \
+	if [ "$(HEX)" = "1" ]; then \
 		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
 	fi
 
@@ -106,7 +105,7 @@ HEX_GEN = \
 	$(BUILD_APP)
 	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
 	$(Q)$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
-	$(HEX_GEN)
+	$(Q)$(HEX_GEN)
 	@echo "Executable built: $@"
 	$(Q)$(RV_GNU)-size -G $@
 
@@ -129,7 +128,7 @@ $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
 
 clean:
-	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *.map
+	rm -f *.elf* *.dump *.hex* *.bin *.o *.d *.i *.s *.map
 
 clean_common:
 	rm -rf $(COMMON_BUILD_DIR)

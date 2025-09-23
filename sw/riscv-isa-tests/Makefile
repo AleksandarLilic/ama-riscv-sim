@@ -53,4 +53,4 @@ all: $(TESTS_BIN)
 	@echo "Generated $@"
 
 clean:
-	rm -f *.elf* *.dump *.hex *.bin *.o *.d *.i *.s *_symbols.json *.map
+	rm -f *.elf* *.dump *.hex* *.bin *.o *.d *.i *.s *_symbols.json *.map
