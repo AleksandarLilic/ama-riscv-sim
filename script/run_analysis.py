@@ -1239,6 +1239,10 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
             dfs[c] = dfs[c].apply(lambda x: f'{x:01X}')
         dfs.to_csv(bin_log.replace('.bin', '.bin.csv'), index=False)
 
+    # clean up inst and pc now, after it was potentially saved to csv
+    df.inst = df.inst.replace(0, np.nan) # replace NOP/bubbles with NaN
+    df.pc = df.pc.replace(0, np.nan) # same as for inst
+
     df_start = int(args.sample_begin) if args.sample_begin else 0
     df_end = int(args.sample_end) if args.sample_end else df.smp.max()
     df = df.loc[df['smp'].between(df_start,df_end)]
@@ -1349,8 +1353,10 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df = df.sort_values(by='dmem', ascending=True)
     df['dmem'] = df['dmem'].astype(int)
     df['dmem_hex'] = df['dmem'].apply(lambda x: f'{x:08x}')
-    if df.iloc[0]['dmem'] == 0:
-        df = df.drop(0)
+
+    # FIXME: why was this ever needed? some corner case?
+    #if df.iloc[0]['dmem'] == 0:
+    #    df = df.drop(0)
 
     symbols = {}
     if args.dasm:
