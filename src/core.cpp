@@ -32,6 +32,12 @@ core::core(
     prof_trace = cfg.prof_trace;
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
+    if (cfg.dpi_prof_on_boot) {
+        prof_act = true;
+        prof.active = true;
+        prof_perf.active = true;
+        prof_fusion.active = true;
+    }
     #endif
     #endif
 
@@ -232,26 +238,12 @@ void core::exec_inst() {
     }
 
     #ifdef PROFILERS_EN
+    // rf changes only on retired instructions, no need to oversample from dpi
     prof.track_sp(rf[2]);
-    if (prof_act && prof_trace) {
-        prof.te.inst = inst;
-        prof.te.pc = pc;
-        prof.te.next_pc = next_pc;
-        prof.te.sp = rf[2];
-        prof.te.taken = branch_taken;
-        prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
-        #ifdef DPI
-        prof.te.sample_cnt = clk_src.get_cr();
-        #else
-        prof.te.sample_cnt = prof_pc.inst_cnt;
-        #endif
-        #ifdef HW_MODELS_EN
-        prof.te.ic_hm = TO_U8(hwrs.ic_hm);
-        prof.te.dc_hm = TO_U8(hwrs.dc_hm);
-        prof.te.bp_hm = TO_U8(hwrs.bp_hm);
-        #endif
-        prof.add_te();
-    }
+    #ifndef DPI
+    // dpi calls its own save_trace_entry on every cycle
+    save_trace_entry();
+    #endif
     #endif
 
     #ifdef DASM_EN
@@ -270,6 +262,37 @@ void core::exec_inst() {
 
     if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
 }
+
+#ifndef DPI
+void core::save_trace_entry() {
+    if (prof_act && prof_trace) {
+        prof.te.inst = inst;
+        prof.te.pc = pc;
+        prof.te.next_pc = next_pc;
+        prof.te.sp = rf[2];
+        prof.te.taken = branch_taken;
+        prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
+        prof.te.sample_cnt = prof_pc.inst_cnt;
+        #ifdef HW_MODELS_EN
+        prof.te.ic_hm = TO_U8(hwrs.ic_hm);
+        prof.te.dc_hm = TO_U8(hwrs.dc_hm);
+        prof.te.bp_hm = TO_U8(hwrs.bp_hm);
+        #endif
+        prof.add_te();
+    }
+}
+#endif
+
+#ifdef DPI
+// instructions are still collected by isa sim when retired
+// but trace is saved on every cycle from dpi
+void core::save_trace_entry(trace_entry te) {
+    if (prof_act && prof_trace) {
+        prof.te = te;
+        prof.add_te();
+    }
+}
+#endif
 
 // void core::reset() {
 //     // TODO
@@ -464,17 +487,25 @@ void core::branch() {
     bp.ideal(next_pc);
 
     uint32_t speculative_next_pc = bp.predict(pc, ip.imm_b(), ip.funct3());
-    if (!no_bp) { // not accessing icache in case there is no bp, stall instead
+    if (!no_bp) { // not going to icache in case there is no bp, stall instead
         //mem->speculative_exec(speculative_t::enter);
         inst_speculative = mem->rd_inst(speculative_next_pc);
+        // count speculative I$ reference, expected correct most of the time
+        next_ic_hm = hwrs.ic_hm;
     }
 
-    next_ic_hm = hwrs.ic_hm; // count speculative access, not the resolution
     bp.update(pc, next_pc);
     bool correct = (next_pc == speculative_next_pc);
     if (!correct) {
         //mem->speculative_exec(speculative_t::exit_flush);
         inst_resolved = mem->rd_inst(next_pc);
+        // this is another I$ reference, after the speculative fetch above
+        // but trace can't store more than 1 reference for the same instruction
+        // 1. don't count this [USED]
+        // 2. count the worst of the two (i.e. miss if either is miss)
+        // 3. count only resolution, as the previous miss might not be served
+        // if no bp, this I$ reference is counted, no bp has only resolution
+        if (no_bp) next_ic_hm = hwrs.ic_hm;
         #ifdef PROFILERS_EN
         prof_perf.set_perf_event_flag(perf_event_t::bp_mispredict);
         #endif
@@ -484,7 +515,6 @@ void core::branch() {
     }
 
     hwrs.bp_hm = static_cast<hw_status_t>(correct);
-    //next_ic_hm = hwrs.ic_hm;
     hwrs.ic_hm = save_ic_hm;
 
     #ifdef DASM_EN

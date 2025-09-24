@@ -198,7 +198,7 @@ enum class perf_event_t {
     //mem_load,
     //mem_store,
     simd,
-    #ifdef HW_MODELS_EN
+    #if defined(HW_MODELS_EN) || defined(DPI)
     //cache_reference, // only applicable for multi-level caches
     //cache_miss, // only applicable for multi-level caches
     icache_reference,
@@ -222,7 +222,7 @@ perf_event_names = {
     //"mem_load",
     //"mem_store",
     "simd",
-    #ifdef HW_MODELS_EN
+    #if defined(HW_MODELS_EN) || defined(DPI)
     //"cache_reference",
     //"cache_miss",
     "icache_reference",
@@ -334,6 +334,7 @@ struct cfg_t {
     bool show_state;
     bool exit_on_trap;
     bool sink_uart;
+    bool dpi_prof_on_boot;
     std::string out_dir;
 };
 

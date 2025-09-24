@@ -30,7 +30,8 @@ class core {
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
-        void update_clk(uint64_t clk) { clk_src.update(clk); }
+        void update_clk(uint64_t clk) { clk_src.update(clk); } // perf_prof only
+        void save_trace_entry(trace_entry te);
         #endif
         #ifdef PROFILERS_EN
         uint8_t inst_w = 8;
@@ -77,6 +78,9 @@ class core {
         }
         void cntr_update();
         void prof_state(bool enable);
+        #ifndef DPI
+        void save_trace_entry();
+        #endif
 
         // instruction decoders
         void al_reg();
