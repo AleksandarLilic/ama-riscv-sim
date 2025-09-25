@@ -7,10 +7,9 @@ TEST_DEFINES := $(foreach t,$(TYPES), $(t):-D$(shell echo $(t) | tr a-z A-Z))
 # so the icache is happy
 CODE_ALIGN := -falign-loops=64 # -falign-functions=64
 
-#MATH_LIB_FLAGS ?= -DLOAD_OPT
-MATH_LIB_FLAGS ?= -DCUSTOM_ISA
+#MATH_LIB_FLAGS ?= -DLOAD_OPT # incompatible with CUSTOM_ISA
+MATH_LIB_FLAGS ?= -DCUSTOM_ISA -DPARTIAL_ZBB_SUPPORT # -DSTREAMING
 MATH_LIB_FLAGS += -DFORCE_INLINE
-#MATH_LIB_FLAGS += -DSTREAMING
 CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN)
 GCC_OPTS += -Wall -Werror
 

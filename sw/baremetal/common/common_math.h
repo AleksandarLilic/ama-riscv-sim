@@ -10,7 +10,6 @@
 #define INLINE_OPTION
 #endif
 
-#define PARTIAL_ZBB_SUPPORT
 int32_t max(int32_t a, int32_t b);
 uint32_t maxu(uint32_t a, uint32_t b);
 int32_t min(int32_t a, int32_t b);
