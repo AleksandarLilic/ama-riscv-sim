@@ -2,7 +2,7 @@
 
 profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     inst = 0;
-    inst_cnt_exec = 0;
+    inst_cnt_prof = 0;
     trace.reserve(1<<14); // reserve 16K entries to start with
     rst_te();
     this->out_dir = out_dir;
@@ -149,7 +149,7 @@ void profiler::add_te() {
 
 void profiler::log_inst(opc_g opc, uint64_t inc) {
     if (active) {
-        inst_cnt_exec++;
+        inst_cnt_prof++;
         if (inst == INST_NOP) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
         } else if ((inst & 0xFFFF) == INST_C_NOP) {
@@ -164,7 +164,7 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
 
 void profiler::log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     if (active) {
-        inst_cnt_exec++;
+        inst_cnt_prof++;
         if (taken) {
             prof_j_arr[TO_U32(opc)].count_taken += inc;
             if (b_dir == b_dir_t::forward) {
@@ -281,6 +281,7 @@ void profiler::log_to_file_and_print() {
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
 
+    std::cout << inst_cnt_prof << " instructions profiled\n";
     #ifdef DPI
     return;
     #endif
@@ -354,5 +355,5 @@ void profiler::log_to_file_and_print() {
     if (prof_src == profiler_source_t::clock) return;
     // only expected to fail if core has instruction which is not supported
     // by the profiler - should be addressed when adding new instructions
-    assert(inst_cnt_exec == cnt.tot && "Profiler: instruction count mismatch");
+    assert(inst_cnt_prof == cnt.tot && "Profiler: instruction count mismatch");
 }

@@ -2,6 +2,7 @@
 
 #include "defines.h"
 #include "utils.h"
+#include "hw_model_types.h"
 
 #include <cassert>
 
@@ -200,7 +201,7 @@ class profiler {
         std::string out_dir;
         profiler_source_t prof_src;
         std::ofstream ofs;
-        uint64_t inst_cnt_exec;
+        uint64_t inst_cnt_prof;
         stack_access_t stack_access;
         uint32_t inst;
         #ifdef PROF_MEM_USAGE
@@ -245,7 +246,17 @@ class profiler {
 
     private:
         void log_to_file_and_print();
-        void rst_te() { te = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; }
+        void rst_te() {
+            te = {
+                0, // sample_cnt
+                0, 0, 0, 0, 0, // inst, pc, next_pc, dmem (addr), sp
+                0, // (branch) taken
+                TO_U8(hw_status_t::none), // ic_hm
+                TO_U8(hw_status_t::none), // dc_hm
+                TO_U8(hw_status_t::none), // bp_hm
+                0, 0 // inst_size, dmem_size
+            };
+        }
 
     private:
         // all compressed instructions

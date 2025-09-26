@@ -30,7 +30,7 @@ class core {
         uint32_t get_inst() { return inst; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
-        void update_clk(uint64_t clk) { clk_src.update(clk); } // perf_prof only
+        void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
         #endif
         #ifdef PROFILERS_EN
