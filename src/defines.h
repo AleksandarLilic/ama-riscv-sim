@@ -469,32 +469,21 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_SRC profiler_source_t::inst
 #endif
 
-template <std::size_t N, std::size_t M>
-inline void copy_literal(char (&dst)[N], const char (&src)[M]) {
-    static_assert(M <= N, "buffer too small for literal");
-    // M is a constant: compiler emits fixed-size inline copy
-    std::memcpy(dst, src, M);
-}
-
 #define PROF_G(op) \
-    prof.log_inst(opc_g::i_##op, DIFF); \
-    copy_literal(prof.te.inst_mnm, #op);
+    prof.log_inst(opc_g::i_##op, DIFF);
 
 #define PROF_J(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF); \
-    copy_literal(prof.te.inst_mnm, #op);
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF);
 
 #define PROF_B_T(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF); \
-    copy_literal(prof.te.inst_mnm, #op);
+    prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF);
 
 #define PROF_B_NT(op, b) \
     b_dir_t dir = ((pc + ip.imm##b()) > pc) ? b_dir_t::forward : \
                                               b_dir_t::backward; \
-    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), DIFF); \
-    copy_literal(prof.te.inst_mnm, #op);
+    prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), DIFF);
 
 #define PROF_RD \
     prof.log_reg_use(reg_use_t::rd, ip.rd());

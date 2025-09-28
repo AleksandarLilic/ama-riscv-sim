@@ -127,8 +127,6 @@ struct trace_entry {
     uint8_t bp_hm;
     uint8_t inst_size;
     uint8_t dmem_size;
-    // 6 chars to pad to 8-byte boundary, + another 8 to increase size
-    char inst_mnm[6+8]; // null-terminated string,
 };
 
 struct cnt_t {
@@ -256,8 +254,7 @@ class profiler {
                 TO_U8(hw_status_t::none), // ic_hm
                 TO_U8(hw_status_t::none), // dc_hm
                 TO_U8(hw_status_t::none), // bp_hm
-                0, 0, // inst_size, dmem_size
-                {} // inst_mnm
+                0, 0 // inst_size, dmem_size
             };
         }
 
