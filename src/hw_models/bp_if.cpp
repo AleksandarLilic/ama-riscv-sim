@@ -264,7 +264,7 @@ void bp_if::show_stats(std::string out_dir) {
     // put active in a list an iterate over all of them to show stats
     all_bps.insert(all_bps.begin(), std::move(active_bp));
     if (to_dump_csv) dump_csv(out_dir);
-    for (auto& p : all_bps) p->show_stats();
+    for (auto& p : all_bps) p->show_stats(bp_run_all);
     active_bp = std::move(all_bps[0]); // restore active_bp
     all_bps.erase(all_bps.begin()); // remove invalid pointer
     return;

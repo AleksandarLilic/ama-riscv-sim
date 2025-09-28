@@ -70,9 +70,17 @@ class bp {
             std::cout << std::dec << std::endl;
         }
 
-        virtual void show_stats() {
-            std::cout << INDENT << std::left << std::setw(14) << type_name;
-            std::cout << " (" << std::right << std::setw(5) << size << " B): ";
+        virtual void show_stats(bool align) {
+            std::cout << INDENT;
+            if (align) {
+                // used when arch predictors are shown together
+                // to make it easier to read
+                std::cout << std::left << std::setw(14) << type_name
+                          << " (" << std::right << std::setw(5) << size
+                          << " B): ";
+            } else {
+                std::cout << type_name << " (" << size << " B): ";
+            }
             stats.show();
             std::cout << std::endl;
         }
