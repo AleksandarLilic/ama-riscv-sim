@@ -281,7 +281,6 @@ void profiler::log_to_file_and_print() {
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
 
-    std::cout << inst_cnt_prof << " instructions profiled\n";
     #ifdef DPI
     return;
     #endif
