@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import (EngFormatter, FixedLocator, FuncFormatter,
-                               LogFormatter, LogFormatterSciNotation,
-                               MaxNLocator, MultipleLocator)
+                               LinearLocator, LogFormatter,
+                               LogFormatterSciNotation, MaxNLocator,
+                               MultipleLocator)
 from matplotlib.widgets import RangeSlider
 from utils import is_notebook
 
@@ -41,6 +42,7 @@ BASE_ADDR = 0x40000
 MEM_SIZE = 65536
 
 FS_EXEC_X = 24.7
+GS_EXEC = {'top': .95, 'bottom': .1, 'left': .09, 'right': .8, 'hspace': .05}
 
 INST_T_MEM = {
     MEM_S: ["sb", "sh", "sw", "c.swsp", "c.sw"],
@@ -57,9 +59,9 @@ INST_T = {
         "c.mv",
         "c.lui",
     ],
-    MUL: [ "mul", "mulh", "mulsu", "mulu" ],
-    DIV: [ "div", "divu", "rem", "remu" ],
-    BITMANIP: [ "max", "maxu", "min", "minu"],
+    MUL: ["mul", "mulh", "mulsu", "mulu"],
+    DIV: ["div", "divu", "rem", "remu"],
+    BITMANIP: ["max", "maxu", "min", "minu"],
     SIMD: [
         "add16", "add8", "sub16", "sub8",
         "mul16", "mul16u", "mul8", "mul8u",
@@ -79,14 +81,21 @@ INST_T = {
     FENCE: ["fence.i"],
 }
 
-#INST_T_SIMD_Z = INST_T[SIMD] + INST_T[UNPAK]
-#OPS_PER_INST = {
-#    1:  INST_T[ALU] + INST_T[MUL] + INST_T[DIV] + INST_T[BITMANIP],
-#    2:  [s for s in INST_T_SIMD_Z if "16" in s],
-#    4:  [s for s in INST_T_SIMD_Z if "8" in s],
-#    8:  [s for s in INST_T_SIMD_Z if "4" in s],
-#    16: [s for s in INST_T_SIMD_Z if "2" in s],
-#}
+INST_T_SIMD_Z = INST_T[SIMD] + INST_T[UNPAK]
+OPS_PER_INST = {
+    1: INST_T[ALU] + INST_T[MEM] + INST_T[MUL] + INST_T[DIV] + INST_T[BITMANIP],
+    2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
+    3: ['dot16'], # 2x mul, 1x sum
+    4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)],
+    7: ['dot8'], # 4x mul, 3x sum
+    8: [s for s in INST_T_SIMD_Z if ("4" in s and 'dot' not in s)],
+    15: ['dot4'], # 8x mul, 7x sum
+    16: [s for s in INST_T_SIMD_Z if ("2" in s and 'dot' not in s)],
+}
+
+BRANCH_DENSITY = {
+    1: INST_T[BRANCH] + INST_T[JUMP],
+}
 
 ALL_INST = np.concatenate(list(INST_T.values())).tolist()
 ALL_INST_TYPES = list(INST_T.keys()) + list(INST_T_MEM.keys())
@@ -103,16 +112,21 @@ for k, v in INST_T_MEM.items():
         INST_TO_MEM_TYPE_DICT[inst] = k
 
 # create a reverse map for ops per instruction
-#INST_TO_OPS_DICT = {}
-#for k, v in OPS_PER_INST.items():
-#    for inst in v:
-#        INST_TO_OPS_DICT[inst] = k
+INST_TO_OPS_DICT = {}
+for k, v in OPS_PER_INST.items():
+    for inst in v:
+        INST_TO_OPS_DICT[inst] = k
+
+INST_TO_BD_DICT = {}
+for k, v in BRANCH_DENSITY.items():
+    for inst in v:
+        INST_TO_BD_DICT[inst] = k
 
 # TODO: add function calls/graphs highlight when supported by the profiler
 COLORS = {
-    "blue_base": "#0077b6",
-    "blue_light1": "#00b4d8",
-    "blue_light2": "#90e0ef",
+    "blue_b0": "#0077b6",
+    "blue_l1": "#00b4d8",
+    "blue_l2": "#90e0ef",
 }
 
 HL_COLORS = [
@@ -121,15 +135,36 @@ HL_COLORS = [
     "#f4a261", # sandy brown
     "#c03a2d", # persian red
     "#457B74", # myrtle green
-    "#ADA7C9", # rose quartz
+    "#b17acf", # lavander (floral)
+]
+
+HL_DEFAULT = [
+    INST_T[MEM],
+    INST_T[BRANCH],
+    INST_T[JUMP],
+    INST_T[MUL] + INST_T[DIV],
+    INST_T[SIMD],
+    INST_T[UNPAK]
 ]
 
 COLOR_GEN_BLUE = "#649ac9"
 
+HL_COLORS_OPS = {
+    ALU: COLOR_GEN_BLUE,
+    MEM: HL_COLORS[0], # turquoise
+    MUL: HL_COLORS[3], # persian red
+    DIV: HL_COLORS[2], # sandy brown
+    SIMD: HL_COLORS[4], # myrtle green
+    UNPAK: HL_COLORS[5], # lavander (floral)
+    # separate chart
+    BRANCH: HL_COLORS[0], # peach yellow
+    JUMP: HL_COLORS[3], # persian red
+}
+
 # memory instructions breakdown store vs load
 INST_MEM_BD = {
-    MEM_L : ["Load", COLORS["blue_light1"]],
-    MEM_S : ["Store", COLORS["blue_light2"]],
+    MEM_L : ["Load", COLORS["blue_l1"]],
+    MEM_S : ["Store", COLORS["blue_l2"]],
 }
 
 def hex2int(addr) -> int:
@@ -170,18 +205,25 @@ def wrap_text(arr:List[str], max_len:int) -> str:
 def add_legend_for_hl_groups(ax, chart_type:str) -> None:
     title = "Highlighted\nInstructions\n"
     if chart_type == "log":
+        title = title.replace("\n", " ").strip()
         ax.legend(loc='lower right', title=title, framealpha=0.5)
 
     # put legend in the top right corner, outside the plot
     elif chart_type == "trace_freq":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
-                  bbox_to_anchor=(1.52, 1.03), borderaxespad=0.)
+                  bbox_to_anchor=(1.68, 1.03), borderaxespad=0.)
     elif chart_type == "trace_exec":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
-                  bbox_to_anchor=(1.2, 1.03), borderaxespad=0.)
+                  bbox_to_anchor=(1.27, 1.03), borderaxespad=0.)
 
     else:
         raise ValueError(f"Invalid chart type '{chart_type}'")
+
+def add_outside_legend(ax, title:str) -> None:
+    ax.legend(
+        loc='upper left', ncol=1, fontsize=9, title=title,
+        bbox_to_anchor=(1.005, 1.03), borderaxespad=0.
+    )
 
 def ctype_check(ctype:str) -> Tuple[List[str], str]:
     if ctype == 'pc':
@@ -202,6 +244,8 @@ def draw_inst_log(df, hl_inst_g, title, args) -> plt.Figure:
         raise ValueError("No instructions in the json log")
     df['i_type'] = df['name'].map(INST_TO_TYPE_DICT)
     df['i_mem_type'] = df['name'].map(INST_TO_MEM_TYPE_DICT)
+    df['i_ops'] = df['name'].map(INST_TO_OPS_DICT)
+    df['ops'] = df['count'] * df['i_ops']
 
     # filter out instructions if needed
     if args.exclude:
@@ -215,22 +259,28 @@ def draw_inst_log(df, hl_inst_g, title, args) -> plt.Figure:
     if not args.allow_zero:
         df = df[df['count'] != 0]
 
-    # separate the instructions by type
+    # separate the instructions by type for count
     df_g = df[['i_type', 'count']].groupby('i_type').sum()
     df_g = df_g.sort_values(by='count', ascending=True)
 
-    # separate the memory instructions by type
+    # separate the memory instructions by type for count
     df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
     df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
 
+    # separate the instructions by type for ops
+    df_ops_g = df[['i_type', 'ops']].groupby('i_type').sum()
+    df_ops_g = df_ops_g.sort_values(by='ops', ascending=True)
+    if not args.allow_zero:
+        df_ops_g = df_ops_g[df_ops_g['ops'] != 0]
+
     # add a bar chart
-    ROWS = 2
+    ldf = [len(df), len(df_g), len(df_ops_g)]
+    ROWS = 3
     COLS = 1
     box = []
-    fig, ax = plt.subplots(ROWS, COLS,
-                           figsize=(COLS*10, ROWS*(len(df)+len(df_g))/6),
-                           height_ratios=(len(df)*.95, len(df_g)),
-                           constrained_layout=True)
+    fig, ax = plt.subplots(
+        ROWS, COLS, figsize=(COLS*10, ROWS*(sum(ldf)/10)+2),
+        height_ratios=ldf, constrained_layout=True)
     suptitle_str = f"Execution profile for {title}"
     suptitle_str += f"\nSamples profiled: {inst_profiled}"
     if args.exclude or args.exclude_type:
@@ -238,25 +288,32 @@ def draw_inst_log(df, hl_inst_g, title, args) -> plt.Figure:
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
 
     fig.suptitle(suptitle_str, size=12)
-    box.append(ax[0].barh(df['name'], df['count'], color=COLORS["blue_base"]))
-    box.append(ax[1].barh(df_g.index, df_g['count'], color=COLORS["blue_base"]))
+    box.append(
+        ax[0].barh(df['name'], df['count'], color=COLORS["blue_b0"]))
+    box.append(
+        ax[1].barh(df_g.index, df_g['count'], color=COLORS["blue_b0"]))
+    box.append(
+        ax[2].barh(df_ops_g.index, df_ops_g['ops'], color=COLORS["blue_b0"]))
+
     y_ax0_offset = min(0.025, len(df)/2_000)
     ax[0].margins(y=0.03-y_ax0_offset)
     ax[1].margins(y=0.03)
+    ax[2].margins(y=0.03)
 
+    y_labels = ["Instruction", "Instruction Type", "Operation"]
     for i in range(ROWS):
         bars = box[i]
         # sum of all bar values on that axis
         total = sum(bar.get_width() for bar in bars)
-        ax[i].bar_label(
-            bars,
-            labels=[
+        if i == 2: # ops don't have %, can't compare them like that
+            labels = [f"{bar.get_width():.0f}" for bar in bars]
+        else:
+            labels = [
                 f"{bar.get_width():.0f} ({bar.get_width() / total:.1%})"
-                for bar in bars
-            ],
-            padding=3
-        )
+                for bar in bars]
+        ax[i].bar_label(bars, labels=labels, padding=3)
         ax[i].set_xlabel('Count')
+        ax[i].set_ylabel(y_labels[i])
         ax[i].grid(axis='x')
         ax[i].margins(x=0.15)
 
@@ -824,8 +881,8 @@ def link_yrange(ax1, rs1, ax2, rs2):
 # drawing
 def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     cols, ylabel = ctype_check(ctype)
-    FS = (14,13)
-    GS = {'top': .95, 'bottom': .06, 'left': .18, 'right': .7}
+    FS = (15,13)
+    GS = {'top': .95, 'bottom': .06, 'left': .18, 'right': .66}
     fig, ax = plt.subplots(figsize=FS, gridspec_kw=GS)
 
     lw = progressive_lw(df.index.size)
@@ -858,7 +915,7 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             )
 
             # add dummy scatter plot for the legend
-            ax.scatter([], [], color=clr, label=wrap_text(hl_g, 16))
+            ax.scatter([], [], color=clr, label=wrap_text(hl_g, 20))
             hc += 1
 
         if len(hl_inst_g) > 0:
@@ -942,47 +999,74 @@ def progressive_lw(x):
     right_out = .2
     return map_value(x, left_bound, right_bound, left_out, right_out)
 
-def plot_sp(ax, df):
-    LW_OFF = .75
-    lw = progressive_lw(df.index.size) * LW_OFF
-    line, =  ax.step(
-        df.smp, df.sp_real, where='post', lw=lw, color=(0,.3,.6,.7))
+def plot_dummy_line(ax, color, lw, label):
+    # used when legend LW needs to be decoupled from the actual line LW
+    ax.plot([], [], color=color, lw=lw, label=label)
 
+def default_on_xlim_changed(a, line, lw_off):
     def _on_xlim_changed(a):
         xmin, xmax = a.get_xlim()
         span = xmax - xmin
         # line for running acc
-        lw = progressive_lw(span) * LW_OFF
+        lw = progressive_lw(span) * lw_off
         line.set_linewidth(lw)
 
-    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+    a.callbacks.connect("xlim_changed", _on_xlim_changed)
+
+def plot_sp(ax, df):
+    LW_OFF = .75
+    lw = progressive_lw(df.index.size) * LW_OFF
+    label = f"  SP max : {df['sp_real'].max()} B"
+    line, = ax.step(
+        df.smp, df.sp_real, where='post', lw=lw, color=COLOR_GEN_BLUE)
+    plot_dummy_line(ax, COLOR_GEN_BLUE, 1.5, label)
+    default_on_xlim_changed(ax, line, LW_OFF)
 
 def plot_ipc(ax, df):
     LW_OFF = .65
     lw = progressive_lw(df.index.size) * LW_OFF
-    line, =  ax.plot(df.smp, df.ipc_rolling, lw=lw, color=(0,.3,.6,.7))
-    H_OFFSET = .05
-    ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
-    ax.set_yticks([0, .5, 1])
 
     ret_inst = df[df['inst'] != 0]['inst'].count()
     clks = df.smp.values[-1] - df.smp.values[0] + 1
     cpi = round(clks/ret_inst,3)
     ipc = round(1/cpi, 3)
-    ax.text(1.001, .8,
-            f"   IPC: {ipc}\n  (CPI: {cpi})", color='k',
-            fontsize=9, ha='left', va='center',
-            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-            transform=ax.get_yaxis_transform())
+    label = f" IPC: {ipc}\n(CPI: {cpi})"
 
-    def _on_xlim_changed(a):
-        xmin, xmax = a.get_xlim()
-        span = xmax - xmin
-        # line for running acc
-        lw = progressive_lw(span) * LW_OFF
-        line.set_linewidth(lw)
+    line, = ax.plot(df.smp, df.ipc_rolling, lw=lw, color=COLOR_GEN_BLUE)
+    plot_dummy_line(ax, COLOR_GEN_BLUE, 1.5, label)
+    H_OFFSET = .05
+    ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
+    default_on_xlim_changed(ax, line, LW_OFF)
 
-    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+def plot_stat(ax, df, column, filter, unit, agg='sum', label_agg=True):
+    LW_OFF = .65
+    lw = progressive_lw(df.index.size) * LW_OFF
+    data = df[column].where(df.i_type == filter, 0)
+    if data.sum() == 0: # if data is all zeros, skip
+        #print(f"Warning: no '{filter}' values found in the trace.")
+        return ax
+
+    fmt = EngFormatter(unit=unit, places=1)
+    if agg == 'sum':
+        data_a = data.sum()
+    elif agg == 'mean':
+        data_a = data.mean()
+    else:
+        raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
+
+    data_r = data \
+             .rolling(window=args.hw_win_size, min_periods=1) \
+             .mean() \
+             .round(3)
+
+    label = f"{filter}"
+    if label_agg:
+        label = f"{label}: {fmt.format_eng(data_a)}",
+    line, = ax.plot(df.smp, data_r, lw=lw, color=HL_COLORS_OPS[filter])
+    plot_dummy_line(ax, HL_COLORS_OPS[filter], 1.5, label)
+    default_on_xlim_changed(ax, line, LW_OFF)
+
+    return ax
 
 def plot_hw_hm(ax, df, col, hw_win_size):
     H_OFFSET = .3
@@ -996,6 +1080,9 @@ def plot_hw_hm(ax, df, col, hw_win_size):
         df.smp, miss,
         ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
 
+    metric = "ACC" if col == 'bp' else "HR"
+    metric_mean = round(df[col].mean()*100,2)
+    label = f"{metric}: {metric_mean}%"
     # drop NaNs to have continuous mean
     running_avg = df[col] \
                   .dropna() \
@@ -1005,12 +1092,11 @@ def plot_hw_hm(ax, df, col, hw_win_size):
     running_avg = running_avg.reindex(df.index, method='ffill')
     LW_OFF = .5
     lw = progressive_lw(df.index.size) * LW_OFF
-    line, = ax.plot(
-        df.smp, running_avg, lw=lw, color=(0,.3,.6,.7), label='avg')
+    line, = ax.plot(df.smp, running_avg, lw=lw, color=COLOR_GEN_BLUE)
+    plot_dummy_line(ax, COLOR_GEN_BLUE, 1.5, label)
     ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
     ax.set_yticks([0, .5, 1])
     ax.set_yticklabels(['0%', '', '100%'])
-    #ax.legend(loc='upper right', ncol=3)
 
     def _on_xlim_changed(a):
         xmin, xmax = a.get_xlim()
@@ -1024,14 +1110,6 @@ def plot_hw_hm(ax, df, col, hw_win_size):
         bars_miss.set_alpha(alpha)
 
     ax.callbacks.connect("xlim_changed", _on_xlim_changed)
-
-    metric = "ACC" if col == 'bp' else "HR"
-    metric_mean = round(df[col].mean()*100,2)
-    ax.text(1.001, 1,
-            f"  {metric}: {metric_mean}%", color='k',
-            fontsize=9, ha='left', va='center',
-            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-            transform=ax.get_yaxis_transform())
 
 def exec_df_within_limits(df_len, limit):
     if df_len > limit:
@@ -1047,14 +1125,13 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
         return None, None, None
 
     FS = (FS_EXEC_X, 13)
-    GS = {'top': .95, 'bottom': .1, 'left': .09, 'right': .84, 'hspace': .05}
     nrows = 2
     hrat = [16, 1]
 
     # set up figure
     fig, ax = plt.subplots(
         ncols=1, nrows=nrows, figsize=FS, sharex=True,
-        height_ratios=hrat, gridspec_kw=GS)
+        height_ratios=hrat, gridspec_kw=GS_EXEC)
     ax_t, ax_sp = ax
 
     # add grid
@@ -1064,6 +1141,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     # add sp trace
     plot_sp(ax_sp, df)
+    add_outside_legend(ax_sp, None)
 
     # add PC/DMEM trace
     LW_OFF_S = .75
@@ -1097,7 +1175,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
             # add dummy scatter plot for the legend
             ax_t.scatter(
-                [], [], color=HL_COLORS[hc], label=wrap_text(hl_g, 16))
+                [], [], color=HL_COLORS[hc], label=wrap_text(hl_g, 20))
             hc += 1
 
         if len(hl_inst_g) > 0:
@@ -1139,12 +1217,6 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     if args.add_cache_lines:
         ax_t = add_cache_line_spans(ax_t)
 
-    ax_sp.text(1.001, df['sp_real'].max(),
-               f"  SP max : {df['sp_real'].max()} bytes", color='k',
-               fontsize=9, ha='left', va='center',
-               bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-               transform=ax_sp.get_yaxis_transform())
-
     # update axis
     # y
     inc = find_loc_range(ax_t)
@@ -1164,6 +1236,12 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax_top.xaxis.set_ticks_position('top')
     ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
+    def _on_ylim_changed_lines(a):
+        inc = find_loc_range(a)
+        a.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
+
+    ax_t.callbacks.connect("ylim_changed", _on_ylim_changed_lines)
+
     # label
     ax_t.set_title(f"{TRACE_SOURCE} trace - {trace_type} profile for {title}")
     ax_t.set_ylabel(ylabel)
@@ -1179,14 +1257,24 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     return fig, rsx, rsy
 
-def draw_hw_exec(df, title, args) -> plt.Figure:
+def draw_stats_exec(df, title, args) -> plt.Figure:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None
 
-    GS = {'top': .9, 'bottom': .18, 'left': .09, 'right': .84, 'hspace': .1}
-    nrows = 3 # bp, ic, dc
+    GS = {
+        'top': .9, 'bottom': .18,
+        'left': GS_EXEC['left'], 'right': GS_EXEC['right'],
+        'hspace': .1
+    }
+
+    nrows = 4 # ops, bp, ic, dc
     if args.clk:
-        nrows = 4 # + ipc
+        nrows += 1 # + ipc
+        ops_n = "C" # ops per cycle
+    else:
+        nrows += 1 # + branch density
+        ops_n = "/inst"
+
     MAX_ROWS_FS = 8 # just for fig size calc
     FS = (FS_EXEC_X, (13/MAX_ROWS_FS)*nrows)
     # set up figure
@@ -1194,33 +1282,40 @@ def draw_hw_exec(df, title, args) -> plt.Figure:
         ncols=1, nrows=nrows, figsize=FS, sharex=True, gridspec_kw=GS)
 
     if args.clk:
-        ax_ipc, ax_bp, ax_ic, ax_dc = ax
+        ax_ipc, ax_ops, ax_bp, ax_ic, ax_dc = ax
     else:
-        ax_bp, ax_ic, ax_dc = ax
+        ax_ops, ax_bd, ax_bp, ax_ic, ax_dc = ax
     ax_btm = ax_dc
 
-    for a in ax:
-        a.grid(axis='both', linestyle='-', alpha=.6, which='major')
-
+    ax_ops = plot_stat(ax_ops, df, 'ops', ALU, unit='ops')
+    ax_ops = plot_stat(ax_ops, df, 'ops', MUL, unit='ops')
+    #ax_ops = plot_rolling(ax_ops, df, 'ops', DIV, unit='ops') only Zmmul used
+    ax_ops = plot_stat(ax_ops, df, 'ops', MEM, unit='ops')
+    ax_ops = plot_stat(ax_ops, df, 'ops', SIMD, unit='ops')
+    ax_ops = plot_stat(ax_ops, df, 'ops', UNPAK, unit='ops')
     plot_hw_hm(ax_bp, df, 'bp', args.hw_win_size)
     plot_hw_hm(ax_ic, df, 'ic', args.hw_win_size)
     plot_hw_hm(ax_dc, df, 'dc', args.hw_win_size)
     if args.clk:
         plot_ipc(ax_ipc, df)
+    else:
+        ax_bd = plot_stat(ax_bd, df, 'br_dens', BRANCH, '', label_agg=False)
+        ax_bd = plot_stat(ax_bd, df, 'br_dens', JUMP, '', label_agg=False)
 
     # update axis
     # x
-    ax_btm.margins(y=0.03, x=0.0)
+    ax_btm.margins(x=0.0)
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_btm.xaxis.set_major_locator(max_n_locator)
     ax_btm.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
     if not args.sample_begin:
         ax_btm.set_xlim(0, ax_btm.get_xlim()[1])
+
     # add a second x-axis
     if args.clk:
         ax_top = ax_ipc.twiny()
     else:
-        ax_top = ax_bp.twiny()
+        ax_top = ax_ops.twiny()
     ax_top.set_xlim(ax_btm.get_xlim())
     ax_top.xaxis.set_major_locator(max_n_locator)
     ax_top.xaxis.set_ticks_position('top')
@@ -1228,17 +1323,26 @@ def draw_hw_exec(df, title, args) -> plt.Figure:
 
     # label
     ax_top.set_title(
-        f"{TRACE_SOURCE} trace - HW profile for {title} (W={args.hw_win_size})")
+        f"{TRACE_SOURCE} trace - Stats & HW profile for {title}" +
+        f" (W={args.hw_win_size})"
+    )
+    ax_ops.set_ylabel(f'OP{ops_n}')
     ax_ic.set_ylabel('ICache')
     ax_dc.set_ylabel('DCache')
     ax_bp.set_ylabel('BP')
     if args.clk:
         ax_ipc.set_ylabel('IPC')
+    else:
+        ax_bd.set_ylabel('Branch\nDensity')
 
     ax[-1].set_xlabel('Sample Count')
+    for a in ax:
+        a.grid(axis='both', linestyle='-', alpha=.6, which='major')
+        title = "Total OPS" if a == ax_ops else None
+        add_outside_legend(a, title)
 
-    S_GAP = .07 if args.clk else .09 # dependent on nrows
-    S_H = 0.06 if args.clk else 0.08 # dependent on nrows
+    S_GAP = 0.06 # if args.clk else 0.07 # dependent on nrows
+    S_H = 0.04 # if args.clk else 0.05 # dependent on nrows
     rsx = attach_xrange_slider(ax_btm, ax_top, gap=S_GAP, h=S_H)
     register_true_home(fig)
 
@@ -1249,7 +1353,8 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
          'inst', 'pc', 'next_pc', 'dmem', # 128b - [1:4]
          'sp', # 32b - [5]
          'b_taken', 'ic', 'dc', 'bp', 'isz', 'dsz', # 48b - [6:11]
-         'padding16', 'padding32'] # 48b [12:13]
+         'padding16', 'padding32' # 48b [12:13]
+    ]
 
     dtype = np.dtype([
         (h[ 0], np.uint64), # smp
@@ -1280,7 +1385,6 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     # cpi in isa sim is just 1
     df['cpi'] = df[df['inst'] != 0]['smp'].diff().fillna(df['smp']).astype(int)
     if args.clk:
-        # only applicable to time sim
         df['ipc_inst'] = df['inst'].ne(0).astype(int)
         df['ipc_rolling'] = df['ipc_inst'] \
                             .rolling(window=args.hw_win_size, min_periods=1) \
@@ -1290,19 +1394,6 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df['sp_real'] = df['sp_real'].apply(
         lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
 
-    if args.save_converted_trace:
-        dfs = df.copy()
-        # some columns to hex
-        for c in ["inst"]:
-            dfs[c] = dfs[c].apply(lambda x: f'{x:08X}')
-        for c in ["pc", "next_pc", "dmem", "sp"]:
-            digits = int(math.ceil(np.log2(BASE_ADDR)/4))
-            dfs[c] = dfs[c].apply(lambda x: f'{x:0{digits}X}')
-        for c in ["isz", "dsz"]:
-            dfs[c] = dfs[c].apply(lambda x: f'{x:01X}')
-        dfs.to_csv(bin_log.replace('.bin', '.bin.csv'), index=False)
-
-    # clean up inst and pc now, after it was potentially saved to csv
     df.inst = df.inst.replace(0, np.nan) # replace NOP/bubbles with NaN
     df.pc = df.pc.replace(0, np.nan) # same as for inst
 
@@ -1314,23 +1405,26 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
 
 def run_bin_trace(bin_log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
-    df = load_bin_trace(bin_log, args)
+    df_t = load_bin_trace(bin_log, args)
     df_ret = None
     figs_ret = {}
 
-    df_ret, fig_pc, fig2_pc, rsx2_pc = \
-        run_bin_trace_pc(df, hl_inst_g, title, args)
+    df_ret, df_t_ops, fig_pc, fig2_pc, rsx2_pc = \
+        run_bin_trace_pc(df_t, hl_inst_g, title, args)
     figs_ret['pc'] = fig_pc
     figs_ret['pc_exec'] = fig2_pc
 
     _, fig_dmem, fig2_dmem, rsx2_dmem = \
-        run_bin_trace_dmem(df, title, args)
+        run_bin_trace_dmem(df_t, title, args)
     figs_ret['dmem'] = fig_dmem
     figs_ret['dmem_exec'] = fig2_dmem
 
-    if args.hw_trace:
-        fig_hw, rsx_hw = draw_hw_exec(df, title, args)
-    figs_ret['hw_exec'] = fig_hw
+    fig_hw, rsx_hw = None, None
+    if args.stats_trace:
+        if not args.dasm:
+            raise ValueError("Error: --stats_trace requires --dasm to map ops")
+        fig_hw, rsx_hw = draw_stats_exec(df_t_ops, title, args)
+        figs_ret['hw_exec'] = fig_hw
 
     figs_exec = [fig2_pc, fig2_dmem, fig_hw]
     rsx_exec = [rsx2_pc, rsx2_dmem, rsx_hw]
@@ -1348,42 +1442,65 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     return df_ret, figs_ret
 
-def run_bin_trace_pc(df_og, hl_inst_g, title, args) -> \
+def run_bin_trace_pc(df_t, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    df = df_og.groupby('pc').agg(
+    df_f = df_t.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
         count=('cpi', 'sum') # count them all (size of the group)
     ).reset_index()
-    df = df.sort_values(by='pc', ascending=True)
-    df['pc'] = df['pc'].astype(int)
-    df['pc_hex'] = df['pc'].apply(lambda x: f'{x:08x}')
+    df_f = df_f.sort_values(by='pc', ascending=True)
+    df_f['pc'] = df_f['pc'].astype(int)
+    df_f['pc_hex'] = df_f['pc'].apply(lambda x: f'{x:08x}')
 
     #if args.pc_begin:
-    #    df_og = df_og.loc[df_og.pc > hex2int(args.pc_begin)]
+    #    df_t = df_t.loc[df_t.pc > hex2int(args.pc_begin)]
     #if args.pc_end:
-    #    df_og = df_og.loc[df_og.pc < hex2int(args.pc_end)]
+    #    df_t = df_t.loc[df_t.pc < hex2int(args.pc_end)]
 
     symbols = {}
     m_hl_groups = []
     if args.dasm:
         m_hl_groups = hl_inst_g
-        symbols, df_map = backannotate_dasm(args, df, "text")
-        # merge df_map into df by keeping only records in the df
-        df = pd.merge(df, df_map, how='left', left_on='pc', right_on='pc')
-        df['count'] = df['count'].astype(int) # after merge, count becomes float
-        df_og = pd.merge(df_og, df_map, how='left', left_on='pc', right_on='pc')
+        symbols, df_map = backannotate_dasm(args, df_f, "text")
+
+        # merge df_map into df_f by keeping only records in the df_f
+        df_f = pd.merge(df_f, df_map, how='left', left_on='pc', right_on='pc')
+        df_f['count'] = df_f['count'].astype(int) # after merge, count is float
+        df_t = pd.merge(df_t, df_map, how='left', left_on='pc', right_on='pc')
+
+        df_t['i_type'] = df_t['inst_mnm'].map(INST_TO_TYPE_DICT)
+        df_t['i_mem_type'] = df_t['inst_mnm'].map(INST_TO_MEM_TYPE_DICT)
+        df_t['ops'] = df_t['inst_mnm'].map(INST_TO_OPS_DICT)
+        df_t['ops'] = df_t['ops'].fillna(0).astype(int) # fill NaN ops with 0
+        if not args.clk:
+            df_t['br_dens'] = df_t['inst_mnm'].map(INST_TO_BD_DICT)
+
+    if args.save_converted_trace:
+        df_s = df_t.copy()
+        # revert NaNs to 0 for saving as hex
+        df_s.inst = df_s.inst.replace(np.nan, 0).astype(int)
+        df_s.pc = df_s.pc.replace(np.nan, 0).astype(int)
+        # some columns to hex
+        for c in ["inst"]:
+            df_s[c] = df_s[c].apply(lambda x: f'{x:08X}')
+        for c in ["pc", "next_pc", "dmem", "sp"]:
+            digits = int(math.ceil(np.log2(BASE_ADDR)/4))
+            df_s[c] = df_s[c].apply(lambda x: f'{x:0{digits}X}')
+        for c in ["isz", "dsz"]:
+            df_s[c] = df_s[c].apply(lambda x: f'{x:01X}')
+        df_s.to_csv(args.trace.replace('.bin', '.bin.csv'), index=False)
 
     fig, rsy, fig2, rsx2, rsy2 = [None] * 5
     if args.symbols_only or not (args.pc_freq or args.pc_trace):
         # early exit, no plotting for PC
-        return df, fig, fig2, rsx2
+        return df_f, df_t, fig, fig2, rsx2
 
     if args.pc_freq:
-        fig, rsy = draw_freq(df, m_hl_groups, title, symbols, args, 'pc')
+        fig, rsy = draw_freq(df_f, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
         fig2, rsx2, rsy2 = draw_exec(
-            df_og, m_hl_groups, title, symbols, args, 'pc')
+            df_t, m_hl_groups, title, symbols, args, 'pc')
 
     # link y ranges if both figures exist
     if rsy != None and rsy2 != None:
@@ -1392,11 +1509,11 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
             fig2.get_axes()[0], rsy2
         )
 
-    return df, fig, fig2, rsx2
+    return df_f, df_t, fig, fig2, rsx2
 
-def expand_byte_accesses(df_og: pd.DataFrame) -> pd.DataFrame:
+def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
     # Work only on rows with dsz > 0
-    df = df_og.loc[df_og['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
+    df = df_t.loc[df_t['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
 
     # repeat indices
     rep_idx = np.repeat(df.index.to_numpy(), df['dsz'].to_numpy())
@@ -1410,20 +1527,20 @@ def expand_byte_accesses(df_og: pd.DataFrame) -> pd.DataFrame:
     out.reset_index(drop=True, inplace=True)
     return out
 
-def run_bin_trace_dmem(df_og, title, args) -> \
+def run_bin_trace_dmem(df_t, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    df_og['dtyp'] = df_og['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
-    df_og['dsz'] = df_og['dsz'].apply(lambda x: x-8 if x >= 8 else x)
-    df_og['dmem'] = df_og['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
+    df_t['dtyp'] = df_t['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
+    df_t['dsz'] = df_t['dsz'].apply(lambda x: x-8 if x >= 8 else x)
+    df_t['dmem'] = df_t['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
     #if args.dmem_begin:
-    #    df_og = df_og.loc[df_og.dmem > hex2int(args.dmem_begin)]
+    #    df_t = df_t.loc[df_t.dmem > hex2int(args.dmem_begin)]
     #if args.dmem_end:
-    #    df_og = df_og.loc[df_og.dmem < hex2int(args.dmem_end)]
+    #    df_t = df_t.loc[df_t.dmem < hex2int(args.dmem_end)]
 
     # to bytes as ISA is byte addressable, accesses are combined for freq plot
-    df_exp = expand_byte_accesses(df_og)
+    df_exp = expand_byte_accesses(df_t)
     df = df_exp.groupby('dmem').agg(
         dsz=('dsz', 'first'), # get only the first value
         count=('dmem', 'size') # count them all (size of the group)
@@ -1447,7 +1564,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if args.dmem_freq:
         fig, rsy = draw_freq(df, [], title, symbols, args, ctype='dmem')
     if args.dmem_trace:
-        fig2, rsx2, rsy2 = draw_exec(df_og, [], title, symbols, args, 'dmem')
+        fig2, rsx2, rsy2 = draw_exec(df_t, [], title, symbols, args, 'dmem')
 
     # link y ranges if both figures exist
     if rsy != None and rsy2 != None:
@@ -1491,7 +1608,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. Trace only option")
 
-    parser.add_argument('--hw_trace', action='store_true', help="Plot hardware stats/counters time trace. Trace only option. Eequires trace from either ISA sim with HW models or RTL sim")
+    parser.add_argument('--stats_trace', action='store_true', help="Plot stats and hardware counters time trace. Trace only option. Eequires trace from either ISA sim with HW models or RTL sim")
     parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
 
     parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
@@ -1502,7 +1619,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--save_converted_trace', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
 
     # common options
-    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color.")
+    parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color. Defaults to predefined groups if not provided. Use 'off' to disable highlighting")
     # TODO: add highlighting for function calls/PC ?
     parser.add_argument('-b', '--browser', action='store_true', help="Open plots in the web browser instead of a pop-up window")
     parser.add_argument('--host', action='store_true', help="Host server for all machines on LAN instead of local-only. Only applicable if used with --browser")
@@ -1533,7 +1650,7 @@ def run_main(args) -> None:
     at_least_one = \
         args.pc_freq or args.pc_trace or \
         args.dmem_freq or args.dmem_trace or \
-        args.hw_trace
+        args.stats_trace
     data_run = args.save_converted_trace or args.save_csv
     if run_trace and not at_least_one and not data_run:
         raise ValueError("At least one trace-based plot needs to be specified "
@@ -1568,7 +1685,9 @@ def run_main(args) -> None:
         raise FileNotFoundError(f"File {args_log} not found")
 
     hl_inst_g = []
-    if not (args.highlight == None):
+    if (args.highlight == ["off"]):
+        pass
+    elif (args.highlight != None):
         if len(args.highlight) > len(HL_COLORS):
             raise ValueError(f"Too many instructions to highlight " + \
                              f"max is {len(HL_COLORS)}, " + \
@@ -1579,6 +1698,8 @@ def run_main(args) -> None:
             else: # already split on whitespace (somehow?)
                 hl_inst_g = args.highlight
             hl_inst_g = [ah.split(",") for ah in hl_inst_g]
+    else:
+        hl_inst_g = HL_DEFAULT
 
     fig_arr = []
     ext = os.path.splitext(args_log)[1]
