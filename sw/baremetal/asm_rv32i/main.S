@@ -316,8 +316,14 @@ pass:
     PASS
 
 .data
+.align 6 # align to cache line
 dat1: .word 0x55551f12
 dat2: .word 0xfff10357
 dat3: .word 0xe0e142e2
 dat4: .word 0x00000000
 dat5: .word 0xf0e0d0c0
+# fill the rest of the 64B cache line with known values
+# 16-5 words left, each 4 bytes
+buf1: .fill 3, 4, 0x0000DEAD
+buf2: .fill 4, 4, 0x0000BEEF
+buf3: .fill 4, 4, 0x0000C0DE
