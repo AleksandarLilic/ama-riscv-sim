@@ -1,7 +1,7 @@
 {
     "hw_params": {
-        "icache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "policy": ["lru"], "max_size": 4096},
-        "dcache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "policy": ["lru"], "max_size": 4096}
+        "icache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "re_policy": ["lru"], "max_size": 4096},
+        "dcache": { "sets": [1, 2, 4, 8, 16, 32, 64], "ways": [1, 2, 4, 6, 8], "re_policy": ["lru"], "max_size": 4096}
     },
     "workloads": {
         "stream_int": [["stream"],   {"thr_icache_hr": 90, "thr_dcache_hr": 0}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 4"}, {"skip_search": false}],

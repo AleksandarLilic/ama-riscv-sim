@@ -76,8 +76,13 @@ const std::unordered_map<std::string, perf_event_t> perf_event_map = {
 };
 
 #ifdef HW_MODELS_EN
-const std::unordered_map<std::string, cache_policy_t> cache_policy_map = {
-    {"lru", cache_policy_t::lru}
+const std::unordered_map<std::string, cache_re_policy_t> cache_re_policy_map = {
+    {"lru", cache_re_policy_t::lru}
+};
+
+const std::unordered_map<std::string, cache_wr_policy_t> cache_wr_policy_map = {
+    {"wt", cache_wr_policy_t::wt},
+    {"wb", cache_wr_policy_t::wb}
 };
 
 // allowed options for static predictor methods
@@ -140,10 +145,11 @@ struct hw_defs_t {
     // caches
     static constexpr char icache_sets[] = "4";
     static constexpr char icache_ways[] = "2";
-    static constexpr char icache_policy[] = "lru";
+    static constexpr char icache_re_policy[] = "lru";
     static constexpr char dcache_sets[] = "8";
     static constexpr char dcache_ways[] = "2";
-    static constexpr char dcache_policy[] = "lru";
+    static constexpr char dcache_re_policy[] = "lru";
+    static constexpr char dcache_wr_policy[] = "wb";
     static constexpr char show_cache_state[] = "false";
     // caches other configs
     static constexpr char roi_start[] = "0";
@@ -256,16 +262,19 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_sets))
         ("icache_ways", "Number of ways in I$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_ways))
-        ("icache_policy", "I$ replacement policy. \nOptions: " +
-         gen_help_list(cache_policy_map),
-         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_policy))
+        ("icache_re_policy", "I$ replacement policy. \nOptions: " +
+         gen_help_list(cache_re_policy_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_re_policy))
         ("dcache_sets", "Number of sets in D$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_sets))
         ("dcache_ways", "Number of ways in D$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_ways))
-        ("dcache_policy", "D$ replacement policy. \nOptions: " +
-         gen_help_list(cache_policy_map),
-         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_policy))
+        ("dcache_re_policy", "D$ replacement policy. \nOptions: " +
+         gen_help_list(cache_re_policy_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_re_policy))
+        ("dcache_wr_policy", "D$ write policy. \nOptions: " +
+         gen_help_list(cache_wr_policy_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_wr_policy))
         // caches other configs
         ("roi_start", "Region of interest start address (hex)",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_start))
@@ -405,10 +414,14 @@ int main(int argc, char* argv[]) {
         // caches
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
-        hw_cfg.icache_policy = RESOLVE_ARG("icache_policy", cache_policy_map);
+        hw_cfg.icache_re_policy =
+            RESOLVE_ARG("icache_re_policy", cache_re_policy_map);
         hw_cfg.dcache_sets = TO_SIZE(result["dcache_sets"]);
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
-        hw_cfg.dcache_policy = RESOLVE_ARG("dcache_policy", cache_policy_map);
+        hw_cfg.dcache_re_policy =
+            RESOLVE_ARG("dcache_re_policy", cache_re_policy_map);
+        hw_cfg.dcache_wr_policy =
+            RESOLVE_ARG("dcache_wr_policy", cache_wr_policy_map);
         // caches other configs
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);

@@ -2,16 +2,20 @@
 #include "main_memory.h"
 
 cache::cache(
+    cache_type_t type,
     uint32_t sets,
     uint32_t ways,
-    cache_policy_t policy,
+    cache_re_policy_t re_policy,
+    cache_wr_policy_t wr_policy,
     std::string cache_name) :
+        type(type),
         sets(sets),
         ways(ways),
-        policy(policy),
+        re_policy(re_policy),
+        wr_policy(wr_policy),
         cache_name(cache_name)
     {
-    validate_inputs(sets, ways, policy);
+    validate_inputs(sets, ways, re_policy, wr_policy);
     direct_mapped = (ways == 1);
 
     // first dim is number of sets
@@ -112,7 +116,6 @@ cache_ref_t cache::reference(
         auto& line = cache_entries[ccl.index][way];
         if (line.metadata.valid && (line.tag == ccl.tag)) {
             // hit, doesn't go to main mem
-
             scp_status = update_scp(scp_mode, line, ccl.index);
 
             #ifdef DASM_EN
@@ -134,25 +137,32 @@ cache_ref_t cache::reference(
                 *hws = hw_status_t::hit;
                 return cache_ref_t::hit;
             }
+
             update_lru(ccl.index, way);
             line.referenced();
             stats.hit(atype);
             if (roi.has(addr)) roi.stats.hit(atype);
 
-            #if CACHE_MODE == CACHE_MODE_FUNC
             if (atype == mem_op_t::write) {
+                #if CACHE_MODE == CACHE_MODE_FUNC
                 write_to_cache(ccl.byte_addr, size, line);
-            } else {
+                #endif
+                if (wr_policy == cache_wr_policy_t::wt) {
+                    stats.writeback();
+                    if (roi.has(line.tag << tag_off)) roi.stats.writeback();
+                } else {
+                    line.metadata.dirty = true;
+                }
+            } else { // read
+                #if CACHE_MODE == CACHE_MODE_FUNC
                 read_from_cache(ccl.byte_addr, size, line);
+                #endif
             }
-            #else
-            if (atype == mem_op_t::write) line.metadata.dirty = true;
-            #endif
 
             *hws = hw_status_t::hit;
             return cache_ref_t::hit;
 
-        } else {
+        } else { // keep looking for victim line
             // potentially a miss, keep the largest lru count as victim line
             if ((line.metadata.lru_cnt >= ccl.victim.lru_cnt) &&
                 !line.metadata.scp) {
@@ -207,12 +217,12 @@ void cache::miss(
     });
     #endif
 
-    // evict the line
+    // replace the line (evict if dirty)
     auto& act_line = cache_entries[ccl.index][ccl.victim.way_idx];
     if (act_line.metadata.valid) {
-        stats.evict(act_line.metadata.dirty);
+        stats.replace(act_line.metadata.dirty);
         if (roi.has(act_line.tag << tag_off)) {
-            roi.stats.evict(act_line.metadata.dirty);
+            roi.stats.replace(act_line.metadata.dirty);
         }
         if (act_line.metadata.dirty) {
             #if CACHE_MODE == CACHE_MODE_FUNC
@@ -231,11 +241,23 @@ void cache::miss(
 
     #if CACHE_MODE == CACHE_MODE_FUNC
     act_line.data = mem->rd_line(addr - BASE_ADDR);
-    if (atype == mem_op_t::write) write_to_cache(ccl.byte_addr, size, act_line);
-    else read_from_cache(ccl.byte_addr, size, act_line);
-    #else
-    if (atype == mem_op_t::write) act_line.metadata.dirty = true;
     #endif
+    if (atype == mem_op_t::write) {
+        #if CACHE_MODE == CACHE_MODE_FUNC
+        write_to_cache(ccl.byte_addr, size, act_line);
+        #endif
+        if (wr_policy == cache_wr_policy_t::wt) {
+            stats.writeback();
+            if (roi.has(act_line.tag << tag_off)) roi.stats.writeback();
+        } else {
+            act_line.metadata.dirty = true;
+        }
+    } else { // read
+        #if CACHE_MODE == CACHE_MODE_FUNC
+        read_from_cache(ccl.byte_addr, size, act_line);
+        #endif
+    }
+
 
     #ifdef SCP_BACKDOOR
     // useful for debugging, to convert a specific address to scratchpad
@@ -315,12 +337,32 @@ scp_status_t cache::release_scp(cache_line_t& line) {
 }
 
 void cache::validate_inputs(
-    uint32_t sets, uint32_t ways, cache_policy_t policy) {
+    uint32_t sets,
+    uint32_t ways,
+    cache_re_policy_t re_policy,
+    cache_wr_policy_t wr_policy
+) {
     bool error = false;
 
-    if (policy != cache_policy_t::lru) {
+    if (re_policy != cache_re_policy_t::lru) {
         std::cerr << "ERROR: " << cache_name
-                  << ": only LRU policy is supported" << std::endl;
+                  << ": only LRU re_policy is supported" << std::endl;
+        error = true;
+    }
+
+    if (type == cache_type_t::inst &&
+        wr_policy != cache_wr_policy_t::none) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": instruction cache cannot have a write policy"
+                  << std::endl;
+        error = true;
+    } else if (type == cache_type_t::data &&
+               wr_policy != cache_wr_policy_t::wb &&
+               wr_policy != cache_wr_policy_t::wt) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": only write-back and write-through policies are "
+                     "supported"
+                  << std::endl;
         error = true;
     }
 
@@ -372,10 +414,11 @@ void cache::read_from_cache(
 
 void cache::write_to_cache(
     uint32_t byte_addr, uint32_t size, cache_line_t& act_line) {
-    // write-back policy, just mark the line as dirty
-    act_line.metadata.dirty = true;
     for (uint32_t i = 0; i < size; i++) {
         act_line.data[byte_addr + i] = TO_U8(wr_buf >> (i * 8));
+    }
+    if (wr_policy == cache_wr_policy_t::wt) {
+        mem->wr_line((act_line.tag << tag_off) - BASE_ADDR, act_line.data);
     }
 }
 #endif

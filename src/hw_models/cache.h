@@ -73,23 +73,34 @@ struct current_cache_line {
 class main_memory; // forward declaration
 
 /*
-Cache parameters (P: parametrized, D: derived, S: single option):
+cache parameters (
+    P: parametrized,
+    D: derived,
+    S: single option
+):
 - line size (P): number of bytes in a cache line
 - sets (P): number of sets in the cache
 - ways (P): associativity - number of ways in each set
-- size (D): sets * ways * CACHE_LINE_SIZE
-- replacement policy (S): LRU
-- write policy (S): write-back
+- size (D): sets * ways * CACHE_LINE_SIZE [bytes]
+- policies:
+    - insertion (S): MRU - on miss, insert new line as most recently used
+    - promotion (S): full - on hit, promote line to MRU position
+    - eviction  (P): LRU - on miss, evict/replace LRU line in way
+    - write     (P): 1. write-back (write on eviction if dirty)
+                     2. write-through (write to mem on write)
 - write-allocate (S): yes
 - prefetching (S): no
-- inclusive/exclusive (S): not applicable, no L2 cache
+- sub-blocking (S): no
+- inclusive/exclusive (S): not applicable, no L2 cache assumed
 - cache coherence (S): not applicable, single core
 */
 class cache {
     private:
+        cache_type_t type;
         uint32_t sets;
         uint32_t ways;
-        cache_policy_t policy;
+        cache_re_policy_t re_policy;
+        cache_wr_policy_t wr_policy;
         bool direct_mapped;
         uint32_t index_bits_num;
         uint32_t index_mask;
@@ -122,8 +133,13 @@ class cache {
     public:
         cache() = delete;
         cache(
-            uint32_t sets, uint32_t ways, cache_policy_t policy,
-            std::string cache_name);
+            cache_type_t type,
+            uint32_t sets,
+            uint32_t ways,
+            cache_re_policy_t re_policy,
+            cache_wr_policy_t wr_policy,
+            std::string cache_name
+        );
         void set_mem(MEM_TYPE* mem) { this->mem = mem; }
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
@@ -174,7 +190,11 @@ class cache {
         scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
         void validate_inputs(
-            uint32_t sets, uint32_t ways, cache_policy_t policy);
+            uint32_t sets,
+            uint32_t ways,
+            cache_re_policy_t re_policy,
+            cache_wr_policy_t wr_policy
+            );
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(
             uint32_t byte_addr, uint32_t size, cache_line_t& act_line);

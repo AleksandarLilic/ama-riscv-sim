@@ -567,7 +567,7 @@ def gen_cache_final_params(cache, sr: Dict) -> List[List[Tuple[str, Any]]]:
                 command.append(f"{sets}")
                 command.append(f"--{cache}_ways")
                 command.append(f"{ways}")
-                command.append(f"--{cache}_policy")
+                command.append(f"--{cache}_re_policy")
                 command.append(f"{policy}")
                 cmds.append(command)
     return cmds

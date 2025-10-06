@@ -10,7 +10,7 @@
     << JSON_N << "\"misses\": " \
     << "{\"reads\": " << stat_struct->misses.ld \
     << ", \"writes\": " << stat_struct->misses.st << "}, " \
-    << JSON_N << "\"evicts\": " << stat_struct->evicts << "," \
+    << JSON_N << "\"replacements\": " << stat_struct->replacements << "," \
     << JSON_N << "\"writebacks\": " << stat_struct->writebacks << "," \
     << JSON_N << "\"ct_core\": " \
     << "{\"reads\": " << stat_struct->ct_core.reads \
@@ -99,7 +99,7 @@ struct cache_stats_t {
         uint32_t references;
         ls_pair hits;
         ls_pair misses;
-        uint32_t evicts;
+        uint32_t replacements;
         uint32_t writebacks;
         cache_traffic_t ct_core;
         cache_traffic_t ct_mem;
@@ -107,7 +107,8 @@ struct cache_stats_t {
 
     public:
         cache_stats_t() :
-            references(0), hits(), misses(), evicts(0), writebacks(0),
+            references(0), hits(), misses(),
+            replacements(0), writebacks(0),
             ct_core(), ct_mem() {}
 
         void profiling(bool enable) { prof_active = enable; }
@@ -129,13 +130,11 @@ struct cache_stats_t {
             misses.st += (atype == mem_op_t::write);
             ct_mem.reads += CACHE_LINE_SIZE;
         }
-        void evict(bool dirty) {
+        void replace(bool dirty) {
             if (!prof_active) return;
-            evicts++;
+            replacements++;
             if (dirty) writeback();
         }
-
-    private:
         void writeback() {
             if (!prof_active) return;
             writebacks++;
@@ -151,12 +150,12 @@ struct cache_stats_t {
             return hr;
         }
         void show() {
-            std::cout << "R: " << references
+            std::cout << "Ref: " << references
                       << ", H: " << hits.all()
                       << "(" << hits.ld << "/" << hits.st << ")"
                       << ", M: " << misses.all()
                       << "(" << misses.ld << "/" << misses.st << ")"
-                      << ", E: " << evicts
+                      << ", R: " << replacements
                       << ", WB: " << writebacks
                       << ", HR: " << std::fixed << std::setprecision(2)
                       << get_hr() << "%"

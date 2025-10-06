@@ -1911,7 +1911,7 @@ void core::dump() {
         }
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
-              << ", logged: " << prof_pc.inst_cnt << "\n";
+              << ", profiled: " << prof_pc.inst_cnt << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
     else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
 

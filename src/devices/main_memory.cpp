@@ -1,9 +1,20 @@
 #include "main_memory.h"
 
 #define ICACHE_CFG \
-    hw_cfg.icache_sets, hw_cfg.icache_ways, hw_cfg.icache_policy, "icache"
+    cache_type_t::inst, \
+    hw_cfg.icache_sets, \
+    hw_cfg.icache_ways, \
+    hw_cfg.icache_re_policy, \
+    cache_wr_policy_t::none, \
+    "icache"
+
 #define DCACHE_CFG \
-    hw_cfg.dcache_sets, hw_cfg.dcache_ways, hw_cfg.dcache_policy, "dcache"
+    cache_type_t::data, \
+    hw_cfg.dcache_sets, \
+    hw_cfg.dcache_ways, \
+    hw_cfg.dcache_re_policy, \
+    hw_cfg.dcache_wr_policy, \
+    "dcache"
 
 main_memory::main_memory(
     size_t size,
