@@ -21,7 +21,7 @@ OBJDUMP_OPTS += --start-address=0x40000 --stop-address=0x50000
 OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 #OBJDUMP_OPTS += --visualize-jumps
 #OBJDUMP_OPTS += -S # inline C source code in disassembly
-MEM_WIDTH := 32
+MEM_WIDTH := 128
 
 TESTS := $(notdir $(shell find $(DIR) -type f -name "*.S"))
 TESTS_BIN := $(subst .S,.bin,$(TESTS))
