@@ -20,13 +20,20 @@ uart::~uart() {
     #endif
 }
 
+#ifdef DPI
+// force flush to file on every character, unreliable output otherwise
+#define UART_FLUSH << std::flush;
+#else
+#define UART_FLUSH
+#endif
+
 void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
     // writes to status and rx_data registers are ignored
     if (address == UART_TX_DATA) {
         // write to memory
         dev::wr(address, TO_U8(data), size);
         // emulate the effect of writing to uart tx_data register
-        uart_ofs << TO_U8(data);
+        uart_ofs << TO_U8(data) UART_FLUSH;
         if (!sink_uart) std::cout << TO_U8(data) << std::flush;
     }
 }

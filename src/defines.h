@@ -8,6 +8,7 @@
 #else // DPI mode
 #define PROFILERS_EN
 #define DASM_EN
+#define UART_EN
 #endif
 
 #ifdef DASM_EN
