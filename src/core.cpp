@@ -1433,7 +1433,12 @@ void core::csr_cnt_update(uint16_t csr_addr) {
     csr.at(CSR_CYCLEH).value = csr.at(CSR_MCYCLEH).value;
     csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
     csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
+    #ifdef DPI
+    // FIXME: ugly workaround
+    uint64_t mtime_shadow = clk_src.get_mtime();
+    #else
     uint64_t mtime_shadow = mem->get_mtime_shadow();
+    #endif
     csr.at(CSR_TIME).value = TO_U32(mtime_shadow);
     csr.at(CSR_TIMEH).value = TO_U32(mtime_shadow >> 32);
 }

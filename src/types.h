@@ -160,14 +160,17 @@ struct clock_source_t {
         uint64_t pr = 0;
         uint64_t cr = 0;
         uint64_t diff = 0;
+        uint64_t mtime = 0; // FIXME: ugly workaround
     public:
-        void update(uint64_t sample) {
+        void update(uint64_t sample, uint64_t mtime) {
             pr = cr;
             cr = sample;
             diff = cr - pr;
+            this->mtime = mtime;
         }
         uint64_t get_cr() { return cr; }
         uint64_t get_diff() { return diff; }
+        uint64_t get_mtime() { return mtime; }
 };
 
 struct symbol_map_entry_t {
