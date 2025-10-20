@@ -76,7 +76,7 @@ class core {
             // MPP always in machine mode (0x3)
             if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
         }
-        void cntr_update();
+        void csr_cnt_update(uint16_t csr_addr);
         void prof_state(bool enable);
         #ifndef DPI
         void save_trace_entry();
@@ -369,6 +369,7 @@ class core {
         uint32_t inst;
         uint64_t inst_cnt;
         uint64_t inst_cnt_csr;
+        uint64_t cycle_cnt_csr;
         trap tu;
         uint8_t rf_names_idx;
         uint8_t rf_names_w;

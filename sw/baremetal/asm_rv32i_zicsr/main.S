@@ -110,6 +110,16 @@ misa_write:
     csrr x26, CSR_MISA
     bne x26, x0, fail # still 0 when writing to unimplemented misa
 
+mcycle_reset: # bad idea to read mcycle before writing to it
+    li x26, 0x0
+    csrw CSR_MCYCLE, x26
+    # add some cycles
+    addi x15, x0, 16
+    addi x7, x0, 99
+    addi x15, x15, 2
+    j .+4 # nop but takes a cycle in current uarch
+    add x8, x15, x7
+
 mcycle_read:
     csrr x26, CSR_MCYCLE
     TEST_INC

@@ -6,7 +6,7 @@ core::core(
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         running(false),
         mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
-        inst_cnt(0), inst_cnt_csr(0),
+        inst_cnt(0), inst_cnt_csr(0), cycle_cnt_csr(0),
         tu(&csr, &pc, &inst),
         out_dir(cfg.out_dir), prof_pc(cfg.prof_pc), prof_act(false)
     #ifdef PROFILERS_EN
@@ -88,7 +88,7 @@ void core::exec() {
     while (running) exec_inst();
 
     // wrap up
-    cntr_update(); // so that all instructions since last CSR access are counted
+    csr_cnt_update(0u); // so that all instructions since last CSR access are counted
     finish(true);
     return;
 }
@@ -1367,8 +1367,8 @@ void core::simd_ss_finish(std::string c, std::string a, std::string b) {
 
 // Zicsr extension
 void core::csr_access() {
-    cntr_update();
     uint16_t csr_addr = TO_U16(ip.csr_addr());
+    csr_cnt_update(csr_addr);
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
         #ifdef DASM_EN
@@ -1405,14 +1405,28 @@ void core::csr_access() {
 }
 
 // Zicntr extension
-void core::cntr_update() {
-    // TODO: for DPI environment, these have to either be revisited or ignored
+void core::csr_cnt_update(uint16_t csr_addr) {
+    uint64_t offset = 0;
     uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
-    csr.at(CSR_MCYCLE).value += inst_elapsed & 0xFFFFFFFF;
-    csr.at(CSR_MCYCLEH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
+    // if current inst writes to instret, skip it in diff
+    if ((csr_addr == CSR_MINSTRET) || (csr_addr == CSR_MINSTRETH)) offset = 1;
+    inst_cnt_csr = inst_cnt + offset;
+
+    offset = 0;
+    // if current inst writes to mcycle, skip this cycle in diff
+    if ((csr_addr == CSR_MCYCLE) || (csr_addr == CSR_MCYCLEH)) offset = 1;
+    #ifdef DPI
+    uint64_t cycle_elapsed = clk_src.get_cr() - cycle_cnt_csr;
+    cycle_cnt_csr = clk_src.get_cr() + offset;
+    #else
+    uint64_t cycle_elapsed = inst_cnt - cycle_cnt_csr; // inst=cycle in isa sim
+    cycle_cnt_csr = inst_cnt + offset;
+    #endif
+
     csr.at(CSR_MINSTRET).value += inst_elapsed & 0xFFFFFFFF;
     csr.at(CSR_MINSTRETH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
-    inst_cnt_csr = inst_cnt;
+    csr.at(CSR_MCYCLE).value += cycle_elapsed & 0xFFFFFFFF;
+    csr.at(CSR_MCYCLEH).value += (cycle_elapsed >> 32) & 0xFFFFFFFF;
 
     // user mode shadows
     csr.at(CSR_CYCLE).value = csr.at(CSR_MCYCLE).value;
