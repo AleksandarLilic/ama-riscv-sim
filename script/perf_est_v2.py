@@ -192,9 +192,18 @@ class perf:
         self.total_cycles_bc = int(np.ceil(self.total_cycles_bc))
         self.perf_str = f"Estimated HW performance at {self.freq}MHz:"
         self.perf_str += f"{DELIM}Best:  "
-        self.perf_str += self._estimated_perf(self.total_cycles_bc)
+        self.perf_str += self._estimated_perf(self.total_cycles_bc, "best")
         self.perf_str += f"{DELIM}Worst: "
-        self.perf_str += self._estimated_perf(self.total_cycles_wc)
+        self.perf_str += self._estimated_perf(self.total_cycles_wc, "worst")
+
+        width = self.est["best"]["ipc"] - self.est["worst"]["ipc"]
+        center = (self.est["best"]["ipc"] + self.est["worst"]["ipc"]) / 2
+        est_ratio = width / center
+        self.perf_str += (
+            f"{DELIM}Estimated IPC range width: {width:.3f}, " +
+            f"center: {center:.3f}, " +
+            f"ratio: {est_ratio*100:.2f}%"
+        )
 
     # TODO:
     # D$ and alu stalls can technically overlap, but unlikely in current uarch
@@ -235,15 +244,16 @@ class perf:
         for key in entry['breakdown']:
             self.b[key] += entry['breakdown'][key]
 
-    def _estimated_perf(self, cycles):
+    def _estimated_perf(self, cycles, mode):
         cycles = int(np.ceil(cycles))
         cpi = cycles / self.inst_total
         exec_time_us = cycles * self.period
         mips = self.inst_total / exec_time_us
-        self.est["cpi"] = round(cpi, 3)
-        self.est["ipc"] = round(1/cpi, 3)
-        self.est["exec_time_us"] = round(exec_time_us, 2)
-        self.est["mips"] = round(mips, 2)
+        self.est[mode] = {}
+        self.est[mode]["cpi"] = round(cpi, 3)
+        self.est[mode]["ipc"] = round(1/cpi, 3)
+        self.est[mode]["exec_time_us"] = round(exec_time_us, 2)
+        self.est[mode]["mips"] = round(mips, 2)
         out = f"Cycles: {cycles}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
               f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
         return out
@@ -323,22 +333,24 @@ class perf:
     def save_as_df(self) -> None:
         attrs = vars(self).copy()
         branches = attrs.pop('b')
-        predictions = attrs.pop('p')
         est = attrs.pop('est')
         _ = attrs.pop('inst_profiler_path')
         _ = attrs.pop('perf_str')
-        all_flat = {**attrs, **branches, **predictions, **est}
+        all_flat = {**attrs, **branches, **est}
         df = pd.DataFrame([all_flat])
         df.to_csv(self.inst_profiler_path.replace(".json", "_perf_est.csv"),
                   index=False)
+        print(f"\nSaved performance estimation as CSV to " +
+              f"{self.inst_profiler_path.replace('.json', '_perf_est.csv')}")
 
 if __name__ == "__main__":
     inst_profiler_path = sys.argv[1]
     hw_stats_path = sys.argv[2]
     hw_perf_metrics_path = sys.argv[3]
 
-    # use with caution
-    realistic = sys.argv[4] == "-r" if len(sys.argv) > 4 else False
+    # use with caution, set to False by default
+    realistic = False
+    corr = float(sys.argv[4]) if len(sys.argv) > 4 else np.nan # run correlation
 
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
@@ -347,6 +359,54 @@ if __name__ == "__main__":
     if not os.path.isfile(hw_perf_metrics_path):
         raise ValueError(f"File {hw_perf_metrics_path} not found")
 
-    est = perf(
+    res = perf(
         inst_profiler_path, hw_stats_path, hw_perf_metrics_path, realistic)
-    print(est)
+    print(res)
+
+    if not np.isnan(corr):
+        import matplotlib.pyplot as plt
+        print("\n==== IPC Correlation ====")
+        ipc_best = res.est["best"]["ipc"]
+        ipc_worst = res.est["worst"]["ipc"]
+        inside = ipc_worst <= corr <= ipc_best # ipc, higher is better
+        inout_str = "INSIDE" if inside else "OUTSIDE"
+        print(f"Correlation IPC is {inout_str} estimated range")
+
+        center = (ipc_worst + ipc_best) / 2
+        width = ipc_best - ipc_worst
+        signed_error = (corr - center) / (width / 2)
+        print(f"Signed error: {signed_error*100:.2f}%")
+
+        # --- Plot ---
+        fig, ax = plt.subplots(figsize=(8, 2))
+
+        # range bar
+        ax.hlines(0, ipc_worst-(width*.1), ipc_best+(width*.1),
+                  color='lightgray', linewidth=14, label='Estimate range')
+
+        # add markers
+        ax.vlines(ipc_worst, -0.1, 0.1,
+                  color='tab:red', linewidth=2, label='ipc_worst bound')
+        ax.vlines(ipc_best, -0.1, 0.1,
+                  color='tab:green', linewidth=2, label='ipc_best bound')
+        ax.vlines(corr, -0.15, 0.15,
+                  color='tab:blue', linewidth=2, label='corr')
+
+        # annotate
+        ax.text(ipc_worst, 0.12, f'worst\n{ipc_worst}',
+                ha='center', color='tab:red')
+        ax.text(ipc_best, 0.12, f'best\n{ipc_best}',
+                ha='center', color='tab:green')
+        ax.text(corr, -0.36, f'corr\n{corr}',
+                ha='center', color='tab:blue')
+
+        # style
+        ax.margins(0,0)
+        ax.set_ylim(-0.4, 0.4)
+        ax.set_yticks([])
+        ax.set_xlabel('IPC')
+        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
+        ax.set_title('Estimate vs Correlation IPC')
+
+        plt.tight_layout()
+        plt.show()
