@@ -93,8 +93,8 @@ endif
 
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(call GET_DEFINES,$*) \
-	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(USER_DEFINES) $(LIBS)
+	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
+	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
@@ -115,8 +115,7 @@ COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
 COMMON_FLAGS += -Werror -pedantic
 
 BUILD_COMMON = \
-	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) -c $< -o $@ \
-	$(USER_DEFINES)
+	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) -c $< -o $@
 
 $(COMMON_BUILD_DIR)/%.o: %.c %.h
 	$(BUILD_COMMON)

@@ -261,6 +261,7 @@ main()
 		//PROF_STOP;
 	}
 
+    GLOBAL_SYMBOL(stream_summary);
     /*	--- SUMMARY --- */
 
     for (k=1; k<NTIMES; k++) /* note -- skip first iteration */
