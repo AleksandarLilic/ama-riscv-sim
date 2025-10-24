@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 from run_analysis import json_prof_to_df
 
-DELIM = "\n    "
+DELIM = " " * 4
+DELIM_N = "\n    "
 R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
 # main mem configuration assumptions based on the port contention from hwpm
@@ -191,16 +192,16 @@ class perf:
         self.total_cycles_wc = int(np.ceil(self.total_cycles_wc))
         self.total_cycles_bc = int(np.ceil(self.total_cycles_bc))
         self.perf_str = f"Estimated HW performance at {self.freq}MHz:"
-        self.perf_str += f"{DELIM}Best:  "
+        self.perf_str += f"{DELIM_N}Best:  "
         self.perf_str += self._estimated_perf(self.total_cycles_bc, "best")
-        self.perf_str += f"{DELIM}Worst: "
+        self.perf_str += f"{DELIM_N}Worst: "
         self.perf_str += self._estimated_perf(self.total_cycles_wc, "worst")
 
         width = self.est["best"]["ipc"] - self.est["worst"]["ipc"]
         center = (self.est["best"]["ipc"] + self.est["worst"]["ipc"]) / 2
         est_ratio = width / center
         self.perf_str += (
-            f"{DELIM}Estimated IPC range width: {width:.3f}, " +
+            f"{DELIM_N}Estimated IPC range width: {width:.3f}, " +
             f"center: {center:.3f}, " +
             f"ratio: {est_ratio*100:.2f}%"
         )
@@ -310,11 +311,11 @@ class perf:
 
         out_stalls = f"Pipeline stalls (max): " + \
             f"FE/BE: {self.fe_stalls}/{self.be_stalls}, " + \
-            f"{DELIM}FE: " + \
+            f"{DELIM_N}FE: " + \
             f"ICache: {self.ic_stalls}, " + \
             f"Jumps: {self.j_stalls}, " + \
             f"Branches: {self.b_stalls}" + \
-            f"{DELIM}BE: " + \
+            f"{DELIM_N}BE: " + \
             f"DCache: {self.dc_stalls} " + \
             f"MUL: {self.mul_stalls}, " + \
             f"DIV: {self.div_stalls}, " + \
@@ -323,9 +324,9 @@ class perf:
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
-                f"\n{DELIM.join(out_ic)}" + \
-                f"\n{DELIM.join(out_dc)}" + \
-                f"\n{DELIM.join(out_b)}" + \
+                f"\n{DELIM_N.join(out_ic)}" + \
+                f"\n{DELIM_N.join(out_dc)}" + \
+                f"\n{DELIM_N.join(out_b)}" + \
                 f"\n{out_stalls}"
 
         return f"{stats}\n{self.perf_str}"
@@ -351,6 +352,7 @@ if __name__ == "__main__":
     # use with caution, set to False by default
     realistic = False
     corr = float(sys.argv[4]) if len(sys.argv) > 4 else np.nan # run correlation
+    fr = (sys.argv[5] == "-f") if len(sys.argv) > 5 else False # full range X
 
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
@@ -365,24 +367,25 @@ if __name__ == "__main__":
 
     if not np.isnan(corr):
         import matplotlib.pyplot as plt
-        print("\n==== IPC Correlation ====")
+        print("\nIPC Correlation")
         ipc_best = res.est["best"]["ipc"]
         ipc_worst = res.est["worst"]["ipc"]
         inside = ipc_worst <= corr <= ipc_best # ipc, higher is better
         inout_str = "INSIDE" if inside else "OUTSIDE"
-        print(f"Correlation IPC is {inout_str} estimated range")
+        print(f"{DELIM}Input correlation IPC is {inout_str} estimated range")
 
         center = (ipc_worst + ipc_best) / 2
         width = ipc_best - ipc_worst
-        signed_error = (corr - center) / (width / 2)
-        print(f"Signed error: {signed_error*100:.2f}%")
+        signed_diff = (corr - center) / (width / 2)
+        print(
+            f"{DELIM}Signed difference from the center: {signed_diff*100:.2f}%")
 
         # --- Plot ---
         fig, ax = plt.subplots(figsize=(8, 2))
 
         # range bar
-        ax.hlines(0, ipc_worst-(width*.1), ipc_best+(width*.1),
-                  color='lightgray', linewidth=14, label='Estimate range')
+        ax.hlines(
+            0, 0, 1, color='lightgray', linewidth=14, label='Estimate range')
 
         # add markers
         ax.vlines(ipc_worst, -0.1, 0.1,
@@ -403,6 +406,11 @@ if __name__ == "__main__":
         # style
         ax.margins(0,0)
         ax.set_ylim(-0.4, 0.4)
+        if not fr:
+            xmin = min(ipc_worst, corr)
+            xmax = max(ipc_best, corr)
+            xrange = xmax - xmin
+            ax.set_xlim(xmin - xrange*.1, xmax + xrange*.1)
         ax.set_yticks([])
         ax.set_xlabel('IPC')
         ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
