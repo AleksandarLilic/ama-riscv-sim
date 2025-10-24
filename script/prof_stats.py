@@ -74,7 +74,6 @@ def accumulate_samples(lines: Iterable[str]) -> Tuple[pd.DataFrame, int]:
 
 def format_flat_profile(
     df: pd.DataFrame,
-    top_n: Optional[int] = None,
     clk: Optional[float] = None,
 ) -> pd.DataFrame:
     smpls = df.attrs['total_samples']
@@ -111,9 +110,6 @@ def format_flat_profile(
         # Ensure no stale unit lingers
         work.attrs.pop('time_unit', None)
 
-    if top_n is not None:
-        work = work.head(top_n)
-
     return work
 
 def print_profile(df: pd.DataFrame, merged=False) -> None:
@@ -138,6 +134,7 @@ def print_profile(df: pd.DataFrame, merged=False) -> None:
                 float(getattr(row, 'cum_percent_inst')),
                 int(getattr(row, 'self_counts_inst')),
                 int(getattr(row, 'total_counts_inst')),
+
                 float(getattr(row, 'percent_cycle')),
                 float(getattr(row, 'cum_percent_cycle')),
                 int(getattr(row, 'self_counts_cycle')),
@@ -146,6 +143,7 @@ def print_profile(df: pd.DataFrame, merged=False) -> None:
                 float(getattr(row, 'total_time')),
                 float(getattr(row, 'ipc')),
                 float(getattr(row, 'cpi')),
+
                 getattr(row, 'symbol'),
             ))
         return
@@ -177,7 +175,6 @@ def print_profile(df: pd.DataFrame, merged=False) -> None:
 
 def run_trace(
     lines,
-    top_n: Optional[int] = 32,
     clk: Optional[float] = None
 ) -> pd.DataFrame:
 
@@ -191,11 +188,11 @@ def run_trace(
         print("No samples found.", file=sys.stderr)
         sys.exit(1)
 
-    return(format_flat_profile(df, top_n=top_n, clk=clk))
+    return(format_flat_profile(df, clk=clk))
 
 def draw_single_plot(df, ax, args):
-    data = df[args['data']].tolist()
-    symbols = df['symbol'].tolist()
+    data = df[args['data']].tolist()[::-1]
+    symbols = df['symbol'].tolist()[::-1]
     box = ax.barh(symbols, data, color='#7ed3ab')
     if args.get('fmt', None):
         ax.bar_label(box, fmt=args['fmt'], padding=3)
@@ -228,6 +225,7 @@ def main():
     parser.add_argument("-s", "--second_trace", type=str, help="Second callstack trace. Used to combine with -t for inst/cycle only to get detailed execution breakdown")
     parser.add_argument("-e", "--event", type=str, choices=PROF_EVENTS, default=PROF_EVENTS[0], help="Callstack sample event type. If both -t and -s are specified, this is ignored and 'inst' is used for -t, and 'cycle' for -s")
     parser.add_argument("-p", "--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
+    parser.add_argument("-r", "--thr", type=int, default=1, help="Show only above threshold percentage by self-samples. Self-cycles are used if both -t and -s are specified")
     parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
     parser.add_argument("--ipc", action='store_true', default=False, help="Plot IPC instead of CPI for the combined chart. Ignored if -t and -s are not both specified")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
@@ -247,14 +245,20 @@ def main():
 
     if not os.path.isfile(args.trace):
         parser.error(f"Trace callstack not found: {args.trace}")
+
     t_lines = open(args.trace, "r").readlines()
     t_df = run_trace(
         t_lines, clk=args.clk if args.event == PROF_EVENTS[1] else None)
-    if args.top is not None:
-        t_df = t_df.head(args.top)
     title = 'Profile' + (f' - {args.event.capitalize()}')
 
     if not args.second_trace:
+        df_len_og = t_df.index.size
+        if args.top is not None:
+            t_df = t_df.head(args.top)
+        if args.thr is not None:
+            t_df = t_df[t_df['percent'] >= args.thr]
+        df_len = t_df.index.size
+
         print(title)
         print_profile(t_df)
         for atn,atv in t_df.attrs.items():
@@ -263,36 +267,22 @@ def main():
                 # only total_samples is printed if event is not 'cycle'
                 break
 
-    a = ax[0] if args.second_trace else ax
-    draw_single_plot(t_df, a, {
-        'data': 'percent',
-        'xlabel': f'% of {args.event} samples',
-        'title': title,
-        'use_ylabel': True,
-        'fmt': '%.1f%%'
-    })
-    df_len = t_df.index.size
+        a = ax[0] if args.second_trace else ax
+        draw_single_plot(t_df, a, {
+            'data': 'percent',
+            'xlabel': f'% of {args.event} samples',
+            'title': title,
+            'use_ylabel': True,
+            'fmt': '%.1f%%'
+        })
 
-    # resize only height, keep width
-    w, h = fig.get_size_inches()
-    fig.set_size_inches(w, max(FIG_H, df_len * 0.33))
-
-    if args.second_trace:
+    else: # args.second_trace:
         args.event = PROF_EVENTS[1] # force to 'cycle' for -r
         if not os.path.isfile(args.second_trace):
             parser.error(
                 f"Second trace callstack not found: {args.second_trace}")
         s_lines = open(args.second_trace, "r").readlines()
         s_df = run_trace(s_lines, clk=args.clk)
-        if args.top is not None:
-            s_df = s_df.head(args.top)
-
-        draw_single_plot(s_df, ax[1], {
-            'data': 'percent',
-            'xlabel': f'% of {args.event} samples',
-            'title': 'Profile - Cycles',
-            'fmt': '%.1f%%'
-        })
 
         # merge two dfs on symbol
         merged = pd.merge(
@@ -305,6 +295,11 @@ def main():
             lambda row: (row['total_counts_cycle'] / row['total_counts_inst'])
             if row['total_counts_inst'] > 0 else None, axis=1)
         merged['cpi'] = merged['cpi'].round(3)
+        merged = merged.sort_values(
+            by=['percent_cycle', 'symbol'],
+            ascending=[False, True],
+            kind='mergesort'
+        )
 
         # copy over attrs
         instrs = t_df.attrs['total_samples']
@@ -316,6 +311,13 @@ def main():
         merged.attrs["time_unit"] = s_df.attrs['time_unit']
         merged.attrs["CPI"] = round((cycles/instrs), 3) if instrs > 0 else None
         merged.attrs["IPC"] = round((instrs/cycles), 3) if cycles > 0 else None
+
+        df_len_og = merged.index.size
+        if args.top is not None:
+            merged = merged.head(args.top)
+        if args.thr is not None:
+            merged = merged[merged['percent_cycle'] >= args.thr]
+        df_len = merged.index.size
 
         print("Profile - Inst/Cycles combined ")
         print_profile(merged, merged=True)
@@ -330,6 +332,31 @@ def main():
             'title': t[int(args.ipc)],
             'fmt': '%.3f'
         })
+
+        draw_single_plot(merged, ax[0], {
+            'data': 'percent_inst',
+            'xlabel': f'% of {args.event} samples',
+            'title': title,
+            'use_ylabel': True,
+            'fmt': '%.1f%%'
+        })
+
+        draw_single_plot(merged, ax[1], {
+            'data': 'percent_cycle',
+            'xlabel': f'% of {args.event} samples',
+            'title': 'Profile - Cycles',
+            'fmt': '%.1f%%'
+        })
+
+    # resize only height, keep width
+    w, h = fig.get_size_inches()
+    fig.set_size_inches(w, max(FIG_H, df_len * 0.33))
+    ax_l = ax if args.second_trace else [ax]
+    for a in ax_l:
+        a.margins(y=0.01)
+
+    if df_len < df_len_og:
+        print(f"\n(Showing {df_len} of {df_len_og} entries after filtering)")
 
     if args.plot:
         plt.show()
