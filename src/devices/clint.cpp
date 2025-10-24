@@ -13,8 +13,13 @@ uint64_t clint::get_mtime_shadow() {
 }
 
 void clint::update_mtime(uint64_t mtime_elapsed) {
+    // time in us, assume 10ns period (100MHz clck)
+    // => 100 inst per us, as mtime counts insts in isa sim
     uint64_t mtime_prev = dev::rd(MTIME, 8);
-    dev::wr(MTIME, mtime_prev + mtime_elapsed, 8);
+    mtime_ticks += mtime_elapsed;
+    dev::wr(MTIME, mtime_prev + (mtime_ticks / 100), 8);
+    mtime_ticks = mtime_ticks % 100; // for next go around
+
     if (dev::rd(MTIME, 8) >= dev::rd(MTIMECMP, 8)) *csr_mip |= MIP_MTIP;
     else *csr_mip &= ~MIP_MTIP;
 }

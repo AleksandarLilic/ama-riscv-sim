@@ -9,6 +9,7 @@ class clint : public dev {
         //static const uint32_t MSIP = 0x0000;
         static const uint32_t MTIMECMP = 0x8; // 64-bit
         static const uint32_t MTIME = 0x10; // 64-bit
+        uint64_t mtime_ticks = 0;
         uint32_t* csr_mip;
         trap *tu;
 
