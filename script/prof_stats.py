@@ -8,6 +8,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.ticker import EngFormatter
 
 
 def parse_folded_line(line: str) -> Tuple[List[str], int]:
@@ -72,10 +73,8 @@ def accumulate_samples(lines: Iterable[str]) -> Tuple[pd.DataFrame, int]:
     df.attrs['total_samples'] = total_samples
     return df
 
-def format_flat_profile(
-    df: pd.DataFrame,
-    clk: Optional[float] = None,
-) -> pd.DataFrame:
+def format_flat_profile(df: pd.DataFrame, clk: Optional[float] = None) -> \
+pd.DataFrame:
     smpls = df.attrs['total_samples']
     if smpls <= 0:
         raise ValueError("total_samples must be > 0")
@@ -173,11 +172,7 @@ def print_profile(df: pd.DataFrame, merged=False) -> None:
                 getattr(row, 'symbol'),
             ))
 
-def run_trace(
-    lines,
-    clk: Optional[float] = None
-) -> pd.DataFrame:
-
+def run_trace(lines, clk: Optional[float] = None) -> pd.DataFrame:
     try:
         df = accumulate_samples(lines)
     except ValueError as e:
@@ -196,7 +191,7 @@ def draw_single_plot(df, ax, args):
     box = ax.barh(symbols, data, color='#7ed3ab')
     if args.get('fmt', None):
         ax.bar_label(box, fmt=args['fmt'], padding=3)
-    ax.set_xlim(0, ax.get_xlim()[1] * 1.1)
+    ax.set_xlim(0, ax.get_xlim()[1] * 1.12) # make room for data labels
     ax.set_xlabel(args['xlabel'])
     if args.get('use_ylabel', False):
         ax.set_ylabel("symbol")
@@ -251,6 +246,7 @@ def main():
         t_lines, clk=args.clk if args.event == PROF_EVENTS[1] else None)
     title = 'Profile' + (f' - {args.event.capitalize()}')
 
+    fmt = EngFormatter(unit='', places=1, sep="")
     if not args.second_trace:
         df_len_og = t_df.index.size
         if args.top is not None:
@@ -267,6 +263,8 @@ def main():
                 # only total_samples is printed if event is not 'cycle'
                 break
 
+        total_samples = t_df.attrs['total_samples']
+        samples_str = f"{fmt(total_samples)} samples ({args.event})"
         a = ax[0] if args.second_trace else ax
         draw_single_plot(t_df, a, {
             'data': 'percent',
@@ -312,6 +310,11 @@ def main():
         merged.attrs["CPI"] = round((cycles/instrs), 3) if instrs > 0 else None
         merged.attrs["IPC"] = round((instrs/cycles), 3) if cycles > 0 else None
 
+        total_inst = merged.attrs['total_instructions']
+        total_cycles = merged.attrs['total_cycles']
+        samples_str = \
+            f"{fmt(total_inst)} instructions, {fmt(total_cycles)} cycles"
+
         df_len_og = merged.index.size
         if args.top is not None:
             merged = merged.head(args.top)
@@ -352,8 +355,20 @@ def main():
     w, h = fig.get_size_inches()
     fig.set_size_inches(w, max(FIG_H, df_len * 0.33))
     ax_l = ax if args.second_trace else [ax]
-    for a in ax_l:
-        a.margins(y=0.01)
+    for i,a in enumerate(ax_l):
+        a.margins(y=0.02)
+        if args.second_trace:
+            axr = a.twinx()
+            axr.set_yticks(ax[0].get_yticks())
+            axr.set_ylim(ax[0].get_ylim())
+            axr.set_yticklabels("")
+            if i == 2:
+                # last one to add labels
+                axr.set_yticklabels(ax[0].get_yticklabels())
+
+    test_name = \
+        os.path.basename(os.path.dirname(args.trace)).replace('out_', '')
+    fig.suptitle(f"Summary for {test_name} - {samples_str}", fontsize=13)
 
     if df_len < df_len_og:
         print(f"\n(Showing {df_len} of {df_len_og} entries after filtering)")
