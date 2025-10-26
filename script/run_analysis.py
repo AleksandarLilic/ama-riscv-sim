@@ -37,6 +37,8 @@ FENCE = "FENCE"
 MEM_S = "MEM_S"
 MEM_L = "MEM_L"
 
+TRACE_NA = 255
+
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x40000
 MEM_SIZE = 65536
@@ -1070,6 +1072,7 @@ def plot_stat(ax, df, column, filter, unit, agg='sum', label_agg=True):
 
 def plot_hw_hm(ax, df, col, hw_win_size):
     H_OFFSET = .3
+    df[col] = df[col].replace(TRACE_NA, np.nan)
     hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
     miss = df[col].where(df[col] == 0, np.nan) - H_OFFSET
     alpha = progressive_alpha(df.index.size)
@@ -1377,11 +1380,25 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df = pd.DataFrame(data, columns=h)
     df = df.drop(columns=[c for c in h if 'padding' in c]) # drop padding cols
 
+    # enum class dmem_size_t {
+    #     lb, lh, lw, ld,
+    #     sb, sh, sw, sd,
+    #     no_access
+    # };
+    NA = 8
+    df['dtyp'] = df['dsz'].apply(lambda x: 'store' if 7 >= x >= 4 else 'load')
+    df['dsz'] = df['dsz'].apply(lambda x: x-4 if 7 >= x >= 4 else x)
+    df['dsz'] = df['dsz'] + 1 # makes 1=byte, 2=half, 3=word, 4=dword
+    df['dsz'] = df['dsz'].apply(lambda x: TRACE_NA if x == (NA + 1) else x)
+    df['dsz'] = df['dsz'].apply(lambda x: 8 if x == 4 else x) # dw to 8B
+    df['dsz'] = df['dsz'].apply(lambda x: 4 if x == 3 else x) # w to 4B
+    df.loc[df['dsz'] == TRACE_NA, 'dtyp'] = ""
+
     # enum class hw_status_t { miss, hit, none };
     hw_status_t_none = 2
-    df.ic = df.ic.replace(hw_status_t_none, np.nan)
-    df.dc = df.dc.replace(hw_status_t_none, np.nan)
-    df.bp = df.bp.replace(hw_status_t_none, np.nan)
+    df.ic = df.ic.replace(hw_status_t_none, TRACE_NA)
+    df.dc = df.dc.replace(hw_status_t_none, TRACE_NA)
+    df.bp = df.bp.replace(hw_status_t_none, TRACE_NA)
     # cpi in isa sim is just 1
     df['cpi'] = df[df['inst'] != 0]['smp'].diff().fillna(df['smp']).astype(int)
     if args.clk:
@@ -1481,14 +1498,16 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         # revert NaNs to 0 for saving as hex
         df_s.inst = df_s.inst.replace(np.nan, 0).astype(int)
         df_s.pc = df_s.pc.replace(np.nan, 0).astype(int)
+        if args.dasm:
+            # drop 'dtyp' to avoid duplication
+            # as 'i_type' & 'i_mem_type' columns are added with dasm parsing
+            df_s = df_s.drop(columns=['dtyp'])
         # some columns to hex
         for c in ["inst"]:
             df_s[c] = df_s[c].apply(lambda x: f'{x:08X}')
         for c in ["pc", "next_pc", "dmem", "sp"]:
             digits = int(math.ceil(np.log2(BASE_ADDR)/4))
             df_s[c] = df_s[c].apply(lambda x: f'{x:0{digits}X}')
-        for c in ["isz", "dsz"]:
-            df_s[c] = df_s[c].apply(lambda x: f'{x:01X}')
         df_s.to_csv(args.trace.replace('.bin', '.bin.csv'), index=False)
 
     fig, rsy, fig2, rsx2, rsy2 = [None] * 5
@@ -1530,8 +1549,6 @@ def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
 def run_bin_trace_dmem(df_t, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
-    df_t['dtyp'] = df_t['dsz'].apply(lambda x: 'store' if x >= 8 else 'load')
-    df_t['dsz'] = df_t['dsz'].apply(lambda x: x-8 if x >= 8 else x)
     df_t['dmem'] = df_t['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
     #if args.dmem_begin:

@@ -254,7 +254,7 @@ class profiler {
                 TO_U8(hw_status_t::none), // ic_hm
                 TO_U8(hw_status_t::none), // dc_hm
                 TO_U8(hw_status_t::none), // bp_hm
-                0, 0 // inst_size, dmem_size
+                0, TO_U8(dmem_size_t::no_access) // inst_size, dmem_size
             };
         }
 

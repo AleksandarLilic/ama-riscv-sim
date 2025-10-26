@@ -155,6 +155,12 @@ enum class b_dir_t { backward, forward };
 // profilers
 enum class profiler_source_t { inst, clock };
 
+enum class dmem_size_t {
+    lb, lh, lw, ld,
+    sb, sh, sw, sd,
+    no_access
+};
+
 struct clock_source_t {
     private:
         uint64_t pr = 0;
