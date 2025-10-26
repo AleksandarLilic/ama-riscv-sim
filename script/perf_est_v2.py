@@ -197,12 +197,12 @@ class perf:
         self.perf_str += f"{DELIM_N}Worst: "
         self.perf_str += self._estimated_perf(self.total_cycles_wc, "worst")
 
-        width = self.est["best"]["ipc"] - self.est["worst"]["ipc"]
-        center = (self.est["best"]["ipc"] + self.est["worst"]["ipc"]) / 2
-        est_ratio = width / center
+        width = self.est["worst"]["clk"] - self.est["best"]["clk"]
+        midpoint = (self.est["best"]["clk"] + self.est["worst"]["clk"]) >> 1
+        est_ratio = width / midpoint
         self.perf_str += (
-            f"{DELIM_N}Estimated IPC range width: {width:.3f}, " +
-            f"center: {center:.3f}, " +
+            f"{DELIM_N}Estimated Cycles range: {width} cycles, " +
+            f"midpoint: {int(midpoint)}, " +
             f"ratio: {est_ratio*100:.2f}%"
         )
 
@@ -253,6 +253,7 @@ class perf:
         self.est[mode] = {}
         self.est[mode]["cpi"] = round(cpi, 3)
         self.est[mode]["ipc"] = round(1/cpi, 3)
+        self.est[mode]["clk"] = int(cycles)
         self.est[mode]["exec_time_us"] = round(exec_time_us, 2)
         self.est[mode]["mips"] = round(mips, 2)
         out = f"Cycles: {cycles}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
@@ -351,8 +352,7 @@ if __name__ == "__main__":
 
     # use with caution, set to False by default
     realistic = False
-    corr = float(sys.argv[4]) if len(sys.argv) > 4 else np.nan # run correlation
-    fr = (sys.argv[5] == "-f") if len(sys.argv) > 5 else False # full range X
+    corr = int(sys.argv[4]) if len(sys.argv) > 4 else np.nan # run correlation
 
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
@@ -367,54 +367,63 @@ if __name__ == "__main__":
 
     if not np.isnan(corr):
         import matplotlib.pyplot as plt
-        print("\nIPC Correlation")
-        ipc_best = res.est["best"]["ipc"]
-        ipc_worst = res.est["worst"]["ipc"]
-        inside = ipc_worst <= corr <= ipc_best # ipc, higher is better
-        inout_str = "INSIDE" if inside else "OUTSIDE"
-        print(f"{DELIM}Input correlation IPC is {inout_str} estimated range")
+        print("\nCycles Correlation")
+        clk_best = res.est["best"]["clk"]
+        clk_worst = res.est["worst"]["clk"]
+        diff = None
+        if corr < clk_best:
+            inout_str = "OUTSIDE (BELOW)"
+            diff = clk_best - corr
+            perc_diff = (diff / clk_best) * 100
+            ref_str = "best"
+        elif corr > clk_worst:
+            inout_str = "OUTSIDE (ABOVE)"
+            diff = corr - clk_worst
+            perc_diff = (diff / clk_worst) * 100
+            ref_str = "worst"
+        else:
+            inout_str = "INSIDE"
+        print(f"{DELIM}Achieved cycles result is {inout_str} estimated range")
 
-        center = (ipc_worst + ipc_best) / 2
-        width = ipc_best - ipc_worst
-        signed_diff = (corr - center) / (width / 2)
-        print(
-            f"{DELIM}Signed difference from the center: {signed_diff*100:.2f}%")
+        if diff is not None:
+            print(f"{DELIM}Difference: {diff} cycles " +
+                  f"({perc_diff:.2f}% of {ref_str} estimate)")
 
         # --- Plot ---
         fig, ax = plt.subplots(figsize=(8, 2))
+        xmin = min(clk_best, corr)
+        xmax = max(clk_worst, corr)
+        xrange = xmax - xmin
+        ax.set_xlim(xmin - xrange*.1, xmax + xrange*.1)
 
+        limx = ax.get_xlim()
         # range bar
-        ax.hlines(
-            0, 0, 1, color='lightgray', linewidth=14, label='Estimate range')
+        ax.hlines(0, limx[0], limx[1],
+                  color='lightgray', linewidth=15, label='Estimate range')
 
         # add markers
-        ax.vlines(ipc_worst, -0.1, 0.1,
-                  color='tab:red', linewidth=2, label='ipc_worst bound')
-        ax.vlines(ipc_best, -0.1, 0.1,
-                  color='tab:green', linewidth=2, label='ipc_best bound')
+        ax.vlines(clk_worst, -0.1, 0.1,
+                  color='tab:red', linewidth=2, label='Worst')
+        ax.vlines(clk_best, -0.1, 0.1,
+                  color='tab:green', linewidth=2, label='Best')
         ax.vlines(corr, -0.15, 0.15,
-                  color='tab:blue', linewidth=2, label='corr')
+                  color='tab:blue', linewidth=2, label='Achieved')
 
         # annotate
-        ax.text(ipc_worst, 0.12, f'worst\n{ipc_worst}',
+        ax.text(clk_worst, 0.13, f'Worst:\n{clk_worst}',
                 ha='center', color='tab:red')
-        ax.text(ipc_best, 0.12, f'best\n{ipc_best}',
+        ax.text(clk_best, 0.13, f'Best:\n{clk_best}',
                 ha='center', color='tab:green')
-        ax.text(corr, -0.36, f'corr\n{corr}',
+        ax.text(corr, -0.37, f'Achieved:\n{corr}',
                 ha='center', color='tab:blue')
 
         # style
         ax.margins(0,0)
-        ax.set_ylim(-0.4, 0.4)
-        if not fr:
-            xmin = min(ipc_worst, corr)
-            xmax = max(ipc_best, corr)
-            xrange = xmax - xmin
-            ax.set_xlim(xmin - xrange*.1, xmax + xrange*.1)
+        ax.set_ylim(-0.42, 0.42)
         ax.set_yticks([])
-        ax.set_xlabel('IPC')
-        ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
-        ax.set_title('Estimate vs Correlation IPC')
+        ax.set_xlabel('Cycles')
+        #ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
+        ax.set_title('Estimate vs Achieved Cycles')
 
         plt.tight_layout()
         plt.show()
