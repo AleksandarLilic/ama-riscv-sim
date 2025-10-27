@@ -32,7 +32,8 @@ core::core(
     prof_trace = cfg.prof_trace;
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
-    if (cfg.dpi_prof_on_boot) {
+    if (prof_pc.start == BASE_ADDR) {
+        // profiling active from the beginning
         prof_act = true;
         prof.active = true;
         prof_perf.active = true;
@@ -216,7 +217,8 @@ void core::exec_inst() {
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
         // don't count instructions unless also profiling
-        if (prof_act) log_ofstream << prof_pc.inst_cnt;
+        //if (prof_act) log_ofstream << prof_pc.inst_cnt;
+        if (prof_act) log_ofstream << inst_cnt + 1;
         else log_ofstream << "";
         log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
                      << dasm.asm_str;
@@ -272,7 +274,8 @@ void core::save_trace_entry() {
         prof.te.sp = rf[2];
         prof.te.taken = branch_taken;
         prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
-        prof.te.sample_cnt = prof_pc.inst_cnt;
+        //prof.te.sample_cnt = prof_pc.inst_cnt;
+        prof.te.sample_cnt = inst_cnt + 1;
         #ifdef HW_MODELS_EN
         prof.te.ic_hm = TO_U8(hwrs.ic_hm);
         prof.te.dc_hm = TO_U8(hwrs.dc_hm);

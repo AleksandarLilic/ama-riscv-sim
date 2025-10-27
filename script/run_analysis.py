@@ -1230,8 +1230,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_t.xaxis.set_major_locator(max_n_locator)
     ax_t.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
-    if not args.sample_begin:
-        ax_t.set_xlim(0, ax_t.get_xlim()[1])
+    ax_t.set_xlim(ax_t.get_xlim()[0]-1, ax_t.get_xlim()[1]) # remove padding
     # add a second x-axis
     ax_top = ax_t.twiny()
     ax_top.set_xlim(ax_t.get_xlim())
@@ -1249,8 +1248,8 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax_t.set_title(f"{TRACE_SOURCE} trace - {trace_type} profile for {title}")
     ax_t.set_ylabel(ylabel)
     ax_sp.set_ylabel('Stack\nPointer')
-    ax[-1].set_xlabel('Sample Count')
-
+    ax[-1].set_xlabel(
+        'Sample Count' + ' (normalized)' if args.sample_begin_norm else '')
     S_GAP = 0.04
     S_H = 0.03
     S_W = (S_H / FS[0]) * FS[1]
@@ -1311,8 +1310,7 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_btm.xaxis.set_major_locator(max_n_locator)
     ax_btm.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
-    if not args.sample_begin:
-        ax_btm.set_xlim(0, ax_btm.get_xlim()[1])
+    ax_btm.set_xlim(ax_btm.get_xlim()[0]-1, ax_btm.get_xlim()[1]) # remove pad
 
     # add a second x-axis
     if args.clk:
@@ -1338,7 +1336,8 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     else:
         ax_bd.set_ylabel('Branch\nDensity')
 
-    ax[-1].set_xlabel('Sample Count')
+    ax[-1].set_xlabel(
+        'Sample Count' + ' (normalized)' if args.sample_begin_norm else '')
     for a in ax:
         a.grid(axis='both', linestyle='-', alpha=.6, which='major')
         title = "Total OPS" if a == ax_ops else None
@@ -1379,6 +1378,8 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     data = np.fromfile(bin_log, dtype=dtype)
     df = pd.DataFrame(data, columns=h)
     df = df.drop(columns=[c for c in h if 'padding' in c]) # drop padding cols
+    if args.sample_begin_norm:
+        df.smp = df.smp - df.smp.head(1).values[0] # normalize smp to 0
 
     # enum class dmem_size_t {
     #     lb, lh, lw, ld,
@@ -1414,7 +1415,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df.inst = df.inst.replace(0, np.nan) # replace NOP/bubbles with NaN
     df.pc = df.pc.replace(0, np.nan) # same as for inst
 
-    df_start = int(args.sample_begin) if args.sample_begin else 0
+    df_start = int(args.sample_begin) if args.sample_begin else df.smp.min()
     df_end = int(args.sample_end) if args.sample_end else df.smp.max()
     df = df.loc[df['smp'].between(df_start,df_end)]
 
@@ -1609,9 +1610,10 @@ def parse_args() -> argparse.Namespace:
     # trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
 
-    parser.add_argument('--sample_begin', type=str, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
-    parser.add_argument('--sample_end', type=str, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
+    parser.add_argument('--sample_begin', type=int, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
+    parser.add_argument('--sample_end', type=int, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
+    parser.add_argument('--sample_begin_norm', action='store_true', help="Normalize trace start to 0th sample. Trace only option")
 
     parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Each instruction as a separate entry. Trace only option")
     parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). Trace only option")
@@ -1684,7 +1686,7 @@ def run_main(args) -> None:
 
     # check sample filtering
     if (args.sample_begin and args.sample_end):
-        if int(args.sample_begin) >= int(args.sample_end):
+        if args.sample_begin >= args.sample_end:
             raise ValueError("--sample_begin must be less than --sample_end")
 
     # check PC filtering
