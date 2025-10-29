@@ -6,11 +6,38 @@ import sys
 
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import EngFormatter, FuncFormatter
 from run_analysis import json_prof_to_df
 
 DELIM = " " * 4
 DELIM_N = "\n    "
 R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
+
+FULL_PRECISION = False # set to True if you really care about single cycles
+
+def smarter_eng_formatter(places=1, unit='', sep=''):
+    base_fmt = EngFormatter(unit=unit, places=places, sep=sep)
+    more_fmt = EngFormatter(unit=unit, places=places + 1, sep=sep)
+
+    def _fmt(x, pos):
+        s = base_fmt(x, pos)
+        try:
+            val = float(s.split(".")[0])
+        except ValueError:
+            return s
+        # use extra precision if < 10 after scaling
+        s = more_fmt(x, pos) if abs(val) < 10 and val != 0 else s
+        # strip trailing .0 or zeros
+        return s.rstrip('0').rstrip('.') if '.' in s else s
+
+    return FuncFormatter(_fmt)
+
+if FULL_PRECISION:
+    FMT = FuncFormatter(lambda x, pos: f"{x:.0f}")
+    FMT_T = FuncFormatter(lambda x, pos: f"{x*1_000_000:.1f}us")
+else:
+    FMT = smarter_eng_formatter(unit='', places=1, sep="")
+    FMT_T = smarter_eng_formatter(unit='s', places=1, sep="")
 
 # main mem configuration assumptions based on the port contention from hwpm
 
@@ -201,8 +228,8 @@ class perf:
         midpoint = (self.est["best"]["clk"] + self.est["worst"]["clk"]) >> 1
         est_ratio = width / midpoint
         self.perf_str += (
-            f"{DELIM_N}Estimated Cycles range: {width} cycles, " +
-            f"midpoint: {int(midpoint)}, " +
+            f"{DELIM_N}Estimated Cycles range: {FMT(width)} cycles, " +
+            f"midpoint: {FMT(int(midpoint))}, " +
             f"ratio: {est_ratio*100:.2f}%"
         )
 
@@ -249,6 +276,7 @@ class perf:
         cycles = int(np.ceil(cycles))
         cpi = cycles / self.inst_total
         exec_time_us = cycles * self.period
+        exec_time_s = exec_time_us / 1_000_000
         mips = self.inst_total / exec_time_us
         self.est[mode] = {}
         self.est[mode]["cpi"] = round(cpi, 3)
@@ -256,19 +284,19 @@ class perf:
         self.est[mode]["clk"] = int(cycles)
         self.est[mode]["exec_time_us"] = round(exec_time_us, 2)
         self.est[mode]["mips"] = round(mips, 2)
-        out = f"Cycles: {cycles}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
-              f"Time: {exec_time_us:.1f}us, MIPS: {mips:.1f}"
+        out = f"Cycles: {FMT(cycles)}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
+              f"Time: {FMT_T(exec_time_s)}, MIPS: {mips:.1f}"
         return out
 
     def _cache_stats_str(self, name, stats):
         out = f"{name} " + \
               f"({stats['sets']} sets, {stats['ways']} ways, " + \
               f"{stats['data']}B data): " + \
-              f"References: {stats['references']}, " + \
-              f"Hits: {stats['hits']}, " + \
-              f"Misses: {stats['misses']}, "
+              f"References: {FMT(stats['references'])}, " + \
+              f"Hits: {FMT(stats['hits'])}, " + \
+              f"Misses: {FMT(stats['misses'])}, "
         if "writebacks" in stats and stats['writebacks'] > 0:
-            out += f"Writebacks: {stats['writebacks']}, "
+            out += f"Writebacks: {FMT(stats['writebacks'])}, "
         out += f"Hit Rate: {stats['hit_rate']:.2f}%"
         return out
 
@@ -278,12 +306,12 @@ class perf:
         out_dc = []
         out_b = []
 
-        out_ic.append(f"Instructions executed: {self.inst_total}")
+        out_ic.append(f"Instructions executed: {FMT(self.inst_total)}")
         out_ic.append(self._cache_stats_str(self.ic_name, self.ic_stats))
 
         out_dc.append(
-            f"DMEM inst: {self.dc_inst} - "
-            f"L/S: {self.ld_inst}/{self.st_inst} "
+            f"DMEM inst: {FMT(self.dc_inst)} - "
+            f"L/S: {FMT(self.ld_inst)}/{FMT(self.st_inst)} "
             f"({self.ls_perc:.2f}% instructions)"
             )
         out_dc.append(self._cache_stats_str(self.dc_name, self.dc_stats))
@@ -304,24 +332,24 @@ class perf:
         #    )
         out_b.append(
             f"Branch Predictor ({self.bp_stats['type']}): "
-            f"Predicted: {self.bp_stats['pred']}, "
-            f"Mispredicted: {self.bp_stats['mispred']}, "
+            f"Predicted: {FMT(self.bp_stats['pred'])}, "
+            f"Mispredicted: {FMT(self.bp_stats['mispred'])}, "
             f"Accuracy: {self.bp_stats['acc']:.2f}%, "
             f"MPKI: {self.bp_stats['mpki']}"
             )
 
         out_stalls = f"Pipeline stalls (max): " + \
-            f"FE/BE: {self.fe_stalls}/{self.be_stalls}, " + \
+            f"FE/BE: {FMT(self.fe_stalls)}/{FMT(self.be_stalls)}, " + \
             f"{DELIM_N}FE: " + \
-            f"ICache: {self.ic_stalls}, " + \
-            f"Jumps: {self.j_stalls}, " + \
-            f"Branches: {self.b_stalls}" + \
+            f"ICache: {FMT(self.ic_stalls)}, " + \
+            f"Jumps: {FMT(self.j_stalls)}, " + \
+            f"Branches: {FMT(self.b_stalls)}" + \
             f"{DELIM_N}BE: " + \
-            f"DCache: {self.dc_stalls} " + \
-            f"MUL: {self.mul_stalls}, " + \
-            f"DIV: {self.div_stalls}, " + \
-            f"DOT: {self.dot_stalls}" + \
-            f"\nMemory contention: {self.rdc_stalls + self.wrc_stalls} "
+            f"DCache: {FMT(self.dc_stalls)}, " + \
+            f"MUL: {FMT(self.mul_stalls)}, " + \
+            f"DIV: {FMT(self.div_stalls)}, " + \
+            f"DOT: {FMT(self.dot_stalls)}" + \
+            f"\nMemory contention: {FMT(self.rdc_stalls + self.wrc_stalls)} "
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
@@ -352,7 +380,7 @@ if __name__ == "__main__":
 
     # use with caution, set to False by default
     realistic = False
-    corr = int(sys.argv[4]) if len(sys.argv) > 4 else np.nan # run correlation
+    corr = int(sys.argv[4]) if len(sys.argv) > 4 else 0 # run correlation
 
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
@@ -365,7 +393,7 @@ if __name__ == "__main__":
         inst_profiler_path, hw_stats_path, hw_perf_metrics_path, realistic)
     print(res)
 
-    if not np.isnan(corr):
+    if corr:
         import matplotlib.pyplot as plt
         print("\nCycles Correlation")
         clk_best = res.est["best"]["clk"]
@@ -410,11 +438,11 @@ if __name__ == "__main__":
                   color='tab:blue', linewidth=2, label='Achieved')
 
         # annotate
-        ax.text(clk_worst, 0.13, f'Worst:\n{clk_worst}',
+        ax.text(clk_worst, 0.13, f'Worst:\n{FMT(clk_worst)}',
                 ha='center', color='tab:red')
-        ax.text(clk_best, 0.13, f'Best:\n{clk_best}',
+        ax.text(clk_best, 0.13, f'Best:\n{FMT(clk_best)}',
                 ha='center', color='tab:green')
-        ax.text(corr, -0.37, f'Achieved:\n{corr}',
+        ax.text(corr, -0.37, f'Achieved:\n{FMT(corr)}',
                 ha='center', color='tab:blue')
 
         # style
@@ -422,6 +450,7 @@ if __name__ == "__main__":
         ax.set_ylim(-0.42, 0.42)
         ax.set_yticks([])
         ax.set_xlabel('Cycles')
+        ax.xaxis.set_major_formatter(FMT)
         #ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
         ax.set_title('Estimate vs Achieved Cycles')
 
