@@ -384,13 +384,14 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     if section == "data":
         # avoid writing to the inst annotated file, no annotations for data
         new_dasm_ext = ".dummy" + dasm_ext
+    if section == "text":
+        PADDING = len(str(df['count'].max())) + 1
 
     outfile_name = dasm_name.replace(dasm_ext, new_dasm_ext)
     outfile_name = os.path.join(logs_path, outfile_name)
     with open(args.dasm, 'r') as infile, open(outfile_name, 'w') as outfile:
         current_sym = None
         append = False
-        PADDING = len(str(df['count'].max())) + 1
         prev_addr = None
         for line in infile:
             if line.startswith('Disassembly of section .') and section in line:
@@ -1432,7 +1433,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     figs_ret['pc'] = fig_pc
     figs_ret['pc_exec'] = fig2_pc
 
-    _, fig_dmem, fig2_dmem, rsx2_dmem = \
+    fig_dmem, fig2_dmem, rsx2_dmem = \
         run_bin_trace_dmem(df_t, title, args)
     figs_ret['dmem'] = fig_dmem
     figs_ret['dmem_exec'] = fig2_dmem
@@ -1524,10 +1525,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     # link y ranges if both figures exist
     if rsy != None and rsy2 != None:
-        link_yrange(
-            fig.get_axes()[0], rsy,
-            fig2.get_axes()[0], rsy2
-        )
+        link_yrange(fig.get_axes()[0], rsy, fig2.get_axes()[0], rsy2)
 
     return df_f, df_t, fig, fig2, rsx2
 
@@ -1548,7 +1546,18 @@ def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
     return out
 
 def run_bin_trace_dmem(df_t, title, args) -> \
-Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
+Tuple[plt.Figure, plt.Figure]:
+
+    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
+    if not (args.symbols_only or args.dmem_freq or args.dmem_trace):
+        return fig, fig2, rsx2
+
+    symbols = {}
+    if args.dasm:
+        symbols, _ = backannotate_dasm(args, None, "data")
+
+    if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
+        return fig, fig2, rsx2
 
     df_t['dmem'] = df_t['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
@@ -1557,41 +1566,32 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     #if args.dmem_end:
     #    df_t = df_t.loc[df_t.dmem < hex2int(args.dmem_end)]
 
-    # to bytes as ISA is byte addressable, accesses are combined for freq plot
-    df_exp = expand_byte_accesses(df_t)
-    df = df_exp.groupby('dmem').agg(
-        dsz=('dsz', 'first'), # get only the first value
-        count=('dmem', 'size') # count them all (size of the group)
-    ).reset_index()
-    df = df.sort_values(by='dmem', ascending=True)
-    df['dmem'] = df['dmem'].astype(int)
-    df['dmem_hex'] = df['dmem'].apply(lambda x: f'{x:08x}')
-
-    # FIXME: why was this ever needed? some corner case?
-    #if df.iloc[0]['dmem'] == 0:
-    #    df = df.drop(0)
-
-    symbols = {}
-    if args.dasm:
-        symbols, _ = backannotate_dasm(args, df, "data")
-
-    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
-    if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
-        return df, fig, fig2, rsx2
-
+    # NOTE: expand_byte_accesses takes awfully long time for large traces
     if args.dmem_freq:
+        # to bytes as ISA is byte addressable, combined accesses for freq plot
+        df_exp = expand_byte_accesses(df_t)
+        df = df_exp.groupby('dmem').agg(
+            dsz=('dsz', 'first'), # get only the first value
+            count=('dmem', 'size') # count them all (size of the group)
+        ).reset_index()
+        df = df.sort_values(by='dmem', ascending=True)
+        df['dmem'] = df['dmem'].astype(int)
+        df['dmem_hex'] = df['dmem'].apply(lambda x: f'{x:08x}')
+
+        # FIXME: why was this ever needed? some corner case?
+        #if df.iloc[0]['dmem'] == 0:
+        #    df = df.drop(0)
+
         fig, rsy = draw_freq(df, [], title, symbols, args, ctype='dmem')
+
     if args.dmem_trace:
         fig2, rsx2, rsy2 = draw_exec(df_t, [], title, symbols, args, 'dmem')
 
     # link y ranges if both figures exist
     if rsy != None and rsy2 != None:
-        link_yrange(
-            fig.get_axes()[0], rsy,
-            fig2.get_axes()[0], rsy2
-        )
+        link_yrange(fig.get_axes()[0], rsy, fig2.get_axes()[0], rsy2)
 
-    return df, fig, fig2, rsx2
+    return fig, fig2, rsx2
 
 def parse_args() -> argparse.Namespace:
     TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
