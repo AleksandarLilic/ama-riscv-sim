@@ -28,18 +28,25 @@ def get_cache_fig_w(all_col_bits):
         return cols_sum/1.3
     return cols_sum/1.5
 
-def draw_cache(sets, ways, res_dict):
+def draw_cache(sets, ways, res_dict, wr_pol=""):
     fig_w = ways*2.5
     fig_h = 0.1 + sets/2.5
     _, axs = plt.subplots(nrows=1, ncols=ways, figsize=(fig_w,fig_h))
 
     sets_bits = int(np.log2(sets))
     tags_bits = ADDR_BITS - sets_bits - CACHE_BYTE_ADDR_BITS
+
+    col_widths = {0: 0.1, 1: 0.2, 2: 0.7}  # total = 1.0
     df2 = pd.DataFrame(
         [['v', f"{tags_bits}b", "64B"]],
         index=range(sets),
         columns=['v', 'tag', 'data']
     )
+
+    if wr_pol == "wb":
+        # insert dirty bit column after valid bit
+        df2.insert(1, 'd', ['d']*sets)
+        col_widths = {0: 0.1, 1: 0.1, 2: 0.2, 3: 0.6}
 
     axs = np.array(axs) if ways == 1 else axs
     for i,ax in enumerate(axs.flatten()): # L-R, T-B
@@ -55,7 +62,6 @@ def draw_cache(sets, ways, res_dict):
         )
         ax.axis('off')
 
-        col_widths = {0: 0.1, 1: 0.2, 2: 0.7}  # total = 1.0
         for (row, col), cell in table.get_celld().items():
             cell.set_width(col_widths.get(col, 0.5)) # default fallback
 
@@ -64,7 +70,7 @@ def draw_cache(sets, ways, res_dict):
         if i == 0: # set the title, and add the address block
             left_anchor = -1.1
 
-            txt_str = f"Sets: {sets}, Ways: {ways}, " + \
+            txt_str = f"{args.block}: Sets: {sets}, Ways: {ways}, " + \
                       f"Size: {res_dict['size']} B"
             if res_dict['hr'] != None:
                 txt_str += f", Hit Rate: {res_dict['hr']}%"
@@ -396,7 +402,8 @@ def draw_predictor(bp_name, params, title_name=""):
 # parse args
 DEFAULTS = {
     # caches
-    "cache_sets": 2, "cache_ways": 2, "cache_policy": "lru",
+    "cache_sets": 2, "cache_ways": 2,
+    "cache_policy": "lru", "dcache_wr_policy": "wb",
     # bp
     "bp": "gshare",
     "bp_static_method": "btfn", "bp_pc_bits": 5, "bp_cnt_bits": 2,
@@ -410,8 +417,9 @@ DEFAULTS = {
 }
 
 CHOICES = {
-    "block": ["cache", "bpred"],
+    "block": ["icache", "dcache", "bpred"],
     "cache_policy": ["lru"],
+    "dcache_wr_policy": ["wb", "wt"], # FIXME: currently missing in json results
     "bp_method": ["btfn", "ant", "at"],
     "bp_type": ["none", "ideal", "static",
                 "bimodal", "gselect", "global", "gshare", "local"],
@@ -443,6 +451,9 @@ def parse_args() -> argparse.Namespace:
                         help=f"Number of ways in the cache (default: {DEFAULTS['cache_ways']})")
     parser.add_argument("--cache_policy", type=str, choices=CHOICES["cache_policy"], default=DEFAULTS["cache_policy"], metavar="POLICY",
                         help=f"Cache replacement policy.\nOptions: {', '.join(CHOICES['cache_policy'])} (default: {DEFAULTS['cache_policy']})")
+    parser.add_argument("--dcache_wr_policy", type=str, choices=CHOICES["dcache_wr_policy"], default=DEFAULTS["dcache_wr_policy"], metavar="WR_POLICY",
+                        help=f"Cache write policy (dcache only).\nOptions: {', '.join(CHOICES['dcache_wr_policy'])} (default: {DEFAULTS['dcache_wr_policy']})")
+
     # bp
     parser.add_argument("--bp", type=str, choices=CHOICES["bp_type"], default=DEFAULTS["bp"], metavar="PREDICTOR",
                         help=f"First branch predictor. Defaults as active, driving the I$. For combined predictor, counters will be weakly biased towards this predictor (impacts warm-up period)\nOptions: {', '.join(CHOICES['bp_type'])} (default: {DEFAULTS['bp']})")
@@ -483,7 +494,7 @@ def parse_args() -> argparse.Namespace:
 
 def convert_switches_to_dict(args):
     config = {}
-    if args.block == CHOICES['block'][0]: # caches
+    if args.block in CHOICES['block'][0:2]: # caches
         size = args.cache_sets * args.cache_ways * CACHE_LINE_BYTES
         config = {
             args.cache_policy : {
@@ -493,7 +504,7 @@ def convert_switches_to_dict(args):
             }
         }
 
-    elif args.block == CHOICES['block'][1]: # bp
+    elif args.block == CHOICES['block'][2]: # bp
         # common for all
         bp_entry = {
                 "static_method": args.bp_static_method,
@@ -541,7 +552,7 @@ def convert_switches_to_dict(args):
         config = { bp_act: {1: entry}} # 1 for placeholder bin size
 
     else:
-        raise ValueError("Unknown block type and impossible to reach")
+        raise ValueError(f"Unknown block type and impossible to reach")
 
     return config
 
@@ -558,14 +569,16 @@ def run_main(args) -> None:
 
     block_cnt = 0
     hit_limit = False
-    if args.block == CHOICES['block'][0]:
-        print("Drawing caches")
+    if args.block in CHOICES['block'][0:2]:
         # only 'LRU' policy currently supported,
         # needs to also be in a loop if more are added
+        wr_pol = ""
+        if args.block == CHOICES['block'][1]:
+            wr_pol = args.dcache_wr_policy
         lru_res = config['lru']
         for k_sets, v_ways in lru_res.items():
             for k_ways, v_res in v_ways.items():
-                draw_cache(int(k_sets), int(k_ways), v_res)
+                draw_cache(int(k_sets), int(k_ways), v_res, wr_pol)
                 block_cnt += 1
                 if block_cnt > args.max_blocks:
                     hit_limit = True
@@ -575,8 +588,7 @@ def run_main(args) -> None:
             if hit_limit:
                 break # ways
 
-    elif args.block == CHOICES['block'][1]:
-        print("Drawing branch predictors")
+    elif args.block == CHOICES['block'][2]:
         for bp_name, bp_results in config.items():
             bpc_cnt = 0
             for size_bin, params in bp_results.items():
