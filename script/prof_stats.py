@@ -371,7 +371,9 @@ def main():
     fig.suptitle(f"Summary for {test_name} - {samples_str}", fontsize=13)
 
     if df_len < df_len_og:
-        print(f"\n(Showing {df_len} of {df_len_og} entries after filtering)")
+        print(f"\n(Showing {df_len} of {df_len_og} entries after filtering:" + \
+                f" Threshold: {args.thr}%" +\
+                (f", Top: {args.top}" if args.top is not None else "") + ")")
 
     if args.plot:
         plt.show()
