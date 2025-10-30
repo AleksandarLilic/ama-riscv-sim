@@ -8,9 +8,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import EngFormatter, FuncFormatter
 from run_analysis import json_prof_to_df
+from utils import DELIM, INDENT
 
-DELIM = " " * 4
-DELIM_N = "\n    "
 R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
 FULL_PRECISION = False # set to True if you really care about single cycles
@@ -219,16 +218,16 @@ class perf:
         self.total_cycles_wc = int(np.ceil(self.total_cycles_wc))
         self.total_cycles_bc = int(np.ceil(self.total_cycles_bc))
         self.perf_str = f"Estimated HW performance at {self.freq}MHz:"
-        self.perf_str += f"{DELIM_N}Best:  "
+        self.perf_str += f"{DELIM}Best:  "
         self.perf_str += self._estimated_perf(self.total_cycles_bc, "best")
-        self.perf_str += f"{DELIM_N}Worst: "
+        self.perf_str += f"{DELIM}Worst: "
         self.perf_str += self._estimated_perf(self.total_cycles_wc, "worst")
 
         width = self.est["worst"]["clk"] - self.est["best"]["clk"]
         midpoint = (self.est["best"]["clk"] + self.est["worst"]["clk"]) >> 1
         est_ratio = width / midpoint
         self.perf_str += (
-            f"{DELIM_N}Estimated Cycles range: {FMT(width)} cycles, " +
+            f"{DELIM}Estimated Cycles range: {FMT(width)} cycles, " +
             f"midpoint: {FMT(int(midpoint))}, " +
             f"ratio: {est_ratio*100:.2f}%"
         )
@@ -340,11 +339,11 @@ class perf:
 
         out_stalls = f"Pipeline stalls (max): " + \
             f"FE/BE: {FMT(self.fe_stalls)}/{FMT(self.be_stalls)}, " + \
-            f"{DELIM_N}FE: " + \
+            f"{DELIM}FE: " + \
             f"ICache: {FMT(self.ic_stalls)}, " + \
             f"Jumps: {FMT(self.j_stalls)}, " + \
             f"Branches: {FMT(self.b_stalls)}" + \
-            f"{DELIM_N}BE: " + \
+            f"{DELIM}BE: " + \
             f"DCache: {FMT(self.dc_stalls)}, " + \
             f"MUL: {FMT(self.mul_stalls)}, " + \
             f"DIV: {FMT(self.div_stalls)}, " + \
@@ -353,9 +352,9 @@ class perf:
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
-                f"\n{DELIM_N.join(out_ic)}" + \
-                f"\n{DELIM_N.join(out_dc)}" + \
-                f"\n{DELIM_N.join(out_b)}" + \
+                f"\n{DELIM.join(out_ic)}" + \
+                f"\n{DELIM.join(out_dc)}" + \
+                f"\n{DELIM.join(out_b)}" + \
                 f"\n{out_stalls}"
 
         return f"{stats}\n{self.perf_str}"
@@ -411,10 +410,10 @@ if __name__ == "__main__":
             ref_str = "worst"
         else:
             inout_str = "INSIDE"
-        print(f"{DELIM}Achieved cycles result is {inout_str} estimated range")
+        print(f"{INDENT}Achieved cycles result is {inout_str} estimated range")
 
         if diff is not None:
-            print(f"{DELIM}Difference: {diff} cycles " +
+            print(f"{INDENT}Difference: {diff} cycles " +
                   f"({perc_diff:.2f}% of {ref_str} estimate)")
 
         # --- Plot ---

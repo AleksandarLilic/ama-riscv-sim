@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
-from utils import get_reporoot, is_headless, is_notebook
+from utils import INDENT, get_reporoot, is_headless, is_notebook
 
 # globals
 reporoot = get_reporoot()
@@ -26,7 +26,6 @@ SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
 SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
-INDENT = "    "
 FIG_SIZE = (8, 8)
 MK = "o"
 LW = .5

@@ -17,7 +17,7 @@ from matplotlib.ticker import (EngFormatter, FixedLocator, FuncFormatter,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
 from matplotlib.widgets import RangeSlider
-from utils import is_notebook
+from utils import get_test_title, is_notebook
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 ALU = "ALU"
@@ -1722,7 +1722,7 @@ def run_main(args) -> None:
 
     fig_arr = []
     ext = os.path.splitext(args_log)[1]
-    title = os.path.basename(os.path.dirname(args_log)).replace("out_", "")
+    title = get_test_title(args_log)
     log_path = os.path.realpath(args_log)
 
     if args.browser:

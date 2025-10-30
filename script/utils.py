@@ -3,8 +3,9 @@ import os
 import subprocess
 
 import matplotlib
-import matplotlib.pyplot as plt
 
+INDENT = " " * 4
+DELIM = f"\n{INDENT}"
 
 def is_notebook():
     try:
@@ -34,3 +35,7 @@ def is_headless():
         return True
 
     return False
+
+def get_test_title(input_log: str) -> str:
+    """Generate a plot title based on the input log filename."""
+    return os.path.basename(os.path.dirname(input_log)).replace("out_", "")
