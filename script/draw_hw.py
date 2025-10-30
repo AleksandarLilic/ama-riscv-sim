@@ -534,9 +534,9 @@ def convert_switches_to_dict(args):
             entry2 = {f"bp2_{k}": v for k, v in bp2_entry.items()}
 
             bpc_entry = {
-                "pc_bits": args.bp2_pc_bits,
-                "cnt_bits": args.bp2_cnt_bits,
-                "fold_pc": args.bp2_fold_pc,
+                "pc_bits": args.bp_combined_pc_bits,
+                "cnt_bits": args.bp_combined_cnt_bits,
+                "fold_pc": args.bp_combined_fold_pc,
             }
             bp_size += get_bp_size("bp_combined", bpc_entry)
             entryc = {f"bp_combined_{k}": v for k, v in bpc_entry.items()}
