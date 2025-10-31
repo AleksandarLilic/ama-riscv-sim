@@ -12,7 +12,7 @@ from utils import DELIM, INDENT
 
 R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
-FULL_PRECISION = False # set to True if you really care about single cycles
+REALISTIC = False # use with caution, set to False by default
 
 def smarter_eng_formatter(places=1, unit='', sep=''):
     base_fmt = EngFormatter(unit=unit, places=places, sep=sep)
@@ -30,13 +30,6 @@ def smarter_eng_formatter(places=1, unit='', sep=''):
         return s.rstrip('0').rstrip('.') if '.' in s else s
 
     return FuncFormatter(_fmt)
-
-if FULL_PRECISION:
-    FMT = FuncFormatter(lambda x, pos: f"{x:.0f}")
-    FMT_T = FuncFormatter(lambda x, pos: f"{x*1_000_000:.1f}us")
-else:
-    FMT = smarter_eng_formatter(unit='', places=1, sep="")
-    FMT_T = smarter_eng_formatter(unit='s', places=1, sep="")
 
 # main mem configuration assumptions based on the port contention from hwpm
 
@@ -73,12 +66,11 @@ class perf:
             self,
             inst_profiler_path,
             hw_stats_path,
-            hw_perf_metrics_path,
-            realistic=False
+            hw_perf_metrics_path
         ):
         self.inst_profiler_path = inst_profiler_path
         self.name = inst_profiler_path
-        self.realistic = realistic
+        self.realistic = REALISTIC
         df = json_prof_to_df(inst_profiler_path, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
@@ -376,10 +368,11 @@ if __name__ == "__main__":
     inst_profiler_path = sys.argv[1]
     hw_stats_path = sys.argv[2]
     hw_perf_metrics_path = sys.argv[3]
-
-    # use with caution, set to False by default
-    realistic = False
     corr = int(sys.argv[4]) if len(sys.argv) > 4 else 0 # run correlation
+    places = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+
+    FMT = smarter_eng_formatter(unit='', places=places, sep="")
+    FMT_T = smarter_eng_formatter(unit='s', places=places, sep="")
 
     if not os.path.isfile(inst_profiler_path):
         raise ValueError(f"File {inst_profiler_path} not found")
@@ -388,8 +381,7 @@ if __name__ == "__main__":
     if not os.path.isfile(hw_perf_metrics_path):
         raise ValueError(f"File {hw_perf_metrics_path} not found")
 
-    res = perf(
-        inst_profiler_path, hw_stats_path, hw_perf_metrics_path, realistic)
+    res = perf(inst_profiler_path, hw_stats_path, hw_perf_metrics_path)
     print(res)
 
     if corr:
