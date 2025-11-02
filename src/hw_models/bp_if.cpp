@@ -257,9 +257,10 @@ void bp_if::finish(std::string out_dir, uint64_t profiled_insts) {
 void bp_if::show_stats(std::string out_dir) {
     std::cout << "Branch stats: unique branches: " << bi_app_stats.size()
               << std::endl;
-    // show all, but mark the active one (driving the icache)
-    std::cout << bp_name << " (active: " << active_bp->type_name << ")"
-              << std::endl;
+    std::cout << bp_name;
+    // show all, but mark the active one (driving the icache) if running all
+    if (bp_run_all) std::cout << " (active: " << active_bp->type_name << ")";
+    std::cout << std::endl;
 
     // put active in a list an iterate over all of them to show stats
     all_bps.insert(all_bps.begin(), std::move(active_bp));
