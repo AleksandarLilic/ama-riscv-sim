@@ -4,21 +4,15 @@ from collections import deque
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import EngFormatter
-from perf_est_v2 import smarter_eng_formatter
-from utils import INDENT, get_test_title
+from run_analysis import icfg
+from utils import FMT_AXIS, INDENT, get_test_title, smarter_eng_formatter
 
-BRANCH_MNM = {"beq", "bne", "blt", "bge", "bltu", "bgeu"}
-STORE_MNM  = {"sb", "sh", "sw"} # rv32 only
-FENCE_MNM  = {"fence", "fence.i"}
-ALL_MNM = BRANCH_MNM.union(STORE_MNM).union(FENCE_MNM)
+BRANCH_MNM = icfg.INST_T[icfg.BRANCH]
+STORE_MNM = icfg.INST_T_MEM[icfg.MEM_S]
+FENCE_MNM = icfg.INST_T[icfg.FENCE]
+ALL_SPECIAL_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
-    parser.add_argument("exec_log", help="Path to exec.log")
-    parser.add_argument("--src", required=True, help="Comma-separated list of source instruction mnemonics (e.g. 'addi,add,auipc')")
-    parser.add_argument("--dep", required=True, help="Comma-separated list of dependent instruction mnemonics (e.g. 'add,bne,sw')")
-    parser.add_argument("--window", type=int, required=True, help="Lookahead window size (number of subsequent executed instructions to inspect)")
-    return parser.parse_args()
+MNM_ANY = "_any_"
 
 def is_valid_line(line: str) -> bool:
     """
@@ -58,7 +52,7 @@ def inst_writes_rd(mnemonic: str) -> bool:
     """
     Heuristic: most non-branch/non-store/non-fence GPR ops write rd
     """
-    if mnemonic in ALL_MNM:
+    if mnemonic in ALL_SPECIAL_MNM:
         return False
     # ECALL/EBREAK don't write; treat them as no-write
     if mnemonic in {"ecall", "ebreak"}:
@@ -95,10 +89,33 @@ def src_rd(mnemonic: str, regs_in_order: list[int]) -> int | None:
         return None  # Skip x0 producers
     return rd
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
+    parser.add_argument("exec_log", help="Path to exec.log")
+    parser.add_argument("--src", required=True, help=f"Comma-separated list of source instruction mnemonics (e.g. 'addi,add,auipc') or '{MNM_ANY}' for any")
+    parser.add_argument("--dep", required=True, help=f"Comma-separated list of dependent instruction mnemonics (e.g. 'add,bne,sw') or '{MNM_ANY}' for any")
+    parser.add_argument("--window", type=int, default=8, help="Lookahead window size (number of subsequent executed instructions to inspect)")
+    return parser.parse_args()
+
 def main():
     args = parse_args()
-    set_src = {m.strip().lower() for m in args.src.split(",") if m.strip()}
-    set_stl = {m.strip().lower() for m in args.dep.split(",") if m.strip()}
+
+    src_str = ""
+    if args.src == MNM_ANY:
+        src_mnm = [m.lower() for m in icfg.ALL_INST]
+        src_str = "any"
+    else:
+        src_mnm = [m.strip().lower() for m in args.src.split(",") if m.strip()]
+        src_str = ", ".join(sorted(src_mnm))
+
+    dep_str = ""
+    if args.dep == MNM_ANY:
+        dep_mnm = [m.lower() for m in icfg.ALL_INST]
+        dep_str = "any"
+    else:
+        dep_mnm = [m.strip().lower() for m in args.dep.split(",") if m.strip()]
+        dep_str = ", ".join(sorted(dep_mnm))
+
     window = args.window
     if window < 1:
         raise SystemExit("Window must be >= 1")
@@ -107,10 +124,10 @@ def main():
         raise SystemExit("Window too large; max 32 supported")
 
     # dep_arr: index i counts distance i (i==0 unused, 1..window used)
-    dep_arr = [0] * (window + 1)
+    dep_arr_cnt = [0] * (window + 1)
 
     # dep_lines: index i holds a list of dep line numbers for that distance
-    dep_lines = [[] for _ in range(window + 1)]
+    dep_line_num = [[] for _ in range(window + 1)]
 
     # load all lines (need lookahead)
     with open(args.exec_log, "r", encoding="utf-8", errors="replace") as f:
@@ -130,7 +147,7 @@ def main():
             line_fmt_issue += 1
             continue
 
-        if mnm not in set_src:
+        if mnm not in src_mnm:
             continue
 
         regs = extract_regs_in_order(line)
@@ -170,49 +187,50 @@ def main():
                     break
 
             # if this is a dependent inst, check sources for a match
-            if nx_mnm in set_stl:
+            if nx_mnm in dep_mnm:
                 srcs = dep_rs(nx_mnm, nx_regs)
                 if rd in srcs:
                     dist = nx_pos - pos # distance in executed-instruction steps
                     if 1 <= dist <= window:
-                        dep_arr[dist] += 1
+                        dep_arr_cnt[dist] += 1
                         seq = extract_seq_num(nx_line)
                         if seq is not None:
-                            dep_lines[dist].append(int(seq))
+                            dep_line_num[dist].append(int(seq))
                     # Only one increment per dep even if both rs1/rs2 == rd
 
     fmt = smarter_eng_formatter()
     exec_inst = fmt(len(inst_idxs))
     # move forward only if there are dependencies found
-    if sum(dep_arr) == 0:
+    if sum(dep_arr_cnt) == 0:
         print("No dependencies found for the given source/dependent mnemonics"+\
               f" for {exec_inst} executed instructions and window {window}.")
         return
 
     LN = 5
-    print(f"Source inst: '{', '.join(sorted(set_src))}'\n" + \
-          f"Dependent inst: '{', '.join(sorted(set_stl))}'")
-    print(f"Dependency counts by distance: " + \
-          f"{exec_inst} executed instructions, " + \
+    print(f"Source inst ({len(src_mnm)}): '{src_str}'\n" +
+          f"Dependent inst ({len(dep_mnm)}): '{dep_str}'\n")
+    print(f"Dependency counts by distance " +
+          f"for '{get_test_title(args.exec_log)}': " +
+          f"{exec_inst} executed instructions, " +
           f"window {window}, first {LN} sample line numbers:")
 
-    max_digits = len(str(max(dep_arr)))
+    max_digits = len(str(max(dep_arr_cnt)))
     for d in range(1, window + 1):
-        print(f"{INDENT}{d}: {dep_arr[d]:>{max_digits}}  {dep_lines[d][:LN]}")
+        print(f"{INDENT}{d}: {dep_arr_cnt[d]:>{max_digits}}  " +
+              f"{dep_line_num[d][:LN]}")
 
     if line_fmt_issue:
-        print(f"\nSkipped lines with formatting issue or " + \
-              f"otherwise ignored: {line_fmt_issue}")
+        print(f"\n(Skipped lines: {line_fmt_issue})")
 
     fig, ax = plt.subplots(figsize=(2+window*.8, 4.5))
-    r = ax.bar(range(1, window + 1), dep_arr[1:])
+    r = ax.bar(range(1, window + 1), dep_arr_cnt[1:])
     ax.bar_label(r, padding=3, fmt=fmt)
-    ax.set_ylim(0, max(dep_arr[1:]) * 1.1)
+    ax.set_ylim(0, max(dep_arr_cnt[1:]) * 1.1)
     ax.set_title(
-        f"Register dependency distances for {get_test_title(args.exec_log)}")
+        f"Register dependency distances for '{get_test_title(args.exec_log)}'")
     ax.set_xlabel("Distance (next executed instruction = 1)")
     ax.set_ylabel("Count")
-    ax.yaxis.set_major_formatter(EngFormatter(unit='', places=0, sep=''))
+    ax.yaxis.set_major_formatter(FMT_AXIS)
     ax.set_xticks(list(range(1, window + 1)))
     ax.grid(True, axis="y")
     plt.tight_layout()

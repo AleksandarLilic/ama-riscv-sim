@@ -3,6 +3,7 @@ import os
 import subprocess
 
 import matplotlib
+from matplotlib.ticker import EngFormatter, FuncFormatter
 
 INDENT = " " * 4
 DELIM = f"\n{INDENT}"
@@ -39,3 +40,22 @@ def is_headless():
 def get_test_title(input_log: str) -> str:
     """Generate a plot title based on the input log filename."""
     return os.path.basename(os.path.dirname(input_log)).replace("out_", "")
+
+def smarter_eng_formatter(places=1, unit='', sep=''):
+    base_fmt = EngFormatter(unit=unit, places=places, sep=sep)
+    more_fmt = EngFormatter(unit=unit, places=places + 1, sep=sep)
+
+    def _fmt(x, pos):
+        s = base_fmt(x, pos)
+        try:
+            val = float(s.split(".")[0])
+        except ValueError:
+            return s
+        # use extra precision if < 10 after scaling
+        s = more_fmt(x, pos) if abs(val) < 10 and val != 0 else s
+        # strip trailing .0 or zeros
+        return s.rstrip('0').rstrip('.') if '.' in s else s
+
+    return FuncFormatter(_fmt)
+
+FMT_AXIS = EngFormatter(unit='', places=0, sep='')

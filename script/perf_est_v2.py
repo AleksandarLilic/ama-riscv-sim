@@ -6,30 +6,11 @@ import sys
 
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import EngFormatter, FuncFormatter
-from run_analysis import json_prof_to_df
-from utils import DELIM, INDENT
-
-R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
+from run_analysis import icfg, json_prof_to_df
+from utils import DELIM, INDENT, smarter_eng_formatter
 
 REALISTIC = False # use with caution, set to False by default
-
-def smarter_eng_formatter(places=1, unit='', sep=''):
-    base_fmt = EngFormatter(unit=unit, places=places, sep=sep)
-    more_fmt = EngFormatter(unit=unit, places=places + 1, sep=sep)
-
-    def _fmt(x, pos):
-        s = base_fmt(x, pos)
-        try:
-            val = float(s.split(".")[0])
-        except ValueError:
-            return s
-        # use extra precision if < 10 after scaling
-        s = more_fmt(x, pos) if abs(val) < 10 and val != 0 else s
-        # strip trailing .0 or zeros
-        return s.rstrip('0').rstrip('.') if '.' in s else s
-
-    return FuncFormatter(_fmt)
+R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
 # main mem configuration assumptions based on the port contention from hwpm
 
@@ -44,17 +25,15 @@ def smarter_eng_formatter(places=1, unit='', sep=''):
 # e.g. D$ read miss followed by D$ write miss in the next cycle
 
 class perf:
-    # TODO: needs compressed ISA
-    b_inst_a = ["beq", "bne", "blt", "bge", "bltu", "bgeu"]
-    j_inst_a = ["jalr", "jal"] # split jal vs jalr?
-    ld_inst_a = ["lb", "lh", "lw", "lbu", "lhu"]
-    st_inst_a = ["sb", "sh", "sw"]
-    scp_inst_a = ["scp.ld", "scp.rel"]
-    #dc_inst_a = ld_inst_a + st_inst_a + scp_inst_a
-    mul_inst_a = ["mul", "mulh", "mulhsu", "mulhu"]
-    div_inst_a = ["div", "divu", "rem", "remu"]
-    dot_inst_a = ["dot4", "dot8", "dot16"]
-    csr_inst_a = ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"]
+    b_inst_a = icfg.INST_T[icfg.BRANCH]
+    j_inst_a = icfg.INST_T[icfg.JUMP]
+    ld_inst_a = icfg.INST_T_MEM[icfg.MEM_L]
+    st_inst_a = icfg.INST_T_MEM[icfg.MEM_S]
+    scp_inst_a = icfg.INST_T[icfg.MEM_HINTS]
+    mul_inst_a = icfg.INST_T[icfg.MUL]
+    div_inst_a = icfg.INST_T[icfg.DIV]
+    dot_inst_a = icfg.INST_T_SIMD[icfg.SIMD_DOT]
+    csr_inst_a = icfg.INST_T[icfg.CSR]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
         "bpred", "icache", "dcache",
