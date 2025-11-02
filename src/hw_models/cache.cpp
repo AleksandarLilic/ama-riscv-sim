@@ -6,12 +6,14 @@ cache::cache(
     uint32_t sets,
     uint32_t ways,
     cache_re_policy_t re_policy,
+    cache_pr_policy_t pr_policy,
     cache_wr_policy_t wr_policy,
     std::string cache_name) :
         type(type),
         sets(sets),
         ways(ways),
         re_policy(re_policy),
+        pr_policy(pr_policy),
         wr_policy(wr_policy),
         cache_name(cache_name)
     {
@@ -236,7 +238,10 @@ void cache::miss(
     act_line.referenced();
     act_line.tag = ccl.tag; // act_line now caching new data
     act_line.metadata.valid = true;
-    update_lru(ccl.index, ccl.victim.way_idx); // now the most recently used
+    if (pr_policy == cache_pr_policy_t::full) {
+        // now the most recently used
+        update_lru(ccl.index, ccl.victim.way_idx);
+    }
     scp_status = update_scp(scp_mode, act_line, ccl.index);
 
     #if CACHE_MODE == CACHE_MODE_FUNC
@@ -347,6 +352,14 @@ void cache::validate_inputs(
     if (re_policy != cache_re_policy_t::lru) {
         std::cerr << "ERROR: " << cache_name
                   << ": only LRU re_policy is supported" << std::endl;
+        error = true;
+    }
+
+    if ((pr_policy != cache_pr_policy_t::full) &&
+        (pr_policy != cache_pr_policy_t::not_on_miss)) {
+        std::cerr << "ERROR: " << cache_name
+                  << ": only 'full' and 'not_on_miss' pr_policy is supported"
+                  << std::endl;
         error = true;
     }
 

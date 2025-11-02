@@ -5,6 +5,7 @@
     hw_cfg.icache_sets, \
     hw_cfg.icache_ways, \
     hw_cfg.icache_re_policy, \
+    hw_cfg.icache_pr_policy, \
     cache_wr_policy_t::none, \
     "icache"
 
@@ -13,6 +14,7 @@
     hw_cfg.dcache_sets, \
     hw_cfg.dcache_ways, \
     hw_cfg.dcache_re_policy, \
+    hw_cfg.dcache_pr_policy, \
     hw_cfg.dcache_wr_policy, \
     "dcache"
 

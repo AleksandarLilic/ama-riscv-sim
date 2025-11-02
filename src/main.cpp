@@ -80,6 +80,11 @@ const std::unordered_map<std::string, cache_re_policy_t> cache_re_policy_map = {
     {"lru", cache_re_policy_t::lru}
 };
 
+const std::unordered_map<std::string, cache_pr_policy_t> cache_pr_policy_map = {
+    {"full", cache_pr_policy_t::full},
+    {"not_on_miss", cache_pr_policy_t::not_on_miss}
+};
+
 const std::unordered_map<std::string, cache_wr_policy_t> cache_wr_policy_map = {
     {"wt", cache_wr_policy_t::wt},
     {"wb", cache_wr_policy_t::wb}
@@ -142,18 +147,21 @@ struct defs_t {
 
 #ifdef HW_MODELS_EN
 struct hw_defs_t {
-    // caches
+    // icache
     static constexpr char icache_sets[] = "4";
     static constexpr char icache_ways[] = "2";
     static constexpr char icache_re_policy[] = "lru";
+    static constexpr char icache_pr_policy[] = "not_on_miss";
+    // dcache
     static constexpr char dcache_sets[] = "8";
     static constexpr char dcache_ways[] = "2";
     static constexpr char dcache_re_policy[] = "lru";
+    static constexpr char dcache_pr_policy[] = "full";
     static constexpr char dcache_wr_policy[] = "wb";
-    static constexpr char show_cache_state[] = "false";
     // caches other configs
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
+    static constexpr char show_cache_state[] = "false";
     // branch predictors
     static constexpr char bp[] = "bimodal";
     static constexpr char bp2[] = "none"; // global
@@ -257,7 +265,7 @@ int main(int argc, char* argv[]) {
         #endif
 
         #ifdef HW_MODELS_EN
-        // caches
+        // icache
         ("icache_sets", "Number of sets in I$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_sets))
         ("icache_ways", "Number of ways in I$",
@@ -265,6 +273,10 @@ int main(int argc, char* argv[]) {
         ("icache_re_policy", "I$ replacement policy. \nOptions: " +
          gen_help_list(cache_re_policy_map),
          CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_re_policy))
+        ("icache_pr_policy", "I$ promotion policy. \nOptions: " +
+         gen_help_list(cache_pr_policy_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_pr_policy))
+        // dcache
         ("dcache_sets", "Number of sets in D$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_sets))
         ("dcache_ways", "Number of ways in D$",
@@ -272,6 +284,9 @@ int main(int argc, char* argv[]) {
         ("dcache_re_policy", "D$ replacement policy. \nOptions: " +
          gen_help_list(cache_re_policy_map),
          CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_re_policy))
+        ("dcache_pr_policy", "D$ promotion policy. \nOptions: " +
+         gen_help_list(cache_pr_policy_map),
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_pr_policy))
         ("dcache_wr_policy", "D$ write policy. \nOptions: " +
          gen_help_list(cache_wr_policy_map),
          CXXOPTS_VAL_STR->default_value(hw_defs_t::dcache_wr_policy))
@@ -411,21 +426,27 @@ int main(int argc, char* argv[]) {
         #endif
 
         #ifdef HW_MODELS_EN
-        // caches
+        // icache
         hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
         hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
         hw_cfg.icache_re_policy =
             RESOLVE_ARG("icache_re_policy", cache_re_policy_map);
+        hw_cfg.icache_pr_policy =
+            RESOLVE_ARG("icache_pr_policy", cache_pr_policy_map);
+        // dcache
         hw_cfg.dcache_sets = TO_SIZE(result["dcache_sets"]);
         hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
         hw_cfg.dcache_re_policy =
             RESOLVE_ARG("dcache_re_policy", cache_re_policy_map);
+        hw_cfg.dcache_pr_policy =
+            RESOLVE_ARG("dcache_pr_policy", cache_pr_policy_map);
         hw_cfg.dcache_wr_policy =
             RESOLVE_ARG("dcache_wr_policy", cache_wr_policy_map);
         // caches other configs
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
         hw_cfg.show_cache_state = TO_BOOL(result["show_cache_state"]);
+
         // branch predictors
         hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);
         hw_cfg.bp2 = RESOLVE_ARG("bp2", bp_names_map);
@@ -443,6 +464,7 @@ int main(int argc, char* argv[]) {
         hw_cfg.bp_lhist_bits = TO_SIZE(result["bp_lhist_bits"]);
         hw_cfg.bp_gr_bits = TO_SIZE(result["bp_gr_bits"]);
         hw_cfg.bp_fold_pc = RESOLVE_ARG("bp_fold_pc", bp_pc_folds_map);
+
         hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
         hw_cfg.bp2_pc_bits = TO_SIZE(result["bp2_pc_bits"]);
         hw_cfg.bp2_cnt_bits = TO_SIZE(result["bp2_cnt_bits"]);

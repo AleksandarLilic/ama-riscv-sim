@@ -6,7 +6,8 @@
 enum class hw_status_t { miss, hit, none };
 enum class cache_type_t { inst, data, _count };
 enum class cache_re_policy_t { lru, _count };
-enum class cache_wr_policy_t { none, wb, wt, _count };
+enum class cache_wr_policy_t { none, wb, wt, _count }; // i$: none, d$: wb, wt
+enum class cache_pr_policy_t { full, not_on_miss, _count };
 enum class cache_ref_t { hit, miss, ignore, _count };
 enum class scp_mode_t { m_none, m_lcl, m_rel };
 // success always 0, fail 1 for now, use values >0 for error codes if needed
@@ -106,9 +107,11 @@ struct hw_cfg_t {
     uint32_t icache_sets;
     uint32_t icache_ways;
     cache_re_policy_t icache_re_policy;
+    cache_pr_policy_t icache_pr_policy;
     uint32_t dcache_sets;
     uint32_t dcache_ways;
     cache_re_policy_t dcache_re_policy;
+    cache_pr_policy_t dcache_pr_policy;
     cache_wr_policy_t dcache_wr_policy;
     uint32_t roi_start;
     uint32_t roi_size;
