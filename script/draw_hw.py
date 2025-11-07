@@ -35,18 +35,27 @@ def draw_cache(sets, ways, res_dict, wr_pol=""):
 
     sets_bits = int(np.log2(sets))
     tags_bits = ADDR_BITS - sets_bits - CACHE_BYTE_ADDR_BITS
+    lru_bits = int(np.log2(ways))
 
-    col_widths = {0: 0.1, 1: 0.2, 2: 0.7}  # total = 1.0
+    BW = 0.1 # bit width (valid, dirty)
+    SW = 0.15 # small field width (lru, tag)
+    DW = 0.6  # data block width
+    col_widths = [BW, SW, DW]
     df2 = pd.DataFrame(
-        [['v', f"{tags_bits}b", "64B"]],
+        [['', f"{tags_bits}b", "64B"]],
         index=range(sets),
         columns=['v', 'tag', 'data']
     )
 
+    if lru_bits > 0:
+        # insert lru column after valid bit
+        df2.insert(1, 'lru', [f'{lru_bits}b']*sets)
+        col_widths.insert(1, SW)
+
     if wr_pol == "wb":
         # insert dirty bit column after valid bit
-        df2.insert(1, 'd', ['d']*sets)
-        col_widths = {0: 0.1, 1: 0.1, 2: 0.2, 3: 0.6}
+        df2.insert(1, 'd', ['']*sets)
+        col_widths.insert(1, BW)
 
     axs = np.array(axs) if ways == 1 else axs
     for i,ax in enumerate(axs.flatten()): # L-R, T-B
@@ -63,7 +72,7 @@ def draw_cache(sets, ways, res_dict, wr_pol=""):
         ax.axis('off')
 
         for (row, col), cell in table.get_celld().items():
-            cell.set_width(col_widths.get(col, 0.5)) # default fallback
+            cell.set_width(col_widths[col])
 
         center_cell_text(table)
 
@@ -437,58 +446,35 @@ def parse_args() -> argparse.Namespace:
         return value
 
     parser = argparse.ArgumentParser(description="Cache and branch predictor configuration")
-    parser.add_argument("block", choices=CHOICES['block'], metavar="BLOCK",
-                        help="Hardware block to draw")
-    parser.add_argument("--config", type=str, metavar="JSON_FILE",
-                        help="Path to JSON config file. If provided, all other config switches are ignored")
+    parser.add_argument("block", choices=CHOICES['block'], metavar="BLOCK", help="Hardware block to draw")
+    parser.add_argument("--config", type=str, metavar="JSON_FILE", help="Path to JSON config file. If provided, all other config switches are ignored")
     # common
     parser.add_argument('--max_blocks', type=int, default=MAX_BLOCKS, help=F"Limit the number of hardware blocks to draw. Default is {MAX_BLOCKS}")
 
     # caches
-    parser.add_argument("--cache_sets", type=power_of_two, default=DEFAULTS["cache_sets"], metavar="N",
-                        help=f"Number of sets in the cache. Must be power of 2 (default: {DEFAULTS['cache_sets']})")
-    parser.add_argument("--cache_ways", type=int, default=DEFAULTS["cache_ways"], metavar="N",
-                        help=f"Number of ways in the cache (default: {DEFAULTS['cache_ways']})")
-    parser.add_argument("--cache_policy", type=str, choices=CHOICES["cache_policy"], default=DEFAULTS["cache_policy"], metavar="POLICY",
-                        help=f"Cache replacement policy.\nOptions: {', '.join(CHOICES['cache_policy'])} (default: {DEFAULTS['cache_policy']})")
-    parser.add_argument("--dcache_wr_policy", type=str, choices=CHOICES["dcache_wr_policy"], default=DEFAULTS["dcache_wr_policy"], metavar="WR_POLICY",
-                        help=f"Cache write policy (dcache only).\nOptions: {', '.join(CHOICES['dcache_wr_policy'])} (default: {DEFAULTS['dcache_wr_policy']})")
+    parser.add_argument("--cache_sets", type=power_of_two, default=DEFAULTS["cache_sets"], metavar="N", help=f"Number of sets in the cache. Must be power of 2 (default: {DEFAULTS['cache_sets']})")
+    parser.add_argument("--cache_ways", type=int, default=DEFAULTS["cache_ways"], metavar="N", help=f"Number of ways in the cache (default: {DEFAULTS['cache_ways']})")
+    parser.add_argument("--cache_policy", type=str, choices=CHOICES["cache_policy"], default=DEFAULTS["cache_policy"], metavar="POLICY", help=f"Cache replacement policy.\nOptions: {', '.join(CHOICES['cache_policy'])} (default: {DEFAULTS['cache_policy']})")
+    parser.add_argument("--dcache_wr_policy", type=str, choices=CHOICES["dcache_wr_policy"], default=DEFAULTS["dcache_wr_policy"], metavar="WR_POLICY", help=f"Cache write policy (dcache only).\nOptions: {', '.join(CHOICES['dcache_wr_policy'])} (default: {DEFAULTS['dcache_wr_policy']})")
 
     # bp
-    parser.add_argument("--bp", type=str, choices=CHOICES["bp_type"], default=DEFAULTS["bp"], metavar="PREDICTOR",
-                        help=f"First branch predictor. Defaults as active, driving the I$. For combined predictor, counters will be weakly biased towards this predictor (impacts warm-up period)\nOptions: {', '.join(CHOICES['bp_type'])} (default: {DEFAULTS['bp']})")
-    parser.add_argument("--bp2", type=str, choices=CHOICES["bp_type"], default=DEFAULTS["bp2"], metavar="PREDICTOR",
-                        help=f"Second branch predictor, only for combined predictor. If provided, combined predictor becomes active\nOptions: {', '.join(CHOICES['bp_type'])} (default: {DEFAULTS['bp2']})")
-    parser.add_argument("--bp_static_method", type=str, choices=CHOICES["bp_method"], default=DEFAULTS["bp_static_method"], metavar="METHOD",
-                        help=f"Static predictor - method.\nOptions: {', '.join(CHOICES['bp_method'])} (default: {DEFAULTS['bp_static_method']})")
-    parser.add_argument("--bp_pc_bits", type=int, default=DEFAULTS["bp_pc_bits"], metavar="N",
-                        help=f"Branch predictor - PC bits (default: {DEFAULTS['bp_pc_bits']})")
-    parser.add_argument("--bp_cnt_bits", type=int, default=DEFAULTS["bp_cnt_bits"], metavar="N",
-                        help=f"Branch predictor - counter bits (default: {DEFAULTS['bp_cnt_bits']})")
-    parser.add_argument("--bp_lhist_bits", type=int, default=DEFAULTS["bp_lhist_bits"], metavar="N",
-                        help=f"Branch predictor - local history bits (default: {DEFAULTS['bp_lhist_bits']})")
-    parser.add_argument("--bp_gr_bits", type=int, default=DEFAULTS["bp_gr_bits"], metavar="N",
-                        help=f"Branch predictor - global register bits (default: {DEFAULTS['bp_gr_bits']})")
-    parser.add_argument("--bp_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp_fold_pc"], metavar="FOLD",
-                        help=f"Branch predictor - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp_fold_pc']})")
-    parser.add_argument("--bp2_static_method", type=str, choices=CHOICES["bp_method"], default=DEFAULTS["bp2_static_method"], metavar="METHOD",
-                        help=f"Static predictor - method.\nOptions: {', '.join(CHOICES['bp_method'])} (default: {DEFAULTS['bp2_static_method']})")
-    parser.add_argument("--bp2_pc_bits", type=int, default=DEFAULTS["bp2_pc_bits"], metavar="N",
-                        help=f"Branch predictor 2 - PC bits (default: {DEFAULTS['bp2_pc_bits']})")
-    parser.add_argument("--bp2_cnt_bits", type=int, default=DEFAULTS["bp2_cnt_bits"], metavar="N",
-                        help=f"Branch predictor 2 - counter bits (default: {DEFAULTS['bp2_cnt_bits']})")
-    parser.add_argument("--bp2_lhist_bits", type=int, default=DEFAULTS["bp2_lhist_bits"], metavar="N",
-                        help=f"Branch predictor 2 - local history bits (default: {DEFAULTS['bp2_lhist_bits']})")
-    parser.add_argument("--bp2_gr_bits", type=int, default=DEFAULTS["bp2_gr_bits"], metavar="N",
-                        help=f"Branch predictor 2 - global register bits (default: {DEFAULTS['bp2_gr_bits']})")
-    parser.add_argument("--bp2_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp2_fold_pc"], metavar="FOLD",
-                        help=f"Branch predictor 2 - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp2_fold_pc']})")
-    parser.add_argument("--bp_combined_pc_bits", type=int, default=DEFAULTS["bp_combined_pc_bits"], metavar="N",
-                        help=f"Combined predictor - PC bits (default: {DEFAULTS['bp_combined_pc_bits']})")
-    parser.add_argument("--bp_combined_cnt_bits", type=int, default=DEFAULTS["bp_combined_cnt_bits"], metavar="N",
-                        help=f"Combined predictor - counter bits (default: {DEFAULTS['bp_combined_cnt_bits']})")
-    parser.add_argument("--bp_combined_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp_combined_fold_pc"], metavar="FOLD",
-                        help=f"Combined predictor - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp_combined_fold_pc']})")
+    parser.add_argument("--bp", type=str, choices=CHOICES["bp_type"], default=DEFAULTS["bp"], metavar="PREDICTOR", help=f"First branch predictor. Defaults as active, driving the I$. For combined predictor, counters will be weakly biased towards this predictor (impacts warm-up period)\nOptions: {', '.join(CHOICES['bp_type'])} (default: {DEFAULTS['bp']})")
+    parser.add_argument("--bp2", type=str, choices=CHOICES["bp_type"], default=DEFAULTS["bp2"], metavar="PREDICTOR", help=f"Second branch predictor, only for combined predictor. If provided, combined predictor becomes active\nOptions: {', '.join(CHOICES['bp_type'])} (default: {DEFAULTS['bp2']})")
+    parser.add_argument("--bp_static_method", type=str, choices=CHOICES["bp_method"], default=DEFAULTS["bp_static_method"], metavar="METHOD", help=f"Static predictor - method.\nOptions: {', '.join(CHOICES['bp_method'])} (default: {DEFAULTS['bp_static_method']})")
+    parser.add_argument("--bp_pc_bits", type=int, default=DEFAULTS["bp_pc_bits"], metavar="N", help=f"Branch predictor - PC bits (default: {DEFAULTS['bp_pc_bits']})")
+    parser.add_argument("--bp_cnt_bits", type=int, default=DEFAULTS["bp_cnt_bits"], metavar="N", help=f"Branch predictor - counter bits (default: {DEFAULTS['bp_cnt_bits']})")
+    parser.add_argument("--bp_lhist_bits", type=int, default=DEFAULTS["bp_lhist_bits"], metavar="N", help=f"Branch predictor - local history bits (default: {DEFAULTS['bp_lhist_bits']})")
+    parser.add_argument("--bp_gr_bits", type=int, default=DEFAULTS["bp_gr_bits"], metavar="N", help=f"Branch predictor - global register bits (default: {DEFAULTS['bp_gr_bits']})")
+    parser.add_argument("--bp_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp_fold_pc"], metavar="FOLD", help=f"Branch predictor - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp_fold_pc']})")
+    parser.add_argument("--bp2_static_method", type=str, choices=CHOICES["bp_method"], default=DEFAULTS["bp2_static_method"], metavar="METHOD", help=f"Static predictor - method.\nOptions: {', '.join(CHOICES['bp_method'])} (default: {DEFAULTS['bp2_static_method']})")
+    parser.add_argument("--bp2_pc_bits", type=int, default=DEFAULTS["bp2_pc_bits"], metavar="N", help=f"Branch predictor 2 - PC bits (default: {DEFAULTS['bp2_pc_bits']})")
+    parser.add_argument("--bp2_cnt_bits", type=int, default=DEFAULTS["bp2_cnt_bits"], metavar="N", help=f"Branch predictor 2 - counter bits (default: {DEFAULTS['bp2_cnt_bits']})")
+    parser.add_argument("--bp2_lhist_bits", type=int, default=DEFAULTS["bp2_lhist_bits"], metavar="N", help=f"Branch predictor 2 - local history bits (default: {DEFAULTS['bp2_lhist_bits']})")
+    parser.add_argument("--bp2_gr_bits", type=int, default=DEFAULTS["bp2_gr_bits"], metavar="N", help=f"Branch predictor 2 - global register bits (default: {DEFAULTS['bp2_gr_bits']})")
+    parser.add_argument("--bp2_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp2_fold_pc"], metavar="FOLD", help=f"Branch predictor 2 - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp2_fold_pc']})")
+    parser.add_argument("--bp_combined_pc_bits", type=int, default=DEFAULTS["bp_combined_pc_bits"], metavar="N", help=f"Combined predictor - PC bits (default: {DEFAULTS['bp_combined_pc_bits']})")
+    parser.add_argument("--bp_combined_cnt_bits", type=int, default=DEFAULTS["bp_combined_cnt_bits"], metavar="N", help=f"Combined predictor - counter bits (default: {DEFAULTS['bp_combined_cnt_bits']})")
+    parser.add_argument("--bp_combined_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp_combined_fold_pc"], metavar="FOLD", help=f"Combined predictor - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp_combined_fold_pc']})")
 
     return parser.parse_args()
 
