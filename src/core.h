@@ -28,6 +28,7 @@ class core {
         #ifdef DPI
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
+        uint32_t get_csr(uint32_t addr) { return csr.at(addr).value; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
         void update_clk(uint64_t clk, uint64_t mtime) {
