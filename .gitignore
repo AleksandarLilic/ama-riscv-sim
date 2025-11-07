@@ -6,6 +6,7 @@ src/gprof_out/
 src/*.out
 
 # checkers/logs/sim outputs
+workdir*
 *.check
 *.log
 *.dot
