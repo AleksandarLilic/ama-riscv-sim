@@ -83,12 +83,12 @@ cache parameters (
 - ways (P): associativity - number of ways in each set
 - size (D): sets * ways * CACHE_LINE_SIZE [bytes]
 - policies:
-    - insertion (S): MRU - on miss, insert new line as most recently used
-    - promotion (P): 1. full - on hit, promote line to MRU position
-                     2. not_on_miss - on miss, don't change new line's LRU
-    - eviction  (P): LRU - on miss, evict/replace LRU line in way
-    - write     (P): 1. write-back (write on eviction if dirty)
-                     2. write-through (write to mem on write)
+    - replacement (P): 1. lru - track with counters, replace largest
+    - insertion (P): 1. update - on miss, promote line to MRU position
+                     2. no_update - on miss, don't change new line's LRU
+    - eviction (S): LRU - on miss, evict/replace LRU line in way
+    - write (P): 1. write-back (write on eviction if dirty)
+                 2. write-through (write to mem on write)
 - write-allocate (S): yes
 - prefetching (S): no
 - sub-blocking (S): no
@@ -101,7 +101,7 @@ class cache {
         uint32_t sets;
         uint32_t ways;
         cache_re_policy_t re_policy;
-        cache_pr_policy_t pr_policy;
+        cache_in_policy_t in_policy;
         cache_wr_policy_t wr_policy;
         bool direct_mapped;
         uint32_t index_bits_num;
@@ -139,7 +139,7 @@ class cache {
             uint32_t sets,
             uint32_t ways,
             cache_re_policy_t re_policy,
-            cache_pr_policy_t pr_policy,
+            cache_in_policy_t in_policy,
             cache_wr_policy_t wr_policy,
             std::string cache_name
         );
