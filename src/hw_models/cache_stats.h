@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defines.h"
+#include "hw_model_types.h"
 
 #define CACHE_STATS_JSON_ENTRY(stat_struct) \
     JSON_N << "\"references\": " << stat_struct->references << "," \
@@ -149,15 +150,17 @@ struct cache_stats_t {
             }
             return hr;
         }
-        void show() {
+        void show(cache_type_t type) {
             std::cout << "Ref: " << references
                       << ", H: " << hits.all()
                       << "(" << hits.ld << "/" << hits.st << ")"
                       << ", M: " << misses.all()
                       << "(" << misses.ld << "/" << misses.st << ")"
-                      << ", R: " << replacements
-                      << ", WB: " << writebacks
-                      << ", HR: " << std::fixed << std::setprecision(2)
+                      << ", R: " << replacements;
+            if (type == cache_type_t::data) {
+                std::cout << ", WB: " << writebacks;
+            }
+            std::cout << ", HR: " << std::fixed << std::setprecision(2)
                       << get_hr() << "%"
                       << "; CT (R/W): "
                       << "core " << ct_core.to_string()

@@ -443,7 +443,7 @@ void cache::show_stats(bool show_state) {
     std::cout << cache_name;
     size.show();
     std::cout << "\n" << INDENT;
-    stats.show();
+    stats.show(type);
     std::cout << "\n";
 
     if (show_state) {
@@ -471,7 +471,7 @@ void cache::show_stats(bool show_state) {
         std::cout << INDENT << "ROI: "
                   << "(0x" << std::hex << roi.start
                   << " - 0x" << roi.end << "): " << std::dec;
-        roi.stats.show();
+        roi.stats.show(type);
         std::cout << "\n";
     }
     // dump();
