@@ -265,7 +265,7 @@ void core::exec_inst() {
     if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
 }
 
-#ifndef DPI
+#if defined(PROFILERS_EN) && !defined(DPI)
 void core::save_trace_entry() {
     if (prof_act && prof_trace) {
         prof.te.inst = inst;
@@ -541,12 +541,12 @@ void core::jalr() {
 
     uint32_t ra = pc + 4;
     write_rf(ip.rd(), ra);
-    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
     DASM_OP(jalr)
     PROF_J(jalr)
     PROF_RD_RS1
 
     #ifdef PROFILERS_EN
+    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
     bool tail_call = (ip.rd() == 0);
     prof_perf.update_jalr(next_pc, ret_inst, tail_call, ra);
     branch_taken = true;
@@ -1857,11 +1857,11 @@ void core::c_jr() {
     // rs1 in position of rd
     if (ip.rd() == 0x0) tu.e_illegal_inst("c.jr (rd=0)", 4);
     next_pc = rf[ip.rd()];
-    bool ret_inst = (inst == INST_C_RET);
     DASM_OP(c.jr)
     PROF_J(c_jr)
 
     #ifdef PROFILERS_EN
+    bool ret_inst = (inst == INST_C_RET);
     prof_perf.update_jalr(next_pc, ret_inst, true, pc + 2); // no ra, tail calls
     branch_taken = true;
     #endif
@@ -1933,7 +1933,10 @@ void core::dump() {
         }
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
-              << ", profiled: " << prof_pc.inst_cnt << "\n";
+    #ifdef PROFILERS_EN
+              << ", profiled: " << prof_pc.inst_cnt
+    #endif
+              << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
     else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
 
