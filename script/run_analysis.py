@@ -26,7 +26,9 @@ BASE_ADDR = 0x40000
 MEM_SIZE = 65536
 
 FS_EXEC_X = 24.7
+FS_EXEC_Y = 13
 GS_EXEC = {'top': .95, 'bottom': .1, 'left': .09, 'right': .8, 'hspace': .05}
+TRACE_TYPE = ["Execution", "Data"]
 
 TRACE_NA = 255
 
@@ -420,6 +422,10 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                     parts = parts[0].split(" ")
                     addr_start = hex2int(parts[0].strip())
                     symbol_name = parts[1][1:-1] # remove <> from symbol name
+
+                    if prev_addr == addr_start:
+                        continue # skip duplicate symbol
+
                     if current_sym: # close previous section
                         symbols[current_sym]['addr_end'] = prev_addr
                     current_sym = symbol_name
@@ -521,6 +527,13 @@ def add_cache_line_spans(ax) -> None:
             continue
         ax.axhspan(i, i+CACHE_LINE_BYTES, color='k', alpha=0.05, zorder=0)
 
+    return ax
+
+def add_spans(ax) -> None:
+    top = int(ax.get_ylim()[1])
+    bottom = int(ax.get_ylim()[0])
+    for i in range(bottom, top+1, 2):
+        ax.axhspan(i-.5, i+.5, color='k', alpha=0.03, zorder=0)
     return ax
 
 def annotate_chart(df, symbols, ax, args, ctype) -> \
@@ -715,7 +728,7 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
 
     return rs
 
-def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
+def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035, no_ticks=False):
     fig = ax.figure
     pos = ax.get_position()
     if side == "right":
@@ -743,14 +756,15 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
         handle_style=dict(size=1, facecolor="w", edgecolor="w"),
     )
 
-    # ticks copied from main Y (snapshot)
-    slider_ax.set_axis_on()
-    slider_ax.xaxis.set_visible(False)
-    slider_ax.yaxis.set_visible(True)
-    slider_ax.set_ylim(vmin, vmax)
-    abs_ticks = ax.get_yticks()
-    slider_ax.yaxis.set_major_locator(FixedLocator(abs_ticks))
-    slider_ax.yaxis.set_major_formatter(ax.yaxis.get_major_formatter())
+    if not no_ticks:
+        # ticks copied from main Y (snapshot)
+        slider_ax.set_axis_on()
+        slider_ax.xaxis.set_visible(False)
+        slider_ax.yaxis.set_visible(True)
+        slider_ax.set_ylim(vmin, vmax)
+        abs_ticks = ax.get_yticks()
+        slider_ax.yaxis.set_major_locator(FixedLocator(abs_ticks))
+        slider_ax.yaxis.set_major_formatter(ax.yaxis.get_major_formatter())
 
     # spines: keep only chosen side
     for s in ("top", "bottom", "left", "right"):
@@ -820,6 +834,8 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035):
 
     # format y values as hex - addresses
     def _fmt_hex(lo, hi):
+        if no_ticks:
+            return ""
         diff = hi-lo
         if diff >= 1024:
             diff /= 1024
@@ -1016,7 +1032,7 @@ def progressive_lw(x):
     return map_value(x, left_bound, right_bound, left_out, right_out)
 
 def plot_dummy_line(ax, color, lw, label):
-    # used when legend LW needs to be decoupled from the actual line LW
+    # used when legend lw needs to be decoupled from the actual line lw
     ax.plot([], [], color=color, lw=lw, label=label)
 
 def default_on_xlim_changed(a, line, lw_off):
@@ -1035,6 +1051,8 @@ def plot_sp(ax, df):
     label = f"  SP max : {df['sp_real'].max()} B"
     line, = ax.step(
         df.smp, df.sp_real, where='post', lw=lw, color=CLR_TAB_BLUE)
+    ax.grid(axis='both', linestyle='-', alpha=.6, which='major')
+    ax.set_ylabel('Stack\nPointer')
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     default_on_xlim_changed(ax, line, LW_OFF)
 
@@ -1141,24 +1159,10 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None, None
 
-    FS = (FS_EXEC_X, 13)
-    nrows = 2
-    hrat = [16, 1]
-
     # set up figure
-    fig, ax = plt.subplots(
-        ncols=1, nrows=nrows, figsize=FS, sharex=True,
-        height_ratios=hrat, gridspec_kw=GS_EXEC)
-    ax_t, ax_sp = ax
-
-    # add grid
-    ax_t.grid(axis='x', linestyle='-', alpha=.6, which='major')
-    for a in ax:
-        a.grid(axis='both', linestyle='-', alpha=.6, which='major')
-
-    # add sp trace
-    plot_sp(ax_sp, df)
-    add_outside_legend(ax_sp, None)
+    FS = (FS_EXEC_X, FS_EXEC_Y)
+    fig, ax_t = plt.subplots(
+        ncols=1, nrows=1, figsize=FS, sharex=True, gridspec_kw=GS_EXEC)
 
     # add PC/DMEM trace
     LW_OFF_S = .75
@@ -1176,7 +1180,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     hc = 0
     lines_hl = []
     if ctype == 'pc':
-        trace_type = "Execution"
+        trace_type = TRACE_TYPE[0]
         hl_off = .15
         for hl_g in hl_inst_g:
             x_val_hl = []
@@ -1199,7 +1203,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
             add_legend_for_hl_groups(ax_t, "trace_exec")
 
     elif ctype == 'dmem':
-        trace_type = "Data"
+        trace_type = TRACE_TYPE[1]
         # dummy legend for load as it already exists
         ax_t.scatter([], [], color=CLR_TAB_BLUE, label='load')
         # and just highlight store in different color that load
@@ -1235,22 +1239,9 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
         ax_t = add_cache_line_spans(ax_t)
 
     # update axis
-    # y
     inc = find_loc_range(ax_t)
     ax_t.yaxis.set_major_locator(MultipleLocator(CACHE_LINE_BYTES*inc))
     ax_t.yaxis.set_major_formatter(FuncFormatter(int2hex))
-    ax_t.margins(y=0.03, x=0.0)
-    # x
-    max_n_locator = MaxNLocator(nbins=20, integer=True)
-    ax_t.xaxis.set_major_locator(max_n_locator)
-    ax_t.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
-    ax_t.set_xlim(ax_t.get_xlim()[0]-1, ax_t.get_xlim()[1]) # remove padding
-    # add a second x-axis
-    ax_top = ax_t.twiny()
-    ax_top.set_xlim(ax_t.get_xlim())
-    ax_top.xaxis.set_major_locator(max_n_locator)
-    ax_top.xaxis.set_ticks_position('top')
-    ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
     def _on_ylim_changed_lines(a):
         inc = find_loc_range(a)
@@ -1258,20 +1249,39 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     ax_t.callbacks.connect("ylim_changed", _on_ylim_changed_lines)
 
-    # label
+    ax_t.margins(y=0.03, x=0.0)
     ax_t.set_title(f"{TRACE_SOURCE} trace - {trace_type} profile for {title}")
     ax_t.set_ylabel(ylabel)
-    ax_sp.set_ylabel('Stack\nPointer')
-    ax[-1].set_xlabel(
-        'Sample Count' + ' (normalized)' if args.sample_begin_norm else '')
+    ax_t.grid(axis='both', linestyle='-', alpha=.6, which='major')
+    ax_top, xlabel = draw_exec_finish(ax_t, args.sample_begin_norm)
+    ax_t.set_xlabel(xlabel)
+
     S_GAP = 0.04
     S_H = 0.03
     S_W = (S_H / FS[0]) * FS[1]
-    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP, h=S_H)
+    rsx = attach_xrange_slider(ax_t, ax_top, gap=S_GAP, h=S_H)
     rsy = attach_yrange_slider(ax_t, gap=S_GAP, w=S_W)
     register_true_home(fig)
 
     return fig, rsx, rsy
+
+def draw_exec_finish(ax, norm):
+    # x
+    max_n_locator = MaxNLocator(nbins=20, integer=True)
+    ax.xaxis.set_major_locator(max_n_locator)
+    ax.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
+    ax.set_xlim(ax.get_xlim()[0]-1, ax.get_xlim()[1]) # remove padding
+    # add a second x-axis
+    ax_top = ax.twiny()
+    ax_top.set_xlim(ax.get_xlim())
+    ax_top.xaxis.set_major_locator(max_n_locator)
+    ax_top.xaxis.set_ticks_position('top')
+    ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
+
+    xlabel = 'Sample Count'
+    xlabel += ' (normalized)' if norm else ''
+
+    return ax_top, xlabel
 
 def draw_stats_exec(df, title, args) -> plt.Figure:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
@@ -1292,7 +1302,7 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
         ops_n = "/inst"
 
     MAX_ROWS_FS = 8 # just for fig size calc
-    FS = (FS_EXEC_X, (13/MAX_ROWS_FS)*nrows)
+    FS = (FS_EXEC_X, (FS_EXEC_Y/MAX_ROWS_FS)*nrows)
     # set up figure
     fig, ax = plt.subplots(
         ncols=1, nrows=nrows, figsize=FS, sharex=True, gridspec_kw=GS)
@@ -1441,8 +1451,9 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     df_ret = None
     figs_ret = {}
 
-    df_ret, df_t_ops, fig_pc, fig2_pc, rsx2_pc = \
+    df_ret, df_t_ops, fig_tl, rsx_tl, fig_pc, fig2_pc, rsx2_pc = \
         run_bin_trace_pc(df_t, hl_inst_g, title, args)
+    figs_ret['tl'] = fig_tl
     figs_ret['pc'] = fig_pc
     figs_ret['pc_exec'] = fig2_pc
 
@@ -1458,8 +1469,8 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         fig_hw, rsx_hw = draw_stats_exec(df_t_ops, title, args)
         figs_ret['hw_exec'] = fig_hw
 
-    figs_exec = [fig2_pc, fig2_dmem, fig_hw]
-    rsx_exec = [rsx2_pc, rsx2_dmem, rsx_hw]
+    figs_exec = [fig_tl, fig2_pc, fig2_dmem, fig_hw]
+    rsx_exec = [rsx_tl, rsx2_pc, rsx2_dmem, rsx_hw]
 
     # link x ranges of all exec figs that exist
     first_ax = None
@@ -1473,6 +1484,102 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
                 link_xrange(first_ax, first_rs, fige.get_axes()[0], rse)
 
     return df_ret, figs_ret
+
+def draw_timeline(df, title, top_down=False):
+    size = df['symbol'].unique().size
+    FSY_DYN = size * 0.25 + 1 + 1 + (size < 8) # + sp + margin
+    FSY = min(FSY_DYN, FS_EXEC_Y) # TODO: consider removing clamp?
+    FS = (FS_EXEC_X, FSY)
+    SCALE = (FS_EXEC_Y / FSY) # from og to current
+    gse = GS_EXEC.copy()
+    gse['bottom'] *= SCALE
+    gse['top'] = 1 - (1 - gse['top']) * SCALE
+
+    # set up figure
+    fig, ax = plt.subplots(
+        ncols=1, nrows=2, figsize=FS, sharex=True,
+        height_ratios=[FSY-1, 1], gridspec_kw=gse)
+    ax_tl, ax_sp = ax
+
+    # add sp trace
+    plot_sp(ax_sp, df)
+    add_outside_legend(ax_sp, None)
+
+    # add timeline
+    smp = df['smp'].to_numpy()
+    sym = df['symbol'].to_numpy()
+
+    # detect runs
+    start_idx = [0]
+    for i in range(1, len(sym)):
+        if sym[i] != sym[i-1]:
+            start_idx.append(i)
+
+    starts = np.array([smp[i] for i in start_idx])
+    ends = np.r_[starts[1:], smp[-1]] # end of each run = start of next run
+    widths = ends - starts
+    run_syms = sym[start_idx]
+
+    # assign lanes
+    unique_syms = list(dict.fromkeys(run_syms)) # order-preserving uniq extract
+    lane_index = {sym: i for i, sym in enumerate(unique_syms)}
+
+    # cycle through default colors to get color map
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    color_map = {sym: colors[i % len(colors)]
+                 for i, sym in enumerate(unique_syms)}
+
+    # use vectorized mask once instead of per-run continue
+    m_valid = widths > 0
+    m_starts = starts[m_valid]
+    m_ends = ends[m_valid]
+    m_syms = run_syms[m_valid]
+    # one Line2D per symbol, using NaN breaks
+    for s in unique_syms:
+        y = lane_index[s]
+        m = (m_syms == s)
+        if not np.any(m):
+            continue
+
+        seg_st = m_starts[m]
+        seg_en = m_ends[m]
+        # interleave as [start, end, nan, start2, end2, nan, ...] at constant y
+        xs = np.empty(seg_st.size * 3, dtype=float)
+        ys = np.empty_like(xs)
+        xs[0::3] = seg_st
+        xs[1::3] = seg_en
+        xs[2::3] = np.nan
+        ys[0::3] = y
+        ys[1::3] = y
+        ys[2::3] = np.nan
+        ax_tl.plot(xs, ys, color_map[s], linewidth=13, solid_capstyle='butt')
+
+    # update axis
+    if top_down:
+        ax_tl.invert_yaxis()
+    ax_tl.margins(y=0.0, x=0.0)
+    ax_tl.set_title(
+            f"{TRACE_SOURCE} trace - {TRACE_TYPE[0]} profile for {title}")
+    ax_tl = add_spans(ax_tl)
+    ax_r = ax_tl.twinx()
+    ax_r.set_ylim(ax_tl.get_ylim())
+    for a in ax_tl, ax_r:
+        a.set_yticks(range(len(unique_syms)))
+        a.set_yticklabels(unique_syms)
+
+    #ax_tl.set_ylabel("Symbol")
+    ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
+    ax_top, xlabel = draw_exec_finish(ax_tl, args.sample_begin_norm)
+    ax_sp.set_xlabel(xlabel)
+
+    S_GAP = 0.04
+    S_H = 0.03 * SCALE
+    S_W = (S_H / FS[0]) * FS[1]
+    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP*SCALE, h=S_H)
+    _ = attach_yrange_slider(ax_tl, gap=S_GAP*1.5, w=S_W, no_ticks=True)
+    register_true_home(fig)
+
+    return fig, rsx
 
 def run_bin_trace_pc(df_t, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
@@ -1508,6 +1615,24 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         if not args.clk:
             df_t['br_dens'] = df_t['inst_mnm'].map(icfg.INST_TO_BD_DICT)
 
+        # build an inclusive IntervalIndex and parallel labels array
+        starts, ends, labels = [], [], []
+        for name, m in symbols.items():
+            starts.append(int(m['addr_start']))
+            ends.append(int(m['addr_end']))
+            labels.append(name)
+
+        ii = pd.IntervalIndex.from_arrays(starts, ends, closed='both')
+        # index each pc into the interval set
+        idx = ii.get_indexer(df_t['pc'].astype(int))
+
+        # map matches to labels; unmatched -> NA
+        out = np.full(len(df_t), pd.NA, dtype=object)
+        mask = idx != -1
+        labels_arr = np.asarray(labels, dtype=object)
+        out[mask] = labels_arr[idx[mask]]
+        df_t['symbol'] = out
+
     if args.save_converted_trace:
         df_s = df_t.copy()
         # revert NaNs to 0 for saving as hex
@@ -1525,11 +1650,14 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
             df_s[c] = df_s[c].apply(lambda x: f'{x:0{digits}X}')
         df_s.to_csv(args.trace.replace('.bin', '.bin.csv'), index=False)
 
-    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
-    if args.symbols_only or not (args.pc_freq or args.pc_trace):
+    fig_tl, fig, rsy, rsx_tl, fig2, rsx2, rsy2 = [None] * 7
+    if args.symbols_only or \
+        not (args.pc_freq or args.pc_trace or args.timeline):
         # early exit, no plotting for PC
-        return df_f, df_t, fig, fig2, rsx2
+        return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
 
+    if args.timeline:
+        fig_tl, rsx_tl = draw_timeline(df_t, title)
     if args.pc_freq:
         fig, rsy = draw_freq(df_f, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
@@ -1540,7 +1668,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
     if rsy != None and rsy2 != None:
         link_yrange(fig.get_axes()[0], rsy, fig2.get_axes()[0], rsy2)
 
-    return df_f, df_t, fig, fig2, rsx2
+    return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
 
 def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
     # Work only on rows with dsz > 0
@@ -1628,6 +1756,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
     parser.add_argument('--sample_begin_norm', action='store_true', help="Normalize trace start to 0th sample. Trace only option")
 
+    parser.add_argument('--timeline', action='store_true', help="Plot top of stack trace as timeline. Requires --dasm. Trace only option")
     parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Each instruction as a separate entry. Trace only option")
     parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). Trace only option")
     parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
@@ -1680,7 +1809,7 @@ def run_main(args) -> None:
         raise ValueError("--symbols_only requires --dasm")
 
     at_least_one = \
-        args.pc_freq or args.pc_trace or \
+        args.timeline or args.pc_freq or args.pc_trace or \
         args.dmem_freq or args.dmem_trace or \
         args.stats_trace
     data_run = args.save_converted_trace or args.save_csv
