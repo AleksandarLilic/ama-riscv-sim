@@ -192,7 +192,7 @@ void profiler::log_to_file_and_print() {
     std::string pt = "";
     if (prof_src == profiler_source_t::clock) pt = "_clk";
 
-    ofs.open(out_dir + "inst_profiler" + pt + ".json");
+    ofs.open(out_dir + "inst_profile" + pt + ".json");
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
         if (i.name != "") {

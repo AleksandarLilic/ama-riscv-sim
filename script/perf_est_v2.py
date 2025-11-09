@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
-
+import argparse
 import json
 import os
-import sys
 
 import numpy as np
 import pandas as pd
+from dep_scan import search, search_args
 from run_analysis import icfg, json_prof_to_df
 from utils import DELIM, INDENT, smarter_eng_formatter
-
-REALISTIC = False # use with caution, set to False by default
-R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 
 # main mem configuration assumptions based on the port contention from hwpm
 
@@ -20,9 +17,6 @@ R={"fe_overlap": 0.4, "fe_range": 0.2, "hazard_freq": 0.5, "hazard_range": 0.2}
 # | >0  | 0   | 1R 1W   | - IMEM and DMEM contend only for read port
 # | 0   | >0  | 1R 1RW  | - DMEM read and write ports contend on dc writeback
 # | >0  | >0  | 1RW     | - as above, and contention with IMEM read
-
-# write contention is likely to be very small, as it's not easy to occur
-# e.g. D$ read miss followed by D$ write miss in the next cycle
 
 class perf:
     b_inst_a = icfg.INST_T[icfg.BRANCH]
@@ -38,19 +32,20 @@ class perf:
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
         "bpred", "icache", "dcache",
         "mem_rd_port_contention", "mem_wr_port_contention",
-        "mem", "mul", "div", "dot",
+        "mem", "mul", "div", "dot", "dmem",
         "icache_name", "dcache_name", "bpred_name"]
 
     def __init__(
             self,
-            inst_profiler_path,
+            inst_profile_path,
             hw_stats_path,
-            hw_perf_metrics_path
+            hw_perf_metrics_path,
+            exec_log_path=None
         ):
-        self.inst_profiler_path = inst_profiler_path
-        self.name = inst_profiler_path
-        self.realistic = REALISTIC
-        df = json_prof_to_df(inst_profiler_path, allow_internal=True)
+
+        self.inst_profile_path = inst_profile_path
+        self.name = inst_profile_path
+        df = json_prof_to_df(inst_profile_path, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
         df = df.loc[df['name'].str.startswith('_') == False]
@@ -60,7 +55,7 @@ class perf:
                   "not_taken": 0, "not_taken_fwd": 0, "not_taken_bwd": 0}
         self.est = {}
 
-        with open(inst_profiler_path, 'r') as file:
+        with open(inst_profile_path, 'r') as file:
             i_prof = json.load(file)
         for b in self.b_inst_a:
             self._log_branches(i_prof[b])
@@ -89,12 +84,13 @@ class perf:
         self.c_bp = hwpm["bpred"]
         self.c_ic = hwpm['icache']
         self.c_dc = hwpm['dcache']
-        self.rdc = hwpm["mem_rd_port_contention"]
-        self.wrc = hwpm["mem_wr_port_contention"]
+        self.mrpc = hwpm["mem_rd_port_contention"]
+        self.mwpc = hwpm["mem_wr_port_contention"]
         self.c_mem = hwpm['mem']
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
         self.c_dot = hwpm['dot']
+        self.c_dmem = hwpm['dmem']
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
@@ -162,37 +158,57 @@ class perf:
         self.dc_stalls += self.c_mem * sd(hw_dc["misses"])
         self.dc_stalls += self.c_mem * hw_dc["writebacks"]
 
-        self.rdc_stalls = 0
-        self.wrc_stalls = 0
-        if self.rdc > 0:
-            cont_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
-            self.rdc_stalls = int(cont_num * self.c_mem * self.rdc)
+        # load hazards occur when a load is followed up by an instruction
+        # that uses rd of a load as its rs1/2
+        use_dep_analysis = exec_log_path is not None
+        if (use_dep_analysis):
+            # if exec log is provided, run dependecy search
+            d_res = search(search_args(
+                exec_log_path,
+                src=','.join(icfg.INST_T_MEM[icfg.MEM_L]),
+                dep="_any_",
+                window=1
+            ))
+            #print(d_res)
+            self.dmem_hazards = d_res.dep_arr_cnt[0] # distance 1
+        else:
+            # otherwise, estimate based on load instructions (pessimistic)
+            self.dmem_hazards = \
+                (hw_dc["hits"]["reads"] + hw_dc["misses"]["reads"])
+            self.dmem_hazards *= (self.c_dmem - 1) # extra cycles per ld hazard
 
-        if self.wrc > 0:
-            cont_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
-            self.wrc_stalls = int(cont_num * self.c_mem * self.wrc)
-
+        # memory read/write port contention stalls
         # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
+        self.mrpc_stalls = 0
+        self.mwpc_stalls = 0
+        if self.mrpc > 0:
+            cont_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
+            self.mrpc_stalls = int(cont_num * self.c_mem * self.mrpc)
+
+        if self.mwpc > 0:
+            cont_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
+            self.mwpc_stalls = int(cont_num * self.c_mem * self.mwpc)
 
         self.mul_stalls = (self.c_mul - 1) * self.mul_inst
         self.div_stalls = (self.c_div - 1) * self.div_inst
         self.dot_stalls = (self.c_dot - 1) * self.dot_inst
-        self.alu_stalls = self.mul_stalls + self.div_stalls + self.dot_stalls
+        self.comp_stalls = self.mul_stalls + self.div_stalls + self.dot_stalls
 
         self.fe_stalls = self.b_stalls + self.j_stalls + self.ic_stalls
-        self.be_stalls = self.dc_stalls + self.alu_stalls
+        self.be_stalls = self.dc_stalls + self.comp_stalls
 
-        self._est_stalls()
+        self._est_stalls(use_dep_analysis)
 
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
         self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
-        self.total_cycles_wc = int(np.ceil(self.total_cycles_wc))
-        self.total_cycles_bc = int(np.ceil(self.total_cycles_bc))
-        self.perf_str = f"Estimated HW performance at {self.freq}MHz:"
+        self.t_clk_wc = int(np.ceil(self.t_clk_wc))
+        self.t_clk_bc = int(np.ceil(self.t_clk_bc))
+
+        self.perf_str = f"\nEstimated HW performance at {self.freq}MHz:"
         self.perf_str += f"{DELIM}Best:  "
-        self.perf_str += self._estimated_perf(self.total_cycles_bc, "best")
+        self.perf_str += self._estimated_perf(self.t_clk_bc, "best")
         self.perf_str += f"{DELIM}Worst: "
-        self.perf_str += self._estimated_perf(self.total_cycles_wc, "worst")
+        self.perf_str += self._estimated_perf(self.t_clk_wc, "worst")
 
         width = self.est["worst"]["clk"] - self.est["best"]["clk"]
         midpoint = (self.est["best"]["clk"] + self.est["worst"]["clk"]) >> 1
@@ -204,39 +220,26 @@ class perf:
         )
 
     # TODO:
-    # D$ and alu stalls can technically overlap, but unlikely in current uarch
-    def _est_stalls(self):
+    # D$ and COMP stalls can technically overlap, but unlikely in current uarch
+    def _est_stalls(self, use_dep_analysis):
         # worst case:
         #   fe stalls never overlap with dc stalls or alu hazard stall
         #   alu hazard stall on each multi cycle instruction
-        self.total_cycles_wc = self.ipc_1_cycles
-        if not self.realistic:
-            self.total_cycles_wc += \
-                self.fe_stalls + self.dc_stalls + self.alu_stalls
-        else:
-            alu_h = self.alu_stalls * (R["hazard_freq"] + R["hazard_range"])
-            # min since there has to be enough cycles in be to overlap fe with
-            fe_s = min(self.fe_stalls, self.dc_stalls + alu_h)
-            fe_o = fe_s * (R["fe_overlap"] - R["fe_range"])
-            self.total_cycles_wc += self.fe_stalls - fe_o # reduced by overlap
-            self.total_cycles_wc += self.dc_stalls + alu_h
-
-        self.total_cycles_wc += self.rdc_stalls + self.wrc_stalls
+        #   dmem hazard stall on each load instruction
+        self.t_clk_wc = self.ipc_1_cycles
+        self.t_clk_wc += self.fe_stalls
+        self.t_clk_wc += self.dc_stalls + self.comp_stalls + self.dmem_hazards
+        self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
 
         # best case:
         #   fe stalls overlap with dc stalls completely
         #   no alu hazard stall (e.g. best possible inst scheduling)
-        self.total_cycles_bc = self.ipc_1_cycles
-        if not self.realistic:
-            self.total_cycles_bc += max(self.dc_stalls, self.fe_stalls)
-        else:
-            alu_h = self.alu_stalls * (R["hazard_freq"] - R["hazard_range"])
-            fe_s = min(self.fe_stalls, self.dc_stalls + alu_h)
-            fe_o = fe_s * (R["fe_overlap"] + R["fe_range"])
-            self.total_cycles_bc += self.fe_stalls - fe_o
-            self.total_cycles_bc += self.dc_stalls + alu_h
-
-        self.total_cycles_bc += self.rdc_stalls + self.wrc_stalls
+        #   no dmem hazard stall (quite unlikely on some workloads)
+        self.t_clk_bc = self.ipc_1_cycles
+        self.t_clk_bc += max(self.dc_stalls, self.fe_stalls)
+        if use_dep_analysis: # dmem hazards from analysis, known to exist
+            self.t_clk_bc += self.dmem_hazards
+        self.t_clk_bc += self.mrpc_stalls + self.mwpc_stalls
 
     def _log_branches(self, entry):
         for key in entry['breakdown']:
@@ -319,7 +322,7 @@ class perf:
             f"MUL: {FMT(self.mul_stalls)}, " + \
             f"DIV: {FMT(self.div_stalls)}, " + \
             f"DOT: {FMT(self.dot_stalls)}" + \
-            f"\nMemory contention: {FMT(self.rdc_stalls + self.wrc_stalls)} "
+            f"\nMemory contention: {FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
@@ -334,33 +337,40 @@ class perf:
         attrs = vars(self).copy()
         branches = attrs.pop('b')
         est = attrs.pop('est')
-        _ = attrs.pop('inst_profiler_path')
+        _ = attrs.pop('inst_profile_path')
         _ = attrs.pop('perf_str')
         all_flat = {**attrs, **branches, **est}
         df = pd.DataFrame([all_flat])
-        df.to_csv(self.inst_profiler_path.replace(".json", "_perf_est.csv"),
+        df.to_csv(self.inst_profile_path.replace(".json", "_perf_est.csv"),
                   index=False)
         print(f"\nSaved performance estimation as CSV to " +
-              f"{self.inst_profiler_path.replace('.json', '_perf_est.csv')}")
+              f"{self.inst_profile_path.replace('.json', '_perf_est.csv')}")
 
-if __name__ == "__main__":
-    inst_profiler_path = sys.argv[1]
-    hw_stats_path = sys.argv[2]
-    hw_perf_metrics_path = sys.argv[3]
-    corr = int(sys.argv[4]) if len(sys.argv) > 4 else 0 # run correlation
-    places = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+def parse_args():
+    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
+    parser.add_argument("inst_profile_path", help="Path to inst_profile.json for the given workload")
+    parser.add_argument("hw_stats_path", help="Path to hw_stats.json for the given workload")
+    parser.add_argument("hw_perf_metrics_path", help="Path to hw_perf_metrics.json for the given hardware configuration")
+    parser.add_argument("-e", "--exec_log_path", help="Optional argument to provide exec.log path for depndency/hazard analysis", default=None)
+    parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
+    parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
+    return parser.parse_args()
 
-    FMT = smarter_eng_formatter(unit='', places=places, sep="")
-    FMT_T = smarter_eng_formatter(unit='s', places=places, sep="")
+def main(args: argparse.Namespace):
+    p_inst = args.inst_profile_path
+    p_hws = args.hw_stats_path
+    p_met = args.hw_perf_metrics_path
+    p_exec = args.exec_log_path
+    corr = args.corr
+    paths = [p_inst, p_hws, p_met]
+    if p_exec:
+        paths.append(args.exec_log_path)
 
-    if not os.path.isfile(inst_profiler_path):
-        raise ValueError(f"File {inst_profiler_path} not found")
-    if not os.path.isfile(hw_stats_path):
-        raise ValueError(f"File {hw_stats_path} not found")
-    if not os.path.isfile(hw_perf_metrics_path):
-        raise ValueError(f"File {hw_perf_metrics_path} not found")
+    for p in paths:
+        if not os.path.isfile(p):
+            raise ValueError(f"File {p} not found")
 
-    res = perf(inst_profiler_path, hw_stats_path, hw_perf_metrics_path)
+    res = perf(p_inst, p_hws, p_met, p_exec)
     print(res)
 
     if corr:
@@ -419,6 +429,7 @@ if __name__ == "__main__":
         ax.margins(0,0)
         ax.set_ylim(-0.42, 0.42)
         ax.set_yticks([])
+        ax.grid(axis='x', linestyle='--', alpha=0.5)
         ax.set_xlabel('Cycles')
         ax.xaxis.set_major_formatter(FMT)
         #ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
@@ -426,3 +437,9 @@ if __name__ == "__main__":
 
         plt.tight_layout()
         plt.show()
+
+if __name__ == "__main__":
+    args = parse_args()
+    FMT = smarter_eng_formatter(unit='', places=args.places, sep="")
+    FMT_T = smarter_eng_formatter(unit='s', places=args.places, sep="")
+    main(args)

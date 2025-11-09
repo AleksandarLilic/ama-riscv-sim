@@ -1,6 +1,6 @@
 {
     "cpu_frequency_mhz" : 100,
-    "pipeline" : 3,
+    "pipeline" : 4,
     "branch_resolution" : 2,
     "jump_resolution" : 2,
     "bpred" : 1,
@@ -12,6 +12,7 @@
     "mul" : 2,
     "div" : 6,
     "dot" : 2,
+    "dmem" : 2,
     "icache_name" : "icache",
     "dcache_name" : "dcache",
     "bpred_name" : "bpred"
