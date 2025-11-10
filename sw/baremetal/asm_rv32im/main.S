@@ -62,6 +62,7 @@ op_mulhu:
     mulhu x26, x11, x12
     OP_END(1)
 
+#ifndef ZMMUL_ONLY
 op_div:
     li x11, 75000
     li x12, 9375
@@ -97,7 +98,9 @@ op_remu:
     li x12, 9500
     remu x26, x11, x12
     OP_END(8500)
+#endif
 
+loop_check:
     li x24, 0x123456
     bne x4, x5, loop
     j pass
