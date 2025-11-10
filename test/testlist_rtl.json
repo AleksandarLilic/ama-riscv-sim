@@ -1,23 +1,24 @@
 {
     "asm_rv32i": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "asm_rv32im": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
-    "dcache_set_thrashing": [["basic"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "dcache_set_thrashing": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
-    "factorial": [["n_20"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "fibonacci": [["n_18"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "gcd_lcm": [["n_large"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "prime_numbers": [["n_3000"], ["LOOPS=1", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "factorial": [["n_20"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "fibonacci": [["n_18"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "gcd_lcm": [["n_large"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "prime_numbers": [["n_3000"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
-    "vector_ew_al_uint8": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "vector_ew_mac_uint8": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "vector_ew_basic": [["all"], ["MATH_LIB_FLAGS=", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "vector_ew_al_uint8": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "vector_ew_mac_uint8": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "vector_ew_basic": [["all"], ["MATH_LIB_FLAGS=", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
-    "uart_direct_send": [["hello_world"], ["MARCH=rv32i_zicsr"]],
-    "uart_printf_mini": [["hello_world"], ["MARCH=rv32i_zicsr"]],
+    "uart_direct_send": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],
+    "uart_printf_mini": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],
 
-    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "coremark": [["coremark"], ["ITERATIONS=2", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
-    "stream_int": [["stream"], ["NTIMES=2", "MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "coremark": [["coremark"], ["ITERATIONS=2", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "stream_int": [["stream"], ["NTIMES=2", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
     "aapg_static/rv32i": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "aapg_static/rv32i_branches": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
