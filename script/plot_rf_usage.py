@@ -9,7 +9,7 @@ from matplotlib.ticker import EngFormatter
 from utils import get_test_title
 
 parser = argparse.ArgumentParser(description="Plot register file usage")
-parser.add_argument('log', help="Input binary log from profiler")
+parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
 parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
 parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
 parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
@@ -25,7 +25,7 @@ rf_names = [
 
 h = ['rd', 'rs1', 'rs2']
 dtype = np.dtype([(h[0], np.uint32), (h[1], np.uint32), (h[2], np.uint32)])
-data = np.fromfile(args.log, dtype=dtype)
+data = np.fromfile(args.prof, dtype=dtype)
 df = pd.DataFrame(data, columns=h)
 df['total'] = df.sum(axis=1)
 df['rs'] = df['rs1'] + df['rs2']
@@ -37,7 +37,7 @@ df.insert(0, 'reg', 'x' + df.index.astype(str))
 df['reg_name'] = df.index.map(lambda x: rf_names[x])
 df['reg_comb'] = df['reg_name'] + " (" + df['reg'] + ")"
 if args.save_csv:
-    df.to_csv(args.log.replace('.bin', '.csv'), index=False)
+    df.to_csv(args.prof.replace('.bin', '.csv'), index=False)
 
 base_fmt = EngFormatter(unit='', places=0, sep='')
 columns = [['rd', 'rs1', 'rs2'], ['rd', 'rs'], ['total']]
@@ -61,7 +61,7 @@ for col_set in columns:
     ax.set_yticks(y_axis_numeric)
     ax.set_yticklabels(df['reg_comb'])
     ax.set_xlabel('Count')
-    ax.set_title(f"Register File usage for {get_test_title(args.log)}\n\n")
+    ax.set_title(f"Register File usage for {get_test_title(args.prof)}\n\n")
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.045), ncol=8)
     ax.margins(y=0.01, x=0)
     ax.grid(axis='x', alpha=0.7)
@@ -69,6 +69,6 @@ for col_set in columns:
 
     name = "_".join(col_set)
     if args.save_png:
-        fig.savefig(args.log.replace(" ", "_").replace(".bin", f"_{name}.png"))
+        fig.savefig(args.prof.replace(" ", "_").replace(".bin", f"_{name}.png"))
     if args.save_svg:
-        fig.savefig(args.log.replace(" ", "_").replace(".bin", f"_{name}.svg"))
+        fig.savefig(args.prof.replace(" ", "_").replace(".bin", f"_{name}.svg"))

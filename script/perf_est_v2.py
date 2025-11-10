@@ -35,17 +35,10 @@ class perf:
         "mem", "mul", "div", "dot", "dmem",
         "icache_name", "dcache_name", "bpred_name"]
 
-    def __init__(
-            self,
-            inst_profile_path,
-            hw_stats_path,
-            hw_perf_metrics_path,
-            exec_log_path=None
-        ):
-
-        self.inst_profile_path = inst_profile_path
-        self.name = inst_profile_path
-        df = json_prof_to_df(inst_profile_path, allow_internal=True)
+    def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
+        self.inst_profile = inst_profile
+        self.name = inst_profile
+        df = json_prof_to_df(inst_profile, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
         df = df.loc[df['name'].str.startswith('_') == False]
@@ -55,15 +48,15 @@ class perf:
                   "not_taken": 0, "not_taken_fwd": 0, "not_taken_bwd": 0}
         self.est = {}
 
-        with open(inst_profile_path, 'r') as file:
+        with open(inst_profile, 'r') as file:
             i_prof = json.load(file)
         for b in self.b_inst_a:
             self._log_branches(i_prof[b])
 
-        with open(hw_stats_path, 'r') as file:
+        with open(hw_stats, 'r') as file:
             self.hw_stats = json.load(file)
 
-        with open(hw_perf_metrics_path, 'r') as file:
+        with open(hw_perf_metrics, 'r') as file:
             hwpm = json.load(file)
 
         # check if all expected metrics are present
@@ -160,11 +153,11 @@ class perf:
 
         # load hazards occur when a load is followed up by an instruction
         # that uses rd of a load as its rs1/2
-        use_dep_analysis = exec_log_path is not None
+        use_dep_analysis = exec_log is not None
         if (use_dep_analysis):
             # if exec log is provided, run dependecy search
             d_res = search(search_args(
-                exec_log_path,
+                exec_log,
                 src=','.join(icfg.INST_T_MEM[icfg.MEM_L]),
                 dep="_any_",
                 window=1
@@ -337,34 +330,34 @@ class perf:
         attrs = vars(self).copy()
         branches = attrs.pop('b')
         est = attrs.pop('est')
-        _ = attrs.pop('inst_profile_path')
+        _ = attrs.pop('inst_profile')
         _ = attrs.pop('perf_str')
         all_flat = {**attrs, **branches, **est}
         df = pd.DataFrame([all_flat])
-        df.to_csv(self.inst_profile_path.replace(".json", "_perf_est.csv"),
+        df.to_csv(self.inst_profile.replace(".json", "_perf_est.csv"),
                   index=False)
         print(f"\nSaved performance estimation as CSV to " +
-              f"{self.inst_profile_path.replace('.json', '_perf_est.csv')}")
+              f"{self.inst_profile.replace('.json', '_perf_est.csv')}")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
-    parser.add_argument("inst_profile_path", help="Path to inst_profile.json for the given workload")
-    parser.add_argument("hw_stats_path", help="Path to hw_stats.json for the given workload")
-    parser.add_argument("hw_perf_metrics_path", help="Path to hw_perf_metrics.json for the given hardware configuration")
-    parser.add_argument("-e", "--exec_log_path", help="Optional argument to provide exec.log path for depndency/hazard analysis", default=None)
+    parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
+    parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
+    parser.add_argument("hw_perf_metrics", help="Path to 'hw_perf_metrics.json' for the given hardware configuration")
+    parser.add_argument("-e", "--exec_log", help="Optional argument to provide 'exec.log' path for depndency/hazard analysis", default=None)
     parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
     return parser.parse_args()
 
 def main(args: argparse.Namespace):
-    p_inst = args.inst_profile_path
-    p_hws = args.hw_stats_path
-    p_met = args.hw_perf_metrics_path
-    p_exec = args.exec_log_path
+    p_inst = args.inst_profile
+    p_hws = args.hw_stats
+    p_met = args.hw_perf_metrics
+    p_exec = args.exec_log
     corr = args.corr
     paths = [p_inst, p_hws, p_met]
     if p_exec:
-        paths.append(args.exec_log_path)
+        paths.append(args.exec_log)
 
     for p in paths:
         if not os.path.isfile(p):

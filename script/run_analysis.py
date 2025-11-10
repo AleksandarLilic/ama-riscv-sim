@@ -252,7 +252,7 @@ def ctype_check(ctype:str) -> Tuple[List[str], str]:
 
     return cols, ylabel
 
-def draw_inst_log(df, hl_inst_g, title, args) -> plt.Figure:
+def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
     inst_profiled = df['count'].sum()
     if inst_profiled == 0:
         raise ValueError("No instructions in the json log")
@@ -376,11 +376,11 @@ def json_prof_to_df(log, allow_internal=False) -> pd.DataFrame:
     df = df.sort_values(by='count', ascending=True)
     return df
 
-def run_inst_log(log, hl_inst_g, title, args) -> \
+def run_inst_profile(log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
 
     df = json_prof_to_df(log)
-    fig = draw_inst_log(df, hl_inst_g, title, args)
+    fig = draw_inst_profile(df, hl_inst_g, title, args)
 
     return df, fig
 
@@ -1738,15 +1738,15 @@ def parse_args() -> argparse.Namespace:
     TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
     parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
     # either
-    parser.add_argument('-i', '--inst_log', type=str, help="Path to JSON instruction count log with profiling data")
+    parser.add_argument('-i', '--inst_profile', type=str, help="Path to instruction profiling output 'inst_profile.json'")
     # or
-    parser.add_argument('-t', '--trace', type=str, help="Path to binary execution trace")
+    parser.add_argument('-t', '--trace', type=str, help="Path to binary execution trace 'trace_clk.bin'")
 
     # instruction count log only options
-    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction count log only option")
-    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(icfg.INST_T.keys())}. Instruction count log only option")
-    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction count log only option")
-    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction count log only option")
+    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction profile only option")
+    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(icfg.INST_T.keys())}. Instruction profile only option")
+    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction profile only option")
+    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction profile only option")
 
     # trace only options
     parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
@@ -1792,7 +1792,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 def run_main(args) -> None:
-    run_inst = args.inst_log is not None
+    run_inst = args.inst_profile is not None
     run_trace = args.trace is not None
 
     if run_inst and run_trace:
@@ -1841,7 +1841,7 @@ def run_main(args) -> None:
         if int(args.dmem_begin, 16) >= int(args.dmem_end, 16):
             raise ValueError("--dmem_begin must be less than --dmem_end")
 
-    args_log = args.trace if run_trace else args.inst_log
+    args_log = args.trace if run_trace else args.inst_profile
     if not os.path.exists(args_log):
         raise FileNotFoundError(f"File {args_log} not found")
 
@@ -1881,7 +1881,7 @@ def run_main(args) -> None:
         for name, fig in figs_dict.items():
             fig_arr.append([log_path.replace(ext, f"_{name}{ext}"), fig])
     else:
-        df, fig = run_inst_log(args_log, hl_inst_g, title, args)
+        df, fig = run_inst_profile(args_log, hl_inst_g, title, args)
         fig_arr.append([log_path, fig])
         figs_dict = {"inst": fig}
 
