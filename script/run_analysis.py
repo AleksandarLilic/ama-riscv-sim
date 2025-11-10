@@ -191,6 +191,9 @@ def get_count(parts, df) -> Tuple[int, int]:
     count = count_series.squeeze() if not count_series.empty else 0
     return int(count), pc # FIXME: count may be float in rtl trace?
 
+def get_title(src, typ, wl) -> str:
+    return f"{src} trace - {typ} profile for '{wl}'"
+
 def inst_exists(inst) -> str:
     if inst not in icfg.ALL_INST:
         raise ValueError(
@@ -295,7 +298,7 @@ def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
     fig, ax = plt.subplots(
         ROWS, COLS, figsize=(COLS*10, ROWS*(sum(ldf)/10)+2),
         height_ratios=ldf, constrained_layout=True)
-    suptitle_str = f"Execution profile for {title}"
+    suptitle_str = f"Execution profile for '{title}'"
     suptitle_str += f"\nSamples profiled: {fmt(inst_profiled)}"
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
@@ -977,9 +980,7 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     # label
     ax.set_xlabel("Count (log scale)")
     ax.set_ylabel(ylabel)
-    ax.set_title(
-        f"{TRACE_SOURCE} trace - {ylabel} frequency profile for {title}")
-
+    ax.set_title(get_title(TRACE_SOURCE, ylabel, title))
     ax.grid(axis='x', linestyle='-', alpha=1, which='major')
     ax.grid(axis='x', linestyle='--', alpha=0.6, which='minor')
 
@@ -1250,7 +1251,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
     ax_t.callbacks.connect("ylim_changed", _on_ylim_changed_lines)
 
     ax_t.margins(y=0.03, x=0.0)
-    ax_t.set_title(f"{TRACE_SOURCE} trace - {trace_type} profile for {title}")
+    ax_t.set_title(get_title(TRACE_SOURCE, trace_type, title))
     ax_t.set_ylabel(ylabel)
     ax_t.grid(axis='both', linestyle='-', alpha=.6, which='major')
     ax_top, xlabel = draw_exec_finish(ax_t, args.sample_begin_norm)
@@ -1347,10 +1348,8 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
     # label
-    ax_top.set_title(
-        f"{TRACE_SOURCE} trace - Stats & HW profile for {title}" +
-        f" (W={args.hw_win_size})"
-    )
+    win_str = f" (W={args.hw_win_size})"
+    ax_top.set_title(get_title(TRACE_SOURCE, "Stats & HW", title) + win_str)
     ax_ops.set_ylabel(f'OP{ops_n}')
     ax_ic.set_ylabel('ICache')
     ax_dc.set_ylabel('DCache')
@@ -1555,11 +1554,11 @@ def draw_timeline(df, title, top_down=False):
         ax_tl.plot(xs, ys, color_map[s], linewidth=13, solid_capstyle='butt')
 
     # update axis
+    ax_tl.set_ylim(-0.5, len(unique_syms)-0.5)
     if top_down:
         ax_tl.invert_yaxis()
     ax_tl.margins(y=0.0, x=0.0)
-    ax_tl.set_title(
-            f"{TRACE_SOURCE} trace - {TRACE_TYPE[0]} profile for {title}")
+    ax_tl.set_title(get_title(TRACE_SOURCE, TRACE_TYPE[0], title))
     ax_tl = add_spans(ax_tl)
     ax_r = ax_tl.twinx()
     ax_r.set_ylim(ax_tl.get_ylim())
@@ -1622,7 +1621,16 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
             ends.append(int(m['addr_end']))
             labels.append(name)
 
+        if args.clk:
+            FILL_SYM = {"addr": BASE_ADDR-4, "name": "special"}
+            starts.append(FILL_SYM['addr'])
+            ends.append(FILL_SYM['addr'])
+            labels.append(FILL_SYM['name'])
+
         ii = pd.IntervalIndex.from_arrays(starts, ends, closed='both')
+        if args.clk:
+            df_t['pc'] = df_t['pc'].replace(np.nan, FILL_SYM['addr'])
+
         # index each pc into the interval set
         idx = ii.get_indexer(df_t['pc'].astype(int))
 
@@ -1632,6 +1640,14 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         labels_arr = np.asarray(labels, dtype=object)
         out[mask] = labels_arr[idx[mask]]
         df_t['symbol'] = out
+
+        if args.clk:
+            # special back to NaN
+            df_t['symbol'] = df_t['symbol'].replace(FILL_SYM['name'], pd.NA)
+            df_t['pc'] = df_t['pc'].replace(FILL_SYM['addr'], np.nan)
+            # forward fill to have continuous symbols in timeline
+            # and backfill to cover leading NaNs
+            df_t['symbol'] = df_t['symbol'].ffill().bfill()
 
     if args.save_converted_trace:
         df_s = df_t.copy()
