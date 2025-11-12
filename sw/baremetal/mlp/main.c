@@ -17,10 +17,10 @@ void main(void) {
     PROF_STOP;
     uint32_t clks = get_cpu_cycles();
     uint32_t end_time = get_cpu_time();
-    uint32_t time_diff = (end_time - start_time) / 1000;
+    uint32_t time_diff = (end_time - start_time); // us
     printf("Predicted: %d (label: %d); "
-           "Performance: cycles: %d, time: %d ms, Inf/s: %d\n",
-           predicted, label_0, clks, time_diff, (1000 / time_diff));
+           "Performance: cycles: %d, time: %d us, Inf/s: %d\n",
+           predicted, label_0, clks, time_diff, (1000000 / time_diff));
 
     // assumed model is accurate for the provided input
     if (predicted != label_0) {
