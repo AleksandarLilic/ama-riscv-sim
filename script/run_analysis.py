@@ -1090,7 +1090,7 @@ def plot_stat(ax, df, column, filter, unit, agg='sum'):
         raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
 
     data_r = data \
-             .rolling(window=args.hw_win_size, min_periods=1) \
+             .rolling(window=args.win_size_stats, min_periods=1) \
              .mean() \
              .round(3)
 
@@ -1103,7 +1103,7 @@ def plot_stat(ax, df, column, filter, unit, agg='sum'):
 
     return ax
 
-def plot_hw_hm(ax, df, col, hw_win_size):
+def plot_hw_hm(ax, df, col, win_size_hw):
     H_OFFSET = .3
     df[col] = df[col].replace(TRACE_NA, np.nan)
     hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
@@ -1122,7 +1122,7 @@ def plot_hw_hm(ax, df, col, hw_win_size):
     # drop NaNs to have continuous mean
     running_avg = df[col] \
                   .dropna() \
-                  .rolling(window=hw_win_size, min_periods=1) \
+                  .rolling(window=win_size_hw, min_periods=1) \
                   .mean()
     # reindex and forward fill to account for NaNs in the source
     running_avg = running_avg.reindex(df.index, method='ffill')
@@ -1320,9 +1320,9 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     ax_ops = plot_stat(ax_ops, df, 'ops', icfg.MEM, unit='ops')
     ax_ops = plot_stat(ax_ops, df, 'ops', icfg.SIMD, unit='ops')
     ax_ops = plot_stat(ax_ops, df, 'ops', icfg.UNPAK, unit='ops')
-    plot_hw_hm(ax_bp, df, 'bp', args.hw_win_size)
-    plot_hw_hm(ax_ic, df, 'ic', args.hw_win_size)
-    plot_hw_hm(ax_dc, df, 'dc', args.hw_win_size)
+    plot_hw_hm(ax_bp, df, 'bp', args.win_size_hw)
+    plot_hw_hm(ax_ic, df, 'ic', args.win_size_hw)
+    plot_hw_hm(ax_dc, df, 'dc', args.win_size_hw)
     if args.clk:
         plot_ipc(ax_ipc, df)
     else:
@@ -1348,7 +1348,7 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
     # label
-    win_str = f" (W={args.hw_win_size})"
+    win_str = f" (W={args.win_size_stats}, W_hw={args.win_size_hw})"
     ax_top.set_title(get_title(TRACE_SOURCE, "Stats & HW", title) + win_str)
     ax_ops.set_ylabel(f'OP{ops_n}')
     ax_ic.set_ylabel('ICache')
@@ -1428,7 +1428,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     if args.clk:
         df['ipc_inst'] = df['inst'].ne(0).astype(int)
         df['ipc_rolling'] = df['ipc_inst'] \
-                            .rolling(window=args.hw_win_size, min_periods=1) \
+                            .rolling(window=args.win_size_stats, min_periods=1)\
                             .mean() \
                             .round(3)
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
@@ -1785,8 +1785,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. Trace only option")
     parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. Trace only option")
 
-    parser.add_argument('--stats_trace', action='store_true', help="Plot stats and hardware counters time trace. Trace only option. Eequires trace from either ISA sim with HW models or RTL sim")
-    parser.add_argument('--hw_win_size', type=int, default=16, help="Number of samples to use for rolling average window for branch predictor accuracy and caches hit rate. Trace only option")
+    parser.add_argument('--stats_trace', action='store_true', help="Plot stats and hardware (model) counters time trace. Trace only option. Eequires trace from either ISA sim with HW models or RTL sim")
+    parser.add_argument('--win_size_stats', type=int, default=32, help="Number of samples to use for rolling average window for stats plots (IPC, OPC, etc.). Trace only option")
+    parser.add_argument('--win_size_hw', type=int, default=16, help="Number of samples to use for rolling average window for hardware (model) plots. Trace only option")
 
     parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
     parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")

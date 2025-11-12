@@ -5,8 +5,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import EngFormatter
-from utils import get_test_title
+from utils import get_test_title, smarter_eng_formatter
 
 parser = argparse.ArgumentParser(description="Plot register file usage")
 parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
@@ -39,7 +38,7 @@ df['reg_comb'] = df['reg_name'] + " (" + df['reg'] + ")"
 if args.save_csv:
     df.to_csv(args.prof.replace('.bin', '.csv'), index=False)
 
-base_fmt = EngFormatter(unit='', places=0, sep='')
+base_fmt = smarter_eng_formatter()
 columns = [['rd', 'rs1', 'rs2'], ['rd', 'rs'], ['total']]
 for col_set in columns:
     fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=True)
