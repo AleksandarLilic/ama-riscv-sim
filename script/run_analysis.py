@@ -179,6 +179,7 @@ class icfg:
         MEM_S : ["Store", CLR["blue_l2"]],
     }
 
+# common functions
 def hex2int(addr) -> int:
     return int(addr,16) # - int(BASE_ADDR)
 
@@ -208,6 +209,28 @@ def inst_type_exists(inst_type) -> str:
             f"Available types are: {', '.join(icfg.ALL_INST_TYPES)}")
     return inst_type
 
+def ctype_check(ctype:str) -> Tuple[List[str], str]:
+    if ctype == 'pc':
+        cols = ['pc', 'isz', 'count']
+        ylabel = "Program Counter"
+    elif ctype == 'dmem':
+        cols = ['dmem', 'dsz', 'count']
+        ylabel = "Data"
+    else:
+        raise ValueError(f"Invalid chart type '{ctype}'. " + \
+                         f"Available types are: 'pc', 'dmem'")
+
+    return cols, ylabel
+
+def exec_df_within_limits(df_len, limit) -> bool:
+    if df_len > limit:
+        print(f"Warning: too many entries to display in the time series " + \
+              f"chart: {df_len}. Limit is {limit} entries. " + \
+              f"Either increase the limit or filter the data.")
+        return False
+    return True
+
+# common functions for plotting
 def find_loc_range(ax) -> int:
     ymin, ymax = ax.get_ylim()
     yrange = ymax - ymin
@@ -242,18 +265,135 @@ def add_outside_legend(ax, title:str) -> None:
         bbox_to_anchor=(1.005, 1.03), borderaxespad=0.
     )
 
-def ctype_check(ctype:str) -> Tuple[List[str], str]:
+def plot_dummy_line(ax, color, lw, label) -> None:
+    # used when legend lw needs to be decoupled from the actual line lw
+    ax.plot([], [], color=color, lw=lw, label=label)
+
+def map_value(x, left_x, right_x, left_y, right_y) -> float:
+    """
+    Maps x from an input range [left_x, right_x]
+    to an output value in [left_y, right_y] linearly.
+    Values below left_x are clamped to left_y
+    and values above right_x are clamped to right_y.
+
+    Parameters:
+        x (float): The input value.
+        left_x (float): The lower bound of the input range.
+        right_x (float): The upper bound of the input range.
+        left_y (float): The output value for inputs <= left_x.
+        right_y (float): The output value for inputs >= right_x.
+
+    Returns:
+        float: The mapped output value.
+    """
+
+    if x <= left_x: return left_y
+    elif x >= right_x: return right_y
+
+    # slope for linear interpolation.
+    slope = (right_y - left_y) / (right_x - left_x)
+
+    # interpolate
+    return slope * (x - left_x) + left_y
+
+def progressive_alpha(x) -> float:
+    left_bound = 1_000
+    right_bound = 100_000
+    left_out = .7
+    right_out = .1
+    return map_value(x, left_bound, right_bound, left_out, right_out)
+
+def progressive_lw(x) -> float:
+    left_bound = 1_000
+    right_bound = 1_000_000
+    left_out = 1.5
+    right_out = .2
+    return map_value(x, left_bound, right_bound, left_out, right_out)
+
+def add_cache_line_spans(ax) -> plt.Axes:
+    top = (int(ax.get_ylim()[1]) & ~0x3F) + CACHE_LINE_BYTES
+    bottom = int(ax.get_ylim()[0]) & ~0x3F
+    for i in range(bottom, top, CACHE_LINE_BYTES):
+        if (i//CACHE_LINE_BYTES) % 2 != 0:
+            # color every other line in gray
+            continue
+        ax.axhspan(i, i+CACHE_LINE_BYTES, color='k', alpha=0.05, zorder=0)
+
+    return ax
+
+def add_spans(ax) -> plt.Axes:
+    top = int(ax.get_ylim()[1])
+    bottom = int(ax.get_ylim()[0])
+    for i in range(bottom, top+1, 2):
+        ax.axhspan(i-.5, i+.5, color='k', alpha=0.03, zorder=0)
+    return ax
+
+def annotate_chart(df, symbols, ax, args, ctype) -> \
+plt.Axes:
+    largs = {}
     if ctype == 'pc':
-        cols = ['pc', 'isz', 'count']
-        ylabel = "Program Counter"
+        largs = {
+            'begin': args.pc_begin,
+            'end': args.pc_end,
+            'no_limit': args.no_pc_limit
+        }
     elif ctype == 'dmem':
-        cols = ['dmem', 'dsz', 'count']
-        ylabel = "Data"
+        largs = {
+            'begin': args.dmem_begin,
+            'end': args.dmem_end,
+            'no_limit': args.no_dmem_limit
+        }
     else:
         raise ValueError(f"Invalid chart type '{ctype}'. " + \
                          f"Available types are: 'pc', 'dmem'")
 
-    return cols, ylabel
+    #symbol_pos = ax.get_xlim()[1]
+    symbol_pos = 1.005 # used for transform=ax.get_yaxis_transform()
+
+    # visual only, apply execution limits
+    if largs['no_limit']:
+        ax.set_ylim(bottom=0.0)
+    else:
+        # FIXME: temp workaround for empty rtl dmem profile
+        if not df[ctype].dropna().empty:
+            ax.set_ylim(
+                top=(int(df[ctype].dropna().max()) & ~0x3F) + CACHE_LINE_BYTES)
+            ax.set_ylim(bottom=int(df[ctype].min()) & ~0x3F)
+
+    # visual only, align with specified limits, if any
+    if largs['begin']:
+        ax.set_ylim(bottom=hex2int(largs['begin']))
+    if largs['end']:
+        ax.set_ylim(top=hex2int(largs['end']))
+
+    start, end = 0, 0
+    ymin, ymax = ax.get_ylim()
+    # add lines for symbols, if any
+    for k,v in symbols.items():
+        start = v['addr_start']
+        end = v['addr_end']
+        # if the symbol is not in the range, skip it
+        #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
+        if (start < ymin) or (start > ymax and end > ymax):
+            continue
+        ax.axhline(y=start, color='k', linestyle='--', alpha=0.7, lw=0.5)
+        txt = ax.text(
+            symbol_pos, start,
+            f" ^ {v['symbol_text']}", color='k',
+            fontsize=9, ha='left', va='center',
+            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
+            transform=ax.get_yaxis_transform(),
+            clip_on=False, # draw outside axes
+        )
+        # don't let constrained_layout/tight_layout expand spacing
+        txt.set_in_layout(False)
+
+    # add line for the last symbol, if any
+    if symbols:
+        # ends after last dmem entry, FIXME: should be the size of last inst
+        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.7, lw=0.5)
+
+    return ax
 
 def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
     inst_profiled = df['count'].sum()
@@ -363,30 +503,7 @@ def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
 
     return fig
 
-def json_prof_to_df(log, allow_internal=False) -> pd.DataFrame:
-    ar = []
-    with open(log, 'r') as file:
-        data = json.load(file)
-        for key in data:
-            if key.startswith('_'):
-                if allow_internal:
-                    ar.append([key, data[key]])
-                continue
-            ar.append([key, data[key]['count']])
-
-    df = pd.DataFrame(ar, columns=['name', 'count'])
-    df['count'] = df['count'].astype(int)
-    df = df.sort_values(by='count', ascending=True)
-    return df
-
-def run_inst_profile(log, hl_inst_g, title, args) -> \
-Tuple[pd.DataFrame, plt.Figure]:
-
-    df = json_prof_to_df(log)
-    fig = draw_inst_profile(df, hl_inst_g, title, args)
-
-    return df, fig
-
+# dasm
 def backannotate_dasm(args, df, section) -> \
 Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 
@@ -521,93 +638,8 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         pc_inst_map_arr, columns=['pc', 'inst_mnm', 'inst_asm'])
     return symbols, df_out
 
-def add_cache_line_spans(ax) -> None:
-    top = (int(ax.get_ylim()[1]) & ~0x3F) + CACHE_LINE_BYTES
-    bottom = int(ax.get_ylim()[0]) & ~0x3F
-    for i in range(bottom, top, CACHE_LINE_BYTES):
-        if (i//CACHE_LINE_BYTES) % 2 != 0:
-            # color every other line in gray
-            continue
-        ax.axhspan(i, i+CACHE_LINE_BYTES, color='k', alpha=0.05, zorder=0)
-
-    return ax
-
-def add_spans(ax) -> None:
-    top = int(ax.get_ylim()[1])
-    bottom = int(ax.get_ylim()[0])
-    for i in range(bottom, top+1, 2):
-        ax.axhspan(i-.5, i+.5, color='k', alpha=0.03, zorder=0)
-    return ax
-
-def annotate_chart(df, symbols, ax, args, ctype) -> \
-plt.Axes:
-    largs = {}
-    if ctype == 'pc':
-        largs = {
-            'begin': args.pc_begin,
-            'end': args.pc_end,
-            'no_limit': args.no_pc_limit
-        }
-    elif ctype == 'dmem':
-        largs = {
-            'begin': args.dmem_begin,
-            'end': args.dmem_end,
-            'no_limit': args.no_dmem_limit
-        }
-    else:
-        raise ValueError(f"Invalid chart type '{ctype}'. " + \
-                         f"Available types are: 'pc', 'dmem'")
-
-    #symbol_pos = ax.get_xlim()[1]
-    symbol_pos = 1.005 # used for transform=ax.get_yaxis_transform()
-
-    # visual only, apply execution limits
-    if largs['no_limit']:
-        ax.set_ylim(bottom=0.0)
-    else:
-        # FIXME: temp workaround for empty rtl dmem profile
-        if not df[ctype].dropna().empty:
-            ax.set_ylim(
-                top=(int(df[ctype].dropna().max()) & ~0x3F) + CACHE_LINE_BYTES)
-            ax.set_ylim(bottom=int(df[ctype].min()) & ~0x3F)
-
-    # visual only, align with specified limits, if any
-    if largs['begin']:
-        ax.set_ylim(bottom=hex2int(largs['begin']))
-    if largs['end']:
-        ax.set_ylim(top=hex2int(largs['end']))
-
-    start, end = 0, 0
-    ymin, ymax = ax.get_ylim()
-    # add lines for symbols, if any
-    for k,v in symbols.items():
-        start = v['addr_start']
-        end = v['addr_end']
-        # if the symbol is not in the range, skip it
-        #if (start < ymin and end < ymin) or (start > ymax and end > ymax):
-        if (start < ymin) or (start > ymax and end > ymax):
-            continue
-        ax.axhline(y=start, color='k', linestyle='--', alpha=0.7, lw=0.5)
-        txt = ax.text(
-            symbol_pos, start,
-            f" ^ {v['symbol_text']}", color='k',
-            fontsize=9, ha='left', va='center',
-            bbox=dict(facecolor='w', alpha=0.6, lw=0, pad=1),
-            transform=ax.get_yaxis_transform(),
-            clip_on=False, # draw outside axes
-        )
-        # don't let constrained_layout/tight_layout expand spacing
-        txt.set_in_layout(False)
-
-    # add line for the last symbol, if any
-    if symbols:
-        # ends after last dmem entry, FIXME: should be the size of last inst
-        ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.7, lw=0.5)
-
-    return ax
-
 # sliders
-def register_true_home(fig):
+def register_true_home(fig) -> None:
     tb = getattr(fig.canvas.manager, "toolbar", None)
     if tb is None:
         return
@@ -629,7 +661,7 @@ def register_true_home(fig):
 
     tb.home = _home
 
-def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
+def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035) -> RangeSlider:
     fig = ax.figure
     pos = ax.get_position()
     slider_ax = fig.add_axes([pos.x0, pos.y0 - gap - h, pos.width, h])
@@ -731,7 +763,8 @@ def attach_xrange_slider(ax, ax_top, gap=0.03, h=0.035):
 
     return rs
 
-def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035, no_ticks=False):
+def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035, no_ticks=False) ->\
+RangeSlider:
     fig = ax.figure
     pos = ax.get_position()
     if side == "right":
@@ -861,7 +894,7 @@ def attach_yrange_slider(ax, side="left", gap=0.02, w=0.035, no_ticks=False):
 
     return rs
 
-def link_xrange(ax1, rs1, ax2, rs2):
+def link_xrange(ax1, rs1, ax2, rs2) -> None:
     """
     Keep two charts' X views in sync. Works across figures.
     Pass rs1/rs2 if there are sliders; use None if a chart has no slider.
@@ -887,7 +920,7 @@ def link_xrange(ax1, rs1, ax2, rs2):
     ax1.callbacks.connect("xlim_changed", _xl1)
     ax2.callbacks.connect("xlim_changed", _xl2)
 
-def link_yrange(ax1, rs1, ax2, rs2):
+def link_yrange(ax1, rs1, ax2, rs2) -> None:
     """
     Keep two charts' Y views in sync. Works across figures.
     Pass rs1/rs2 if there are sliders; use None if a chart has no slider.
@@ -913,8 +946,119 @@ def link_yrange(ax1, rs1, ax2, rs2):
     ax1.callbacks.connect("ylim_changed", _yl1)
     ax2.callbacks.connect("ylim_changed", _yl2)
 
-# drawing
-def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
+def on_xlim_changed_default(a, line, lw_off) -> None:
+    def _on_xlim_changed(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span) * lw_off
+        line.set_linewidth(lw)
+
+    a.callbacks.connect("xlim_changed", _on_xlim_changed)
+
+# single time series plots on existing ax
+def plot_sp(ax, df) -> None:
+    LW_OFF = .75
+    lw = progressive_lw(df.index.size) * LW_OFF
+    label = f"  SP max : {df['sp_real'].max()} B"
+    line, = ax.step(
+        df.smp, df.sp_real, where='post', lw=lw, color=CLR_TAB_BLUE)
+    ax.grid(axis='both', linestyle='-', alpha=.6, which='major')
+    ax.set_ylabel('Stack\nPointer')
+    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
+    on_xlim_changed_default(ax, line, LW_OFF)
+
+def plot_ipc(ax, df) -> None:
+    LW_OFF = .65
+    lw = progressive_lw(df.index.size) * LW_OFF
+
+    ret_inst = df[df['inst'] != 0]['inst'].count()
+    clks = df.smp.values[-1] - df.smp.values[0] + 1
+    cpi = round(clks/ret_inst,3)
+    ipc = round(1/cpi, 3)
+    label = f" IPC: {ipc}\n(CPI: {cpi})"
+
+    line, = ax.plot(df.smp, df.ipc_rolling, lw=lw, color=CLR_TAB_BLUE)
+    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
+    H_OFFSET = .05
+    ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
+    on_xlim_changed_default(ax, line, LW_OFF)
+
+def plot_stat(ax, df, column, filter, unit, agg='sum') -> None:
+    LW_OFF = .65
+    lw = progressive_lw(df.index.size) * LW_OFF
+    data = df[column].where(df.i_type == filter, 0)
+    if data.sum() == 0: # if data is all zeros, skip
+        #print(f"Warning: no '{filter}' values found in the trace.")
+        return ax
+
+    fmt = EngFormatter(unit=unit, places=1)
+    if agg == 'sum':
+        data_a = data.sum()
+    elif agg == 'mean':
+        data_a = data.mean()
+    elif agg != '':
+        raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
+
+    data_r = data \
+             .rolling(window=args.win_size_stats, min_periods=1) \
+             .mean() \
+             .round(3)
+
+    label = f"{filter}"
+    if agg != '': # label it
+        label = f"{label}: {fmt.format_eng(data_a)}",
+    line, = ax.plot(df.smp, data_r, lw=lw, color=icfg.HL_COLORS_OPS[filter])
+    plot_dummy_line(ax, icfg.HL_COLORS_OPS[filter], 1.5, label)
+    on_xlim_changed_default(ax, line, LW_OFF)
+
+def plot_hw_hm(ax, df, col, win_size_hw) -> None:
+    H_OFFSET = .3
+    df[col] = df[col].replace(TRACE_NA, np.nan)
+    hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
+    miss = df[col].where(df[col] == 0, np.nan) - H_OFFSET
+    alpha = progressive_alpha(df.index.size)
+    bars_hit, = ax.plot(
+        df.smp, hit,
+        ls='None', marker="|", ms=8, alpha=alpha, c='g', label='hit')
+    bars_miss, = ax.plot(
+        df.smp, miss,
+        ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
+
+    metric = "ACC" if col == 'bp' else "HR"
+    metric_mean = round(df[col].mean()*100,2)
+    label = f"{metric}: {metric_mean}%"
+    # drop NaNs to have continuous mean
+    running_avg = df[col] \
+                  .dropna() \
+                  .rolling(window=win_size_hw, min_periods=1) \
+                  .mean()
+    # reindex and forward fill to account for NaNs in the source
+    running_avg = running_avg.reindex(df.index, method='ffill')
+    LW_OFF = .5
+    lw = progressive_lw(df.index.size) * LW_OFF
+    line, = ax.plot(df.smp, running_avg, lw=lw, color=CLR_TAB_BLUE)
+    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
+    ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
+    ax.set_yticks([0, .5, 1])
+    ax.set_yticklabels(['0%', '', '100%'])
+
+    def _on_xlim_changed(a):
+        xmin, xmax = a.get_xlim()
+        span = xmax - xmin
+        # line for running acc
+        lw = progressive_lw(span) * LW_OFF
+        line.set_linewidth(lw)
+        # alpha for hit/miss bars
+        alpha = progressive_alpha(span)
+        bars_hit.set_alpha(alpha)
+        bars_miss.set_alpha(alpha)
+
+    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
+
+# main drawing functions (entire figure)
+def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> \
+Tuple[plt.Figure, RangeSlider]:
     cols, ylabel = ctype_check(ctype)
     FS = (15,13)
     GS = {'top': .95, 'bottom': .06, 'left': .18, 'right': .66}
@@ -991,171 +1135,105 @@ def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     return fig, rsy
 
-def map_value(x, left_x, right_x, left_y, right_y):
-    """
-    Maps x from an input range [left_x, right_x]
-    to an output value in [left_y, right_y] linearly.
-    Values below left_x are clamped to left_y
-    and values above right_x are clamped to right_y.
+def draw_timeline_exec(df, title, top_down=False) -> \
+Tuple[plt.Figure, RangeSlider]:
+    size = df['symbol'].unique().size
+    FSY_DYN = size * 0.25 + 1 + 1 + (size < 8) # + sp + margin
+    FSY = min(FSY_DYN, FS_EXEC_Y) # TODO: consider removing clamp?
+    FS = (FS_EXEC_X, FSY)
+    SCALE = (FS_EXEC_Y / FSY) # from og to current
+    gse = GS_EXEC.copy()
+    gse['bottom'] *= SCALE
+    gse['top'] = 1 - (1 - gse['top']) * SCALE
 
-    Parameters:
-        x (float): The input value.
-        left_x (float): The lower bound of the input range.
-        right_x (float): The upper bound of the input range.
-        left_y (float): The output value for inputs <= left_x.
-        right_y (float): The output value for inputs >= right_x.
+    # set up figure
+    fig, ax = plt.subplots(
+        ncols=1, nrows=2, figsize=FS, sharex=True,
+        height_ratios=[FSY-1, 1], gridspec_kw=gse)
+    ax_tl, ax_sp = ax
 
-    Returns:
-        float: The mapped output value.
-    """
+    # add sp trace
+    plot_sp(ax_sp, df)
+    add_outside_legend(ax_sp, None)
 
-    if x <= left_x: return left_y
-    elif x >= right_x: return right_y
+    # add timeline
+    smp = df['smp'].to_numpy()
+    sym = df['symbol'].to_numpy()
 
-    # slope for linear interpolation.
-    slope = (right_y - left_y) / (right_x - left_x)
+    # detect runs
+    start_idx = [0]
+    for i in range(1, len(sym)):
+        if sym[i] != sym[i-1]:
+            start_idx.append(i)
 
-    # interpolate
-    return slope * (x - left_x) + left_y
+    starts = np.array([smp[i] for i in start_idx])
+    ends = np.r_[starts[1:], smp[-1]] # end of each run = start of next run
+    widths = ends - starts
+    run_syms = sym[start_idx]
 
-def progressive_alpha(x):
-    left_bound = 1_000
-    right_bound = 100_000
-    left_out = .7
-    right_out = .1
-    return map_value(x, left_bound, right_bound, left_out, right_out)
+    # assign lanes
+    unique_syms = list(dict.fromkeys(run_syms)) # order-preserving uniq extract
+    lane_index = {sym: i for i, sym in enumerate(unique_syms)}
 
-def progressive_lw(x):
-    left_bound = 1_000
-    right_bound = 1_000_000
-    left_out = 1.5
-    right_out = .2
-    return map_value(x, left_bound, right_bound, left_out, right_out)
+    # cycle through default colors to get color map
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    color_map = {sym: colors[i % len(colors)]
+                 for i, sym in enumerate(unique_syms)}
 
-def plot_dummy_line(ax, color, lw, label):
-    # used when legend lw needs to be decoupled from the actual line lw
-    ax.plot([], [], color=color, lw=lw, label=label)
+    # use vectorized mask once instead of per-run continue
+    m_valid = widths > 0
+    m_starts = starts[m_valid]
+    m_ends = ends[m_valid]
+    m_syms = run_syms[m_valid]
+    # one Line2D per symbol, using NaN breaks
+    for s in unique_syms:
+        y = lane_index[s]
+        m = (m_syms == s)
+        if not np.any(m):
+            continue
 
-def default_on_xlim_changed(a, line, lw_off):
-    def _on_xlim_changed(a):
-        xmin, xmax = a.get_xlim()
-        span = xmax - xmin
-        # line for running acc
-        lw = progressive_lw(span) * lw_off
-        line.set_linewidth(lw)
+        seg_st = m_starts[m]
+        seg_en = m_ends[m]
+        # interleave as [start, end, nan, start2, end2, nan, ...] at constant y
+        xs = np.empty(seg_st.size * 3, dtype=float)
+        ys = np.empty_like(xs)
+        xs[0::3] = seg_st
+        xs[1::3] = seg_en
+        xs[2::3] = np.nan
+        ys[0::3] = y
+        ys[1::3] = y
+        ys[2::3] = np.nan
+        ax_tl.plot(xs, ys, color_map[s], linewidth=13, solid_capstyle='butt')
 
-    a.callbacks.connect("xlim_changed", _on_xlim_changed)
+    # update axis
+    ax_tl.set_ylim(-0.5, len(unique_syms)-0.5)
+    if top_down:
+        ax_tl.invert_yaxis()
+    ax_tl.margins(y=0.0, x=0.0)
+    ax_tl.set_title(get_title(TRACE_SOURCE, TRACE_TYPE[0], title))
+    ax_tl = add_spans(ax_tl)
+    ax_r = ax_tl.twinx()
+    ax_r.set_ylim(ax_tl.get_ylim())
+    for a in ax_tl, ax_r:
+        a.set_yticks(range(len(unique_syms)))
+        a.set_yticklabels(unique_syms)
 
-def plot_sp(ax, df):
-    LW_OFF = .75
-    lw = progressive_lw(df.index.size) * LW_OFF
-    label = f"  SP max : {df['sp_real'].max()} B"
-    line, = ax.step(
-        df.smp, df.sp_real, where='post', lw=lw, color=CLR_TAB_BLUE)
-    ax.grid(axis='both', linestyle='-', alpha=.6, which='major')
-    ax.set_ylabel('Stack\nPointer')
-    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
-    default_on_xlim_changed(ax, line, LW_OFF)
+    #ax_tl.set_ylabel("Symbol")
+    ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
+    ax_top, xlabel = draw_exec_finish(ax_tl, args.sample_begin_norm)
+    ax_sp.set_xlabel(xlabel)
 
-def plot_ipc(ax, df):
-    LW_OFF = .65
-    lw = progressive_lw(df.index.size) * LW_OFF
+    S_GAP = 0.04
+    S_H = 0.03 * SCALE
+    S_W = (S_H / FS[0]) * FS[1]
+    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP*SCALE, h=S_H)
+    _ = attach_yrange_slider(ax_tl, gap=S_GAP*1.5, w=S_W, no_ticks=True)
+    register_true_home(fig)
 
-    ret_inst = df[df['inst'] != 0]['inst'].count()
-    clks = df.smp.values[-1] - df.smp.values[0] + 1
-    cpi = round(clks/ret_inst,3)
-    ipc = round(1/cpi, 3)
-    label = f" IPC: {ipc}\n(CPI: {cpi})"
+    return fig, rsx
 
-    line, = ax.plot(df.smp, df.ipc_rolling, lw=lw, color=CLR_TAB_BLUE)
-    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
-    H_OFFSET = .05
-    ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
-    default_on_xlim_changed(ax, line, LW_OFF)
-
-def plot_stat(ax, df, column, filter, unit, agg='sum'):
-    LW_OFF = .65
-    lw = progressive_lw(df.index.size) * LW_OFF
-    data = df[column].where(df.i_type == filter, 0)
-    if data.sum() == 0: # if data is all zeros, skip
-        #print(f"Warning: no '{filter}' values found in the trace.")
-        return ax
-
-    fmt = EngFormatter(unit=unit, places=1)
-    if agg == 'sum':
-        data_a = data.sum()
-    elif agg == 'mean':
-        data_a = data.mean()
-    elif agg != '':
-        raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
-
-    data_r = data \
-             .rolling(window=args.win_size_stats, min_periods=1) \
-             .mean() \
-             .round(3)
-
-    label = f"{filter}"
-    if agg != '': # label it
-        label = f"{label}: {fmt.format_eng(data_a)}",
-    line, = ax.plot(df.smp, data_r, lw=lw, color=icfg.HL_COLORS_OPS[filter])
-    plot_dummy_line(ax, icfg.HL_COLORS_OPS[filter], 1.5, label)
-    default_on_xlim_changed(ax, line, LW_OFF)
-
-    return ax
-
-def plot_hw_hm(ax, df, col, win_size_hw):
-    H_OFFSET = .3
-    df[col] = df[col].replace(TRACE_NA, np.nan)
-    hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
-    miss = df[col].where(df[col] == 0, np.nan) - H_OFFSET
-    alpha = progressive_alpha(df.index.size)
-    bars_hit, = ax.plot(
-        df.smp, hit,
-        ls='None', marker="|", ms=8, alpha=alpha, c='g', label='hit')
-    bars_miss, = ax.plot(
-        df.smp, miss,
-        ls='None', marker="|", ms=8, alpha=alpha, c='r', label='miss')
-
-    metric = "ACC" if col == 'bp' else "HR"
-    metric_mean = round(df[col].mean()*100,2)
-    label = f"{metric}: {metric_mean}%"
-    # drop NaNs to have continuous mean
-    running_avg = df[col] \
-                  .dropna() \
-                  .rolling(window=win_size_hw, min_periods=1) \
-                  .mean()
-    # reindex and forward fill to account for NaNs in the source
-    running_avg = running_avg.reindex(df.index, method='ffill')
-    LW_OFF = .5
-    lw = progressive_lw(df.index.size) * LW_OFF
-    line, = ax.plot(df.smp, running_avg, lw=lw, color=CLR_TAB_BLUE)
-    plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
-    ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
-    ax.set_yticks([0, .5, 1])
-    ax.set_yticklabels(['0%', '', '100%'])
-
-    def _on_xlim_changed(a):
-        xmin, xmax = a.get_xlim()
-        span = xmax - xmin
-        # line for running acc
-        lw = progressive_lw(span) * LW_OFF
-        line.set_linewidth(lw)
-        # alpha for hit/miss bars
-        alpha = progressive_alpha(span)
-        bars_hit.set_alpha(alpha)
-        bars_miss.set_alpha(alpha)
-
-    ax.callbacks.connect("xlim_changed", _on_xlim_changed)
-
-def exec_df_within_limits(df_len, limit):
-    if df_len > limit:
-        print(f"Warning: too many entries to display in the time series " + \
-              f"chart: {df_len}. Limit is {limit} entries. " + \
-              f"Either increase the limit or filter the data.")
-        return False
-    return True
-
-def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
+def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> \
+Tuple[plt.Figure, RangeSlider, RangeSlider]:
     cols, ylabel = ctype_check(ctype)
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None, None
@@ -1266,7 +1344,7 @@ def draw_exec(df, hl_inst_g, title, symbols, args, ctype) -> plt.Figure:
 
     return fig, rsx, rsy
 
-def draw_exec_finish(ax, norm):
+def draw_exec_finish(ax, norm) -> Tuple[plt.Axes, str]:
     # x
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax.xaxis.set_major_locator(max_n_locator)
@@ -1284,7 +1362,7 @@ def draw_exec_finish(ax, norm):
 
     return ax_top, xlabel
 
-def draw_stats_exec(df, title, args) -> plt.Figure:
+def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None
 
@@ -1314,20 +1392,20 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
         ax_ops, ax_bd, ax_bp, ax_ic, ax_dc = ax
     ax_btm = ax_dc
 
-    ax_ops = plot_stat(ax_ops, df, 'ops', icfg.ALU, unit='ops')
-    ax_ops = plot_stat(ax_ops, df, 'ops', icfg.MUL, unit='ops')
-    #ax_ops = plot_rolling(ax_ops, df, 'ops', DIV, unit='ops') only Zmmul used
-    ax_ops = plot_stat(ax_ops, df, 'ops', icfg.MEM, unit='ops')
-    ax_ops = plot_stat(ax_ops, df, 'ops', icfg.SIMD, unit='ops')
-    ax_ops = plot_stat(ax_ops, df, 'ops', icfg.UNPAK, unit='ops')
+    plot_stat(ax_ops, df, 'ops', icfg.ALU, unit='ops')
+    plot_stat(ax_ops, df, 'ops', icfg.MUL, unit='ops')
+    #plot_stat(ax_ops, df, 'ops', DIV, unit='ops') only Zmmul used
+    plot_stat(ax_ops, df, 'ops', icfg.MEM, unit='ops')
+    plot_stat(ax_ops, df, 'ops', icfg.SIMD, unit='ops')
+    plot_stat(ax_ops, df, 'ops', icfg.UNPAK, unit='ops')
     plot_hw_hm(ax_bp, df, 'bp', args.win_size_hw)
     plot_hw_hm(ax_ic, df, 'ic', args.win_size_hw)
     plot_hw_hm(ax_dc, df, 'dc', args.win_size_hw)
     if args.clk:
         plot_ipc(ax_ipc, df)
     else:
-        ax_bd = plot_stat(ax_bd, df, 'br_dens', icfg.BRANCH, '', '')
-        ax_bd = plot_stat(ax_bd, df, 'br_dens', icfg.JUMP, '', '')
+        plot_stat(ax_bd, df, 'br_dens', icfg.BRANCH, '', '')
+        plot_stat(ax_bd, df, 'br_dens', icfg.JUMP, '', '')
 
     # update axis
     # x
@@ -1372,6 +1450,23 @@ def draw_stats_exec(df, title, args) -> plt.Figure:
     register_true_home(fig)
 
     return fig, rsx
+
+# data loading (json/bin)
+def load_inst_prof(log, allow_internal=False) -> pd.DataFrame:
+    ar = []
+    with open(log, 'r') as file:
+        data = json.load(file)
+        for key in data:
+            if key.startswith('_'):
+                if allow_internal:
+                    ar.append([key, data[key]])
+                continue
+            ar.append([key, data[key]['count']])
+
+    df = pd.DataFrame(ar, columns=['name', 'count'])
+    df['count'] = df['count'].astype(int)
+    df = df.sort_values(by='count', ascending=True)
+    return df
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
     h = ['smp', # 64b - [0]
@@ -1444,8 +1539,17 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
 
     return df
 
+# main run functions
+def run_inst_profile(log, hl_inst_g, title, args) -> \
+Tuple[pd.DataFrame, plt.Figure]:
+
+    df = load_inst_prof(log)
+    fig = draw_inst_profile(df, hl_inst_g, title, args)
+
+    return df, fig
+
 def run_bin_trace(bin_log, hl_inst_g, title, args) -> \
-Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
+Tuple[pd.DataFrame, plt.Figure]:
     df_t = load_bin_trace(bin_log, args)
     df_ret = None
     figs_ret = {}
@@ -1484,104 +1588,10 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     return df_ret, figs_ret
 
-def draw_timeline(df, title, top_down=False):
-    size = df['symbol'].unique().size
-    FSY_DYN = size * 0.25 + 1 + 1 + (size < 8) # + sp + margin
-    FSY = min(FSY_DYN, FS_EXEC_Y) # TODO: consider removing clamp?
-    FS = (FS_EXEC_X, FSY)
-    SCALE = (FS_EXEC_Y / FSY) # from og to current
-    gse = GS_EXEC.copy()
-    gse['bottom'] *= SCALE
-    gse['top'] = 1 - (1 - gse['top']) * SCALE
-
-    # set up figure
-    fig, ax = plt.subplots(
-        ncols=1, nrows=2, figsize=FS, sharex=True,
-        height_ratios=[FSY-1, 1], gridspec_kw=gse)
-    ax_tl, ax_sp = ax
-
-    # add sp trace
-    plot_sp(ax_sp, df)
-    add_outside_legend(ax_sp, None)
-
-    # add timeline
-    smp = df['smp'].to_numpy()
-    sym = df['symbol'].to_numpy()
-
-    # detect runs
-    start_idx = [0]
-    for i in range(1, len(sym)):
-        if sym[i] != sym[i-1]:
-            start_idx.append(i)
-
-    starts = np.array([smp[i] for i in start_idx])
-    ends = np.r_[starts[1:], smp[-1]] # end of each run = start of next run
-    widths = ends - starts
-    run_syms = sym[start_idx]
-
-    # assign lanes
-    unique_syms = list(dict.fromkeys(run_syms)) # order-preserving uniq extract
-    lane_index = {sym: i for i, sym in enumerate(unique_syms)}
-
-    # cycle through default colors to get color map
-    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    color_map = {sym: colors[i % len(colors)]
-                 for i, sym in enumerate(unique_syms)}
-
-    # use vectorized mask once instead of per-run continue
-    m_valid = widths > 0
-    m_starts = starts[m_valid]
-    m_ends = ends[m_valid]
-    m_syms = run_syms[m_valid]
-    # one Line2D per symbol, using NaN breaks
-    for s in unique_syms:
-        y = lane_index[s]
-        m = (m_syms == s)
-        if not np.any(m):
-            continue
-
-        seg_st = m_starts[m]
-        seg_en = m_ends[m]
-        # interleave as [start, end, nan, start2, end2, nan, ...] at constant y
-        xs = np.empty(seg_st.size * 3, dtype=float)
-        ys = np.empty_like(xs)
-        xs[0::3] = seg_st
-        xs[1::3] = seg_en
-        xs[2::3] = np.nan
-        ys[0::3] = y
-        ys[1::3] = y
-        ys[2::3] = np.nan
-        ax_tl.plot(xs, ys, color_map[s], linewidth=13, solid_capstyle='butt')
-
-    # update axis
-    ax_tl.set_ylim(-0.5, len(unique_syms)-0.5)
-    if top_down:
-        ax_tl.invert_yaxis()
-    ax_tl.margins(y=0.0, x=0.0)
-    ax_tl.set_title(get_title(TRACE_SOURCE, TRACE_TYPE[0], title))
-    ax_tl = add_spans(ax_tl)
-    ax_r = ax_tl.twinx()
-    ax_r.set_ylim(ax_tl.get_ylim())
-    for a in ax_tl, ax_r:
-        a.set_yticks(range(len(unique_syms)))
-        a.set_yticklabels(unique_syms)
-
-    #ax_tl.set_ylabel("Symbol")
-    ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(ax_tl, args.sample_begin_norm)
-    ax_sp.set_xlabel(xlabel)
-
-    S_GAP = 0.04
-    S_H = 0.03 * SCALE
-    S_W = (S_H / FS[0]) * FS[1]
-    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP*SCALE, h=S_H)
-    _ = attach_yrange_slider(ax_tl, gap=S_GAP*1.5, w=S_W, no_ticks=True)
-    register_true_home(fig)
-
-    return fig, rsx
-
 def run_bin_trace_pc(df_t, hl_inst_g, title, args) -> \
-Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
+Tuple[pd.DataFrame, pd.DataFrame,
+        plt.Figure, RangeSlider,
+        plt.Figure, plt.Figure, RangeSlider]:
 
     df_f = df_t.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
@@ -1673,7 +1683,7 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
         return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
 
     if args.timeline:
-        fig_tl, rsx_tl = draw_timeline(df_t, title)
+        fig_tl, rsx_tl = draw_timeline_exec(df_t, title)
     if args.pc_freq:
         fig, rsy = draw_freq(df_f, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
@@ -1686,24 +1696,8 @@ Tuple[pd.DataFrame, plt.Figure, plt.Figure]:
 
     return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
 
-def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
-    # Work only on rows with dsz > 0
-    df = df_t.loc[df_t['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
-
-    # repeat indices
-    rep_idx = np.repeat(df.index.to_numpy(), df['dsz'].to_numpy())
-    out = df.loc[rep_idx, ['dmem', 'dtyp']].copy()
-    out['dsz'] = 1
-
-    # offset within each original row
-    out['dmem'] = out['dmem'].to_numpy() + \
-        out.groupby(level=0).cumcount().to_numpy()
-
-    out.reset_index(drop=True, inplace=True)
-    return out
-
 def run_bin_trace_dmem(df_t, title, args) -> \
-Tuple[plt.Figure, plt.Figure]:
+Tuple[plt.Figure, plt.Figure, RangeSlider]:
 
     fig, rsy, fig2, rsx2, rsy2 = [None] * 5
     if not (args.symbols_only or args.dmem_freq or args.dmem_trace):
@@ -1722,6 +1716,22 @@ Tuple[plt.Figure, plt.Figure]:
     #    df_t = df_t.loc[df_t.dmem > hex2int(args.dmem_begin)]
     #if args.dmem_end:
     #    df_t = df_t.loc[df_t.dmem < hex2int(args.dmem_end)]
+
+    def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
+        # Work only on rows with dsz > 0
+        df = df_t.loc[df_t['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
+
+        # repeat indices
+        rep_idx = np.repeat(df.index.to_numpy(), df['dsz'].to_numpy())
+        out = df.loc[rep_idx, ['dmem', 'dtyp']].copy()
+        out['dsz'] = 1
+
+        # offset within each original row
+        out['dmem'] = out['dmem'].to_numpy() + \
+            out.groupby(level=0).cumcount().to_numpy()
+
+        out.reset_index(drop=True, inplace=True)
+        return out
 
     # NOTE: expand_byte_accesses takes awfully long time for large traces
     if args.dmem_freq:
@@ -1750,6 +1760,7 @@ Tuple[plt.Figure, plt.Figure]:
 
     return fig, fig2, rsx2
 
+# args
 def parse_args() -> argparse.Namespace:
     TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
     parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
@@ -1808,6 +1819,7 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
+# main
 def run_main(args) -> None:
     run_inst = args.inst_profile is not None
     run_trace = args.trace is not None

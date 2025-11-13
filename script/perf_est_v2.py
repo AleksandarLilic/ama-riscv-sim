@@ -6,7 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 from dep_scan import search, search_args
-from run_analysis import icfg, json_prof_to_df
+from run_analysis import icfg, load_inst_prof
 from utils import DELIM, INDENT, smarter_eng_formatter
 
 # main mem configuration assumptions based on the port contention from hwpm
@@ -38,7 +38,7 @@ class perf:
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
         self.inst_profile = inst_profile
         self.name = inst_profile
-        df = json_prof_to_df(inst_profile, allow_internal=True)
+        df = load_inst_prof(inst_profile, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
         df = df.loc[df['name'].str.startswith('_') == False]
