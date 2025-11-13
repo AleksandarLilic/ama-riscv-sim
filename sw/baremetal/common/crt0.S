@@ -49,24 +49,31 @@ _start:
     la a1, __BSS_END__
     .option pop
 
-clear_bss_w: # word at a time
-    addi a2, a0, 4
-    bgtu a2, a1, clear_bss_b
+    # a0 = start, a1 = end
+    sub a2, a1, a0 # a2 = len
+    srli a3, a2, 2 # a3 = nw = len / 4
+    andi a4, a2, 3 # a4 = nb = len % 4
+
+    beqz a3, clear_bss_b_check # skip word loop if none
+clear_bss_w_loop:
     sw x0, 0(a0)
     addi a0, a0, 4
-    beq x0, x0, clear_bss_w
+    addi a3, a3, -1
+    bnez a3, clear_bss_w_loop
 
-clear_bss_b: # remaining bytes
-    bgeu a0, a1, done_bss # while (!(a0 >= a1))
-    sb x0, 0(a0) # *a0 = 0;
-    addi a0, a0, 1 # a0++;
-    beq x0, x0, clear_bss_b
+clear_bss_b_check:
+    beqz a4, call_main # skip byte loop if none
+clear_bss_b_loop:
+    sb x0, 0(a0)
+    addi a0, a0, 1
+    addi a4, a4, -1
+    bnez a4, clear_bss_b_loop
 
-done_bss:
+call_main:
     #ifdef _USE_NEWLIB
+    # optionally, initialize the C library if used
     call __libc_init_array
     #endif
-call_main:
     call main
 
     ecall # try to trap if main returns
