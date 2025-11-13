@@ -386,12 +386,13 @@ class core {
         #endif
         #ifdef DASM_EN
         std::ofstream log_ofstream;
-        bool csr_updated = false;
+        bool dasm_update_csr = false;
         dasm_str dasm;
         hwmi_str hwmi;
         logging_flags_t logf;
         #endif
         cfg_t cfg;
+        bool csr_updated = false;
 
         std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 25> supported_csrs = {{
@@ -440,6 +441,11 @@ class core {
         #ifdef DPI
         clock_source_t clk_src;
         #endif
+        #endif
+
+        #ifdef DPI
+        // pipeline diff form csr read to retirement
+        static constexpr uint64_t csr_to_ret = 2;
         #endif
 
         #ifdef HW_MODELS_EN

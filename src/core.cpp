@@ -42,6 +42,11 @@ core::core(
     #endif
     #endif
 
+    #ifdef DPI
+    // init to diff so it matches RTL going forward
+    inst_cnt_csr = csr_to_ret;
+    #endif
+
     #ifdef DASM_EN
     #ifdef HW_MODELS_EN
     mem->set_hwmi(&hwmi);
@@ -89,7 +94,7 @@ void core::exec() {
     while (running) exec_inst();
 
     // wrap up
-    csr_cnt_update(0u); // so that all instructions since last CSR access are counted
+    csr_cnt_update(0u); // so all instructions since last CSR access are counted
     finish(true);
     return;
 }
@@ -229,8 +234,8 @@ void core::exec_inst() {
         log_ofstream << "\n";
 
         if (logf.state) {
-            log_ofstream << print_state(csr_updated) << "\n";
-            csr_updated = false;
+            log_ofstream << print_state(dasm_update_csr) << "\n";
+            dasm_update_csr = false;
         }
     }
     #endif
@@ -1371,7 +1376,6 @@ void core::simd_ss_finish(std::string c, std::string a, std::string b) {
 // Zicsr extension
 void core::csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
-    csr_cnt_update(csr_addr);
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
         #ifdef DASM_EN
@@ -1379,6 +1383,7 @@ void core::csr_access() {
         #endif
         SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3) << "\n";
     } else {
+        csr_cnt_update(csr_addr);
         // using temp in case rd and rs1 are the same register
         uint32_t init_val_rs1 = rf[ip.rs1()];
         // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
@@ -1403,33 +1408,40 @@ void core::csr_access() {
         DASM_ALIGN;
         dasm.asm_ss << CSRF(it);
     }
-    if (logf.state) csr_updated = true;
+    if (logf.state) dasm_update_csr = true;
     #endif
 }
 
 // Zicntr extension
 void core::csr_cnt_update(uint16_t csr_addr) {
-    uint64_t offset = 0;
-    uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
-    // if current inst writes to instret, skip it in diff
-    if ((csr_addr == CSR_MINSTRET) || (csr_addr == CSR_MINSTRETH)) offset = 1;
-    inst_cnt_csr = inst_cnt + offset;
+    // csr will be updated for rs, rc, rsi, rci, if rs1 is non-zero reg/val
+    bool csr_updated = (
+        (ip.rs1() != 0) ||
+        (ip.funct3() == TO_U8(csr_op_t::op_rw)) ||
+        (ip.funct3() == TO_U8(csr_op_t::op_rwi))
+    );
 
-    offset = 0;
-    // if current inst writes to mcycle, skip this cycle in diff
-    if ((csr_addr == CSR_MCYCLE) || (csr_addr == CSR_MCYCLEH)) offset = 1;
+    // if current inst actually writes to instret, skip it in diff
+    uint64_t skip = csr_updated;
+    skip &= ((csr_addr == CSR_MINSTRET) || (csr_addr == CSR_MINSTRETH));
+    uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
+    inst_cnt_csr = inst_cnt + skip;
+
+    // if current inst actually writes to mcycle, skip this cycle in diff
+    skip = csr_updated;
+    skip &= ((csr_addr == CSR_MCYCLE) || (csr_addr == CSR_MCYCLEH));
     #ifdef DPI
     uint64_t cycle_elapsed = clk_src.get_cr() - cycle_cnt_csr;
-    cycle_cnt_csr = clk_src.get_cr() + offset;
+    cycle_cnt_csr = clk_src.get_cr() + skip;
     #else
     uint64_t cycle_elapsed = inst_cnt - cycle_cnt_csr; // inst=cycle in isa sim
-    cycle_cnt_csr = inst_cnt + offset;
+    cycle_cnt_csr = inst_cnt + skip;
     #endif
 
-    csr.at(CSR_MINSTRET).value += inst_elapsed & 0xFFFFFFFF;
-    csr.at(CSR_MINSTRETH).value += (inst_elapsed >> 32) & 0xFFFFFFFF;
-    csr.at(CSR_MCYCLE).value += cycle_elapsed & 0xFFFFFFFF;
-    csr.at(CSR_MCYCLEH).value += (cycle_elapsed >> 32) & 0xFFFFFFFF;
+    csr.at(CSR_MINSTRET).value += (inst_elapsed & 0xFFFFFFFF);
+    csr.at(CSR_MINSTRETH).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
+    csr.at(CSR_MCYCLE).value += (cycle_elapsed & 0xFFFFFFFF);
+    csr.at(CSR_MCYCLEH).value += ((cycle_elapsed >> 32) & 0xFFFFFFFF);
 
     // user mode shadows
     csr.at(CSR_CYCLE).value = csr.at(CSR_MCYCLE).value;

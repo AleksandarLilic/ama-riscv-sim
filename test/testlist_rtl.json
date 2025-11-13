@@ -1,5 +1,6 @@
 {
     "asm_rv32i": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "asm_rv32i_zicsr": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "asm_rv32im": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
     "dcache_set_thrashing": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
@@ -21,6 +22,7 @@
     "stream_int": [["stream"], ["NTIMES=2", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
     "aapg_static/rv32i": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "aapg_static/rv32i_zmmul": [["aapg"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "aapg_static/rv32i_branches": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "aapg_static/rv32i_mem": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
