@@ -125,6 +125,21 @@ mcycle_read:
     TEST_INC
     beq x26, x0, fail # mcycle shouldn't be 0 at this point
 
+mcycle_run_for_7:
+    li x26, 0x0
+    csrw CSR_MCYCLE, x26
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    csrr x26, CSR_MCYCLE
+    TEST_INC
+    li x27, 7
+    bne x26, x27, fail # mcycle should be 7 after 7 nops
+
 mcycle_write:
     li x26, 0x0
     csrw CSR_MCYCLE, x26
@@ -145,6 +160,21 @@ minstret_write:
     csrr x26, CSR_MINSTRET
     li x27, 0x20
     bge x26, x27, fail # minstret should be greater than 0 but less than 32 inst
+
+minstret_run_for_7:
+    li x26, 0x0
+    csrw CSR_MINSTRET, x26
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    csrr x26, CSR_MINSTRET
+    TEST_INC
+    li x27, 7
+    bne x26, x27, fail # mcycle should be 7 after 7 nops
 
     j pass
 
