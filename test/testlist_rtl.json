@@ -13,6 +13,7 @@
     "vector_ew_al_uint8": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "vector_ew_mac_uint8": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
     "vector_ew_basic": [["all"], ["MATH_LIB_FLAGS=", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
+    "matmul": [["all"], ["MATH_LIB_FLAGS=", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF"]],
 
     "uart_direct_send": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],
     "uart_printf_mini": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],

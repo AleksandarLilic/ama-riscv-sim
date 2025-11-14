@@ -12,6 +12,7 @@ CFLAGS += -DLOOPS=$(LOOPS)
 HEADERS := test_matrices.h
 PYVER := python3
 CODEGEN_PY := codegen.py
+INC_PATHS += .
 
 all: int8
 
@@ -22,9 +23,10 @@ clean_codegen: clean_headers
 
 headers: $(HEADERS)
 
-A_ROWS = 48
-B_COLS = 48
-A_COLS_B_ROWS = 48
+# dependent on the dcache size
+A_ROWS = 32
+B_COLS = 32
+A_COLS_B_ROWS = 32
 
 $(HEADERS): $(CODEGEN_PY)
 	$(PYVER) $(CODEGEN_PY) $(A_ROWS) $(B_COLS) $(A_COLS_B_ROWS)

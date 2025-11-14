@@ -39,7 +39,7 @@ $(TEST): $(SOURCES)
 
 prepare_tests:
 	@./prepare_riscv_tests.py --testlist testlist.json --isa_tests
-	echo "RISC-V tests build done."
+	@echo "RISC-V tests build done."
 
 clean_tests:
 	@./prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
