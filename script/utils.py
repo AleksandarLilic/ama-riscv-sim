@@ -24,7 +24,7 @@ def get_reporoot():
         return repo_root
     except subprocess.CalledProcessError as e:
         print(f"Error: {e.output.decode('utf-8')}")
-        return None
+        raise e
 
 def is_headless():
     """Return True if we're running without a GUI/display."""

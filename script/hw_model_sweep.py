@@ -22,7 +22,7 @@ from utils import INDENT, get_reporoot, is_headless, is_notebook
 
 # globals
 reporoot = get_reporoot()
-SIM = os.path.join(reporoot, "src", "ama-riscv-sim")
+SIM = os.path.join(reporoot, "src", "build", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
 SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
@@ -1444,7 +1444,7 @@ def plot_bp_results(axs, sweep_results, sweep_params):
                 #a.legend(loc='upper left', fontsize=9)
                 #a.legend(ncol=3, fontsize=9)
 
-def bp_plot_per_workload(args, sweep_params, workloads_all, sr):
+def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
     sr_bin_all = sr[0]
     sr_best_all = sr[1]
 
@@ -1573,7 +1573,7 @@ def run_main(args: argparse.Namespace) -> None:
     if "cache" in args.sweep:
         tt = track_time()
         sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
-        sweep_wrapper_end(tt, "\n")
+        sweep_wrapper_end(args, tt, "\n")
         if single_wl_sweep:
             return
 
@@ -1585,20 +1585,20 @@ def run_main(args: argparse.Namespace) -> None:
         if args.add_all_workloads and workloads_all != workloads_sweep:
             sweep_best_wrapper_start(args.sweep, "\n")
             run_cache_sweep(args, workloads_all, sweep_params, params)
-            sweep_wrapper_end(tt)
+            sweep_wrapper_end(args, tt)
 
         if args.plot_per_workload:
             add_charts_wrapper_start(args.sweep, "\n")
             for wl in workloads_all:
                 run_cache_sweep(args, [wl], sweep_params, params)
-            sweep_wrapper_end(tt)
+            sweep_wrapper_end(args, tt)
 
         return # only one sweep type at a time
 
     if "bp" in args.sweep:
         tt = track_time()
         sr_bin, sr_best = run_bp_sweep(args, workloads_sweep, sweep_params)
-        sweep_wrapper_end(tt, "\n")
+        sweep_wrapper_end(args, tt, "\n")
         if single_wl_sweep:
             return
 
@@ -1610,7 +1610,7 @@ def run_main(args: argparse.Namespace) -> None:
                 params = gen_bp_final_params(sr_to_use)
                 sr_bin_all, sr_best_all = run_bp_sweep(
                     args, workloads_all, sweep_params, params)
-                sweep_wrapper_end(tt, "\n")
+                sweep_wrapper_end(args, tt, "\n")
             else:
                 # 'sweep' and 'all' are the same set of workloads
                 # i.e. there is no "skip_search: true" in the config
@@ -1621,36 +1621,39 @@ def run_main(args: argparse.Namespace) -> None:
             add_charts_wrapper_start(args.sweep, "\n")
             bp_plot_per_workload(
                 args, sweep_params, workloads_all, [sr_bin_all, sr_best_all])
-            sweep_wrapper_end(tt, "\n")
+            sweep_wrapper_end(args, tt, "\n")
 
         return # only one sweep type at a time
 
     raise ValueError("Unknown sweep type and impossible to reach")
 
-def sweep_best_wrapper_start(sweep: str, end: str = ''):
+def sweep_best_wrapper_start(sweep: str, end: str = '') -> None:
     print(f"Sweeping best '{sweep}' configs for 'all workloads'. ", end=end)
 
-def add_charts_wrapper_start(sweep: str, end: str = ''):
+def add_charts_wrapper_start(sweep: str, end: str = '') -> None:
     print(f"Adding per workload charts for best '{sweep}' configs. ", end=end)
 
-def sweep_wrapper_end(tt: track_time, append_str: str = ""):
+def sweep_wrapper_end(
+    args: argparse.Namespace, tt: track_time, append_str: str = "") -> None:
     tt_now, tt_taken = tt()
+    if args.load_stats:
+        return
     print(f"Done at {tt_now}. Taken: {tt_taken}{append_str}")
 
 if __name__ == "__main__":
-    if not os.path.exists(SIM):
-        raise FileNotFoundError(f"Simulator not found at: {SIM}")
-
     tt = track_time()
     args = parse_args()
+    mw_str = ""
     if not args.load_stats:
+        if not os.path.exists(SIM): # dc about SIM if stats are only loaded
+            raise FileNotFoundError(f"Simulator not found at: {SIM}")
         args.max_workers = min(MAX_WORKERS, args.max_workers)
+        mw_str = f" with {args.max_workers} workers"
 
-    print(f"Running with config '{args.params}' in '{args.work_dir}'" +
-          f" with {args.max_workers} workers")
+    print(f"Running with config '{args.params}' in '{args.work_dir}'" + mw_str)
     run_main(args)
-    print("\nAll sweeps finished. ", end="")
-    sweep_wrapper_end(tt, "\n")
+    print("\nAll sweeps completed. ", end="")
+    sweep_wrapper_end(args, tt, "\n")
 
     if not args.silent:
         plt.show(block=False)
