@@ -292,8 +292,7 @@ void core::save_trace_entry() {
 #endif
 
 #ifdef DPI
-// instructions are still collected by isa sim when retired
-// but trace is saved on every cycle from dpi
+// trace is saved on every cycle from dpi
 void core::save_trace_entry(trace_entry te) {
     if (prof_act && prof_trace) {
         prof.te = te;

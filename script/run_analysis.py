@@ -12,8 +12,8 @@ import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.ticker import (EngFormatter, FixedLocator, FuncFormatter,
-                               LinearLocator, LogFormatter,
+from matplotlib.ticker import (AutoMinorLocator, EngFormatter, FixedLocator,
+                               FuncFormatter, LinearLocator, LogFormatter,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
 from matplotlib.widgets import RangeSlider
@@ -31,6 +31,8 @@ GS_EXEC = {'top': .95, 'bottom': .1, 'left': .09, 'right': .8, 'hspace': .05}
 TRACE_TYPE = ["Execution", "Data"]
 
 TRACE_NA = 255
+
+FREQ_DEFAULT = 100 # MHz
 
 # TODO: add function calls/graphs highlight when supported by the profiler
 CLR = {
@@ -229,6 +231,23 @@ def exec_df_within_limits(df_len, limit) -> bool:
               f"Either increase the limit or filter the data.")
         return False
     return True
+
+def rolling_mean(data: pd.Series, win_size: int) -> pd.Series:
+    """
+    Moving average with zero-padding BEFORE the signal begins.
+    Equivalent to prepending `win_size` zeros but implemented efficiently.
+    """
+    x = data.to_numpy()
+    pad = np.zeros(win_size, dtype=x.dtype)
+    padded = np.concatenate((pad, x))
+    c = padded.cumsum()
+
+    # moving average:
+    #   avg[i] = (c[i+win_size] - c[i]) / win_size
+    # this gives the mean over padded[i : i+win_size]
+    avg = (c[win_size:] - c[:-win_size]) / win_size
+
+    return pd.Series(avg, index=data.index).round(3) # as series with og index
 
 # common functions for plotting
 def find_loc_range(ax) -> int:
@@ -984,35 +1003,39 @@ def plot_ipc(ax, df) -> None:
     ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
     on_xlim_changed_default(ax, line, LW_OFF)
 
-def plot_stat(ax, df, column, filter, unit, agg='sum') -> None:
+def plot_stat(
+    ax, x, y, unit, win_size, metric, agg='sum', clr=CLR_TAB_BLUE, scale=1) \
+    -> None:
+
     LW_OFF = .65
-    lw = progressive_lw(df.index.size) * LW_OFF
-    data = df[column].where(df.i_type == filter, 0)
-    if data.sum() == 0: # if data is all zeros, skip
-        #print(f"Warning: no '{filter}' values found in the trace.")
+    lw = progressive_lw(len(y)) * LW_OFF
+    if x.sum() == 0: # if data is all zeros, skip
         return ax
 
     fmt = EngFormatter(unit=unit, places=1)
     if agg == 'sum':
-        data_a = data.sum()
+        x_agg = x.sum()
     elif agg == 'mean':
-        data_a = data.mean()
+        x_agg = x.mean()
     elif agg != '':
         raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
 
-    data_r = data \
-             .rolling(window=args.win_size_stats, min_periods=1) \
-             .mean() \
-             .round(3)
-
-    label = f"{filter}"
+    xr = rolling_mean(x, win_size)
+    xr /= scale
+    label = f"{metric}"
     if agg != '': # label it
-        label = f"{label}: {fmt.format_eng(data_a)}",
-    line, = ax.plot(df.smp, data_r, lw=lw, color=icfg.HL_COLORS_OPS[filter])
-    plot_dummy_line(ax, icfg.HL_COLORS_OPS[filter], 1.5, label)
+        label += f": {fmt.format_eng(x_agg)}"
+
+    line, = ax.plot(y, xr, lw=lw, color=clr)
+    plot_dummy_line(ax, clr, 1.5, label)
     on_xlim_changed_default(ax, line, LW_OFF)
 
-def plot_hw_hm(ax, df, col, win_size_hw) -> None:
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=4, integer=True, prune=None))
+    ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+    ax.grid(axis='y', linestyle='-', alpha=.6, which='major')
+    ax.grid(axis='y', linestyle='--', alpha=0.4, which='minor')
+
+def plot_hw_hm(ax, df, col, win_size) -> None:
     H_OFFSET = .3
     df[col] = df[col].replace(TRACE_NA, np.nan)
     hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
@@ -1029,10 +1052,7 @@ def plot_hw_hm(ax, df, col, win_size_hw) -> None:
     metric_mean = round(df[col].mean()*100,2)
     label = f"{metric}: {metric_mean}%"
     # drop NaNs to have continuous mean
-    running_avg = df[col] \
-                  .dropna() \
-                  .rolling(window=win_size_hw, min_periods=1) \
-                  .mean()
+    running_avg = rolling_mean(df[col].dropna(), win_size)
     # reindex and forward fill to account for NaNs in the source
     running_avg = running_avg.reindex(df.index, method='ffill')
     LW_OFF = .5
@@ -1220,7 +1240,7 @@ Tuple[plt.Figure, RangeSlider]:
 
     #ax_tl.set_ylabel("Symbol")
     ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(ax_tl, args.sample_begin_norm)
+    ax_top, xlabel = draw_exec_finish(ax_tl, df.smp[0], args.sample_begin_norm)
     ax_sp.set_xlabel(xlabel)
 
     S_GAP = 0.04
@@ -1240,9 +1260,7 @@ Tuple[plt.Figure, RangeSlider, RangeSlider]:
 
     # set up figure
     FS = (FS_EXEC_X, FS_EXEC_Y)
-    fig, ax_t = plt.subplots(
-        ncols=1, nrows=1, figsize=FS, sharex=True, gridspec_kw=GS_EXEC)
-
+    fig, ax_t = plt.subplots(figsize=FS, sharex=True, gridspec_kw=GS_EXEC)
     # add PC/DMEM trace
     LW_OFF_S = .75
     LW_OFF_HL = 1.
@@ -1332,7 +1350,7 @@ Tuple[plt.Figure, RangeSlider, RangeSlider]:
     ax_t.set_title(get_title(TRACE_SOURCE, trace_type, title))
     ax_t.set_ylabel(ylabel)
     ax_t.grid(axis='both', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(ax_t, args.sample_begin_norm)
+    ax_top, xlabel = draw_exec_finish(ax_t, df.smp[0], args.sample_begin_norm)
     ax_t.set_xlabel(xlabel)
 
     S_GAP = 0.04
@@ -1344,12 +1362,12 @@ Tuple[plt.Figure, RangeSlider, RangeSlider]:
 
     return fig, rsx, rsy
 
-def draw_exec_finish(ax, norm) -> Tuple[plt.Axes, str]:
+def draw_exec_finish(ax, xlim_low, norm) -> Tuple[plt.Axes, str]:
     # x
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax.xaxis.set_major_locator(max_n_locator)
     ax.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
-    ax.set_xlim(ax.get_xlim()[0]-1, ax.get_xlim()[1]) # remove padding
+    ax.set_xlim(xlim_low-1, ax.get_xlim()[1]) # remove pad
     # add a second x-axis
     ax_top = ax.twiny()
     ax_top.set_xlim(ax.get_xlim())
@@ -1366,46 +1384,79 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None
 
-    GS = {
-        'top': .9, 'bottom': .18,
-        'left': GS_EXEC['left'], 'right': GS_EXEC['right'],
-        'hspace': .1
-    }
-
     nrows = 4 # ops, bp, ic, dc
     if args.clk:
         nrows += 1 # + ipc
+        nrows += 4 # + ct_imem_core, ct_imem_mem, ct_dmem_core, ct_dmem_mem
+        GS = GS_EXEC
+        FS = (FS_EXEC_X, FS_EXEC_Y)
         ops_n = "C" # ops per cycle
+        S_GAP, S_H = 0.04, 0.03
     else:
         nrows += 1 # + branch density
         ops_n = "/inst"
+        GS = {
+            'top': .9, 'bottom': .18,
+            'left': GS_EXEC['left'], 'right': GS_EXEC['right'],
+            'hspace': .1
+        }
+        FS = (FS_EXEC_X, (FS_EXEC_Y/7)*nrows)
+        S_GAP, S_H = 0.06, 0.04
 
-    MAX_ROWS_FS = 8 # just for fig size calc
-    FS = (FS_EXEC_X, (FS_EXEC_Y/MAX_ROWS_FS)*nrows)
     # set up figure
     fig, ax = plt.subplots(
         ncols=1, nrows=nrows, figsize=FS, sharex=True, gridspec_kw=GS)
 
     if args.clk:
-        ax_ipc, ax_ops, ax_bp, ax_ic, ax_dc = ax
+        ax_ipc, ax_ops, ax_bp, ax_ic, ax_dc, \
+            ax_ct_i2c, ax_ct_i2m, ax_ct_d2c, ax_ct_d2m = ax
+        ax_btm = ax_ct_d2m
     else:
         ax_ops, ax_bd, ax_bp, ax_ic, ax_dc = ax
-    ax_btm = ax_dc
+        ax_btm = ax_dc
 
-    plot_stat(ax_ops, df, 'ops', icfg.ALU, unit='ops')
-    plot_stat(ax_ops, df, 'ops', icfg.MUL, unit='ops')
-    #plot_stat(ax_ops, df, 'ops', DIV, unit='ops') only Zmmul used
-    plot_stat(ax_ops, df, 'ops', icfg.MEM, unit='ops')
-    plot_stat(ax_ops, df, 'ops', icfg.SIMD, unit='ops')
-    plot_stat(ax_ops, df, 'ops', icfg.UNPAK, unit='ops')
-    plot_hw_hm(ax_bp, df, 'bp', args.win_size_hw)
-    plot_hw_hm(ax_ic, df, 'ic', args.win_size_hw)
-    plot_hw_hm(ax_dc, df, 'dc', args.win_size_hw)
+    win_s = args.win_size_stats
+    win_hw = args.win_size_hw
+    y = df.smp
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.ALU, 0), y,
+              'ops', win_s, 'ALU', clr=icfg.HL_COLORS_OPS[icfg.ALU])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.MUL, 0), y,
+              'ops', win_s, 'MUL', clr=icfg.HL_COLORS_OPS[icfg.MUL])
+    #plot_stat(ax_ops, df.ops.where(df.i_type==icfg.DIV, 0), y,
+    #          'ops', win_s, 'DIV', clr=icfg.HL_COLORS_OPS[icfg.DIV])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.MEM, 0), y,
+              'ops', win_s, 'MEM', clr=icfg.HL_COLORS_OPS[icfg.MEM])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.SIMD, 0), y,
+              'ops', win_s, 'SIMD', clr=icfg.HL_COLORS_OPS[icfg.SIMD])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.UNPAK, 0), y,
+              'ops', win_s, 'UNPAK', clr=icfg.HL_COLORS_OPS[icfg.UNPAK])
+
+    plot_hw_hm(ax_bp, df, 'bp', win_hw)
+    plot_hw_hm(ax_ic, df, 'ic', win_hw)
+    plot_hw_hm(ax_dc, df, 'dc', win_hw)
+
     if args.clk:
         plot_ipc(ax_ipc, df)
+        s = 1_000_000 # scale to MB/s
+        w_clr = CLR_HL[2]
+        agg_ct = 'mean'
+        plot_stat(ax_ct_i2c, df.ct_imem_core, y, 'B/s', win_s,
+                  'Read', agg=agg_ct, scale=s)
+        plot_stat(ax_ct_i2m, df.ct_imem_mem, y, 'B/s', win_s,
+                  'Read', agg=agg_ct, scale=s)
+        plot_stat(ax_ct_d2c, df.ct_dmem_core_r, y, 'B/s', win_s,
+                  'Read', agg=agg_ct, scale=s)
+        plot_stat(ax_ct_d2c, df.ct_dmem_core_w, y, 'B/s', win_s,
+                  'Write', agg=agg_ct, clr=w_clr, scale=s)
+        plot_stat(ax_ct_d2m, df.ct_dmem_mem_r, y, 'B/s', win_s,
+                  'Read', agg=agg_ct, scale=s)
+        plot_stat(ax_ct_d2m, df.ct_dmem_mem_w, y, 'B/s', win_s,
+                  'Write', agg=agg_ct, clr=w_clr, scale=s)
     else:
-        plot_stat(ax_bd, df, 'br_dens', icfg.BRANCH, '', '')
-        plot_stat(ax_bd, df, 'br_dens', icfg.JUMP, '', '')
+        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.BRANCH, 0), y,
+                  'ops', win_s, 'BRANCH', clr=icfg.HL_COLORS_OPS[icfg.BRANCH])
+        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.JUMP, 0), y,
+                  'ops', win_s, 'JUMP', clr=icfg.HL_COLORS_OPS[icfg.JUMP])
 
     # update axis
     # x
@@ -1413,7 +1464,7 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     max_n_locator = MaxNLocator(nbins=20, integer=True)
     ax_btm.xaxis.set_major_locator(max_n_locator)
     ax_btm.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
-    ax_btm.set_xlim(ax_btm.get_xlim()[0]-1, ax_btm.get_xlim()[1]) # remove pad
+    ax_btm.set_xlim(df.smp[0]-1, ax_btm.get_xlim()[1]) # remove pad
 
     # add a second x-axis
     if args.clk:
@@ -1425,15 +1476,20 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     ax_top.xaxis.set_ticks_position('top')
     ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
-    # label
-    win_str = f" (W={args.win_size_stats}, W_hw={args.win_size_hw})"
+    # title
+    win_str = f" (W={win_s}, W_hw={win_hw})"
     ax_top.set_title(get_title(TRACE_SOURCE, "Stats & HW", title) + win_str)
+    # axis labels
     ax_ops.set_ylabel(f'OP{ops_n}')
     ax_ic.set_ylabel('ICache')
     ax_dc.set_ylabel('DCache')
     ax_bp.set_ylabel('BP')
     if args.clk:
         ax_ipc.set_ylabel('IPC')
+        ax_ct_i2c.set_ylabel("ICache to Core\n[MB/s]")
+        ax_ct_i2m.set_ylabel("ICache to Mem\n[MB/s]")
+        ax_ct_d2c.set_ylabel("DCache to Core\n[MB/s]")
+        ax_ct_d2m.set_ylabel("DCache to Mem\n[MB/s]")
     else:
         ax_bd.set_ylabel('Flow Control\nDensity')
 
@@ -1444,8 +1500,6 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         title = "Total OPS" if a == ax_ops else None
         add_outside_legend(a, title)
 
-    S_GAP = 0.06 # if args.clk else 0.07 # dependent on nrows
-    S_H = 0.04 # if args.clk else 0.05 # dependent on nrows
     rsx = attach_xrange_slider(ax_btm, ax_top, gap=S_GAP, h=S_H)
     register_true_home(fig)
 
@@ -1469,33 +1523,44 @@ def load_inst_prof(log, allow_internal=False) -> pd.DataFrame:
     return df
 
 def load_bin_trace(bin_log, args) -> pd.DataFrame:
-    h = ['smp', # 64b - [0]
-         'inst', 'pc', 'next_pc', 'dmem', # 128b - [1:4]
-         'sp', # 32b - [5]
-         'b_taken', 'ic', 'dc', 'bp', 'isz', 'dsz', # 48b - [6:11]
-         'padding16', 'padding32' # 48b [12:13]
-    ]
-
     dtype = np.dtype([
-        (h[ 0], np.uint64), # smp
-        (h[ 1], np.uint32), # inst
-        (h[ 2], np.uint32), # pc
-        (h[ 3], np.uint32), # next_pc
-        (h[ 4], np.uint32), # dmem
-        (h[ 5], np.uint32), # sp
-        (h[ 6], np.uint8 ), # taken
-        (h[ 7], np.uint8 ), # ic
-        (h[ 8], np.uint8 ), # dc
-        (h[ 9], np.uint8 ), # bp
-        (h[10], np.uint8 ), # isz
-        (h[11], np.uint8 ), # dsz
-        (h[12], np.uint16), # padding16
-        (h[13], np.uint32), # padding32
+        ('smp', np.uint64),
+        ('inst', np.uint32),
+        ('pc', np.uint32),
+        ('next_pc', np.uint32),
+        ('dmem', np.uint32),
+        ('sp', np.uint32),
+        ('b_taken', np.uint8),
+        ('isz', np.uint8),
+        ('dsz', np.uint8),
+        ('ic', np.uint8),
+        ('dc', np.uint8),
+        ('bp', np.uint8),
     ])
 
+    if args.clk:
+        dtype = np.dtype(dtype.descr + [
+            ('ct_imem_core', np.uint8),
+            ('ct_imem_mem', np.uint8),
+            ('ct_dmem_core_r', np.uint8),
+            ('ct_dmem_core_w', np.uint8),
+            ('ct_dmem_mem_r', np.uint8),
+            ('ct_dmem_mem_w', np.uint8),
+        ])
+        mem_stats = dtype.names[-6:]
+
+    # recreate padding as done in the C++ trace entry struct
+    el_max = np.max([dtype[item].itemsize for item in dtype.names])
+    dsize = dtype.itemsize
+    padding = ((((dsize + el_max) // el_max) * el_max) - dsize) % el_max
+    pad_str = "pad_byte_"
+    for p in range(padding):
+        dtype = np.dtype(dtype.descr + [(pad_str+str(p), 'u1')])
+
+    # load trace
     data = np.fromfile(bin_log, dtype=dtype)
-    df = pd.DataFrame(data, columns=h)
-    df = df.drop(columns=[c for c in h if 'padding' in c]) # drop padding cols
+    df = pd.DataFrame(data)
+    df = df.drop(columns=[c for c in df.columns if pad_str in c])
     if args.sample_begin_norm:
         df.smp = df.smp - df.smp.head(1).values[0] # normalize smp to 0
 
@@ -1504,7 +1569,8 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     #     sb, sh, sw, sd,
     #     no_access
     # };
-    NA = 8
+    # decode dsz to size in bytes and type (load/store) based on the above enum
+    NA = 8 # no_access enum value
     df['dtyp'] = df['dsz'].apply(lambda x: 'store' if 7 >= x >= 4 else 'load')
     df['dsz'] = df['dsz'].apply(lambda x: x-4 if 7 >= x >= 4 else x)
     df['dsz'] = df['dsz'] + 1 # makes 1=byte, 2=half, 3=word, 4=dword
@@ -1522,10 +1588,10 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df['cpi'] = df[df['inst'] != 0]['smp'].diff().fillna(df['smp']).astype(int)
     if args.clk:
         df['ipc_inst'] = df['inst'].ne(0).astype(int)
-        df['ipc_rolling'] = df['ipc_inst'] \
-                            .rolling(window=args.win_size_stats, min_periods=1)\
-                            .mean() \
-                            .round(3)
+        df['ipc_rolling'] = rolling_mean(df['ipc_inst'], args.win_size_stats)
+        for m in mem_stats: # from bytes/cycle to bytes/sec
+            df[m] = df[m].astype(np.uint16) * args.freq * 1_000_000
+
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
         lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
@@ -1535,7 +1601,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
 
     df_start = int(args.sample_begin) if args.sample_begin else df.smp.min()
     df_end = int(args.sample_end) if args.sample_end else df.smp.max()
-    df = df.loc[df['smp'].between(df_start,df_end)]
+    df = df.loc[df['smp'].between(df_start, df_end)]
 
     return df
 
@@ -1781,6 +1847,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--sample_begin', type=int, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--sample_end', type=int, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
+    parser.add_argument('--freq', default=FREQ_DEFAULT, help="Core clock frequency in [MHz]. Trace only option")
     parser.add_argument('--sample_begin_norm', action='store_true', help="Normalize trace start to 0th sample. Trace only option")
 
     parser.add_argument('--timeline', action='store_true', help="Plot top of stack trace as timeline. Requires --dasm. Trace only option")

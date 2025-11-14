@@ -115,18 +115,53 @@ struct inst_prof_j {
 
 // TODO: add instruction dasm to the profiler as another entry?
 struct trace_entry {
-    uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
-    uint32_t inst;
-    uint32_t pc;
-    uint32_t next_pc;
-    uint32_t dmem;
-    uint32_t sp;
-    uint8_t taken;
-    uint8_t ic_hm;
-    uint8_t dc_hm;
-    uint8_t bp_hm;
-    uint8_t inst_size;
-    uint8_t dmem_size;
+    public:
+        uint64_t sample_cnt; // inst count in isa sim, cycle count in rtl sim
+        // instruction specific (retired in RTL)
+        uint32_t inst;
+        uint32_t pc;
+        uint32_t next_pc;
+        uint32_t dmem;
+        uint32_t sp;
+        uint8_t taken;
+        uint8_t inst_size;
+        uint8_t dmem_size;
+        // current sample specific (same thing in ISA sim as current inst)
+        uint8_t ic_hm;
+        uint8_t dc_hm;
+        uint8_t bp_hm;
+        #ifdef DPI
+        uint8_t ct_imem_core;
+        uint8_t ct_imem_mem;
+        uint8_t ct_dmem_core_r;
+        uint8_t ct_dmem_core_w;
+        uint8_t ct_dmem_mem_r;
+        uint8_t ct_dmem_mem_w;
+        #endif
+
+    public:
+        void rst() {
+            sample_cnt = 0;
+            inst = 0;
+            pc = 0;
+            next_pc = 0;
+            dmem = 0;
+            sp = 0;
+            taken = 0;
+            inst_size = 0;
+            dmem_size = TO_U8(dmem_size_t::no_access);
+            ic_hm = TO_U8(hw_status_t::none);
+            dc_hm = TO_U8(hw_status_t::none);
+            bp_hm = TO_U8(hw_status_t::none);
+            #ifdef DPI
+            ct_imem_core = 0;
+            ct_imem_mem = 0;
+            ct_dmem_core_r =  0;
+            ct_dmem_core_w = 0;
+            ct_dmem_mem_r = 0;
+            ct_dmem_mem_w = 0;
+            #endif
+        }
 };
 
 struct cnt_t {
@@ -246,17 +281,6 @@ class profiler {
 
     private:
         void log_to_file_and_print();
-        void rst_te() {
-            te = {
-                0, // sample_cnt
-                0, 0, 0, 0, 0, // inst, pc, next_pc, dmem (addr), sp
-                0, // (branch) taken
-                TO_U8(hw_status_t::none), // ic_hm
-                TO_U8(hw_status_t::none), // dc_hm
-                TO_U8(hw_status_t::none), // bp_hm
-                0, TO_U8(dmem_size_t::no_access) // inst_size, dmem_size
-            };
-        }
 
     private:
         // all compressed instructions

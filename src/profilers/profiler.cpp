@@ -4,7 +4,7 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     inst = 0;
     inst_cnt_prof = 0;
     trace.reserve(1<<14); // reserve 16K entries to start with
-    rst_te();
+    te.rst();
     this->out_dir = out_dir;
     this->prof_src = prof_src;
 
@@ -143,7 +143,11 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
 void profiler::add_te() {
     if (active && trace_en) {
         trace.push_back(te);
-        rst_te(); // in case next instruction doesn't update all fields
+        #ifndef DPI
+        // in case next instruction doesn't update all fields
+        // DPI te is copied from cosim, no point in resetting
+        te.rst();
+        #endif
     }
 }
 
