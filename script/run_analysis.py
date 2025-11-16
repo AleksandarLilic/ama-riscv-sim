@@ -1004,7 +1004,7 @@ def plot_ipc(ax, df) -> None:
     on_xlim_changed_default(ax, line, LW_OFF)
 
 def plot_stat(
-    ax, x, y, unit, win_size, metric, agg='sum', clr=CLR_TAB_BLUE, scale=1) \
+    ax, x, y, unit, win_size, metric, agg='sum', clr=CLR_TAB_BLUE, yscale=1) \
     -> None:
 
     LW_OFF = .65
@@ -1021,7 +1021,7 @@ def plot_stat(
         raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
 
     xr = rolling_mean(x, win_size)
-    xr /= scale
+    xr /= yscale # to make y axis more readable, then manually label it outisde
     label = f"{metric}"
     if agg != '': # label it
         label += f": {fmt.format_eng(x_agg)}"
@@ -1388,7 +1388,8 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     if args.clk:
         nrows += 1 # + ipc
         nrows += 4 # + ct_imem_core, ct_imem_mem, ct_dmem_core, ct_dmem_mem
-        GS = GS_EXEC
+        GS = GS_EXEC.copy()
+        GS['hspace'] = .1
         FS = (FS_EXEC_X, FS_EXEC_Y)
         ops_n = "C" # ops per cycle
         S_GAP, S_H = 0.04, 0.03
@@ -1441,17 +1442,17 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         w_clr = CLR_HL[2]
         agg_ct = 'mean'
         plot_stat(ax_ct_i2c, df.ct_imem_core, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, scale=s)
+                  'Read', agg=agg_ct, yscale=s)
         plot_stat(ax_ct_i2m, df.ct_imem_mem, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, scale=s)
+                  'Read', agg=agg_ct, yscale=s)
         plot_stat(ax_ct_d2c, df.ct_dmem_core_r, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, scale=s)
+                  'Read', agg=agg_ct, yscale=s)
         plot_stat(ax_ct_d2c, df.ct_dmem_core_w, y, 'B/s', win_s,
-                  'Write', agg=agg_ct, clr=w_clr, scale=s)
+                  'Write', agg=agg_ct, clr=w_clr, yscale=s)
         plot_stat(ax_ct_d2m, df.ct_dmem_mem_r, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, scale=s)
+                  'Read', agg=agg_ct, yscale=s)
         plot_stat(ax_ct_d2m, df.ct_dmem_mem_w, y, 'B/s', win_s,
-                  'Write', agg=agg_ct, clr=w_clr, scale=s)
+                  'Write', agg=agg_ct, clr=w_clr, yscale=s)
     else:
         plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.BRANCH, 0), y,
                   'ops', win_s, 'BRANCH', clr=icfg.HL_COLORS_OPS[icfg.BRANCH])
