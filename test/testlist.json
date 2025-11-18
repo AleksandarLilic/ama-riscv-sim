@@ -11,12 +11,14 @@
     "asm_rv32i_custom-scp": ["basic"],
 
     "rd_pairing": ["basic"],
+
     "dcache_set_thrashing": ["basic"],
 
     "factorial": [["n_20"], ["LOOPS=10"]],
     "fibonacci": [["n_18"], ["LOOPS=10"]],
     "gcd_lcm": [["n_large"], ["LOOPS=10"]],
     "prime_numbers": [["n_3000"], ["LOOPS=10"]],
+
     "vector_ew_al_uint8": ["basic"],
     "vector_ew_mac_uint8": ["basic"],
     "vector_ew_basic": ["all"],
@@ -31,6 +33,7 @@
     "timer_interrupt": ["basic"],
 
     "mlp": ["all"],
+
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],
     "coremark": [["coremark"], ["ITERATIONS=2"]],
     "stream_int": [["stream"], ["NTIMES=5"]],
