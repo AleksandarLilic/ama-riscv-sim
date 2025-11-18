@@ -35,9 +35,11 @@ _start:
     li  x31, 0
 
     #ifndef BASIC_ASM_TEST
+    #ifndef NO_TRAP
     # initialize trap vector
     la t0, trap_entry
     csrw mtvec, t0
+    #endif
     #endif
 
     # initialize gp, sp, and clear bss
@@ -85,6 +87,7 @@ forever:
     j forever
 
 #ifndef BASIC_ASM_TEST
+#ifndef NO_TRAP
 trap_entry:
     // save state
     addi sp, sp, -272
@@ -166,4 +169,5 @@ trap_entry:
 
     addi sp, sp, 272
     mret
+#endif
 #endif
