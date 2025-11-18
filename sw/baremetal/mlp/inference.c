@@ -76,11 +76,11 @@ uint32_t run_inference(int8_t* input_img) {
     // align so that both fit nicely on cache boundaries
     int32_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_out[64];
     int8_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_in[64];
-    #ifdef CUSTOM_ISA
+    #ifdef CUSTOM_ISA_SCP
     size_t stride;
     #endif
 
-    #ifdef CUSTOM_ISA
+    #ifdef CUSTOM_ISA_SCP
     //#pragma GCC unroll 4 // force if gcc doesn't unroll
     stride = CACHE_LINE_SIZE/sizeof(input_img[0]);
     for (int i = 0; i < 4; i++) SCP_LCL(input_img + stride*i);
@@ -88,7 +88,7 @@ uint32_t run_inference(int8_t* input_img) {
 
     fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
 
-    #ifdef CUSTOM_ISA
+    #ifdef CUSTOM_ISA_SCP
     for (int i = 0; i < 4; i++) SCP_REL(input_img + stride*i);
     // and move 'layer_out' (allocated on the stack) to scp
     stride = CACHE_LINE_SIZE/sizeof(layer_out[0]);
@@ -109,7 +109,7 @@ uint32_t run_inference(int8_t* input_img) {
              FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT);
     uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT, true);
 
-    #ifdef CUSTOM_ISA
+    #ifdef CUSTOM_ISA_SCP
     // be a good citizen and release the scp
     for (int i = 0; i < 4; i++) SCP_REL(layer_out + stride*i);
     //SCP_REL(layer_in);
