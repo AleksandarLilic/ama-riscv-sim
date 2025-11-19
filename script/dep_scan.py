@@ -10,7 +10,9 @@ from utils import FMT_AXIS, INDENT, get_test_title, smarter_eng_formatter
 BRANCH_MNM = icfg.INST_T[icfg.BRANCH]
 STORE_MNM = icfg.INST_T_MEM[icfg.MEM_S]
 FENCE_MNM = icfg.INST_T[icfg.FENCE]
-ALL_SPECIAL_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
+ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
+
+RDP_MNM = icfg.INST_T[icfg.UNPAK]
 
 MNM_ANY = "_any_"
 
@@ -50,10 +52,12 @@ def extract_mnemonic(line: str) -> str | None:
         # couldn't parse line properly, dc about this line
         return None
 
-def extract_regs_in_order(line: str) -> list[int]:
+def get_all_regs(line: str) -> list[int]:
     """
     Return list of integer register IDs (0..31) matched in left-to-right order
     """
+    if "nop" in line:
+        return []
     regs = line.strip().split(" ")[4].split(",")
     # for loads and stores, reg in parentheses
     regs = [r.replace('(', ' ').replace(')', '').split() for r in regs]
@@ -65,7 +69,7 @@ def inst_writes_rd(mnemonic: str) -> bool:
     """
     Heuristic: most non-branch/non-store/non-fence GPR ops write rd
     """
-    if mnemonic in ALL_SPECIAL_MNM:
+    if mnemonic in ALL_NO_RD_MNM:
         return False
     # ECALL/EBREAK don't write; treat them as no-write
     if mnemonic in {"ecall", "ebreak"}:
@@ -73,6 +77,11 @@ def inst_writes_rd(mnemonic: str) -> bool:
     # everything else in rv32im_zicsr assumed to write rd
     # (e.g., jal, jalr, lui, auipc, addi, csrrw, etc.)
     return True
+
+def inst_writes_rdp(mnemonic: str) -> bool:
+    if mnemonic in RDP_MNM:
+        return True
+    return False
 
 def dep_rs(mnemonic: str, regs_in_order: list[int]) -> list[int]:
     """
@@ -88,19 +97,21 @@ def dep_rs(mnemonic: str, regs_in_order: list[int]) -> list[int]:
     # drop x0 if present
     return [r for r in srcs if r != 0]
 
-def src_rd(mnemonic: str, regs_in_order: list[int]) -> int | None:
+def src_rd(mnemonic: str, inst_regs: list[int]) -> int | None:
     """
-    Producer rd is the first register on the line for writer instructions.
+    Source rd is the first register on the line for writer instructions.
     Skip stores/branches/fences and any rd==x0
     """
     if not inst_writes_rd(mnemonic):
         return None
-    if not regs_in_order:
+    if not inst_regs:
         return None
-    rd = regs_in_order[0]
+    rd = inst_regs[0]
     if rd == 0:
-        return None  # Skip x0 producers
-    return rd
+        return None  # skip x0 sources
+    if inst_writes_rdp(mnemonic):
+        return [rd, rd + 1] # return both rd and rdp
+    return [rd]
 
 @dataclass
 class search_args:
@@ -169,16 +180,16 @@ def search(args):
         if mnm not in res.src_s['mnm']:
             continue
 
-        regs = extract_regs_in_order(line)
-        if not regs:
-            # No registers parsed, dc about this line
+        inst_regs = get_all_regs(line)
+        if not inst_regs:
+            # no registers parsed, dc about this line
             #res.line_fmt_issue += 1
             continue
 
         #print(regs)
-        rd = src_rd(mnm, regs)
+        rd = src_rd(mnm, inst_regs)
         if rd is None:
-            # either non-writer or x0 -> skip as a producer
+            # either non-writer or x0 -> skip as a source
             continue
 
         # scan lookahead window over subsequent executed instructions
@@ -192,30 +203,30 @@ def search(args):
                 res.line_fmt_issue += 1
                 continue
 
-            nx_regs = extract_regs_in_order(nx_line)
+            nx_regs = get_all_regs(nx_line)
             if nx_regs is None:
                 res.line_fmt_issue += 1
                 continue
 
             # if this instruction writes the same rd,
-            # kill the dependency search for this producer
+            # kill the dependency search for this source
             if inst_writes_rd(nx_mnm) and nx_regs:
                 nx_rd = nx_regs[0]
-                if nx_rd == rd:
+                if nx_rd in rd:
                     # stop scanning this window
                     break
 
             # if this is a dependent inst, check sources for a match
             if nx_mnm in res.dep_s['mnm']:
                 srcs = dep_rs(nx_mnm, nx_regs)
-                if rd in srcs:
+                if any((r in rd) for r in srcs):
                     dist = nx_pos - pos # distance in executed-instruction steps
                     if 1 <= dist <= window:
                         res.dep_arr_cnt[dist] += 1
                         seq = extract_seq_num(nx_line)
                         if seq is not None:
                             res.dep_line_num[dist].append(int(seq))
-                    # Only one increment per dep even if both rs1/rs2 == rd
+                    # only one increment per dep even if both rs1/rs2 == rd
 
     return res
 
