@@ -4,6 +4,7 @@
     "asm_rv32im": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
     "asm_rv32i_custom-simd-dot": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
+    "asm_rv32i_custom-simd-unpk": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
     "dcache_set_thrashing": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
@@ -21,7 +22,7 @@
     "uart_direct_send": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],
     "uart_printf_mini": [["hello_world"], ["MARCH=rv32i_zmmul_zicsr"]],
 
-    "mlp": [["all"], ["MATH_LIB_FLAGS=-DCUSTOM_ISA", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
+    "mlp": [["all"], ["MATH_LIB_FLAGS=-DCUSTOM_ISA -DSTREAMING -DFORCE_INLINE", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=10", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
     "coremark": [["coremark"], ["ITERATIONS=2", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],

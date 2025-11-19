@@ -35,6 +35,15 @@ op_unpk16:
     mv x26, RDP
     OP_END(0x00000807)
 
+op_unpk16_fwd: // test operand forwarding in RTL
+    lla x11, dat3 # 0x01020304
+    lw x12, 0(x11)
+    unpk16 RD, x12
+    mv x26, RDP
+    OP_END(0x00000102)
+    mv x26, RD
+    OP_END(0x00000304)
+
 op_unpk16_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
@@ -70,6 +79,16 @@ op_unpk8:
     OP_END(0x00060005)
     mv x26, RDP
     OP_END(0x00080007)
+
+op_unpk8_fwd:
+    lla x11, dat3 # 0x01020304
+    lw x12, 0(x11)
+    unpk8 RD, x12
+    nop
+    mv x26, RDP
+    OP_END(0x00010002)
+    mv x26, RD
+    OP_END(0x00030004)
 
 op_unpk8_msb_set:
     lla x11, dat2
