@@ -32,6 +32,8 @@ TRACE_TYPE = ["Execution", "Data"]
 
 TRACE_NA = 255
 
+X_LABEL = "Sample Count" # universal for all charts
+
 FREQ_DEFAULT = 100 # MHz
 
 # TODO: add function calls/graphs highlight when supported by the profiler
@@ -175,6 +177,17 @@ class icfg:
         JUMP: CLR_HL[3], # persian red
     }
 
+    HL_COLORS_OPS_U = { # unified for single chart
+        ALU: CLR_TAB_BLUE,
+        MEM: CLR_HL[0], # turquoise
+        BRANCH: CLR_HL[1], # peach yellow
+        JUMP: CLR_HL[2], # sandy brown
+        MUL: CLR_HL[3], # persian red
+        #DIV: CLR_HL[2], # sandy brown
+        SIMD: CLR_HL[4], # myrtle green
+        UNPAK: CLR_HL[5], # lavander (floral)
+    }
+
     # memory instructions breakdown store vs load
     INST_MEM_BD = {
         MEM_L : ["Load", CLR["blue_l1"]],
@@ -261,19 +274,19 @@ def wrap_text(arr:List[str], max_len:int) -> str:
     wrapped = '\n'.join(textwrap.wrap(label, max_len))
     return wrapped
 
-def add_legend_for_hl_groups(ax, chart_type:str) -> None:
-    title = "Highlighted\nInstructions\n"
+def add_legend_for_hl_groups(ax, chart_type:str, ncol=1, nt=False) -> None:
+    title = "" if nt else "Highlighted\nInstructions\n"
     if chart_type == "log":
         title = title.replace("\n", " ").strip()
-        ax.legend(loc='lower right', title=title, framealpha=0.5)
+        ax.legend(loc='lower right', title=title, framealpha=0.5, ncol=ncol)
 
     # put legend in the top right corner, outside the plot
     elif chart_type == "trace_freq":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
-                  bbox_to_anchor=(1.68, 1.03), borderaxespad=0.)
+                  bbox_to_anchor=(1.68, 1.03), borderaxespad=0., ncol=ncol)
     elif chart_type == "trace_exec":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
-                  bbox_to_anchor=(1.27, 1.03), borderaxespad=0.)
+                  bbox_to_anchor=(1.27, 1.03), borderaxespad=0., ncol=ncol)
 
     else:
         raise ValueError(f"Invalid chart type '{chart_type}'")
@@ -451,60 +464,90 @@ def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
 
     # add a bar chart
     fmt = smarter_eng_formatter()
-    ldf = [len(df), len(df_g), len(df_ops_g)]
+    ldf = [len(df_g), len(df_ops_g), len(df)]
     ROWS, COLS = 3, 1
     box = []
     fig, ax = plt.subplots(
-        ROWS, COLS, figsize=(COLS*10, ROWS*(sum(ldf)/10)+2),
+        ROWS, COLS, figsize=(COLS*10, (ROWS*(sum(ldf)/10))+2),
         height_ratios=ldf, constrained_layout=True)
+
     suptitle_str = f"Execution profile for '{title}'"
     suptitle_str += f"\nSamples profiled: {fmt(inst_profiled)}"
     if args.exclude or args.exclude_type:
         suptitle_str += f" ({df['count'].sum()} shown, "
         suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
-
     fig.suptitle(suptitle_str, size=12)
-    box.append(
-        ax[0].barh(df['name'], df['count'], color=CLR["blue_b0"]))
-    box.append(
-        ax[1].barh(df_g.index, df_g['count'], color=CLR["blue_b0"]))
-    box.append(
-        ax[2].barh(df_ops_g.index, df_ops_g['ops'], color=CLR["blue_b0"]))
 
-    y_ax0_offset = min(0.025, len(df)/2_000)
-    ax[0].margins(y=0.03-y_ax0_offset)
-    ax[1].margins(y=0.03)
-    ax[2].margins(y=0.03)
+    ax_type, ax_ops, ax_inst = ax
+    c = CLR["blue_b0"]
+    box.append(ax_type.barh(df_g.index, df_g['count'], color=c))
+    box.append(ax_ops.barh(df_ops_g.index, df_ops_g['ops'], color=c))
+    box.append(ax_inst.barh(df['name'], df['count'], color=c))
 
-    y_labels = ["Instruction", "Instruction Type", "Operation"]
-    for i in range(ROWS):
-        bars = box[i]
+    def get_h(fig, ax) -> Tuple[float, float]:
+        fig_w, fig_h = fig.get_size_inches()
+        bbox = ax.get_position() # relative to the figure (0–1)
+        #ax_w = bbox.width * fig_w
+        ax_h = bbox.height * fig_h
+        return ax_h
+
+    def find_y_margin(ax_h) -> float:
+        return (1 / ax_h / 20)
+
+    ax_type.margins(y=find_y_margin(get_h(fig, ax_type)))
+    ax_ops.margins(y=find_y_margin(get_h(fig, ax_ops)))
+    ax_inst.margins(y=find_y_margin(get_h(fig, ax_inst)))
+
+    y_labels = ["Instruction Type", "Operation", "Instruction"]
+    for a,bars,yl in zip(ax, box, y_labels):
         # sum of all bar values on that axis
         total = sum(bar.get_width() for bar in bars)
-        if i == 2: # ops don't have %, can't compare them like that
+        if a == ax_ops: # ops don't have %, can't compare them like that
             labels = [f"{fmt(bar.get_width())}" for bar in bars]
         else:
             labels = [
                 f"{fmt(bar.get_width())} ({bar.get_width() / total:.1%})"
                 for bar in bars]
-        ax[i].bar_label(bars, labels=labels, padding=3, fmt=fmt)
-        ax[i].set_xlabel('Count')
-        ax[i].set_ylabel(y_labels[i])
-        ax[i].grid(axis='x')
-        ax[i].margins(x=0.15)
-        ax[i].xaxis.set_major_formatter(FMT_AXIS)
+        a.bar_label(bars, labels=labels, padding=3, fmt=fmt)
+        a.set_ylabel(yl)
+        a.grid(axis='x')
+        a.margins(x=0.15)
+        a.xaxis.set_major_formatter(FMT_AXIS)
+    ax[ROWS-1].set_xlabel(X_LABEL) # only label bottom axis
 
     # highlight specific instructions, if any
     hc = 0
     for hl_g in hl_inst_g:
-        for i, r in enumerate(box[0]):
+        for i, r in enumerate(box[ROWS-1]): # ax_inst bars
             if df.iloc[i]['name'] in hl_g:
                 r.set_color(CLR_HL[hc])
-        ax[0].barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
+        ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
         hc += 1
 
     if len(hl_inst_g) > 0:
-        add_legend_for_hl_groups(ax[0], "log")
+        add_legend_for_hl_groups(ax_inst, "log")
+
+    using_def_hl = (icfg.HL_DEFAULT == hl_inst_g)
+    if using_def_hl: # also highlight ops and type charts
+        ncol = 0
+        for i, r in reversed(list(enumerate(box[0]))): # ax_type, largest first
+            op_type = df_g.index[i]
+            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
+            if clr != CLR_TAB_BLUE:
+                ncol += 1
+                r.set_color(clr)
+                ax_type.barh(0, 0, color=clr, label=op_type)
+        add_legend_for_hl_groups(ax_type, "log", ncol=ncol, nt=True)
+
+        ncol = 0
+        for i, r in reversed(list(enumerate(box[1]))): # ax_ops, largest first
+            op_type = df_ops_g.index[i]
+            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
+            if clr != CLR_TAB_BLUE:
+                ncol += 1
+                r.set_color(clr)
+                ax_ops.barh(0, 0, color=clr, label=op_type)
+        add_legend_for_hl_groups(ax_ops, "log", ncol=4, nt=True)
 
     # add memory instructions breakdown, if any
     df_mem_g = df_mem_g[df_mem_g['count'] != 0] # never label if count is zero
@@ -512,13 +555,16 @@ def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
         mem_type_index = df_g.index.get_loc("MEM")
         left_start = 0
         for i, row in df_mem_g.iterrows():
-            rect_m = ax[1].barh(mem_type_index, row['count'], left=left_start,
-                                label=icfg.INST_MEM_BD[row.name][0],
-                                color=icfg.INST_MEM_BD[row.name][1])
-            ax[1].bar_label(rect_m, padding=0, label_type='center', size=7)
+            rect_m = ax_type.barh(
+                mem_type_index, row['count'], left=left_start,
+                fill=False, edgecolor='none'
+            )
+            ax_type.bar_label(rect_m, padding=0, label_type='center', size=7)
+            if left_start == 0: # add black line at the end of load before store
+                bar_h = rect_m.patches[0].get_height()
+                h = [mem_type_index - (bar_h/2), mem_type_index + (bar_h/2)]
+                ax_type.plot([row['count'], row['count']], h, color='k', lw=1)
             left_start += row['count']
-
-        ax[1].legend(loc='lower right')
 
     return fig
 
@@ -1142,7 +1188,7 @@ Tuple[plt.Figure, RangeSlider]:
     ax_top.xaxis.set_major_formatter(formatter)
 
     # label
-    ax.set_xlabel("Count (log scale)")
+    ax.set_xlabel(f"{X_LABEL} (log scale)")
     ax.set_ylabel(ylabel)
     ax.set_title(get_title(TRACE_SOURCE, ylabel, title))
     ax.grid(axis='x', linestyle='-', alpha=1, which='major')
@@ -1375,7 +1421,7 @@ def draw_exec_finish(ax, xlim_low, norm) -> Tuple[plt.Axes, str]:
     ax_top.xaxis.set_ticks_position('top')
     ax_top.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
 
-    xlabel = 'Sample Count'
+    xlabel = X_LABEL
     xlabel += ' (normalized)' if norm else ''
 
     return ax_top, xlabel
@@ -1495,7 +1541,7 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         ax_bd.set_ylabel('Flow Control\nDensity')
 
     ax[-1].set_xlabel(
-        'Sample Count' + ' (normalized)' if args.sample_begin_norm else '')
+        X_LABEL + ' (normalized)' if args.sample_begin_norm else '')
     for a in ax:
         a.grid(axis='both', linestyle='-', alpha=.6, which='major')
         title = "Total OPS" if a == ax_ops else None
