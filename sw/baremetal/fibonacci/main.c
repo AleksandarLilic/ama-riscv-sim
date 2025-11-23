@@ -53,6 +53,9 @@ uint32_t fib(uint32_t n) {
 void main() {
     SET_N
     SET_EXP
+    #ifdef MEASURE_TIME
+    uint32_t start_time = get_cpu_time();
+    #endif
     for (uint32_t i = 0; i < LOOPS; i++) {
         PROF_START;
         uint32_t result = fib(n);
@@ -63,5 +66,10 @@ void main() {
             fail();
         }
     }
+    #ifdef MEASURE_TIME
+    uint32_t end_time = get_cpu_time();
+    uint32_t time_diff = (end_time - start_time);
+    printf("Time taken: %d ms\n", time_diff / 1000);
+    #endif
     pass();
 }

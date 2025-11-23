@@ -29,25 +29,23 @@ uint64_t factorial(uint32_t n) {
 void main() {
     SET_N
     SET_EXP
+    #ifdef MEASURE_TIME
+    uint32_t start_time = get_cpu_time();
+    #endif
     for (uint32_t i = 0; i < LOOPS; i++) {
-        #ifdef MEASURE_TIME
-        uint32_t start_time = get_cpu_time();
-        #endif
 
         PROF_START;
         uint64_t result = factorial(n);
         PROF_STOP;
-
-        #ifdef MEASURE_TIME
-        uint32_t end_time = get_cpu_time();
-        uint32_t time_diff = (end_time - start_time);
-        printf("Time taken: %d us\n", time_diff);
-        #endif
-
         if (result != expected){
             write_mismatch(result>>32, result & 0xFFFFFFFF, 1);
             fail();
         }
     }
+    #ifdef MEASURE_TIME
+    uint32_t end_time = get_cpu_time();
+    uint32_t time_diff = (end_time - start_time);
+    printf("Time taken: %d ms\n", time_diff / 1000);
+    #endif
     pass();
 }
