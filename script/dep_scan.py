@@ -63,6 +63,9 @@ def get_all_regs(line: str) -> list[int]:
     regs = [r.replace('(', ' ').replace(')', '').split() for r in regs]
     regs = [item for sublist in regs for item in sublist] # flatten
     regs = [int(r[1:]) for r in regs if r.startswith('x')]
+    if len(regs) == 0:
+        raise ValueError("No registers found."
+                         "Exec log was likely not using '--rf_names x' switch")
     return regs
 
 def inst_writes_rd(mnemonic: str) -> bool:
