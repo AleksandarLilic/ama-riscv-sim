@@ -13,7 +13,7 @@ inline std::string gen_out_dir(
     std::filesystem::path p(test_elf_path);
     std::string last_directory = p.parent_path().filename().string();
     std::string binary_name = p.stem().string();
-    std::string path_out = "out_" + last_directory + "_" + binary_name;
+    std::string path_out = last_directory + "_" + binary_name + "_out";
     if (!out_dir_tag.empty()) path_out += "_" + out_dir_tag;
     path_out = path_out + "/";
     bool exists = std::filesystem::exists(path_out);

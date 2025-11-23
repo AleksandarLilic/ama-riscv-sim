@@ -56,9 +56,6 @@ $(BDIR)/%.o: %.cpp | $(VER_H)
 
 -include $(DEPS)
 
-cleanlogs:
-	rm -rf out_*
-
 cleanbuild:
 	rm -rf $(BDIR)
 

@@ -194,7 +194,7 @@ def run_workloads(wp: workload_params):
         if wp.save_sim:
             msg_out += f"{res.stdout}\n\n"
 
-        out_dir = f"out_{get_test_name(app)}"
+        out_dir = f"{get_test_name(app)}_out"
         if wp.tag:
             out_dir += f"_{wp.tag}"
 
@@ -704,7 +704,7 @@ def guided_bp_search_for_combined(
     # put bp stats for all benchmarks in separate dfs
     for pkl in bp_pkls:
         sim_dir = os.path.dirname(pkl).split('/')[-1]
-        bench_name = sim_dir.split('_bp_')[0].replace('out_', '')
+        bench_name = sim_dir.split('_bp_')[0].replace('_out', '')
         bp_sweep_name = f"bp_{sim_dir.split('_bp_')[1]}"
         bp_id = bp_sweep_name.split('_')[1]
         og_bp_name = f'P_{bp_id}'
