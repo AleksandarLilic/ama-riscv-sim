@@ -32,7 +32,7 @@ class perf:
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
         "bpred", "icache", "dcache",
         "mem_rd_port_contention", "mem_wr_port_contention",
-        "mem", "mul", "div", "dot", "dmem",
+        "mem", "mul", "div", "dot", "dmem_load", "dmem_store",
         "icache_name", "dcache_name", "bpred_name"]
 
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
@@ -83,7 +83,8 @@ class perf:
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
         self.c_dot = hwpm['dot']
-        self.c_dmem = hwpm['dmem']
+        self.c_dmem_l = hwpm['dmem_load']
+        self.c_dmem_s = hwpm['dmem_store']
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
@@ -123,52 +124,78 @@ class perf:
         self.freq = hwpm['cpu_frequency_mhz']
         self.period = 1 / self.freq
 
-        self.inst_total = df['count'].sum()
-        self.b_inst = df.loc[df['name'].isin(self.b_inst_a)]['count'].sum()
-        self.j_inst = df.loc[df['name'].isin(self.j_inst_a)]['count'].sum()
-        self.ld_inst = df.loc[df['name'].isin(self.ld_inst_a)]['count'].sum()
-        self.st_inst = df.loc[df['name'].isin(self.st_inst_a)]['count'].sum()
-        self.scp_inst = df.loc[df['name'].isin(self.scp_inst_a)]['count'].sum()
+        sum_up = lambda arr: df.loc[df['name'].isin(arr)]['count'].sum()
+        self.b_inst = sum_up(self.b_inst_a)
+        self.j_inst = sum_up(self.j_inst_a)
+        self.ld_inst = sum_up(self.ld_inst_a)
+        self.st_inst = sum_up(self.st_inst_a)
+        self.scp_inst = sum_up(self.scp_inst_a)
         self.dc_inst = self.ld_inst + self.st_inst + self.scp_inst
-        self.mul_inst = df.loc[df['name'].isin(self.mul_inst_a)]['count'].sum()
-        self.div_inst = df.loc[df['name'].isin(self.div_inst_a)]['count'].sum()
-        self.dot_inst = df.loc[df['name'].isin(self.dot_inst_a)]['count'].sum()
+        self.mul_inst = sum_up(self.mul_inst_a)
+        self.div_inst = sum_up(self.div_inst_a)
+        self.dot_inst = sum_up(self.dot_inst_a)
 
+        self.inst_total = df['count'].sum()
         # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
 
-        # extra cycles for insts that might stall the pipeline
+        ### extra cycles for insts that might stall the pipeline
+        ### 'stalls' are non-negotiable - they will happen, but can overlap
+        ### 'hazards' may (will stall) or may not happen (won't stall)
+
         self.b_stalls = (self.c_bp - 1) * self.bp_stats['pred']
         self.b_stalls += (self.c_branch_res - 1) * self.bp_stats['mispred']
         self.j_stalls = (self.c_jump_res - 1) * self.j_inst
+
         self.ic_stalls = (self.c_ic - 1) * hw_ic["hits"]["reads"]
         self.ic_stalls += self.c_mem * hw_ic["misses"]["reads"]
+
         # dc miss incurs c_mem clk always, like ic
         # if dc can't handle read and write to the same cache line at once
         # or main mem has only 1 R/W port to dc
-        # writeback incurs another c_mem clk to first write evicted cache line
+        # writeback incurs (c_mem-1) clk to first write evicted cache line
+        # (last clk of evict is overlapped with first clk of servicing miss)
         self.dc_stalls = (self.c_dc - 1) * sd(hw_dc["hits"])
         self.dc_stalls += self.c_mem * sd(hw_dc["misses"])
-        self.dc_stalls += self.c_mem * hw_dc["writebacks"]
+        self.dc_stalls += (self.c_mem - 1) * hw_dc["writebacks"]
 
-        # load hazards occur when a load is followed up by an instruction
-        # that uses rd of a load as its rs1/2
-        use_dep_analysis = exec_log is not None
+        use_dep_analysis = (exec_log is not None)
+        def find_hazards(src, win):
+            r = search(search_args(exec_log, src=src, dep="_any_", window=win))
+            #print(r)
+            #print(r.dep_arr_cnt)
+            #print(r.line_fmt_issue)
+            return sum(r.dep_arr_cnt)
+
+        self.hazards = {"dmem": 0, "mul": 0, "div": 0, "dot": 0, }
+        hazard_penalty = {
+            "dmem": (self.c_dmem_l - 1),
+            "mul": (self.c_mul - 1),
+            "div": (self.c_div - 1),
+            "dot": (self.c_dot - 1),
+        }
+        fmt = lambda x: ','.join(x)
+        # hazards occur when a 2+ clk inst is followed up by an instruction
+        # that uses rd of that instruction as its rs1/2
         if (use_dep_analysis):
-            # if exec log is provided, run dependecy search
-            d_res = search(search_args(
-                exec_log,
-                src=','.join(icfg.INST_T_MEM[icfg.MEM_L]),
-                dep="_any_",
-                window=1
-            ))
-            #print(d_res)
-            self.dmem_hazards = d_res.dep_arr_cnt[0] # distance 1
-        else:
-            # otherwise, estimate based on load instructions (pessimistic)
-            self.dmem_hazards = \
+            self.hazards["dmem"] = find_hazards(
+                fmt(icfg.INST_T_MEM[icfg.MEM_L]), hazard_penalty['dmem'])
+            self.hazards["mul"] = find_hazards(
+                fmt(icfg.INST_T[icfg.MUL]), hazard_penalty['mul'])
+            self.hazards["div"] = find_hazards(
+                fmt(icfg.INST_T[icfg.DIV]), hazard_penalty['div'])
+            self.hazards["dot"] = find_hazards(
+                fmt(icfg.INST_T_SIMD[icfg.SIMD_DOT]), hazard_penalty['dot'])
+
+        else: # otherwise, estimate based on instruction count (pessimistic)
+            self.hazards["dmem"] = \
                 (hw_dc["hits"]["reads"] + hw_dc["misses"]["reads"])
-            self.dmem_hazards *= (self.c_dmem - 1) # extra cycles per ld hazard
+            self.hazards["dmem"] *= hazard_penalty['dmem']
+            self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
+            self.hazards["div"] = (self.c_div - 1) * self.div_inst
+            self.hazards["dot"] = (self.c_dot - 1) * self.dot_inst
+
+        self.all_hazards = sum(self.hazards.values())
 
         # memory read/write port contention stalls
         # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
@@ -182,15 +209,10 @@ class perf:
             cont_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
             self.mwpc_stalls = int(cont_num * self.c_mem * self.mwpc)
 
-        self.mul_stalls = (self.c_mul - 1) * self.mul_inst
-        self.div_stalls = (self.c_div - 1) * self.div_inst
-        self.dot_stalls = (self.c_dot - 1) * self.dot_inst
-        self.comp_stalls = self.mul_stalls + self.div_stalls + self.dot_stalls
+        self.fe_stalls = self.ic_stalls + self.j_stalls
+        self.be_stalls = self.dc_stalls + self.all_hazards
 
-        self.fe_stalls = self.b_stalls + self.j_stalls + self.ic_stalls
-        self.be_stalls = self.dc_stalls + self.comp_stalls
-
-        self._est_stalls(use_dep_analysis)
+        self._est_stalls()
 
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
         self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
@@ -214,24 +236,24 @@ class perf:
 
     # TODO:
     # D$ and COMP stalls can technically overlap, but unlikely in current uarch
-    def _est_stalls(self, use_dep_analysis):
+    def _est_stalls(self):
         # worst case:
-        #   fe stalls never overlap with dc stalls or alu hazard stall
+        #   fe stalls never overlap with be stalls
         #   alu hazard stall on each multi cycle instruction
         #   dmem hazard stall on each load instruction
         self.t_clk_wc = self.ipc_1_cycles
+        self.t_clk_wc += self.b_stalls
         self.t_clk_wc += self.fe_stalls
-        self.t_clk_wc += self.dc_stalls + self.comp_stalls + self.dmem_hazards
+        self.t_clk_wc += self.be_stalls
         self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
 
         # best case:
-        #   fe stalls overlap with dc stalls completely
+        #   fe stalls overlap with be stalls completely
         #   no alu hazard stall (e.g. best possible inst scheduling)
         #   no dmem hazard stall (quite unlikely on some workloads)
         self.t_clk_bc = self.ipc_1_cycles
-        self.t_clk_bc += max(self.dc_stalls, self.fe_stalls)
-        if use_dep_analysis: # dmem hazards from analysis, known to exist
-            self.t_clk_bc += self.dmem_hazards
+        self.t_clk_bc += self.b_stalls
+        self.t_clk_bc += max(self.be_stalls, self.fe_stalls)
         self.t_clk_bc += self.mrpc_stalls + self.mwpc_stalls
 
     def _log_branches(self, entry):
@@ -305,17 +327,15 @@ class perf:
             )
 
         out_stalls = f"Pipeline stalls (max): " + \
-            f"FE/BE: {FMT(self.fe_stalls)}/{FMT(self.be_stalls)}, " + \
-            f"{DELIM}FE: " + \
+            f"{DELIM}Bad spec: {FMT(self.b_stalls)}" + \
+            f"{DELIM}FE bound: {FMT(self.fe_stalls)} - " + \
             f"ICache: {FMT(self.ic_stalls)}, " + \
-            f"Jumps: {FMT(self.j_stalls)}, " + \
-            f"Branches: {FMT(self.b_stalls)}" + \
-            f"{DELIM}BE: " + \
+            f"Core: {FMT(self.j_stalls)}" + \
+            f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
             f"DCache: {FMT(self.dc_stalls)}, " + \
-            f"MUL: {FMT(self.mul_stalls)}, " + \
-            f"DIV: {FMT(self.div_stalls)}, " + \
-            f"DOT: {FMT(self.dot_stalls)}" + \
-            f"\nMemory contention: {FMT(self.mrpc_stalls + self.mwpc_stalls)} "
+            f"Core: {FMT(self.all_hazards)}" + \
+            f"{DELIM}Memory contention: " + \
+                f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
@@ -384,7 +404,8 @@ def main(args: argparse.Namespace):
             ref_str = "worst"
         else:
             inout_str = "INSIDE"
-        print(f"{INDENT}Achieved cycles result is {inout_str} estimated range")
+        print(f"{INDENT}Achieved cycles: {FMT(corr)} - " +
+              f"result is {inout_str} estimated range")
 
         if diff is not None:
             print(f"{INDENT}Difference: {diff} cycles " +
