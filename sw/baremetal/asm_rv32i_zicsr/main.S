@@ -10,47 +10,47 @@ main:
     li x5, 0 # override spike
 
 csr_rwi:
-    csrwi 0x340, 4 # x0 is rd
+    csrwi CSR_MSCRATCH, 4 # x0 is rd
     li x11, 19
-    csrrw x26, 0x340, x11
+    csrrw x26, CSR_MSCRATCH, x11
     OP_END(4)
 
 csr_rw:
     li x1, 0x4d
-    csrrw x26, 0x340, x1
+    csrrw x26, CSR_MSCRATCH, x1
     OP_END(19)
 
 csr_rs:
     li x6, 0x12
-    csrrs x0, 0x340, x6 # store to CSR
-    csrrwi x26, 0x340, 21 # move CSR to x26, 0x15 to CSR for csrrc
+    csrrs x0, CSR_MSCRATCH, x6 # store to CSR
+    csrrwi x26, CSR_MSCRATCH, 21 # move CSR to x26, 0x15 to CSR for csrrc
     OP_END(0x5f)
 
 csr_rc:
     li x6, 0x7
-    csrrc x0, 0x340, x6
-    csrrwi x26, 0x340, 17
+    csrrc x0, CSR_MSCRATCH, x6
+    csrrwi x26, CSR_MSCRATCH, 17
     OP_END(0x10)
 
 csr_rsi:
-    csrrsi x0, 0x340, 2
-    csrrwi x26, 0x340, 5 # move CSR to x26
+    csrrsi x0, CSR_MSCRATCH, 2
+    csrrwi x26, CSR_MSCRATCH, 5 # move CSR to x26
     OP_END(19)
 
 csr_rci:
-    csrrci x0, 0x340, 3
-    csrrwi x26, 0x340, 31 # move CSR to x26
+    csrrci x0, CSR_MSCRATCH, 3
+    csrrwi x26, CSR_MSCRATCH, 31 # move CSR to x26
     OP_END(4)
 
 csr_rs_x0:
     li x7, 0x36
     li x6, 0xa0a0
-    csrrw x0, 0x340, x7
+    csrrw x0, CSR_MSCRATCH, x7
     TEST_INC
-    csrrs x6, 0x340, x0
+    csrrs x6, CSR_MSCRATCH, x0
     bne x6, x7, fail
-    csrrs x6, 0x340, x0
-    bne x6, x7, fail # x7 value should still be in 0x340 on x0 'writes' to CSR
+    csrrs x6, CSR_MSCRATCH, x0
+    bne x6, x7, fail # x7 value still in CSR_MSCRATCH on x0 'writes' to CSR
 
 mvendorid_read:
     csrr x26, CSR_MVENDORID
