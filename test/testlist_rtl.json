@@ -1,6 +1,8 @@
 {
     "asm_rv32i": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
     "asm_rv32i_zicsr": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
+    "asm_rv32i_zihpm": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
+    "rv32i_zihpm": [["basic"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
     "asm_rv32im": [["basic"], ["MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
     "asm_rv32i_custom-simd-dot": [["basic"], ["LOOPS=1", "MARCH=rv32i_zmmul_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],

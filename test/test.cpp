@@ -8,7 +8,7 @@
 
 #include "../src/defines.h"
 
-#define CHECK_PASS "0x051e tohost    : 0x00000001"
+#define CHECK_PASS "0x051e tohost       : 0x00000001"
 #define SIM_BIN "../../src/build_gtest/ama-riscv-sim " // runs from test subdir
 
 struct cmd_setup {

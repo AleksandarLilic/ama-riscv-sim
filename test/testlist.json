@@ -1,6 +1,7 @@
 {
     "asm_rv32i": ["basic"],
     "asm_rv32i_zicsr": ["basic"],
+    "asm_rv32i_zihpm": ["basic"],
     "asm_rv32im": ["basic"],
     "asm_rv32ic": ["basic"],
     "asm_rv32i_zbb_min-max": ["basic"],

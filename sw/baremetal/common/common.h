@@ -64,6 +64,16 @@ typedef union {
     uint8_t u8[4];
 } sliced32_t;
 
+// mhpm events
+enum mhpmevent_t {
+    mhpmevent_bad_spec = (1 << 0),
+    mhpmevent_be = (1 << 1),
+    mhpmevent_be_dc = (1 << 2),
+    mhpmevent_fe = (1 << 3),
+    mhpmevent_fe_ic = (1 << 4),
+    mhpmevent_ret_simd = (1 << 5),
+};
+
 // functions
 inline __attribute__ ((always_inline))
 void write_csr(const uint32_t csr_addr, uint32_t data) {
