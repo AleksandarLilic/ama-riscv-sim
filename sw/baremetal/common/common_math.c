@@ -347,7 +347,7 @@ int32_t _simd_dot_product_int16_int8(
     int32_t c = 0;
     size_t len_s4 = (len >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t p1, p2;
+        int32_t p1 = 0, p2 = 0;
         const int32_t b_slice = *(const int32_t*)(b + k);
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
@@ -377,7 +377,7 @@ int32_t _simd_dot_product_int16_int4(
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t p1, p2;
+        int32_t p1 = 0, p2 = 0;
         const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
@@ -422,7 +422,7 @@ int32_t _simd_dot_product_int8_int4(
     int32_t c = 0;
     size_t len_s8 = (len >> 3) << 3;
     for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t p1, p2;
+        int32_t p1 = 0, p2 = 0;
         const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
@@ -457,7 +457,7 @@ int32_t _simd_dot_product_int8_int2(
     int32_t c = 0;
     size_t len_s16 = (len >> 4) << 4;
     for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t p1, p2;
+        int32_t p1 = 0, p2 = 0;
         const int32_t b_slice = *(const int32_t*)(b + (k >> 2));
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
