@@ -1447,14 +1447,28 @@ void core::csr_cnt_update(uint16_t csr_addr) {
     csr.at(CSR_CYCLEH).value = csr.at(CSR_MCYCLEH).value;
     csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
     csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
+
     #ifdef DPI
-    // FIXME: ugly workaround
-    uint64_t mtime_shadow = clk_src.get_mtime();
+    uint64_t mtime_shadow;
+    csr_sync_t csr;
+    sync_csrs(&csr);
+    mtime_shadow = csr.mtime;
+    csr_wide_assign(CSR_MHPMCOUNTER3, csr.mhpmcounters[3]);
+    csr_wide_assign(CSR_MHPMCOUNTER4, csr.mhpmcounters[4]);
+    csr_wide_assign(CSR_MHPMCOUNTER5, csr.mhpmcounters[5]);
+    csr_wide_assign(CSR_MHPMCOUNTER6, csr.mhpmcounters[6]);
+    csr_wide_assign(CSR_MHPMCOUNTER7, csr.mhpmcounters[7]);
+    csr_wide_assign(CSR_MHPMCOUNTER8, csr.mhpmcounters[8]);
     #else
     uint64_t mtime_shadow = mem->get_mtime_shadow();
+    // no pref counters sync, they don't exist in ISA sim
     #endif
-    csr.at(CSR_TIME).value = TO_U32(mtime_shadow);
-    csr.at(CSR_TIMEH).value = TO_U32(mtime_shadow >> 32);
+    csr_wide_assign(CSR_TIME, mtime_shadow);
+}
+
+void core::csr_wide_assign(uint32_t addr, uint64_t val) {
+    csr.at(addr).value = TO_U32(val);
+    csr.at(addr+CSR_LOW_TO_HIGH_OFF).value = TO_U32(val >> 32);
 }
 
 // C extension - decoders
@@ -1939,7 +1953,8 @@ void core::dump() {
     } else {
         uint32_t tohost = csr.at(CSR_TOHOST).value;
         if (tohost != 1) {
-            std::cout << "Failed test ID: " << (tohost >> 1);
+            std::cout << "Failed test ID: " << (tohost >> 1) << " (0x"
+                      << std::hex << (tohost >> 1) << std::dec << ")";
             std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
         }
     }

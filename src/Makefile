@@ -23,10 +23,11 @@ SOURCES += $(wildcard profilers/*.cpp)
 SOURCES += $(wildcard hw_models/*.cpp)
 OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
 DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC := -I. -I./devices -I./profilers -I./hw_models
+INC = -I. -I./devices -I./profilers -I./hw_models
 INC += -I./$(BDIR)
 INC += -I./external/cxxopts/include
 INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
+INC += $(INC_EXT)
 
 COSIM_OBJECTS := $(filter-out $(BDIR)/hw_models/%.o $(BDIR)/main.o, $(OBJECTS))
 

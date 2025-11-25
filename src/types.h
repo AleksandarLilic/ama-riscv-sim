@@ -148,6 +148,16 @@ enum class csr_perm_t {
     warl_unimp = 0b11, // warl unimplemented -> always returns 0
 };
 
+// not needed as isa sim can't log these
+// enum class mhpmevent_t {
+//     bad_spec = (1 << 0),
+//     be = (1 << 1),
+//     be_dc = (1 << 2),
+//     fe = (1 << 3),
+//     fe_ic = (1 << 4),
+//     ret_simd = (1 << 5),
+// };
+
 enum class rf_names_t { mode_x, mode_abi };
 enum class mem_op_t { read, write };
 enum class b_dir_t { backward, forward };
@@ -166,17 +176,14 @@ struct clock_source_t {
         uint64_t pr = 0;
         uint64_t cr = 0;
         uint64_t diff = 0;
-        uint64_t mtime = 0; // FIXME: ugly workaround
     public:
-        void update(uint64_t sample, uint64_t mtime) {
+        void update(uint64_t sample) {
             pr = cr;
             cr = sample;
             diff = cr - pr;
-            this->mtime = mtime;
         }
         uint64_t get_cr() { return cr; }
         uint64_t get_diff() { return diff; }
-        uint64_t get_mtime() { return mtime; }
 };
 
 struct symbol_map_entry_t {

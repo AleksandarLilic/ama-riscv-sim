@@ -16,6 +16,10 @@
 #include "bp_if.h"
 #endif
 
+#ifdef DPI
+#include "dpi_functions.h"
+#endif
+
 class core {
     public:
         core() = delete;
@@ -31,9 +35,7 @@ class core {
         uint32_t get_csr(uint32_t addr) { return csr.at(addr).value; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
         uint32_t get_inst_cnt() { return inst_cnt; }
-        void update_clk(uint64_t clk, uint64_t mtime) {
-            clk_src.update(clk, mtime);
-        }
+        void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
         #endif
         #ifdef PROFILERS_EN
@@ -80,6 +82,7 @@ class core {
             if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
         }
         void csr_cnt_update(uint16_t csr_addr);
+        void csr_wide_assign(uint32_t addr, uint64_t val);
         void prof_state(bool enable);
         #ifndef DPI
         void save_trace_entry();
@@ -395,7 +398,7 @@ class core {
         bool csr_updated = false;
 
         std::map<uint16_t, CSR> csr;
-        static constexpr std::array<CSR_entry, 25> supported_csrs = {{
+        static constexpr std::array<CSR_entry, 43> supported_csrs = {{
             {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
 
             // Machine Information Registers
@@ -423,6 +426,28 @@ class core {
             {CSR_MINSTRET, "minstret", csr_perm_t::rw, 0u},
             {CSR_MCYCLEH, "mcycleh", csr_perm_t::rw, 0u},
             {CSR_MINSTRETH, "minstreth", csr_perm_t::rw, 0u},
+
+            // Machine Hardware Performance Monitor (MHPM) counters & events
+            {CSR_MHPMCOUNTER3, "mhpmcounter3", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER4, "mhpmcounter4", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER5, "mhpmcounter5", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER6, "mhpmcounter6", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER7, "mhpmcounter7", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER8, "mhpmcounter8", csr_perm_t::rw, 0u},
+
+            {CSR_MHPMCOUNTER3H, "mhpmcounter3h", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER4H, "mhpmcounter4h", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER5H, "mhpmcounter5h", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER6H, "mhpmcounter6h", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER7H, "mhpmcounter7h", csr_perm_t::rw, 0u},
+            {CSR_MHPMCOUNTER8H, "mhpmcounter8h", csr_perm_t::rw, 0u},
+
+            {CSR_MHPMEVENT3, "mhpmevent3", csr_perm_t::rw, 0u},
+            {CSR_MHPMEVENT4, "mhpmevent4", csr_perm_t::rw, 0u},
+            {CSR_MHPMEVENT5, "mhpmevent5", csr_perm_t::rw, 0u},
+            {CSR_MHPMEVENT6, "mhpmevent6", csr_perm_t::rw, 0u},
+            {CSR_MHPMEVENT7, "mhpmevent7", csr_perm_t::rw, 0u},
+            {CSR_MHPMEVENT8, "mhpmevent8", csr_perm_t::rw, 0u},
 
             // Unprivileged Counter/Timers
             {CSR_CYCLE, "cycle", csr_perm_t::ro, 0u},

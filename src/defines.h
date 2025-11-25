@@ -147,6 +147,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define CSR_TOHOST 0x51E
 #define CSR_TOHOST_EARLY_EXIT 0xF0000000
 
+#define CSR_LOW_TO_HIGH_OFF 0x80
+
 // Machine-level CSR addresses
 // Machine Information Registers
 #define CSR_MVENDORID 0xF11 // MRO
@@ -170,6 +172,28 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define CSR_MINSTRET 0XB02 // MRW
 #define CSR_MCYCLEH 0XB80 // MRW
 #define CSR_MINSTRETH 0XB82 // MRW
+
+// Machine Hardware Performance Monitor (MHPM) counters & events
+#define CSR_MHPMCOUNTER3 0XB03 // MRW
+#define CSR_MHPMCOUNTER4 0XB04 // MRW
+#define CSR_MHPMCOUNTER5 0XB05 // MRW
+#define CSR_MHPMCOUNTER6 0XB06 // MRW
+#define CSR_MHPMCOUNTER7 0XB07 // MRW
+#define CSR_MHPMCOUNTER8 0XB08 // MRW
+#define CSR_MHPMCOUNTER3H 0XB83 // MRW
+#define CSR_MHPMCOUNTER4H 0XB84 // MRW
+#define CSR_MHPMCOUNTER5H 0XB85 // MRW
+#define CSR_MHPMCOUNTER6H 0XB86 // MRW
+#define CSR_MHPMCOUNTER7H 0XB87 // MRW
+#define CSR_MHPMCOUNTER8H 0XB88 // MRW
+#define CSR_MHPMEVENT3 0X323 // MRW
+#define CSR_MHPMEVENT4 0X324 // MRW
+#define CSR_MHPMEVENT5 0X325 // MRW
+#define CSR_MHPMEVENT6 0X326 // MRW
+#define CSR_MHPMEVENT7 0X327 // MRW
+#define CSR_MHPMEVENT8 0X328 // MRW
+
+#define CSR_MHPMCOUNTERS_NUM 6
 
 // Unprivileged CSR addresses
 // Unprivileged Counter/Timers
