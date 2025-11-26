@@ -11,9 +11,10 @@ workdir*
 *.log
 *.dot
 *.pkl
+*.png
+*.svg
 sweep_*_best*.json
 sweep_*_binned*.json
-sweep_*.png
 script/**/out_*/
 script/**/*pkl.gz
 script/*.out

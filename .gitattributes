@@ -1,7 +1,10 @@
 # vendored code
+sw/baremetal/common/mini-printf.* linguist-vendored
+sw/baremetal/common/memset.S linguist-vendored
 sw/baremetal/coremark/** linguist-vendored
 sw/baremetal/dhrystone/** linguist-vendored
 sw/baremetal/embench/** linguist-vendored
+sw/baremetal/stream_int/** linguist-vendored
 sw/baremetal/imperas-riscv-tests/** linguist-vendored
 
 # overrides
