@@ -74,6 +74,20 @@ enum mhpmevent_t {
     mhpmevent_ret_simd = (1 << 5),
 };
 
+typedef struct {
+    uint64_t cycles;
+    uint64_t bad_spec;
+    uint64_t be;
+    uint64_t be_dc;
+    uint64_t be_core;
+    uint64_t fe;
+    uint64_t fe_ic;
+    uint64_t fe_core;
+    uint64_t ret_simd;
+    uint64_t ret_int;
+    uint64_t ret;
+} perf_event_cnt_t;
+
 // functions
 inline __attribute__ ((always_inline))
 void write_csr(const uint32_t csr_addr, uint32_t data) {
@@ -122,11 +136,20 @@ void send_byte_uart0(char byte);
 int _write(int fd, char* ptr, int len);
 int __puts_uart(char* s, int len, void *buf);
 int mini_printf(const char* format, ...);
+
+uint64_t read_csr_wide(uint32_t csr_lo, uint32_t csr_hi);
+uint64_t write_csr_wide(uint32_t csr_lo, uint32_t csr_hi, uint64_t value);
+
 uint64_t get_cpu_time();
 uint64_t get_cpu_cycles();
 uint64_t get_cpu_instret();
 void set_cpu_cycles(uint64_t value);
 void set_cpu_instret(uint64_t value);
+
+void set_up_perf_counters();
+void save_perf_counters(perf_event_cnt_t* pe);
+void print_perf_counters(const perf_event_cnt_t* pe);
+
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 void timer_interrupt_handler();
 
