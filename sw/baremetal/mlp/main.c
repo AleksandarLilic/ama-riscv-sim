@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "common.h"
 #include "inference.h"
 
 uint8_t label_0 = 7;
@@ -9,18 +10,34 @@ uint8_t label_1 = 2;
 int8_t input_img_1[] __attribute__((aligned(CACHE_LINE_SIZE))) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18, 30, 29, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 69, 109, 114, 115, 77, 5, 0, 0, 0, 0, 0, 0, 0, 0, 2, 52, 113, 69, 41, 74, 105, 16, 0, 0, 0, 0, 0, 0, 0, 0, 2, 42, 56, 6, 10, 84, 99, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 48, 113, 71, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 23, 98, 96, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 83, 108, 36, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 37, 115, 70, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 89, 107, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 123, 54, 4, 2, 0, 0, 2, 8, 15, 12, 1, 0, 0, 0, 0, 50, 125, 93, 77, 76, 58, 57, 76, 88, 96, 81, 19, 0, 0, 0, 0, 25, 88, 97, 103, 119, 111, 94, 86, 72, 55, 38, 11, 0, 0, 0, 0, 0, 9, 12, 16, 24, 22, 13, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void main(void) {
-    // read both clk and time, though only one can be used for known fixed freq
-    set_cpu_cycles(0);
+    #ifdef MHPM
+    perf_event_cnt_t pe = {0ul};
+    set_up_perf_counters();
+    #else
+    set_cpu_cycles(0u);
+    #endif
+
     uint32_t start_time = get_cpu_time();
     PROF_START;
     uint32_t predicted = run_inference(input_img_0);
     PROF_STOP;
-    uint32_t clks = get_cpu_cycles();
     uint32_t end_time = get_cpu_time();
+
+    #ifdef MHPM
+    save_perf_counters(&pe);
+    uint32_t clks = pe.cycles;
+    #else
+    uint32_t clks = get_cpu_cycles();
+    #endif
+
     uint32_t time_diff = (end_time - start_time); // us
-    printf("Predicted: %d (label: %d); "
-           "Performance: cycles: %d, time: %d us, Inf/s: %d\n",
+    printf("Predicted: %u (label: %u); "
+           "Performance: cycles: %u, time: %u us, Inf/s: %u\n",
            predicted, label_0, clks, time_diff, (1000000 / time_diff));
+
+    #ifdef MHPM
+    print_perf_counters(&pe);
+    #endif
 
     // assumed model is accurate for the provided input
     if (predicted != label_0) {
