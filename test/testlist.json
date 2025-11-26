@@ -64,6 +64,7 @@
     "aapg_static/rv32i": ["aapg"],
     "aapg_static/rv32i_zmmul": ["aapg"],
     "aapg_static/rv32i_branches": ["aapg"],
+    "aapg_static/rv32i_branches_short": ["aapg"],
     "aapg_static/rv32i_mem": ["aapg"],
 
     "imperas-riscv-tests/ADD": ["test"],

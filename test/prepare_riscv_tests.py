@@ -43,14 +43,14 @@ def check_make_status(make_status, msg: str):
         raise RuntimeError(f"Error: Makefile failed to {msg}.")
 
 def build_test(test):
-    directory, entry = test
-    test_list, test_opts = entry if len(entry) == 2 else (entry, [])
-    test_dir = os.path.join(TEST_DIR, directory)
+    t_dir, t_entry = test
+    test_list, test_opts = t_entry if len(t_entry) == 2 else (t_entry, [])
+    test_dir = os.path.join(TEST_DIR, t_dir)
     run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
     if args.clean_only:
         return
     # if any of the CODEGEN_APPS is in the test directory, run codegen first
-    if any(test_dir.startswith(app) for app in CODEGEN_APPS):
+    if any(t_dir.startswith(app) for app in CODEGEN_APPS):
         run_make(["make", "clean_codegen"], cwd=test_dir)
         run_make(["make", "codegen"], cwd=test_dir)
     make_all = (test_list == ["all"])

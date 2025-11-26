@@ -2,16 +2,16 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 2500
+  total_instructions: 3500
   regs_not_use: x1,x2
   custom_trap_handler: false
-  code_start_address: 0x10000
+  code_start_address: 0x40000
   default_program_exit: false
   delegation: 0x000
 
 isa-instruction-distribution:
   rel_sys.csr: 0
-  rel_rv32i.ctrl: 1
+  rel_rv32i.ctrl: 2
   rel_rv32i.compute: 10
   rel_rv32i.data: 10
   rel_rv32i.fence: 0
@@ -30,7 +30,7 @@ isa-instruction-distribution:
 
 branch-control:
   backward-probability: 0.5
-  block-size: 7
+  block-size: 9
 
 recursion-options:
   recursion-enable: false
