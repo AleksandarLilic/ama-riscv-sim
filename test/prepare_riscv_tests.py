@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument("-t", "--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
     parser.add_argument("--isa_tests", default=False, action='store_true', help="Also prepare ISA tests")
     parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
+    parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
     parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
     return parser.parse_args()
 
@@ -49,10 +50,11 @@ def build_test(test):
     run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
     if args.clean_only:
         return
-    # if any of the CODEGEN_APPS is in the test directory, run codegen first
-    if any(t_dir.startswith(app) for app in CODEGEN_APPS):
-        run_make(["make", "clean_codegen"], cwd=test_dir)
-        run_make(["make", "codegen"], cwd=test_dir)
+    if args.rebuild_codegen:
+        # if any of the CODEGEN_APPS is in the test directory, run codegen first
+        if any(t_dir.startswith(app) for app in CODEGEN_APPS):
+            run_make(["make", "clean_codegen"], cwd=test_dir)
+            run_make(["make", "codegen"], cwd=test_dir)
     make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j", "-B", "build_common"] + test_opts
