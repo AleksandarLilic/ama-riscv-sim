@@ -518,11 +518,14 @@ def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
 
     # highlight specific instructions, if any
     hc = 0
+    added_hl = []
     for hl_g in hl_inst_g:
         for i, r in enumerate(box[ROWS-1]): # ax_inst bars
             if df.iloc[i]['name'] in hl_g:
                 r.set_color(CLR_HL[hc])
-        ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
+                if (CLR_HL[hc] not in added_hl):
+                    ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
+                    added_hl.append(CLR_HL[hc])
         hc += 1
 
     if len(hl_inst_g) > 0:
