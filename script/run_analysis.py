@@ -291,10 +291,11 @@ def add_legend_for_hl_groups(ax, chart_type:str, ncol=1, nt=False) -> None:
     else:
         raise ValueError(f"Invalid chart type '{chart_type}'")
 
-def add_outside_legend(ax, title:str) -> None:
+def add_outside_legend(ax, title:str, has_right_y=False) -> None:
+    xp = 1.05 if has_right_y else 1.005
     ax.legend(
         loc='upper left', ncol=1, fontsize=9, title=title,
-        bbox_to_anchor=(1.005, 1.03), borderaxespad=0.
+        bbox_to_anchor=(xp, 1.03), borderaxespad=0.
     )
 
 def plot_dummy_line(ax, color, lw, label) -> None:
@@ -1109,7 +1110,7 @@ def plot_hw_hm(ax, df, col, win_size) -> None:
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
     ax.set_yticks([0, .5, 1])
-    ax.set_yticklabels(['0%', '', '100%'])
+    ax.set_yticklabels(['0', '', '100'])
 
     def _on_xlim_changed(a):
         xmin, xmax = a.get_xlim()
@@ -1487,6 +1488,10 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     if args.clk:
         plot_ipc(ax_ipc, df)
         s = 1_000_000 # scale to MB/s
+        u = 'MB/s'
+        if df.ct_imem_core.max() > 1e9:
+            s = 1_000_000_000
+            u = 'GB/s'
         w_clr = CLR_HL[2]
         agg_ct = 'mean'
         plot_stat(ax_ct_i2c, df.ct_imem_core, y, 'B/s', win_s,
@@ -1530,24 +1535,50 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     ax_top.set_title(get_title(TRACE_SOURCE, "Stats & HW", title) + win_str)
     # axis labels
     ax_ops.set_ylabel(f'OP{ops_n}')
-    ax_ic.set_ylabel('ICache')
-    ax_dc.set_ylabel('DCache')
-    ax_bp.set_ylabel('BP')
+    ax_ic.set_ylabel('ICache\n[%]')
+    ax_dc.set_ylabel('DCache\n[%]')
+    ax_bp.set_ylabel('BP\n[%]')
     if args.clk:
         ax_ipc.set_ylabel('IPC')
-        ax_ct_i2c.set_ylabel("ICache to Core\n[MB/s]")
-        ax_ct_i2m.set_ylabel("ICache to Mem\n[MB/s]")
-        ax_ct_d2c.set_ylabel("DCache to Core\n[MB/s]")
-        ax_ct_d2m.set_ylabel("DCache to Mem\n[MB/s]")
+        ax_ct_i2c.set_ylabel(f"ICache to Core\n[{u}]")
+        ax_ct_i2m.set_ylabel(f"ICache to Mem\n[{u}]")
+        ax_ct_d2c.set_ylabel(f"DCache to Core\n[{u}]")
+        ax_ct_d2m.set_ylabel(f"DCache to Mem\n[{u}]")
     else:
         ax_bd.set_ylabel('Flow Control\nDensity')
 
     ax[-1].set_xlabel(
         X_LABEL + ' (normalized)' if args.sample_begin_norm else '')
+
+    def double_y(a):
+        ar = a.twinx()
+        ar.set_yticks(a.get_yticks())
+        ar.set_yticklabels(a.get_yticklabels())
+        ar.set_ylim(a.get_ylim())
+        ar.set_ylabel(a.get_ylabel())
+
+    def double_y_ops(a): # just for op/s for clk run
+        ar = a.twinx()
+        ar.set_ylim(a.get_ylim())
+        # for some reason, min and max ticks are off limits, but returned...
+        a_yticks_slice = a.get_yticks()[1:-1]
+        fmt = smarter_eng_formatter(unit='', places=1, sep='')
+        new_y = [fmt(y * args.freq) for y in a_yticks_slice]
+        ar.set_yticks(a_yticks_slice * args.freq)
+        ar.set_yticklabels(new_y)
+        fmt = EngFormatter(unit='Hz', places=1, sep=' ')
+        f = fmt(args.freq * 1_000_000)
+        ar.set_ylabel(f'OP/s @ {f}')
+
     for a in ax:
+        if a == ax_ops and args.clk:
+            double_y_ops(a)
+        else:
+            double_y(a)
+        # wrap up
         a.grid(axis='both', linestyle='-', alpha=.6, which='major')
         title = "Total OPS" if a == ax_ops else None
-        add_outside_legend(a, title)
+        add_outside_legend(a, title, True)
 
     rsx = attach_xrange_slider(ax_btm, ax_top, gap=S_GAP, h=S_H)
     register_true_home(fig)
@@ -1639,7 +1670,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
         df['ipc_inst'] = df['inst'].ne(0).astype(int)
         df['ipc_rolling'] = rolling_mean(df['ipc_inst'], args.win_size_stats)
         for m in mem_stats: # from bytes/cycle to bytes/sec
-            df[m] = df[m].astype(np.uint16) * args.freq * 1_000_000
+            df[m] = df[m].astype(np.uint64) * args.freq * 1_000_000
 
     df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
     df['sp_real'] = df['sp_real'].apply(
@@ -1896,7 +1927,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--sample_begin', type=int, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--sample_end', type=int, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
     parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
-    parser.add_argument('--freq', default=FREQ_DEFAULT, help="Core clock frequency in [MHz]. Trace only option")
+    parser.add_argument('--freq', type=int, default=FREQ_DEFAULT, help="Core clock frequency in [MHz]. Trace only option")
     parser.add_argument('--sample_begin_norm', action='store_true', help="Normalize trace start to 0th sample. Trace only option")
 
     parser.add_argument('--timeline', action='store_true', help="Plot top of stack trace as timeline. Requires --dasm. Trace only option")

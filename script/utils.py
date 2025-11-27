@@ -49,11 +49,18 @@ def smarter_eng_formatter(places=1, unit='', sep=''):
         s = base_fmt(x, pos)
         try:
             val = float(s.split(".")[0])
+            #val = float(s.split(" ")[0].split(".")[0])
         except ValueError:
             return s
         # use extra precision if < 10 after scaling
         s = more_fmt(x, pos) if abs(val) < 10 and val != 0 else s
         # strip trailing .0 or zeros
+        #val_p = s.split(" ")
+        #val_n = val_p[0] # numeric part
+        #val_s = val_p[1] if len(val_p) > 1 else '' # suffix part
+        #val_n = val_n.rstrip('0').rstrip('.') if '.' in val_n else val_n
+        #s = f"{val_n} {val_s}".strip()
+        #return s
         return s.rstrip('0').rstrip('.') if '.' in s else s
 
     return FuncFormatter(_fmt)
