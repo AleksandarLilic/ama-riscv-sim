@@ -109,18 +109,25 @@ void save_perf_counters(perf_event_cnt_t* p) {
 }
 
 void print_perf_counters(const perf_event_cnt_t* p) {
+    // scale up by 1000x to get 3 decimal places and no floating point
+    uint32_t ipc1000 = ((p->ret * 1000u) / p->cycles);
+    printf(
+        "Stats:\n"
+        "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
+        (uint32_t)p->cycles, (uint32_t)p->ret,
+        (uint32_t)(p->cycles - p->ret), ipc1000 / 1000, ipc1000 % 1000
+    );
+
     printf(
         "TDA:\n"
         "    L1: "
         "Bad Spec: %u, FE: %u, BE: %u, Retired: %u\n"
         "    L2: "
         "FE ICache: %u, FE Core: %u, "
-        "BE DCache: %u, BE Core: %u, SIMD retired: %u\n"
-        "    Total Cycles: %u\n",
+        "BE DCache: %u, BE Core: %u, SIMD retired: %u\n",
         (uint32_t)p->bad_spec, (uint32_t)p->fe,(uint32_t)p->be,(uint32_t)p->ret,
         (uint32_t)p->fe_ic, (uint32_t)p->fe_core,
-        (uint32_t)p->be_dc, (uint32_t)p->be_core, (uint32_t)p->ret_simd,
-        (uint32_t)p->cycles
+        (uint32_t)p->be_dc, (uint32_t)p->be_core, (uint32_t)p->ret_simd
     );
 }
 
