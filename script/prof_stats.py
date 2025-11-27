@@ -338,15 +338,15 @@ def main():
 
         draw_single_plot(merged, ax[0], {
             'data': 'percent_inst',
-            'xlabel': f'% of {args.event} samples',
-            'title': title,
+            'xlabel': f'% of inst samples',
+            'title': 'Profile - Inst',
             'use_ylabel': True,
             'fmt': '%.1f%%'
         })
 
         draw_single_plot(merged, ax[1], {
             'data': 'percent_cycle',
-            'xlabel': f'% of {args.event} samples',
+            'xlabel': f'% of cycle samples',
             'title': 'Profile - Cycles',
             'fmt': '%.1f%%'
         })

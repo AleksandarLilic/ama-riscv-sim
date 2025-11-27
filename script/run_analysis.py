@@ -1560,12 +1560,14 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     def double_y_ops(a): # just for op/s for clk run
         ar = a.twinx()
         ar.set_ylim(a.get_ylim())
+
         # for some reason, min and max ticks are off limits, but returned...
         a_yticks_slice = a.get_yticks()[1:-1]
-        fmt = smarter_eng_formatter(unit='', places=1, sep='')
-        new_y = [fmt(y * args.freq) for y in a_yticks_slice]
-        ar.set_yticks(a_yticks_slice * args.freq)
+        ar.set_yticks(a_yticks_slice)
+        fmt = EngFormatter(unit='', places=1, sep='')
+        new_y = [fmt(y * args.freq * 1_000_000) for y in a_yticks_slice]
         ar.set_yticklabels(new_y)
+
         fmt = EngFormatter(unit='Hz', places=1, sep=' ')
         f = fmt(args.freq * 1_000_000)
         ar.set_ylabel(f'OP/s @ {f}')
