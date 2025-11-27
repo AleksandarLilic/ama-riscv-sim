@@ -17,7 +17,7 @@
 #endif
 
 #ifdef DPI
-#include "dpi_functions.h"
+#include "cosim.h"
 #endif
 
 class core {

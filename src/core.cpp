@@ -26,10 +26,12 @@ core::core(
 
     this->cfg = cfg;
     mem->trap_setup(&tu);
+
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
     prof.set_prof_flags(cfg.prof_trace, cfg.rf_usage);
     prof_trace = cfg.prof_trace;
+
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
     if (prof_pc.start == BASE_ADDR) {
@@ -38,9 +40,11 @@ core::core(
         prof.active = true;
         prof_perf.active = true;
         prof_fusion.active = true;
+        cosim_prof(true);
     }
-    #endif
-    #endif
+
+    #endif // DPI
+    #endif // PROFILERS_EN
 
     #ifdef DPI
     // init to diff so it matches RTL going forward
@@ -117,6 +121,11 @@ void core::prof_state([[maybe_unused]] bool enable) {
     bp.profiling(enable);
     mem->cache_profiling(enable);
     hwrs.rst();
+    #endif
+
+    #ifdef DPI
+    prof_act = enable;
+    cosim_prof(enable); // updates bp, cache, core stats
     #endif
 }
 
@@ -1451,14 +1460,14 @@ void core::csr_cnt_update(uint16_t csr_addr) {
     #ifdef DPI
     uint64_t mtime_shadow;
     csr_sync_t csr;
-    sync_csrs(&csr);
+    cosim_sync_csrs(&csr);
     mtime_shadow = csr.mtime;
-    csr_wide_assign(CSR_MHPMCOUNTER3, csr.mhpmcounters[3]);
-    csr_wide_assign(CSR_MHPMCOUNTER4, csr.mhpmcounters[4]);
-    csr_wide_assign(CSR_MHPMCOUNTER5, csr.mhpmcounters[5]);
-    csr_wide_assign(CSR_MHPMCOUNTER6, csr.mhpmcounters[6]);
-    csr_wide_assign(CSR_MHPMCOUNTER7, csr.mhpmcounters[7]);
-    csr_wide_assign(CSR_MHPMCOUNTER8, csr.mhpmcounters[8]);
+    csr_wide_assign(CSR_MHPMCOUNTER3, csr.mhpmcounter[3]);
+    csr_wide_assign(CSR_MHPMCOUNTER4, csr.mhpmcounter[4]);
+    csr_wide_assign(CSR_MHPMCOUNTER5, csr.mhpmcounter[5]);
+    csr_wide_assign(CSR_MHPMCOUNTER6, csr.mhpmcounter[6]);
+    csr_wide_assign(CSR_MHPMCOUNTER7, csr.mhpmcounter[7]);
+    csr_wide_assign(CSR_MHPMCOUNTER8, csr.mhpmcounter[8]);
     #else
     uint64_t mtime_shadow = mem->get_mtime_shadow();
     // no pref counters sync, they don't exist in ISA sim

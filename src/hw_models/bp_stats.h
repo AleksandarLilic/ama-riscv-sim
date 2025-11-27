@@ -46,13 +46,23 @@ struct bp_stats_t {
         float_t accuracy = -1.0; // i.e. never seen a branch
         float_t mpki = -1.0; // mispredicted per 1k instruction
         const std::string type_name;
+        bool prof_active = false;
 
     public:
         bp_stats_t(const std::string type_name)
         : predicted_fwd(0), predicted_bwd(0),
           mispredicted_fwd(0), mispredicted_bwd(0),
-          type_name(type_name) { }
+          type_name(type_name) {}
+
+        void profiling(bool enable) { prof_active = enable; }
+        #ifdef DPI
+        void collect(bool correct) {
+            if (correct) predicted++;
+            else mispredicted++;
+        }
+        #else
         void eval(uint32_t pc, bool correct, b_dir_t dir) {
+            if (!prof_active) return;
             if (correct) {
                 if (dir == b_dir_t::forward) predicted_fwd++;
                 else predicted_bwd++;
@@ -65,10 +75,13 @@ struct bp_stats_t {
             }
             bi_predictor_stats[pc].predicted += correct;
         }
+        #endif
         void summarize(uint64_t total_insts) {
             this->total_insts = total_insts;
+            #ifndef DPI
             predicted = predicted_fwd + predicted_bwd;
             mispredicted = mispredicted_fwd + mispredicted_bwd;
+            #endif
             total_branches = predicted + mispredicted;
             if (total_branches > 0) {
                 accuracy = TO_F32(predicted) / TO_F32(total_branches) * 100.0;
