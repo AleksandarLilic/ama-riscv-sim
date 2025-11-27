@@ -1025,11 +1025,13 @@ def on_xlim_changed_default(a, line, lw_off) -> None:
 def plot_sp(ax, df) -> None:
     LW_OFF = .75
     lw = progressive_lw(df.index.size) * LW_OFF
-    label = f"  SP max : {df['sp_real'].max()} B"
+    fmt = smarter_eng_formatter(unit='B')
+    label = f"  SP max : {fmt(df['sp_real'].max())}"
     line, = ax.step(
         df.smp, df.sp_real, where='post', lw=lw, color=CLR_TAB_BLUE)
     ax.grid(axis='both', linestyle='-', alpha=.6, which='major')
-    ax.set_ylabel('Stack\nPointer')
+    ax.yaxis.set_major_formatter(EngFormatter(unit='', sep=''))
+    ax.set_ylabel('Stack\nPointer\n[B]')
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     on_xlim_changed_default(ax, line, LW_OFF)
 
