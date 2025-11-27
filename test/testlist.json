@@ -25,6 +25,7 @@
     "vector_ew_basic": ["all"],
     "matmul": ["all"],
     "dot_product": ["all"],
+    "dot_product_peak": ["int8"],
     "dot_product_unaligned_len_even": ["all"],
     "sorting_num": [["all"], ["LOOPS=2"]],
     "sorting_str": [["all"], ["LOOPS=2"]],
