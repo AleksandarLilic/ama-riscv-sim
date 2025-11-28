@@ -89,27 +89,47 @@ typedef struct {
 } perf_event_cnt_t;
 
 // functions
-inline __attribute__ ((always_inline))
-void write_csr(const uint32_t csr_addr, uint32_t data) {
-    asm volatile("csrw %[a], %[d]" : : [a] "i" (csr_addr), [d] "r" (data));
-}
+#define read_csr(CSR, dest) \
+    do { \
+        asm volatile ("csrr %0, " TOSTR(CSR) : "=r"(dest)); \
+    } while (0)
 
-inline __attribute__ ((always_inline))
-uint32_t read_csr(const uint32_t csr_addr) {
-    uint32_t data;
-    asm volatile("csrr %[d], %[a]" : [d] "=r" (data) : [a] "i" (csr_addr));
-    return data;
-}
+#define write_csr(CSR, val) \
+    do { \
+        asm volatile ("csrw " TOSTR(CSR) ", %0" :: "r"(val)); \
+    } while (0)
 
-inline __attribute__ ((always_inline))
-void set_csr(const uint32_t csr_addr, uint32_t bits) {
-    asm volatile("csrs %[a], %[d]" : : [a] "i" (csr_addr), [d] "r" (bits));
-}
+#define set_csr(CSR, bits) \
+    do { \
+        asm volatile ("csrs " TOSTR(CSR) ", %0" :: "r"(bits)); \
+    } while (0)
 
-inline __attribute__ ((always_inline))
-void write_tohost_testnum() {
-    asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG));
-}
+#define clear_csr(CSR, bits) \
+    do { \
+        asm volatile ("csrc " TOSTR(CSR) ", %0" :: "r"(bits)); \
+    } while (0)
+
+
+#define read_csr_wide(LO, HI, dest64) \
+    do { \
+        uint32_t __lo, __hi1, __hi2; \
+        do { \
+            read_csr(HI, __hi1); \
+            read_csr(LO, __lo); \
+            read_csr(HI, __hi2); \
+        } while (__hi1 != __hi2); \
+        (dest64) = (((uint64_t)__hi1 << 32) | __lo); \
+    } while (0)
+
+#define write_csr_wide(LO, HI, val64) \
+    do { \
+        uint64_t __v = (val64); \
+        write_csr(HI, (uint32_t)(__v >> 32)); \
+        write_csr(LO, (uint32_t)__v); \
+    } while (0)
+
+#define write_tohost_testnum() \
+    asm volatile("csrw 0x51e, " TOSTR(TESTNUM_REG))
 
 inline __attribute__ ((always_inline))
 void pass() {
@@ -136,9 +156,6 @@ void send_byte_uart0(char byte);
 int _write(int fd, char* ptr, int len);
 int __puts_uart(char* s, int len, void *buf);
 int mini_printf(const char* format, ...);
-
-uint64_t read_csr_wide(uint32_t csr_lo, uint32_t csr_hi);
-uint64_t write_csr_wide(uint32_t csr_lo, uint32_t csr_hi, uint64_t value);
 
 uint64_t get_cpu_time();
 uint64_t get_cpu_cycles();

@@ -29,35 +29,14 @@ int mini_printf(const char* format, ...) {
     return count;
 }
 
-uint64_t read_csr_wide(uint32_t csr_lo, uint32_t csr_hi) {
-    uint32_t lo, hi, hi2;
-    sliced64_t val;
-    while (1) {
-        hi = read_csr(csr_hi);
-        lo = read_csr(csr_lo);
-        hi2 = read_csr(csr_hi);
-        if (hi == hi2) {
-            val.u32[0] = lo;
-            val.u32[1] = hi;
-            break;
-        }
-    }
-    return val.u64;
-}
-
-uint64_t write_csr_wide(uint32_t csr_lo, uint32_t csr_hi, uint64_t value) {
-    sliced64_t val = { .u64 = value };
-    write_csr(csr_hi, val.u32[1]);
-    write_csr(csr_lo, val.u32[0]);
-    return value;
-}
-
 void set_cpu_time(uint64_t value) {
     write_csr_wide(CSR_TIME, CSR_TIMEH, value);
 }
 
 uint64_t get_cpu_time() {
-    return read_csr_wide(CSR_TIME, CSR_TIMEH);
+    uint64_t time;
+    read_csr_wide(CSR_TIME, CSR_TIMEH, time);
+    return time;
 }
 
 void set_cpu_cycles(uint64_t value) {
@@ -65,7 +44,9 @@ void set_cpu_cycles(uint64_t value) {
 }
 
 uint64_t get_cpu_cycles() {
-    return read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH);
+    uint64_t cycles;
+    read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, cycles);
+    return cycles;
 }
 
 void set_cpu_instret(uint64_t value) {
@@ -73,7 +54,9 @@ void set_cpu_instret(uint64_t value) {
 }
 
 uint64_t get_cpu_instret() {
-    return read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH);
+    uint64_t instret;
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, instret);
+    return instret;
 }
 
 void set_up_perf_counters() {
@@ -95,13 +78,13 @@ void set_up_perf_counters() {
 }
 
 void save_perf_counters(perf_event_cnt_t* p) {
-    p->bad_spec = read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H);
-    p->fe = read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H);
-    p->be = read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H);
-    p->fe_ic = read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H);
-    p->be_dc = read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H);
-    p->ret_simd = read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H);
-    p->cycles = read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH);
+    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
+    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->fe);
+    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->be);
+    read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->fe_ic);
+    read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->be_dc);
+    read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->ret_simd);
+    read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
     // figure out the rest
     p->be_core = (p->be - p->be_dc);
     p->fe_core = (p->fe - p->fe_ic);

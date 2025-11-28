@@ -23,72 +23,72 @@ void main() {
     uint32_t expected, rval;
 
     // mscratch
-    rval = read_csr(CSR_MSCRATCH);
+    read_csr(CSR_MSCRATCH, rval);
     expected = 0x133;
     write_csr(CSR_MSCRATCH, expected);
-    rval = read_csr(CSR_MSCRATCH);
+    read_csr(CSR_MSCRATCH, rval);
     CHECK(rval, expected, CSR_MSCRATCH);
 
     // mhpmcounters, 0 at this point before events are set up
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER3);
+    read_csr(CSR_MHPMCOUNTER3, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER3);
 
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER4);
+    read_csr(CSR_MHPMCOUNTER4, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER4);
 
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER5);
+    read_csr(CSR_MHPMCOUNTER5, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER5);
 
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER6);
+    read_csr(CSR_MHPMCOUNTER6, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER6);
 
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER7);
+    read_csr(CSR_MHPMCOUNTER7, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER7);
 
     expected = 0;
-    rval = read_csr(CSR_MHPMCOUNTER8);
+    read_csr(CSR_MHPMCOUNTER8, rval);
     CHECK(rval, expected, CSR_MHPMCOUNTER8);
 
     // set up events
-    rval = read_csr(CSR_MHPMEVENT3);
+    read_csr(CSR_MHPMEVENT3, rval);
     expected = mhpmevent_bad_spec;
     write_csr(CSR_MHPMEVENT3, expected);
-    rval = read_csr(CSR_MHPMEVENT3);
+    read_csr(CSR_MHPMEVENT3, rval);
     CHECK(rval, expected, CSR_MHPMEVENT3);
 
-    rval = read_csr(CSR_MHPMEVENT4);
+    read_csr(CSR_MHPMEVENT4, rval);
     expected = mhpmevent_fe;
     write_csr(CSR_MHPMEVENT4, expected);
-    rval = read_csr(CSR_MHPMEVENT4);
+    read_csr(CSR_MHPMEVENT4, rval);
     CHECK(rval, expected, CSR_MHPMEVENT4);
 
-    rval = read_csr(CSR_MHPMEVENT5);
+    read_csr(CSR_MHPMEVENT5, rval);
     expected = mhpmevent_be;
     write_csr(CSR_MHPMEVENT5, expected);
-    rval = read_csr(CSR_MHPMEVENT5);
+    read_csr(CSR_MHPMEVENT5, rval);
     CHECK(rval, expected, CSR_MHPMEVENT5);
 
-    rval = read_csr(CSR_MHPMEVENT6);
+    read_csr(CSR_MHPMEVENT6, rval);
     expected = mhpmevent_fe_ic;
     write_csr(CSR_MHPMEVENT6, expected);
-    rval = read_csr(CSR_MHPMEVENT6);
+    read_csr(CSR_MHPMEVENT6, rval);
     CHECK(rval, expected, CSR_MHPMEVENT6);
 
-    rval = read_csr(CSR_MHPMEVENT7);
+    read_csr(CSR_MHPMEVENT7, rval);
     expected = mhpmevent_be_dc;
     write_csr(CSR_MHPMEVENT7, expected);
-    rval = read_csr(CSR_MHPMEVENT7);
+    read_csr(CSR_MHPMEVENT7, rval);
     CHECK(rval, expected, CSR_MHPMEVENT7);
 
-    rval = read_csr(CSR_MHPMEVENT8);
+    read_csr(CSR_MHPMEVENT8, rval);
     expected = mhpmevent_ret_simd;
     write_csr(CSR_MHPMEVENT8, expected);
-    rval = read_csr(CSR_MHPMEVENT8);
+    read_csr(CSR_MHPMEVENT8, rval);
     CHECK(rval, expected, CSR_MHPMEVENT8);
 
     // generate some branch misses for mhpmcounter3
@@ -117,37 +117,37 @@ void main() {
     sum += dot_result;
 
     // check counters, shouldn't be zero at this point
-    rval = read_csr(CSR_MHPMCOUNTER3);
+    read_csr(CSR_MHPMCOUNTER3, rval);
     if (rval == 0) {
         write_mismatch(rval, cnt, CSR_MHPMCOUNTER3);
         fail();
     }
 
-    rval = read_csr(CSR_MHPMCOUNTER4);
+    read_csr(CSR_MHPMCOUNTER4, rval);
     if (rval == 0) {
         write_mismatch(rval, cnt, CSR_MHPMCOUNTER4);
         fail();
     }
 
-    rval = read_csr(CSR_MHPMCOUNTER5);
+    read_csr(CSR_MHPMCOUNTER5, rval);
     if (rval == 0) {
         write_mismatch(rval, sum, CSR_MHPMCOUNTER5);
         fail();
     }
 
-    rval = read_csr(CSR_MHPMCOUNTER6);
+    read_csr(CSR_MHPMCOUNTER6, rval);
     if (rval == 0) {
         write_mismatch(rval, sum, CSR_MHPMCOUNTER6);
         fail();
     }
 
-    rval = read_csr(CSR_MHPMCOUNTER7);
+    read_csr(CSR_MHPMCOUNTER7, rval);
     if (rval == 0) {
         write_mismatch(rval, sum, CSR_MHPMCOUNTER7);
         fail();
     }
 
-    rval = read_csr(CSR_MHPMCOUNTER8);
+    read_csr(CSR_MHPMCOUNTER8, rval);
     if (rval == 0) {
         write_mismatch(rval, sum, CSR_MHPMCOUNTER8);
         fail();
