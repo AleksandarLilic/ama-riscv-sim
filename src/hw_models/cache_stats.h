@@ -89,19 +89,19 @@ struct cache_traffic_t {
 };
 
 struct ls_pair {
-    uint32_t ld;
-    uint32_t st;
+    uint64_t ld;
+    uint64_t st;
     ls_pair() : ld(0), st(0) {};
-    uint32_t all() const { return ld + st; };
+    uint64_t all() const { return ld + st; };
 };
 
 struct cache_stats_t {
     private:
-        uint32_t references;
+        uint64_t references;
         ls_pair hits;
         ls_pair misses;
-        uint32_t replacements;
-        uint32_t writebacks;
+        uint64_t replacements;
+        uint64_t writebacks;
         cache_traffic_t ct_core;
         cache_traffic_t ct_mem;
         bool prof_active = false;
