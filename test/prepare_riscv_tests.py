@@ -32,7 +32,7 @@ def parse_args():
 def run_make(make_cmd, cwd=None):
     make_status = subprocess.run(
         make_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
-    check_make_status(make_status, f"compile {make_cmd}")
+    check_make_status(make_status, f"compile {make_cmd}. CWD='{cwd}'")
 
 def check_make_status(make_status, msg: str):
     if make_status.returncode != 0:
