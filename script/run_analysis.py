@@ -292,6 +292,9 @@ def add_legend_for_hl_groups(ax, chart_type:str, ncol=1, nt=False) -> None:
         raise ValueError(f"Invalid chart type '{chart_type}'")
 
 def add_outside_legend(ax, title:str, has_right_y=False) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
     xp = 1.05 if has_right_y else 1.005
     ax.legend(
         loc='upper left', ncol=1, fontsize=9, title=title,
@@ -1056,12 +1059,12 @@ def plot_ipc(ax, df) -> None:
     on_xlim_changed_default(ax, line, LW_OFF)
 
 def plot_stat(
-    ax, x, y, unit, win_size, metric, agg='sum', clr=CLR_TAB_BLUE, yscale=1) \
-    -> None:
+    ax, x, y, unit, win_size, metric, agg='sum',
+    clr=CLR_TAB_BLUE, yscale=1, allow_zero=False) -> None:
 
     LW_OFF = .65
     lw = progressive_lw(len(y)) * LW_OFF
-    if x.sum() == 0: # if data is all zeros, skip
+    if (x.sum() == 0) and (not allow_zero):
         return ax
 
     fmt = EngFormatter(unit=unit, places=1)
@@ -1402,7 +1405,8 @@ Tuple[plt.Figure, RangeSlider, RangeSlider]:
     ax_t.set_title(get_title(TRACE_SOURCE, trace_type, title))
     ax_t.set_ylabel(ylabel)
     ax_t.grid(axis='both', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(ax_t, df.smp[0], args.sample_begin_norm)
+    ax_top, xlabel = draw_exec_finish(
+        ax_t, df.smp.iloc[0], args.sample_begin_norm)
     ax_t.set_xlabel(xlabel)
 
     S_GAP = 0.04
@@ -1498,17 +1502,17 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         w_clr = CLR_HL[2]
         agg_ct = 'mean'
         plot_stat(ax_ct_i2c, df.ct_imem_core, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, yscale=s)
+                  'Read', agg=agg_ct, yscale=s, allow_zero=True)
         plot_stat(ax_ct_i2m, df.ct_imem_mem, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, yscale=s)
+                  'Read', agg=agg_ct, yscale=s, allow_zero=True)
         plot_stat(ax_ct_d2c, df.ct_dmem_core_r, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, yscale=s)
+                  'Read', agg=agg_ct, yscale=s, allow_zero=True)
         plot_stat(ax_ct_d2c, df.ct_dmem_core_w, y, 'B/s', win_s,
-                  'Write', agg=agg_ct, clr=w_clr, yscale=s)
+                  'Write', agg=agg_ct, clr=w_clr, yscale=s, allow_zero=True)
         plot_stat(ax_ct_d2m, df.ct_dmem_mem_r, y, 'B/s', win_s,
-                  'Read', agg=agg_ct, yscale=s)
+                  'Read', agg=agg_ct, yscale=s, allow_zero=True)
         plot_stat(ax_ct_d2m, df.ct_dmem_mem_w, y, 'B/s', win_s,
-                  'Write', agg=agg_ct, clr=w_clr, yscale=s)
+                  'Write', agg=agg_ct, clr=w_clr, yscale=s, allow_zero=True)
     else:
         plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.BRANCH, 0), y,
                   'ops', win_s, 'BRANCH', clr=icfg.HL_COLORS_OPS[icfg.BRANCH])
