@@ -57,6 +57,7 @@ struct bp_stats_t {
         void profiling(bool enable) { prof_active = enable; }
         #ifdef DPI
         void collect(bool correct) {
+            if (!prof_active) return;
             if (correct) predicted++;
             else mispredicted++;
         }
