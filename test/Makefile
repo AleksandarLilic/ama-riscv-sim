@@ -6,15 +6,17 @@ SIM_FLAGS := DEFINES="-DTEST_BUILD -DRV32C"
 SIM_FLAGS += USER_DEFINES=--coverage LDFLAGS=-lgcov
 
 TIMESTAMP := $(shell date +"%Y-%m-%d_%H-%M-%S")
-TEST_DIR = testrun_$(TIMESTAMP)
+TEST_DIR := testrun_$(TIMESTAMP)
 $(shell mkdir -p $(TEST_DIR))
 TEST_BIN := ama-riscv-sim_test
 TEST := $(TEST_DIR)/$(TEST_BIN)
 BDIR := build_gtest
 SOURCES := test.cpp
 PYVER := python3
-COVDIR := $(TEST_DIR)/coverage
-COVLOG := $(TEST_DIR)/coverage.log
+COV_DIR := $(TEST_DIR)/coverage
+COV_LOG := $(TEST_DIR)/coverage.log
+COV_RAW := $(COV_DIR)/coverage.raw.info
+COV_SIM := $(COV_DIR)/coverage.sim.info
 VALGRIND := valgrind --leak-check=full
 
 all: coverage
@@ -24,11 +26,12 @@ build_test: $(TEST)
 run_gtest: build_sim $(TEST)
 	cd $(TEST_DIR) && ./$(TEST_BIN) && cd -
 
-coverage: run_gtest
-	@mkdir -p $(COVDIR)
-	lcov --capture --directory ../src/$(BDIR) --output-file $(COVDIR)/coverage.info > $(COVLOG) 2>&1
-	genhtml $(COVDIR)/coverage.info --output-directory $(COVDIR) >> $(COVLOG) 2>&1
-	@tail -n 3 $(COVLOG)
+coverage:
+	@mkdir -p $(COV_DIR)
+	lcov --capture --directory ../src/$(BDIR) --output-file $(COV_RAW) > $(COV_LOG) 2>&1
+	lcov --remove $(COV_RAW) '/usr/*' '*/external/*' '*/tests/*' --output-file $(COV_SIM) >> $(COV_LOG) 2>&1
+	genhtml $(COV_SIM) --output-directory $(COV_DIR) >> $(COV_LOG) 2>&1
+	@tail -n 3 $(COV_LOG)
 
 run_valgrind: $(TEST)
 	$(VALGRIND) ./$(TEST)
@@ -58,7 +61,7 @@ cleantestruns:
 	rm -rf testrun_*
 
 clean: cleanlogs cleanbins
-	rm -rf $(TEST) $(COVDIR) *.gc* gtest_testlist.txt
+	rm -rf $(TEST) $(COV_DIR) *.gc* gtest_testlist.txt
 
 cleanall: clean
 	make -C ../src --no-print-directory clean
