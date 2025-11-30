@@ -149,12 +149,12 @@ struct defs_t {
 struct hw_defs_t {
     // icache
     static constexpr char icache_sets[] = "4";
-    static constexpr char icache_ways[] = "2";
+    static constexpr char icache_ways[] = "4";
     static constexpr char icache_re_policy[] = "lru";
     static constexpr char icache_in_policy[] = "update";
     // dcache
     static constexpr char dcache_sets[] = "8";
-    static constexpr char dcache_ways[] = "2";
+    static constexpr char dcache_ways[] = "4";
     static constexpr char dcache_re_policy[] = "lru";
     static constexpr char dcache_in_policy[] = "update";
     static constexpr char dcache_wr_policy[] = "wb";
