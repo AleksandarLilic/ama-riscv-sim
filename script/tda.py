@@ -59,6 +59,7 @@ def main(args: argparse.Namespace):
     )
 
     if not args.silent:
+        print(df.drop(columns=["root"]))
         fig.show(renderer=args.renderer)
 
     if args.save_png:

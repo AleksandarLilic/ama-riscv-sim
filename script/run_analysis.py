@@ -1106,13 +1106,24 @@ def plot_hw_hm(ax, df, col, win_size) -> None:
     metric = "ACC" if col == 'bp' else "HR"
     metric_mean = round(df[col].mean()*100,2)
     label = f"{metric}: {metric_mean}%"
+    LW_OFF = .5
+    lw = progressive_lw(df.index.size) * LW_OFF
+
     # drop NaNs to have continuous mean
     running_avg = rolling_mean(df[col].dropna(), win_size)
     # reindex and forward fill to account for NaNs in the source
     running_avg = running_avg.reindex(df.index, method='ffill')
-    LW_OFF = .5
-    lw = progressive_lw(df.index.size) * LW_OFF
-    line, = ax.plot(df.smp, running_avg, lw=lw, color=CLR_TAB_BLUE)
+    # if win_size is larger than data, skip running mean
+    if (win_size*2 > df[col].dropna().size):
+        # plot nothing so xlim doesn't error out
+        line, = ax.plot([], [], lw=lw, color=CLR_TAB_BLUE)
+        print("Warning: not enough data points to compute running mean for "
+              f"'{metric}' on '{col}'. Run longer sim or reduce window size. "
+              f"Number of data points: {df[col].dropna().size}, "
+              f"Window size: {win_size}")
+    else:
+        line, = ax.plot(df.smp, running_avg, lw=lw, color=CLR_TAB_BLUE)
+
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     ax.set_ylim(-.8+H_OFFSET, 1.8-H_OFFSET)
     ax.set_yticks([0, .5, 1])
