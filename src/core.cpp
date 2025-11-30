@@ -1956,10 +1956,13 @@ void core::dump() {
     #endif
     std::cout << "SIMULATION FINISHED\n\n";
 
+    #ifdef PROFILERS_EN
     if (prof_pc.exit_on_prof_stop) {
         std::cout << "Early exit on profiler stop, TOHOST invalid\n";
         csr.at(CSR_TOHOST).value = CSR_TOHOST_EARLY_EXIT;
-    } else {
+    } else
+    #endif
+    {
         uint32_t tohost = csr.at(CSR_TOHOST).value;
         if (tohost != 1) {
             std::cout << "Failed test ID: " << (tohost >> 1) << " (0x"
