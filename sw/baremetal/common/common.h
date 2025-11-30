@@ -50,6 +50,11 @@ asm(                        \
 #define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
 #define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
 
+#define ICACHE_SETS 4
+#define ICACHE_WAYS 2
+#define DCACHE_SETS 8
+#define DCACHE_WAYS 2
+
 // custom data types
 typedef union {
     uint64_t u64;

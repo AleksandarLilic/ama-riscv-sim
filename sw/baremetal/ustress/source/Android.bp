@@ -1,0 +1,414 @@
+cc_binary {
+	name:"branch_direct_workload",
+	compile_multilib:"64",
+	srcs:[
+		"branch_direct_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"branch_indirect_workload",
+	compile_multilib:"64",
+	srcs:[
+		"branch_indirect_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"call_return_workload",
+	compile_multilib:"64",
+	srcs:[
+		"call_return_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"div32_workload",
+	compile_multilib:"64",
+	srcs:[
+		"div32_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"div64_workload",
+	compile_multilib:"64",
+	srcs:[
+		"div64_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"double2int_workload",
+	compile_multilib:"64",
+	srcs:[
+		"double2int_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"fpdiv_workload",
+	compile_multilib:"64",
+	srcs:[
+		"fpdiv_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"fpmac_workload",
+	compile_multilib:"64",
+	srcs:[
+		"fpmac_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"fpmul_workload",
+	compile_multilib:"64",
+	srcs:[
+		"fpmul_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"fpsqrt_workload",
+	compile_multilib:"64",
+	srcs:[
+		"fpsqrt_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"int2double_workload",
+	compile_multilib:"64",
+	srcs:[
+		"int2double_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"isb_workload",
+	compile_multilib:"64",
+	srcs:[
+		"isb_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"l1d_cache_workload",
+	compile_multilib:"64",
+	srcs:[
+		"l1d_cache_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"l1d_tlb_workload",
+	compile_multilib:"64",
+	srcs:[
+		"l1d_tlb_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"l1i_cache_workload",
+	compile_multilib:"64",
+	srcs:[
+		"l1i_cache_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"l2d_cache_workload",
+	compile_multilib:"64",
+	srcs:[
+		"l2d_cache_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"load_after_store_workload",
+	compile_multilib:"64",
+	srcs:[
+		"load_after_store_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"mac32_workload",
+	compile_multilib:"64",
+	srcs:[
+		"mac32_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"mac64_workload",
+	compile_multilib:"64",
+	srcs:[
+		"mac64_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"memcpy_workload",
+	compile_multilib:"64",
+	srcs:[
+		"memcpy_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"mul32_workload",
+	compile_multilib:"64",
+	srcs:[
+		"mul32_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"mul64_workload",
+	compile_multilib:"64",
+	srcs:[
+		"mul64_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
+cc_binary {
+	name:"store_buffer_full_workload",
+	compile_multilib:"64",
+	srcs:[
+		"store_buffer_full_workload.c"
+	],
+	cflags:[
+		"-DCPU_NEOVERSE_V1",
+		"-O2",
+		"-g",
+		"-Wall",
+		"-pedantic",
+	],
+	shared_libs:[
+		"libm"
+	],
+}
+
