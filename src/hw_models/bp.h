@@ -56,9 +56,7 @@ class bp {
             return pc_part;
         }
 
-        #ifdef DPI
         virtual void profiling(bool enable) { stats.profiling(enable); }
-        #endif
 
         virtual void update_stats(uint32_t pc, uint32_t next_pc) {
             bool correct = (next_pc == predicted_pc);
