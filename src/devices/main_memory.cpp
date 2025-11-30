@@ -71,10 +71,18 @@ void main_memory::burn_elf(std::string test_elf) {
     // load segment
     ELFIO::segment* load_seg = nullptr;
     for (const auto& seg : reader.segments) {
-        if (seg->get_type() == ELFIO::PT_LOAD) {
-            load_seg = seg.get();
-            break;
-        }
+        if (seg->get_type() != ELFIO::PT_LOAD) continue;
+        load_seg = seg.get();
+        uint64_t paddr = load_seg->get_physical_address();
+        uint64_t size = load_seg->get_file_size();
+        if ((paddr < BASE_ADDR) || ((paddr + size) > (BASE_ADDR + MEM_SIZE))) {
+                std::cerr << "ELF segment out of bounds: " << std::hex
+                          << "paddr = 0x" << paddr
+                          << " size = 0x" << size << std::dec << std::endl;
+                throw std::runtime_error("ELF segment out of memory range");
+            }
+        uint64_t off = (paddr - BASE_ADDR);
+        std::memcpy(&mem[off], seg->get_data(), size);
     }
 
     if (load_seg == nullptr) {
@@ -83,29 +91,6 @@ void main_memory::burn_elf(std::string test_elf) {
                   << std::endl;
         throw std::runtime_error("No loadable segment found in ELF file.");
     }
-
-    uint64_t addr = load_seg->get_physical_address();
-    if (addr != BASE_ADDR) {
-        std::cerr << "ERROR: ELF start address is not at the CPU's base address"
-                  << " ELF start address: 0x" << std::hex << addr
-                  << " CPU's base address: 0x" << BASE_ADDR << std::dec
-                  << std::endl;
-        throw std::runtime_error(
-            "ELF start address is not at base address.");
-    }
-
-    uint64_t size = load_seg->get_file_size();
-    if (size > MEM_SIZE) {
-        std::cerr << "ERROR: ELF segment size is greater than memory size"
-                  << " Segment size: 0x" << std::hex << size << " B"
-                  << " Memory size: 0x" << std::hex << MEM_SIZE << " B"
-                  << std::dec << std::endl;
-        throw std::runtime_error(
-            "ELF segment size is greater than memory size.");
-    }
-
-    const char* data = load_seg->get_data();
-    std::memcpy(mem.data(), data, size);
 
     #ifdef PROFILERS_EN
     // generate symbol map
