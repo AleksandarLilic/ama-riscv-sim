@@ -6,6 +6,7 @@ import os
 
 import pandas as pd
 import plotly.express as px
+from utils import get_test_title
 
 PLOTLY_COLORS = px.colors.qualitative.Plotly
 
@@ -53,12 +54,21 @@ def main(args: argparse.Namespace):
             '<b>%{label}</b><br>%{percentRoot:.1%}<br>%{value}<extra></extra>'
     )
 
+    # add title
+    title = f"TDA for '{get_test_title(args.hw_stats)}'"
+    fig.update_layout(
+        title_text=title,
+        title_x=0.5,
+        title_font=dict(color="black", size=20)
+    )
+
     fig.update_layout(
         #template="plotly_dark",
-        margin=dict(t=30, l=0, r=0, b=30),
+        margin=dict(t=60, l=0, r=0, b=30),
     )
 
     if not args.silent:
+        print(title)
         print(df.drop(columns=["root"]))
         fig.show(renderer=args.renderer)
 
