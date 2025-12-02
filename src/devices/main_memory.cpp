@@ -132,8 +132,10 @@ void main_memory::burn_elf(std::string test_elf) {
     for (const auto& sym : symbol_map) symbol_map[sym.first].idx = idx++;
 
     //for (const auto& sym : symbol_map) {
-    //    std::cout << TO_U32(sym.second.idx) << " " << sym.second.name
-    //              << " 0x" << std::hex << sym.first << std::dec << "\n";
+    //    std::cout << std::setw(3) << std::setfill(' ')
+    //              << TO_U32(sym.second.idx)
+    //              << " 0x" << std::hex << sym.first << std::dec
+    //              << " " << sym.second.name << "\n";
     //}
     #endif
 }

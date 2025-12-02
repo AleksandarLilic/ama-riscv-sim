@@ -268,6 +268,7 @@ void core::exec_inst() {
         // risky but very likely to work since tail calls can be missed
         // TODO: should really be done on a callstack copy,
         // this will crash the sim if it pops all functions from callstack
+        //std::cout << next_pc << "\n" << std::flush;
         while (!prof_perf.dbg_check_top(next_pc)) prof_perf.dbg_pop_back();
     }
     if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
@@ -1833,6 +1834,8 @@ void core::c_beqz() {
     }
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
+    prof_perf.update_branch(next_pc, branch_taken);
+    prof_perf.set_perf_event_flag(perf_event_t::branch);
     #endif
     DASM_OP(c.beqz)
     #ifdef DASM_EN
@@ -1850,6 +1853,8 @@ void core::c_bnez() {
     }
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
+    prof_perf.update_branch(next_pc, branch_taken);
+    prof_perf.set_perf_event_flag(perf_event_t::branch);
     #endif
     DASM_OP(c.bnez)
     #ifdef DASM_EN
