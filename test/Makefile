@@ -26,7 +26,7 @@ build_test: $(TEST)
 run_gtest: build_sim $(TEST)
 	cd $(TEST_DIR) && ./$(TEST_BIN) && cd -
 
-coverage:
+coverage: run_gtest
 	@mkdir -p $(COV_DIR)
 	lcov --capture --directory ../src/$(BDIR) --output-file $(COV_RAW) > $(COV_LOG) 2>&1
 	lcov --remove $(COV_RAW) '/usr/*' '*/external/*' '*/tests/*' --output-file $(COV_SIM) >> $(COV_LOG) 2>&1
