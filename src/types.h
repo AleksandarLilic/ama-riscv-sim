@@ -16,8 +16,8 @@
 
 // Decoder types
 enum class opcode {
-    al_reg = 0b011'0011, // R type
-    al_imm = 0b001'0011, // I type
+    alu_reg = 0b011'0011, // R type
+    alu_imm = 0b001'0011, // I type
     load = 0b000'0011, // I type
     store = 0b010'0011, // S type
     branch = 0b110'0011, // B type

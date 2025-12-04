@@ -159,7 +159,7 @@ TEST_F(sim_test, unsupported_al_imm) {
     arr[3] = 0x40001013;
     std::string filename = "unsupported_al_imm.bin";
     write_bin(filename);
-    ASSERT_TRUE(check_error(filename, UI_MSG("al_imm")));
+    ASSERT_TRUE(check_error(filename, UI_MSG("alu_imm")));
 }
 
 TEST_F(sim_test, unsupported_load) {

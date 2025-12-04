@@ -248,7 +248,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_REG_OP(op) \
     case TO_U8(alu_r_op_t::op_##op): \
-        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -256,7 +256,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_REG_MUL_OP(op) \
     case TO_U8(alu_r_mul_op_t::op_##op): \
-        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -264,7 +264,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_REG_ZBB_OP(op) \
     case TO_U8(alu_r_zbb_op_t::op_##op): \
-        write_rf(ip.rd(), al_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -272,7 +272,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_IMM_OP(op) \
     case TO_U8(alu_i_op_t::op_##op): \
-        write_rf(ip.rd(), al_##op(rf[ip.rs1()], ip.imm_i())); \
+        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], ip.imm_i())); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
@@ -300,11 +300,11 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define CASE_BRANCH(op) \
     case TO_U8(branch_op_t::op_##op): \
         if(branch_##op()) { \
-            next_pc = pc + ip.imm_b(); \
+            next_pc = target_pc; \
             taken = true; \
             PROF_B_T(op) \
         } else { \
-            PROF_B_NT(op, _b) \
+            PROF_B_NT(op, target_pc) \
         } \
         DASM_OP(op) \
         PROF_RS1_RS2 \
@@ -425,10 +425,10 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define DASM_OP_RS2 rf_names[ip.rs2()][rf_names_idx]
 
 #define DASM_OP_CREGH \
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.cregh()][rf_names_idx]
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.c_regh()][rf_names_idx]
 
 #define DASM_CREGL \
-    rf_names[ip.cregl()][rf_names_idx]
+    rf_names[ip.c_regl()][rf_names_idx]
 
 #define DASM_ALIGN \
     dasm.asm_ss << std::setw(34 - inst_w - dasm.asm_ss.tellp()) \
@@ -505,9 +505,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
     prof.log_inst(opc_j::i_##op, true, b_dir_t(dir), DIFF);
 
-#define PROF_B_NT(op, b) \
-    b_dir_t dir = ((pc + ip.imm##b()) > pc) ? b_dir_t::forward : \
-                                              b_dir_t::backward; \
+#define PROF_B_NT(op, t_pc) \
+    b_dir_t dir = (t_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
     prof.log_inst(opc_j::i_##op, false, b_dir_t(dir), DIFF);
 
 #define PROF_RD \

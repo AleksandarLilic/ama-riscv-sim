@@ -36,32 +36,32 @@ void profiler_fusion::transition() {
 }
 
 state profiler_fusion::lea_1() {
-    ip.inst = opt.inst;
-    uint32_t imm = opt.rvc ? ip.imm_c_slli() : ip.imm_i_shamt();
+    ip.set(opt.inst);
+    uint32_t imm = opt.rvc ? ip.c_imm_slli() : ip.imm_i_shamt();
     // 2- and 4-byte shifts, rv64 should add 8-byte shift (imm < 4)
-    if (imm > 0 && imm < 3) return state::LEA_2;
+    if ((imm > 0) && (imm < 3)) return state::LEA_2;
     return state::START;
 }
 
 state profiler_fusion::lea_2() {
     uint32_t rd = ip.rd(); // rd of the first instruction (slli)
-    ip.inst = opt.inst_nx;
+    ip.set(opt.inst_nx);
     // technically possible (though highly unlikely) for second instruction
     // to be the opposite length of the first, so check both c.addi and addi
 
     // RVC addi
-    uint32_t funct4 = ip.cfunct4();
-    uint32_t funct3 = ip.cfunct3();
-    bool inst_system = ip.crs2() == 0x0 && ip.rd() == 0x0;
+    uint32_t funct4 = ip.c_funct4();
+    uint32_t funct3 = ip.c_funct3();
+    bool inst_system = (ip.c_rs2() == 0x0 && ip.rd() == 0x0);
     if (funct3 == 0x4 && funct4 == 0x9 && !inst_system) {
-        if (ip.crs2() == rd) return state::LEA_MATCH;
+        if (ip.c_rs2() == rd) return state::LEA_MATCH;
     }
 
     // RV32I addi
     uint32_t alu_op_sel = ((ip.funct7_b5()) << 3) | ip.funct3();
-    if (ip.opcode() == TO_U8(opcode::al_reg) &&
+    if (ip.opcode() == TO_U8(opcode::alu_reg) &&
         alu_op_sel == TO_U8(alu_r_op_t::op_add)) {
-        if (ip.rd() == ip.rs1() && ip.rs2() == rd) return state::LEA_MATCH;
+        if ((ip.rd() == ip.rs1()) && (ip.rs2() == rd)) return state::LEA_MATCH;
     }
 
     return state::START;
@@ -72,6 +72,5 @@ void profiler_fusion::finish() {
     #ifdef DPI
     return;
     #endif
-    std::cout << "Profiler Fusion: LEA opportunities: " << lea_match_cnt
-              << std::endl;
+    std::cout << "Profiler Fusion: LEA opportunities: " << lea_match_cnt <<"\n";
 }

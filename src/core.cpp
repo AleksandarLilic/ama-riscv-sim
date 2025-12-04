@@ -1,14 +1,11 @@
 #include "core.h"
 
-core::core(
-    memory *mem,
-    cfg_t cfg,
-    [[maybe_unused]] hw_cfg_t hw_cfg) :
-        running(false),
-        mem(mem), pc(BASE_ADDR), next_pc(0), inst(0),
-        inst_cnt(0), inst_cnt_csr(0), cycle_cnt_csr(0),
-        tu(&csr, &pc, &inst),
-        out_dir(cfg.out_dir), prof_pc(cfg.prof_pc), prof_act(false)
+core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
+    running(false),
+    mem(mem), pc(BASE_ADDR), next_pc(0), inst(0), inst_cnt(0),
+    tu(&csr, &pc, &inst),
+    prof_pc(cfg.prof_pc), prof_act(false),
+    inst_cnt_csr(0), cycle_cnt_csr(0)
     #ifdef PROFILERS_EN
     , prof(cfg.out_dir, PROF_SRC)
     , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
@@ -18,6 +15,7 @@ core::core(
     , bp(bp_name, hw_cfg)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
+    , out_dir(cfg.out_dir)
 {
     rf[0] = 0;
     rf_names_idx = TO_U8(cfg.rf_names);
@@ -177,8 +175,7 @@ void core::exec_inst() {
         if (op_c != 0x3) { // compressed ISA
             #ifdef RV32C
             INST_W(4);
-            inst = inst & 0xffff;
-            ip.inst = inst;
+            inst = ip.to_rvc(inst);
             switch (op_c) {
                 case 0x0: c0(); break;
                 case 0x1: c1(); break;
@@ -192,8 +189,8 @@ void core::exec_inst() {
         } else { // 32-bit ISA
             INST_W(8);
             switch (ip.opcode()) {
-                CASE_DECODER(al_reg)
-                CASE_DECODER(al_imm)
+                CASE_DECODER(alu_reg)
+                CASE_DECODER(alu_imm)
                 CASE_DECODER(load)
                 CASE_DECODER(store)
                 CASE_DECODER(branch)
@@ -336,7 +333,7 @@ void core::finish(bool dump_regs) {
 }
 
 // Integer extension
-void core::al_reg() {
+void core::alu_reg() {
     uint32_t funct7 = ip.funct7();
     uint32_t funct3 = ip.funct3();
     uint32_t alu_op_sel = ((ip.funct7_b5()) << 3) | funct3;
@@ -379,7 +376,7 @@ void core::al_reg() {
                 default: tu.e_unsupported_inst("al_reg_rv32_zbb"); return;
             }
             break;
-        default: tu.e_unsupported_inst("al_reg"); return;
+        default: tu.e_unsupported_inst("alu_reg"); return;
     }
     next_pc = pc + 4;
     #ifdef DASM_EN
@@ -388,7 +385,7 @@ void core::al_reg() {
     #endif
 }
 
-void core::al_imm() {
+void core::alu_imm() {
     uint32_t alu_op_sel_shift = ((ip.funct7_b5()) << 3) | ip.funct3();
     bool is_shift = (ip.funct3() & 0x3) == 1;
     uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : ip.funct3();
@@ -402,7 +399,7 @@ void core::al_imm() {
         CASE_ALU_IMM_OP(xori)
         CASE_ALU_IMM_OP(ori)
         CASE_ALU_IMM_OP(andi)
-        default: tu.e_unsupported_inst("al_imm"); return;
+        default: tu.e_unsupported_inst("alu_imm"); return;
     }
     next_pc = pc + 4;
     #ifdef DASM_EN
@@ -467,7 +464,8 @@ void core::store() {
 
 void core::branch() {
     [[maybe_unused]] bool taken; // unused if built without PROFILERS_EN
-    next_pc = pc + 4; // updated in CASE_BRANCH if taken
+    next_pc = (pc + 4); // updated in CASE_BRANCH if taken
+    uint32_t target_pc = (pc + ip.imm_b());
     switch (ip.funct3()) {
         CASE_BRANCH(beq)
         CASE_BRANCH(bne)
@@ -1483,7 +1481,7 @@ void core::csr_wide_assign(uint32_t addr, uint64_t val) {
 
 // C extension - decoders
 void core::c0() {
-    uint32_t funct3 = ip.cfunct3();
+    uint32_t funct3 = ip.c_funct3();
     switch (funct3) {
         case 0x0: c_addi4spn(); break;
         case 0x2: c_lw(); break;
@@ -1493,10 +1491,10 @@ void core::c0() {
 }
 
 void core::c1() {
-    uint32_t funct3 = ip.cfunct3();
-    uint32_t funct2h = ip.cfunct2h();
-    uint32_t funct2l = ip.cfunct2l();
-    uint32_t funct6 = ip.cfunct6();
+    uint32_t funct3 = ip.c_funct3();
+    uint32_t funct2h = ip.c_funct2h();
+    uint32_t funct2l = ip.c_funct2l();
+    uint32_t funct6 = ip.c_funct6();
 
     switch (funct3) {
         case 0x0: c_addi(); break;
@@ -1533,8 +1531,8 @@ void core::c1() {
 }
 
 void core::c2() {
-    uint32_t funct4 = ip.cfunct4();
-    uint32_t funct3 = ip.cfunct3();
+    uint32_t funct4 = ip.c_funct4();
+    uint32_t funct3 = ip.c_funct3();
     switch (funct3) {
         case 0x0: c_slli(); break;
         case 0x2: c_lwsp(); break;
@@ -1542,12 +1540,12 @@ void core::c2() {
         case 0x4:
             switch (funct4) {
                 case 0x8:
-                    if (ip.crs2() == 0x0) c_jr();
+                    if (ip.c_rs2() == 0x0) c_jr();
                     else c_mv();
                     break;
                 case 0x9:
-                    if (ip.crs2() == 0x0 && ip.rd() == 0x0) c_ebreak();
-                    else if (ip.crs2() == 0x0) c_jalr();
+                    if (ip.c_rs2() == 0x0 && ip.rd() == 0x0) c_ebreak();
+                    else if (ip.c_rs2() == 0x0) c_jalr();
                     else c_add();
                 break;
                 default: tu.e_unsupported_inst("unreachable");
@@ -1559,41 +1557,41 @@ void core::c2() {
 
 // C extension - arithmetic and logic operations
 void core::c_addi() {
-    write_rf(ip.rd(), al_addi(rf[ip.rd()], ip.imm_c_arith()));
+    write_rf(ip.rd(), alu_addi(rf[ip.rd()], ip.c_imm_arith()));
     DASM_OP(c.addi)
     PROF_G(c_addi)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
+    DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_li() {
-    write_rf(ip.rd(), ip.imm_c_arith());
+    write_rf(ip.rd(), ip.c_imm_arith());
     DASM_OP(c.li)
     PROF_G(c_li)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << TO_I32(ip.imm_c_arith());
+    DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_lui() {
-    if (ip.imm_c_lui() == 0) tu.e_illegal_inst("c.lui (imm=0)", 4);
-    write_rf(ip.rd(), ip.imm_c_lui());
+    if (ip.c_imm_lui() == 0) tu.e_illegal_inst("c.lui (imm=0)", 4);
+    write_rf(ip.rd(), ip.c_imm_lui());
     DASM_OP(c.lui)
     PROF_G(c_lui)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << FHEXN((ip.imm_c_lui() >> 12), 5);
+    DASM_OP_RD << "," << FHEXN((ip.c_imm_lui() >> 12), 5);
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_nop() {
-    // write_rf(0, al_addi(rf[0], 0));
+    // write_rf(0, alu_addi(rf[0], 0));
     DASM_OP(c.nop)
     PROF_G(c_nop)
     #ifdef DASM_EN
@@ -1603,139 +1601,139 @@ void core::c_nop() {
 }
 
 void core::c_addi16sp() {
-    if (ip.imm_c_16sp() == 0) tu.e_illegal_inst("c.addi16sp (imm=0)", 4);
-    write_rf(2, al_addi(rf[2], ip.imm_c_16sp()));
+    if (ip.c_imm_16sp() == 0) tu.e_illegal_inst("c.addi16sp (imm=0)", 4);
+    write_rf(2, alu_addi(rf[2], ip.c_imm_16sp()));
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << TO_I32(ip.imm_c_16sp());
+    DASM_OP_RD << "," << TO_I32(ip.c_imm_16sp());
     DASM_RD_UPDATE_P(2);
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_srli() {
-    write_rf(ip.cregh(), al_srli(rf[ip.cregh()], ip.imm_c_arith()));
+    write_rf(ip.c_regh(), alu_srli(rf[ip.c_regh()], ip.c_imm_arith()));
     DASM_OP(c.srli)
     PROF_G(c_srli)
     #ifdef DASM_EN
-    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_srai() {
-    write_rf(ip.cregh(), al_srai(rf[ip.cregh()], ip.imm_c_arith()));
+    write_rf(ip.c_regh(), alu_srai(rf[ip.c_regh()], ip.c_imm_arith()));
     DASM_OP(c.srai)
     PROF_G(c_srai)
     #ifdef DASM_EN
-    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_andi() {
-    write_rf(ip.cregh(), al_andi(rf[ip.cregh()], ip.imm_c_arith()));
+    write_rf(ip.c_regh(), alu_andi(rf[ip.c_regh()], ip.c_imm_arith()));
     DASM_OP(c.andi)
     PROF_G(c_andi)
     #ifdef DASM_EN
-    DASM_OP_CREGH << "," << TO_I32(ip.imm_c_arith());
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_and() {
-    write_rf(ip.cregh(), al_and(rf[ip.cregh()], rf[ip.cregl()]));
+    write_rf(ip.c_regh(), alu_and(rf[ip.c_regh()], rf[ip.c_regl()]));
     DASM_OP(c.and)
     PROF_G(c_and)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_or() {
-    write_rf(ip.cregh(), al_or(rf[ip.cregh()], rf[ip.cregl()]));
+    write_rf(ip.c_regh(), alu_or(rf[ip.c_regh()], rf[ip.c_regl()]));
     DASM_OP(c.or)
     PROF_G(c_or)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_xor() {
-    write_rf(ip.cregh(), al_xor(rf[ip.cregh()], rf[ip.cregl()]));
+    write_rf(ip.c_regh(), alu_xor(rf[ip.c_regh()], rf[ip.c_regl()]));
     DASM_OP(c.xor)
     PROF_G(c_xor)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_sub() {
-    write_rf(ip.cregh(), al_sub(rf[ip.cregh()], rf[ip.cregl()]));
+    write_rf(ip.c_regh(), alu_sub(rf[ip.c_regh()], rf[ip.c_regl()]));
     DASM_OP(c.sub)
     PROF_G(c_sub)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
-    DASM_RD_UPDATE_P(ip.cregh());
+    DASM_RD_UPDATE_P(ip.c_regh());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_addi4spn() {
-    if (ip.imm_c_4spn() == 0) tu.e_illegal_inst("c.addi4spn (imm=0)", 4);
+    if (ip.c_imm_4spn() == 0) tu.e_illegal_inst("c.addi4spn (imm=0)", 4);
     if (inst == 0) tu.e_illegal_inst("c.inst == 0", 4);
-    write_rf(ip.cregl(), al_addi(rf[2], ip.imm_c_4spn()));
+    write_rf(ip.c_regl(), alu_addi(rf[2], ip.c_imm_4spn()));
     DASM_OP(c.addi4spn)
     PROF_G(c_addi4spn)
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
-                << TO_I32(ip.imm_c_4spn());
-    DASM_RD_UPDATE_P(ip.cregl());
+                << TO_I32(ip.c_imm_4spn());
+    DASM_RD_UPDATE_P(ip.c_regl());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_slli() {
-    write_rf(ip.rd(), al_sll(rf[ip.rd()], ip.imm_c_slli()));
+    write_rf(ip.rd(), alu_sll(rf[ip.rd()], ip.c_imm_slli()));
     DASM_OP(c.slli)
     PROF_G(c_slli)
     #ifdef PROFILERS_EN
     prof_fusion.attack({trigger::slli_lea, inst, mem->just_inst(pc + 2), true});
     #endif
     #ifdef DASM_EN
-    DASM_OP_RD << "," << FHEXN(TO_I32(ip.imm_c_slli()), 2);
+    DASM_OP_RD << "," << FHEXN(TO_I32(ip.c_imm_slli()), 2);
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_mv() {
-    write_rf(ip.rd(), rf[ip.crs2()]);
+    write_rf(ip.rd(), rf[ip.c_rs2()]);
     DASM_OP(c.mv)
     PROF_G(c_mv)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
+    DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_add() {
-    write_rf(ip.rd(), al_add(rf[ip.rd()], rf[ip.crs2()]));
+    write_rf(ip.rd(), alu_add(rf[ip.rd()], rf[ip.c_rs2()]));
     DASM_OP(c.add)
     PROF_G(c_add)
     #ifdef DASM_EN
-    DASM_OP_RD << "," << rf_names[ip.crs2()][rf_names_idx];
+    DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
     #endif
     next_pc = pc + 2;
@@ -1743,94 +1741,95 @@ void core::c_add() {
 
 // C extension - memory operations
 void core::c_lw() {
-    uint32_t rs1 = rf[ip.cregh()];
-    uint32_t loaded = mem->rd(rs1 + ip.imm_c_mem(), 4u);
+    uint32_t rs1 = rf[ip.c_regh()];
+    uint32_t loaded = mem->rd(rs1 + ip.c_imm_mem(), 4u);
     if (tu.is_trapped()) return;
-    write_rf(ip.cregl(), loaded);
+    write_rf(ip.c_regl(), loaded);
     DASM_OP(c.lw)
     PROF_G(c_lw)
     #ifdef PROFILERS_EN
-    prof.log_stack_access_load((rs1 + ip.imm_c_mem()) > TO_U32(rf[2]));
+    prof.log_stack_access_load((rs1 + ip.c_imm_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef DASM_EN
-    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
-                << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
-    DASM_RD_UPDATE_P(ip.cregl());
+    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
+                << "(" << rf_names[ip.c_regh()][rf_names_idx] << ")";
+    DASM_RD_UPDATE_P(ip.c_regl());
     if (ip.rd()) {
         dasm.asm_ss << " <- mem["
-                    << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_mem()) + rs1) << "]";
+                    << MEM_ADDR_FORMAT(TO_I32(ip.c_imm_mem()) + rs1) << "]";
     }
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_lwsp() {
-    uint32_t loaded = mem->rd(rf[2] + ip.imm_c_lwsp(), 4u);
+    uint32_t loaded = mem->rd(rf[2] + ip.c_imm_lwsp(), 4u);
     if (tu.is_trapped()) return;
     write_rf(ip.rd(), loaded);
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
     #ifdef PROFILERS_EN
-    prof.log_stack_access_load((rf[2] + ip.imm_c_lwsp()) > TO_U32(rf[2]));
+    prof.log_stack_access_load((rf[2] + ip.c_imm_lwsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef DASM_EN
-    DASM_OP_RD << "," << TO_I32(ip.imm_c_lwsp())
+    DASM_OP_RD << "," << TO_I32(ip.c_imm_lwsp())
                << "(" << rf_names[2][rf_names_idx] << ")";
     DASM_RD_UPDATE;
     if (ip.rd()) {
         dasm.asm_ss << " <- mem["
-                    << MEM_ADDR_FORMAT(TO_I32(ip.imm_c_lwsp()) + rf[2]) << "]";
+                    << MEM_ADDR_FORMAT(TO_I32(ip.c_imm_lwsp()) + rf[2]) << "]";
     }
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_sw() {
-    mem->wr(rf[ip.cregh()] + ip.imm_c_mem(), rf[ip.cregl()], 4u);
+    mem->wr(rf[ip.c_regh()] + ip.c_imm_mem(), rf[ip.c_regl()], 4u);
     if (tu.is_trapped()) return;
     DASM_OP(c.sw)
     PROF_G(c_sw)
     #ifdef PROFILERS_EN
     prof.log_stack_access_store(
-        (rf[ip.cregh()] + ip.imm_c_mem()) > TO_U32(rf[2]));
+        (rf[ip.c_regh()] + ip.c_imm_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef DASM_EN
-    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.imm_c_mem())
-                << "(" << rf_names[ip.cregh()][rf_names_idx] << ")";
-    DASM_MEM_UPDATE_P(TO_I32(ip.imm_c_mem()) + rf[ip.cregh()], ip.cregl());
+    dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
+                << "(" << rf_names[ip.c_regh()][rf_names_idx] << ")";
+    DASM_MEM_UPDATE_P(TO_I32(ip.c_imm_mem()) + rf[ip.c_regh()], ip.c_regl());
     #endif
     next_pc = pc + 2;
 }
 
 void core::c_swsp() {
-    mem->wr(rf[2] + ip.imm_c_swsp(), rf[ip.crs2()], 4u);
+    mem->wr(rf[2] + ip.c_imm_swsp(), rf[ip.c_rs2()], 4u);
     if (tu.is_trapped()) return;
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
     #ifdef PROFILERS_EN
-    prof.log_stack_access_store((rf[2] + ip.imm_c_swsp()) > TO_U32(rf[2]));
+    prof.log_stack_access_store((rf[2] + ip.c_imm_swsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
     #endif
     #ifdef DASM_EN
-    dasm.asm_ss << dasm.op << " " << rf_names[ip.crs2()][rf_names_idx] << ","
-                << TO_I32(ip.imm_c_swsp())
+    dasm.asm_ss << dasm.op << " " << rf_names[ip.c_rs2()][rf_names_idx] << ","
+                << TO_I32(ip.c_imm_swsp())
                 << "(" << rf_names[2][rf_names_idx] << ")";
-    DASM_MEM_UPDATE_P(TO_I32(ip.imm_c_swsp()) + rf[2], ip.crs2());
+    DASM_MEM_UPDATE_P(TO_I32(ip.c_imm_swsp()) + rf[2], ip.c_rs2());
     #endif
     next_pc = pc + 2;
 }
 
 // C extension - control transfer operations
 void core::c_beqz() {
-    if (rf[ip.cregh()] == 0) {
-        next_pc = pc + ip.imm_c_b();
+    uint32_t target_pc = (pc + ip.c_imm_b());
+    if (rf[ip.c_regh()] == 0) {
+        next_pc = target_pc;
         PROF_B_T(c_beqz)
     } else {
         next_pc = pc + 2;
-        PROF_B_NT(c_beqz, _c_b)
+        PROF_B_NT(c_beqz, target_pc)
     }
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
@@ -1839,17 +1838,18 @@ void core::c_beqz() {
     #endif
     DASM_OP(c.beqz)
     #ifdef DASM_EN
-    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
+    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.c_imm_b()) << std::dec;
     #endif
 }
 
 void core::c_bnez() {
-    if (rf[ip.cregh()] != 0) {
-        next_pc = pc + ip.imm_c_b();
+    uint32_t target_pc = (pc + ip.c_imm_b());
+    if (rf[ip.c_regh()] != 0) {
+        next_pc = target_pc;
         PROF_B_T(c_bnez)
     } else {
         next_pc = pc + 2;
-        PROF_B_NT(c_beqz, _c_b)
+        PROF_B_NT(c_beqz, target_pc)
     }
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
@@ -1858,12 +1858,12 @@ void core::c_bnez() {
     #endif
     DASM_OP(c.bnez)
     #ifdef DASM_EN
-    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.imm_c_b()) << std::dec;
+    DASM_OP_CREGH << "," << std::hex << pc + TO_I32(ip.c_imm_b()) << std::dec;
     #endif
 }
 
 void core::c_j() {
-    next_pc = pc + ip.imm_c_j();
+    next_pc = pc + ip.c_imm_j();
     DASM_OP(c.j)
     PROF_J(c_j)
     #ifdef PROFILERS_EN
@@ -1871,13 +1871,13 @@ void core::c_j() {
     branch_taken = true;
     #endif
     #ifdef DASM_EN
-    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
+    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.c_imm_j())
                 << std::dec;
     #endif
 }
 
 void core::c_jal() {
-    next_pc = pc + ip.imm_c_j();
+    next_pc = pc + ip.c_imm_j();
     write_rf(1, pc + 2);
     DASM_OP(c.jal)
     PROF_J(c_jal)
@@ -1886,7 +1886,7 @@ void core::c_jal() {
     branch_taken = true;
     #endif
     #ifdef DASM_EN
-    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.imm_c_j())
+    dasm.asm_ss << dasm.op << " " << std::hex << pc + TO_I32(ip.c_imm_j())
                 << std::dec;
     DASM_RD_UPDATE_P(1);
     #endif

@@ -89,8 +89,8 @@ class core {
         #endif
 
         // instruction decoders
-        void al_reg();
-        void al_imm();
+        void alu_reg();
+        void alu_imm();
         void load();
         void store();
         void branch();
@@ -120,97 +120,97 @@ class core {
             #else // !HW_MODELS_EN
             inst = mem->rd_inst(pc);
             #endif
-            ip.inst = inst;
+            ip.set(inst);
         }
 
         // arithmetic and logic operations
-        uint32_t al_add(uint32_t a, uint32_t b) {
+        uint32_t alu_add(uint32_t a, uint32_t b) {
             return TO_I32(a) + TO_I32(b);
         };
-        uint32_t al_sub(uint32_t a, uint32_t b) {
+        uint32_t alu_sub(uint32_t a, uint32_t b) {
             return TO_I32(a) - TO_I32(b);
         };
-        uint32_t al_sll(uint32_t a, uint32_t b) { return a << b; };
-        uint32_t al_srl(uint32_t a, uint32_t b) { return a >> b; };
-        uint32_t al_sra(uint32_t a, uint32_t b) {
+        uint32_t alu_sll(uint32_t a, uint32_t b) { return a << b; };
+        uint32_t alu_srl(uint32_t a, uint32_t b) { return a >> b; };
+        uint32_t alu_sra(uint32_t a, uint32_t b) {
             b &= 0x1f;
             return TO_I32(a) >> b;
         };
-        uint32_t al_slt(uint32_t a, uint32_t b) {
+        uint32_t alu_slt(uint32_t a, uint32_t b) {
             return TO_I32(a) < TO_I32(b);
         };
-        uint32_t al_sltu(uint32_t a, uint32_t b) { return a < b; };
-        uint32_t al_xor(uint32_t a, uint32_t b) { return a ^ b; };
-        uint32_t al_or(uint32_t a, uint32_t b) { return a | b; };
-        uint32_t al_and(uint32_t a, uint32_t b) { return a & b; };
+        uint32_t alu_sltu(uint32_t a, uint32_t b) { return a < b; };
+        uint32_t alu_xor(uint32_t a, uint32_t b) { return a ^ b; };
+        uint32_t alu_or(uint32_t a, uint32_t b) { return a | b; };
+        uint32_t alu_and(uint32_t a, uint32_t b) { return a & b; };
 
         // arithmetic and logic operations - M extension
-        uint32_t al_mul(uint32_t a, uint32_t b) {
+        uint32_t alu_mul(uint32_t a, uint32_t b) {
             return TO_I32(a) * TO_I32(b);
         };
-        uint32_t al_mulh(uint32_t a, uint32_t b) {
+        uint32_t alu_mulh(uint32_t a, uint32_t b) {
             int64_t res = TO_I64(TO_I32(a)) * TO_I64(TO_I32(b));
             return res >> 32;
         };
-        uint32_t al_mulhsu(uint32_t a, uint32_t b) {
+        uint32_t alu_mulhsu(uint32_t a, uint32_t b) {
             int64_t res = TO_I64(TO_I32(a)) * TO_I64(b);
             return res >> 32;
         };
-        uint32_t al_mulhu(uint32_t a, uint32_t b) {
+        uint32_t alu_mulhu(uint32_t a, uint32_t b) {
             uint64_t res = TO_U64(a) * TO_U64(b);
             return res >> 32;
         };
-        uint32_t al_div(uint32_t a, uint32_t b) {
+        uint32_t alu_div(uint32_t a, uint32_t b) {
             // division by zero
             if (b == 0) return -1;
             // overflow (most negative int divided by -1)
             if (a == 0x80000000 && b == 0xffffffff) return a;
             return TO_I32(a) / TO_I32(b);
         };
-        uint32_t al_divu(uint32_t a, uint32_t b) {
+        uint32_t alu_divu(uint32_t a, uint32_t b) {
             if (b == 0) return 0xffffffff;
             return a / b;
         };
-        uint32_t al_rem(uint32_t a, uint32_t b) {
+        uint32_t alu_rem(uint32_t a, uint32_t b) {
             if (b == 0) return a;
             if (a == 0x80000000 && b == 0xffffffff) return 0;
             return TO_I32(a) % TO_I32(b);
         };
-        uint32_t al_remu(uint32_t a, uint32_t b) {
+        uint32_t alu_remu(uint32_t a, uint32_t b) {
             if (b == 0) return a;
             return a % b;
         };
 
         // arithmetic and logic operations - Zbb extension partial
-        uint32_t al_max(uint32_t a, uint32_t b) {
+        uint32_t alu_max(uint32_t a, uint32_t b) {
             return TO_I32(a) > TO_I32(b) ? a : b;
         };
 
-        uint32_t al_maxu(uint32_t a, uint32_t b) {
+        uint32_t alu_maxu(uint32_t a, uint32_t b) {
             return a > b ? a : b;
         };
 
-        uint32_t al_min(uint32_t a, uint32_t b) {
+        uint32_t alu_min(uint32_t a, uint32_t b) {
             return TO_I32(a) < TO_I32(b) ? a : b;
         };
 
-        uint32_t al_minu(uint32_t a, uint32_t b) {
+        uint32_t alu_minu(uint32_t a, uint32_t b) {
             return a < b ? a : b;
         };
 
         // arithmetic and logic immediate operations
-        uint32_t al_addi(uint32_t a, uint32_t b) { return al_add(a, b); };
-        uint32_t al_slli(uint32_t a, uint32_t b) {
+        uint32_t alu_addi(uint32_t a, uint32_t b) { return alu_add(a, b); };
+        uint32_t alu_slli(uint32_t a, uint32_t b) {
             #ifdef PROFILERS_EN
             prof_fusion.attack(
                 {trigger::slli_lea, inst, mem->just_inst(pc + 4), false}
             );
             #endif
-            return al_sll(a, b);
+            return alu_sll(a, b);
         };
-        uint32_t al_srli(uint32_t a, uint32_t b) { return al_srl(a, b); };
-        uint32_t al_srai(uint32_t a, uint32_t b) { return al_sra(a, b); };
-        uint32_t al_slti(uint32_t a, uint32_t b) {
+        uint32_t alu_srli(uint32_t a, uint32_t b) { return alu_srl(a, b); };
+        uint32_t alu_srai(uint32_t a, uint32_t b) { return alu_sra(a, b); };
+        uint32_t alu_slti(uint32_t a, uint32_t b) {
             if (inst == INST_HINT_LOG_START) {
                 prof_state(prof_pc.should_start());
                 return 0;
@@ -219,12 +219,12 @@ class core {
                 running = !prof_pc.should_exit();
                 return 0;
             }
-            return al_slt(a, b);
+            return alu_slt(a, b);
         };
-        uint32_t al_sltiu(uint32_t a, uint32_t b) { return al_sltu(a, b); };
-        uint32_t al_xori(uint32_t a, uint32_t b) { return al_xor(a, b); };
-        uint32_t al_ori(uint32_t a, uint32_t b) { return al_or(a, b); };
-        uint32_t al_andi(uint32_t a, uint32_t b) { return al_and(a, b); };
+        uint32_t alu_sltiu(uint32_t a, uint32_t b) { return alu_sltu(a, b); };
+        uint32_t alu_xori(uint32_t a, uint32_t b) { return alu_xor(a, b); };
+        uint32_t alu_ori(uint32_t a, uint32_t b) { return alu_or(a, b); };
+        uint32_t alu_andi(uint32_t a, uint32_t b) { return alu_and(a, b); };
 
         // load operations
         uint32_t load_lb(uint32_t addr) {
@@ -367,35 +367,27 @@ class core {
         #endif
 
     private:
+        cfg_t cfg;
+        // internal state
         bool running;
         std::array<int32_t, 32> rf;
         memory* mem;
         uint32_t pc;
         uint32_t next_pc;
         uint32_t inst;
+        // other state
         uint64_t inst_cnt;
-        uint64_t inst_cnt_csr;
-        uint64_t cycle_cnt_csr;
         trap tu;
         uint8_t rf_names_idx;
         uint8_t rf_names_w;
         uint8_t csr_names_w;
         bool end_dump_state;
-        std::string out_dir;
         prof_pc_t prof_pc;
         bool prof_act; // used for both profiling and hw models
-        #ifdef PROFILERS_EN
-        bool prof_trace;
-        #endif
-        #ifdef DASM_EN
-        std::ofstream log_ofstream;
-        bool dasm_update_csr = false;
-        dasm_str dasm;
-        hwmi_str hwmi;
-        logging_flags_t logf;
-        #endif
-        cfg_t cfg;
+
         bool csr_updated = false;
+        uint64_t inst_cnt_csr;
+        uint64_t cycle_cnt_csr;
 
         std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 43> supported_csrs = {{
@@ -459,6 +451,7 @@ class core {
         }};
 
         #ifdef PROFILERS_EN
+        bool prof_trace;
         profiler prof;
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
@@ -483,6 +476,16 @@ class core {
         hw_status_t next_ic_hm;
         hw_running_stats_t hwrs;
         #endif
+
+        #ifdef DASM_EN
+        std::ofstream log_ofstream;
+        bool dasm_update_csr = false;
+        dasm_str dasm;
+        hwmi_str hwmi;
+        logging_flags_t logf;
+        #endif
+
+        std::string out_dir;
 
         // register names
         static constexpr std::array<std::array<std::string_view, 2>, 32>
