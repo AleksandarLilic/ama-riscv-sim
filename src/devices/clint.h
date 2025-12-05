@@ -16,8 +16,8 @@ class clint : public dev {
     public:
         clint();
         void trap_setup(trap* tu) { this->tu = tu; }
-        virtual uint32_t rd(uint32_t addr, uint32_t size) override;
-        virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
+        virtual uint64_t rd_64(uint32_t addr) override;
+        virtual void wr_64(uint32_t addr, uint64_t data) override;
         uint64_t get_mtime_shadow();
         void set_mip(uint32_t* csr_mip);
         void update_mtime(uint64_t mtime_elapsed);

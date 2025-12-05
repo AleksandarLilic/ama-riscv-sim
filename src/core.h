@@ -124,12 +124,8 @@ class core {
         }
 
         // arithmetic and logic operations
-        uint32_t alu_add(uint32_t a, uint32_t b) {
-            return TO_I32(a) + TO_I32(b);
-        };
-        uint32_t alu_sub(uint32_t a, uint32_t b) {
-            return TO_I32(a) - TO_I32(b);
-        };
+        uint32_t alu_add(uint32_t a, uint32_t b) { return a + b; };
+        uint32_t alu_sub(uint32_t a, uint32_t b) { return a - b; };
         uint32_t alu_sll(uint32_t a, uint32_t b) { return a << b; };
         uint32_t alu_srl(uint32_t a, uint32_t b) { return a >> b; };
         uint32_t alu_sra(uint32_t a, uint32_t b) {

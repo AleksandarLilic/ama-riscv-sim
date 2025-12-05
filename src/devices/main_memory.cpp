@@ -141,7 +141,7 @@ void main_memory::burn_elf(std::string test_elf) {
 }
 
 uint32_t main_memory::rd_inst(uint32_t addr) {
-    uint32_t inst = dev::rd(addr, 4);
+    uint32_t inst = dev::rd_32(addr);
     #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
     uint32_t inst_ic = icache.rd(BASE_ADDR + addr, 4);

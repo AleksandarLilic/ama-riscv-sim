@@ -26,7 +26,7 @@ class bp_if {
         bp_t bp_combined_p2_type;
         bool bp_run_all;
         std::unique_ptr<bp> active_bp;
-        bp_ideal* bp_ideal_arch;
+        bp_ideal* bp_ideal_arch = nullptr;
         bool bp_ideal_is_active;
         std::vector<std::unique_ptr<bp>> all_bps;
         std::map<uint32_t, bi_app_stats_t> bi_app_stats;

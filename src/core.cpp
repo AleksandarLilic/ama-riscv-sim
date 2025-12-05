@@ -238,6 +238,7 @@ void core::exec_inst() {
         if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
         #endif
         log_ofstream << "\n";
+        //log_ofstream << std::flush;
 
         if (logf.state) {
             log_ofstream << print_state(dasm_update_csr) << "\n";
@@ -463,7 +464,7 @@ void core::store() {
 }
 
 void core::branch() {
-    [[maybe_unused]] bool taken; // unused if built without PROFILERS_EN
+    [[maybe_unused]] bool taken = false; // unused if built without PROFILERS_EN
     next_pc = (pc + 4); // updated in CASE_BRANCH if taken
     uint32_t target_pc = (pc + ip.imm_b());
     switch (ip.funct3()) {

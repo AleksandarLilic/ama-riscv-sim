@@ -7,7 +7,7 @@ CXXFLAGS += -Werror -pedantic -std=gnu++17
 CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
 CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
 #CXXFLAGS += -g -fno-omit-frame-pointer # for perf profiling, but drop -s above
-#CXXFLAGS += -O0 -g # -fsanitize=address -fsanitize=undefined # gdb build
+#CXXFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 #CXXFLAGS += -ftime-report
 LDFLAGS :=
@@ -33,6 +33,7 @@ COSIM_OBJECTS := $(filter-out $(BDIR)/hw_models/%.o $(BDIR)/main.o, $(OBJECTS))
 
 USER_DEFINES =
 DEFINES := -DDASM_EN
+#DEFINES += -DDEBUG
 #DEFINES += -DRV32C
 #DEFINES += -DUART_INPUT_EN
 
