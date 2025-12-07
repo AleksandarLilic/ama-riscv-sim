@@ -9,7 +9,7 @@
 #define PROF_JSON_ENTRY(name, count) \
     "\"" << name << "\"" << ": {\"count\": " << count << "},"
 
-#define PROF_JSON_ENTRY_J(name, count_taken, count_taken_fwd, \
+#define PROF_JSON_ENTRY_B(name, count_taken, count_taken_fwd, \
                           count_not_taken, count_not_taken_fwd) \
     "\"" << name << "\"" << ": {\"count\": " << count_taken + count_not_taken \
     << ", \"breakdown\": {" \
@@ -40,7 +40,7 @@ enum class opc_g {
     // trap
     i_mret, i_wfi,
 
-    // custom al
+    // custom alu
     i_add16, i_add8, i_sub16, i_sub8,
     i_mul16, i_mul16u, i_mul8, i_mul8u,
     i_dot16, i_dot8, i_dot4,
@@ -77,7 +77,7 @@ enum class opc_g {
 };
 
 // TODO: store PC for each branch?
-enum class opc_j {
+enum class opc_b {
     // RV32I
     i_beq, i_bne, i_blt, i_bge, i_bltu, i_bgeu, i_jalr, i_jal,
     // C extension
@@ -105,7 +105,7 @@ struct inst_prof_g {
     uint32_t count;
 };
 
-struct inst_prof_j {
+struct inst_prof_b {
     std::string name;
     uint32_t count_taken;
     uint32_t count_taken_fwd;
@@ -170,16 +170,17 @@ struct cnt_t {
         uint32_t rest = 0;
         uint32_t nop = 0;
         uint32_t branch = 0;
-        uint32_t jump = 0;
+        uint32_t jal = 0;
+        uint32_t jalr = 0;
         uint32_t load = 0;
         uint32_t store = 0;
         uint32_t mem = 0;
         uint32_t mul = 0;
         uint32_t div = 0;
-        uint32_t al = 0;
+        uint32_t alu = 0;
         uint32_t zbb = 0;
         uint32_t dot_c = 0;
-        uint32_t al_c = 0;
+        uint32_t alu_c = 0;
         uint32_t mul_c = 0;
         uint32_t unpk_c = 0;
         uint32_t scp_c = 0;
@@ -187,9 +188,11 @@ struct cnt_t {
     public:
         void find_mem() { mem = load + store; }
         void find_rest() {
-            rest = tot - nop - branch - jump - mem -
-                   mul - div - al - zbb -
-                   dot_c - al_c - mul_c - unpk_c - scp_c;
+            rest = (
+                tot - nop - branch - jal - jalr - mem -
+                mul - div - alu - zbb -
+                dot_c - alu_c - mul_c - unpk_c - scp_c
+            );
         }
         float_t get_perc(uint32_t count) {
             if (count == 0 || tot == 0) return 0.0;
@@ -203,16 +206,17 @@ struct perc_t {
         float_t rest = 0.0;
         float_t nop = 0.0;
         float_t branch = 0.0;
-        float_t jump = 0.0;
+        float_t jal = 0.0;
+        float_t jalr = 0.0;
         float_t load = 0.0;
         float_t store = 0.0;
         float_t mem = 0.0;
         float_t mul = 0.0;
         float_t div = 0.0;
-        float_t al = 0.0;
+        float_t alu = 0.0;
         float_t zbb = 0.0;
         float_t dot_c = 0.0;
-        float_t al_c = 0.0;
+        float_t alu_c = 0.0;
         float_t mul_c = 0.0;
         float_t unpk_c = 0.0;
         float_t scp_c = 0.0;
@@ -246,7 +250,7 @@ class profiler {
         std::vector<trace_entry> trace;
         #endif
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
-        std::array<inst_prof_j, TO_U32(opc_j::_count)> prof_j_arr;
+        std::array<inst_prof_b, TO_U32(opc_b::_count)> prof_b_arr;
         std::array<std::array<uint32_t, 3>, 32> prof_rf_usage = {0};
         sparsity_cnt_t sparsity_cnt;
         bool trace_en;
@@ -260,7 +264,7 @@ class profiler {
         void add_te();
         void track_sp(const uint32_t sp);
         void log_inst(opc_g opc, uint64_t inc);
-        void log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc);
+        void log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
         void log_stack_access_load(bool in_range) {
             if (active) stack_access.loading(in_range);
@@ -295,23 +299,32 @@ class profiler {
             opc_g::i_c_ebreak
         };
 
-        static constexpr std::array<opc_j, 6> comp_opcs_j = {
-            opc_j::i_c_j, opc_j::i_c_jal, opc_j::i_c_jr, opc_j::i_c_jalr,
-            opc_j::i_c_beqz, opc_j::i_c_bnez,
+        static constexpr std::array<opc_b, 6> comp_opcs_b = {
+            opc_b::i_c_j, opc_b::i_c_jal, opc_b::i_c_jr, opc_b::i_c_jalr,
+            opc_b::i_c_beqz, opc_b::i_c_bnez,
         };
 
         // per type breakdowns
-        static constexpr std::array<opc_j, 8> branch_opcs = {
-            opc_j::i_beq, opc_j::i_bne, opc_j::i_blt,
-            opc_j::i_bge, opc_j::i_bltu, opc_j::i_bgeu,
+        // direct, conditinal branches
+        static constexpr std::array<opc_b, 8> branch_opcs = {
+            opc_b::i_beq, opc_b::i_bne, opc_b::i_blt,
+            opc_b::i_bge, opc_b::i_bltu, opc_b::i_bgeu,
             // compressed
-            opc_j::i_c_beqz, opc_j::i_c_bnez
+            opc_b::i_c_beqz, opc_b::i_c_bnez
         };
 
-        static constexpr std::array<opc_j, 6> jump_opcs = {
-            opc_j::i_jalr, opc_j::i_jal,
+        // direct, unconditional branches
+        static constexpr std::array<opc_b, 3> jal_opcs = {
+            opc_b::i_jal,
             // compressed
-            opc_j::i_c_j, opc_j::i_c_jal, opc_j::i_c_jr, opc_j::i_c_jalr,
+            opc_b::i_c_j, opc_b::i_c_jal,
+        };
+
+        // indirect, unconditional branches
+        static constexpr std::array<opc_b, 3> jalr_opcs = {
+            opc_b::i_jalr,
+            // compressed
+            opc_b::i_c_jr, opc_b::i_c_jalr,
         };
 
         static constexpr std::array<opc_g, 7> load_opcs = {
@@ -361,7 +374,7 @@ class profiler {
             opc_g::i_dot16, opc_g::i_dot8, opc_g::i_dot4,
         };
 
-        static constexpr std::array<opc_g, 4> al_c_opcs = {
+        static constexpr std::array<opc_g, 4> alu_c_opcs = {
             opc_g::i_add16, opc_g::i_add8, opc_g::i_sub16, opc_g::i_sub8,
         };
 

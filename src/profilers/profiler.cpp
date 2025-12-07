@@ -123,21 +123,21 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_g_arr[TO_U32(opc_g::i_c_ebreak)] = {"c.ebreak", 0};
 
     // Control transfer
-    prof_j_arr[TO_U32(opc_j::i_beq)] = {"beq", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_bne)] = {"bne", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_blt)] = {"blt", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_bge)] = {"bge", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_bltu)] = {"bltu", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_jalr)] = {"jalr", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_jal)] = {"jal", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_beq)] = {"beq", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_bne)] = {"bne", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_blt)] = {"blt", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_bge)] = {"bge", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_bltu)] = {"bltu", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_jalr)] = {"jalr", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_jal)] = {"jal", 0, 0, 0, 0};
     // C extension
-    prof_j_arr[TO_U32(opc_j::i_c_j)] = {"c.j", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_c_jal)] = {"c.jal", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_c_jr)] = {"c.jr", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_c_jalr)] = {"c.jalr", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_c_beqz)] = {"c.beqz", 0, 0, 0, 0};
-    prof_j_arr[TO_U32(opc_j::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_j)] = {"c.j", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_jal)] = {"c.jal", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_jr)] = {"c.jr", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_jalr)] = {"c.jalr", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_beqz)] = {"c.beqz", 0, 0, 0, 0};
+    prof_b_arr[TO_U32(opc_b::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
 }
 
 void profiler::add_te() {
@@ -166,18 +166,18 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
     }
 }
 
-void profiler::log_inst(opc_j opc, bool taken, b_dir_t b_dir, uint64_t inc) {
+void profiler::log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     if (active) {
         inst_cnt_prof++;
         if (taken) {
-            prof_j_arr[TO_U32(opc)].count_taken += inc;
+            prof_b_arr[TO_U32(opc)].count_taken += inc;
             if (b_dir == b_dir_t::forward) {
-                prof_j_arr[TO_U32(opc)].count_taken_fwd += inc;
+                prof_b_arr[TO_U32(opc)].count_taken_fwd += inc;
             }
         } else {
-            prof_j_arr[TO_U32(opc)].count_not_taken += inc;
+            prof_b_arr[TO_U32(opc)].count_not_taken += inc;
             if (b_dir == b_dir_t::forward) {
-                prof_j_arr[TO_U32(opc)].count_not_taken_fwd += inc;
+                prof_b_arr[TO_U32(opc)].count_not_taken_fwd += inc;
             }
         }
     }
@@ -205,8 +205,8 @@ void profiler::log_to_file_and_print() {
         }
     }
 
-    for (const auto &e : prof_j_arr) {
-        ofs << PROF_JSON_ENTRY_J(e.name, e.count_taken, e.count_taken_fwd,
+    for (const auto &e : prof_b_arr) {
+        ofs << PROF_JSON_ENTRY_B(e.name, e.count_taken, e.count_taken_fwd,
                                  e.count_not_taken, e.count_not_taken_fwd);
         ofs << "\n";
         cnt.tot += e.count_taken + e.count_not_taken;
@@ -240,25 +240,26 @@ void profiler::log_to_file_and_print() {
     // compressed inst cnt
     uint32_t comp_cnt = 0;
     for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
-    for (auto &c: comp_opcs_j) {
-        comp_cnt += prof_j_arr[TO_U32(c)].count_taken +
-                    prof_j_arr[TO_U32(c)].count_not_taken;
+    for (auto &c: comp_opcs_b) {
+        comp_cnt += prof_b_arr[TO_U32(c)].count_taken +
+                    prof_b_arr[TO_U32(c)].count_not_taken;
     }
     float_t comp_perc = cnt.get_perc(comp_cnt);
 
     // per type breakdown
     for (auto &b: branch_opcs) {
-        cnt.branch += prof_j_arr[TO_U32(b)].count_taken +
-                      prof_j_arr[TO_U32(b)].count_not_taken;
+        cnt.branch += prof_b_arr[TO_U32(b)].count_taken +
+                      prof_b_arr[TO_U32(b)].count_not_taken;
     }
-    for (auto &j: jump_opcs) cnt.jump += prof_j_arr[TO_U32(j)].count_taken;
+    for (auto &j: jal_opcs) cnt.jal += prof_b_arr[TO_U32(j)].count_taken;
+    for (auto &j: jalr_opcs) cnt.jalr += prof_b_arr[TO_U32(j)].count_taken;
     for (auto &l: load_opcs) cnt.load += prof_g_arr[TO_U32(l)].count;
     for (auto &s: store_opcs) cnt.store += prof_g_arr[TO_U32(s)].count;
-    for (auto &a: alu_opcs) cnt.al += prof_g_arr[TO_U32(a)].count;
+    for (auto &a: alu_opcs) cnt.alu += prof_g_arr[TO_U32(a)].count;
     for (auto &m: mul_opcs) cnt.mul += prof_g_arr[TO_U32(m)].count;
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
     for (auto &f: dot_c_opcs) cnt.dot_c += prof_g_arr[TO_U32(f)].count;
-    for (auto &a: al_c_opcs) cnt.al_c += prof_g_arr[TO_U32(a)].count;
+    for (auto &a: alu_c_opcs) cnt.alu_c += prof_g_arr[TO_U32(a)].count;
     for (auto &m: mul_c_opcs) cnt.mul_c += prof_g_arr[TO_U32(m)].count;
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
@@ -269,15 +270,16 @@ void profiler::log_to_file_and_print() {
 
     perc_t perc;
     perc.branch = cnt.get_perc(cnt.branch);
-    perc.jump = cnt.get_perc(cnt.jump);
+    perc.jal = cnt.get_perc(cnt.jal);
+    perc.jalr = cnt.get_perc(cnt.jalr);
     perc.load = cnt.get_perc(cnt.load);
     perc.store = cnt.get_perc(cnt.store);
     perc.mem = cnt.get_perc(cnt.mem);
-    perc.al = cnt.get_perc(cnt.al);
+    perc.alu = cnt.get_perc(cnt.alu);
     perc.mul = cnt.get_perc(cnt.mul);
     perc.div = cnt.get_perc(cnt.div);
     perc.dot_c = cnt.get_perc(cnt.dot_c);
-    perc.al_c = cnt.get_perc(cnt.al_c);
+    perc.alu_c = cnt.get_perc(cnt.alu_c);
     perc.mul_c = cnt.get_perc(cnt.mul_c);
     perc.zbb = cnt.get_perc(cnt.zbb);
     perc.unpk_c = cnt.get_perc(cnt.unpk_c);
@@ -298,8 +300,8 @@ void profiler::log_to_file_and_print() {
 
     std::cout << INDENT << "Control:"
               << " B: " << cnt.branch << "(" << perc.branch << "%),"
-              << " J: " << cnt.jump << "(" << perc.jump << "%),"
-              << " NOP: " << cnt.nop << "(" << perc.nop << "%)"
+              << " JAL: " << cnt.jal << "(" << perc.jal << "%),"
+              << " JALR: " << cnt.jalr << "(" << perc.jalr << "%)"
               << "\n";
 
     std::cout << INDENT << "Memory:"
@@ -309,7 +311,7 @@ void profiler::log_to_file_and_print() {
               << "\n";
 
     std::cout << INDENT << "Compute: "
-              << " A&L: " << cnt.al << "(" << perc.al << "%),"
+              << " ALU: " << cnt.alu << "(" << perc.alu << "%),"
               << " MUL: " << cnt.mul << "(" << perc.mul << "%),"
               << " DIV: " << cnt.div << "(" << perc.div << "%)"
               << "\n";
@@ -319,18 +321,19 @@ void profiler::log_to_file_and_print() {
               << "\n";
 
     std::cout << INDENT << "SIMD:"
-              << " A&L: " << cnt.al_c << "(" << perc.al_c << "%),"
+              << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
               << " MUL: " << cnt.mul_c << "(" << perc.mul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
               << " UNPK: " << cnt.unpk_c << "(" << perc.unpk_c << "%)"
               << "\n";
 
-    std::cout << INDENT << "Hints:"
+    std::cout << INDENT << "Hint:"
               << " SCP: " << cnt.scp_c << "(" << perc.scp_c << "%)"
               << "\n";
 
-    std::cout << INDENT
-              << "Rest: " << cnt.rest << "(" << perc.rest << "%)"
+    std::cout << INDENT << "Other:"
+              << " NOP: " << cnt.nop << "(" << perc.nop << "%),"
+              << " Misc: " << cnt.rest << "(" << perc.rest << "%)"
               << "\n";
 
     if (prof_src == profiler_source_t::inst) {
