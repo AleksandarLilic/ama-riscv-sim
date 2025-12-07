@@ -262,6 +262,20 @@ def rolling_mean(data: pd.Series, win_size: int) -> pd.Series:
 
     return pd.Series(avg, index=data.index).round(3) # as series with og index
 
+def save_df_to_file(df: pd.DataFrame, out_path: str, format='csv') -> None:
+    legal_formats = ['csv', 'pkl', 'parquet']
+    if format not in legal_formats:
+        raise ValueError(f"Error: Unsupported format '{format}'. "
+                         f"Supported formats: {legal_formats}")
+    p = f"{out_path}.{format}"
+    if format == 'pkl':
+        df.to_pickle(p)
+    elif format == 'parquet':
+        df.to_parquet(p, index=False)
+    else:
+        df.to_csv(p, index=False)
+    print(f"Saved DataFrame to '{p}'")
+
 # common functions for plotting
 def find_loc_range(ax) -> int:
     ymin, ymax = ax.get_ylim()
@@ -281,7 +295,7 @@ def add_legend_for_hl_groups(ax, chart_type:str, ncol=1, nt=False) -> None:
         ax.legend(loc='lower right', title=title, framealpha=0.5, ncol=ncol)
 
     # put legend in the top right corner, outside the plot
-    elif chart_type == "trace_freq":
+    elif chart_type == "trace_hist":
         ax.legend(title=title, framealpha=0.5, loc='upper right',
                   bbox_to_anchor=(1.68, 1.03), borderaxespad=0., ncol=ncol)
     elif chart_type == "trace_exec":
@@ -430,150 +444,6 @@ plt.Axes:
         ax.axhline(y=end+4, color='k', linestyle='-', alpha=0.7, lw=0.5)
 
     return ax
-
-def draw_inst_profile(df, hl_inst_g, title, args) -> plt.Figure:
-    inst_profiled = df['count'].sum()
-    if inst_profiled == 0:
-        raise ValueError("No instructions in the json log")
-    df['i_type'] = df['name'].map(icfg.INST_TO_TYPE_DICT)
-    df['i_mem_type'] = df['name'].map(icfg.INST_TO_MEM_TYPE_DICT)
-    df['i_ops'] = df['name'].map(icfg.INST_TO_OPS_DICT)
-    df['ops'] = df['count'] * df['i_ops']
-
-    # filter out instructions if needed
-    if args.exclude:
-        df = df[~df['name'].isin(args.exclude)]
-
-    if args.exclude_type:
-        df = df[~df['i_type'].isin(args.exclude_type)]
-
-    if args.top:
-        df = df.tail(args.top)
-    if not args.allow_zero:
-        df = df[df['count'] != 0]
-
-    # separate the instructions by type for count
-    df_g = df[['i_type', 'count']].groupby('i_type').sum()
-    df_g = df_g.sort_values(by='count', ascending=True)
-
-    # separate the memory instructions by type for count
-    df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
-    df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
-
-    # separate the instructions by type for ops
-    df_ops_g = df[['i_type', 'ops']].groupby('i_type').sum()
-    df_ops_g = df_ops_g.sort_values(by='ops', ascending=True)
-    if not args.allow_zero:
-        df_ops_g = df_ops_g[df_ops_g['ops'] != 0]
-
-    # add a bar chart
-    fmt = smarter_eng_formatter()
-    ldf = [len(df_g), len(df_ops_g), len(df)]
-    ROWS, COLS = 3, 1
-    box = []
-    fig, ax = plt.subplots(
-        ROWS, COLS, figsize=(COLS*10, (ROWS*(sum(ldf)/10))+2),
-        height_ratios=ldf, constrained_layout=True)
-
-    suptitle_str = f"Execution profile for '{title}'"
-    suptitle_str += f"\nSamples profiled: {fmt(inst_profiled)}"
-    if args.exclude or args.exclude_type:
-        suptitle_str += f" ({df['count'].sum()} shown, "
-        suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
-    fig.suptitle(suptitle_str, size=12)
-
-    ax_type, ax_ops, ax_inst = ax
-    c = CLR["blue_b0"]
-    box.append(ax_type.barh(df_g.index, df_g['count'], color=c))
-    box.append(ax_ops.barh(df_ops_g.index, df_ops_g['ops'], color=c))
-    box.append(ax_inst.barh(df['name'], df['count'], color=c))
-
-    def get_h(fig, ax) -> Tuple[float, float]:
-        fig_w, fig_h = fig.get_size_inches()
-        bbox = ax.get_position() # relative to the figure (0–1)
-        #ax_w = bbox.width * fig_w
-        ax_h = bbox.height * fig_h
-        return ax_h
-
-    def find_y_margin(ax_h) -> float:
-        return (1 / ax_h / 20)
-
-    ax_type.margins(y=find_y_margin(get_h(fig, ax_type)))
-    ax_ops.margins(y=find_y_margin(get_h(fig, ax_ops)))
-    ax_inst.margins(y=find_y_margin(get_h(fig, ax_inst)))
-
-    y_labels = ["Instruction Type", "Operation", "Instruction"]
-    for a,bars,yl in zip(ax, box, y_labels):
-        # sum of all bar values on that axis
-        total = sum(bar.get_width() for bar in bars)
-        if a == ax_ops: # ops don't have %, can't compare them like that
-            labels = [f"{fmt(bar.get_width())}" for bar in bars]
-        else:
-            labels = [
-                f"{fmt(bar.get_width())} ({bar.get_width() / total:.1%})"
-                for bar in bars]
-        a.bar_label(bars, labels=labels, padding=3, fmt=fmt)
-        a.set_ylabel(yl)
-        a.grid(axis='x')
-        a.margins(x=0.15)
-        a.xaxis.set_major_formatter(FMT_AXIS)
-    ax[ROWS-1].set_xlabel(X_LABEL) # only label bottom axis
-
-    # highlight specific instructions, if any
-    hc = 0
-    added_hl = []
-    for hl_g in hl_inst_g:
-        for i, r in enumerate(box[ROWS-1]): # ax_inst bars
-            if df.iloc[i]['name'] in hl_g:
-                r.set_color(CLR_HL[hc])
-                if (CLR_HL[hc] not in added_hl):
-                    ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
-                    added_hl.append(CLR_HL[hc])
-        hc += 1
-
-    if len(hl_inst_g) > 0:
-        add_legend_for_hl_groups(ax_inst, "log")
-
-    using_def_hl = (icfg.HL_DEFAULT == hl_inst_g)
-    if using_def_hl: # also highlight ops and type charts
-        ncol = 0
-        for i, r in reversed(list(enumerate(box[0]))): # ax_type, largest first
-            op_type = df_g.index[i]
-            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
-            if clr != CLR_TAB_BLUE:
-                ncol += 1
-                r.set_color(clr)
-                ax_type.barh(0, 0, color=clr, label=op_type)
-        add_legend_for_hl_groups(ax_type, "log", ncol=ncol, nt=True)
-
-        ncol = 0
-        for i, r in reversed(list(enumerate(box[1]))): # ax_ops, largest first
-            op_type = df_ops_g.index[i]
-            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
-            if clr != CLR_TAB_BLUE:
-                ncol += 1
-                r.set_color(clr)
-                ax_ops.barh(0, 0, color=clr, label=op_type)
-        add_legend_for_hl_groups(ax_ops, "log", ncol=4, nt=True)
-
-    # add memory instructions breakdown, if any
-    df_mem_g = df_mem_g[df_mem_g['count'] != 0] # never label if count is zero
-    if len(df_mem_g) > 0:
-        mem_type_index = df_g.index.get_loc("MEM")
-        left_start = 0
-        for i, row in df_mem_g.iterrows():
-            rect_m = ax_type.barh(
-                mem_type_index, row['count'], left=left_start,
-                fill=False, edgecolor='none'
-            )
-            ax_type.bar_label(rect_m, padding=0, label_type='center', size=7)
-            if left_start == 0: # add black line at the end of load before store
-                bar_h = rect_m.patches[0].get_height()
-                h = [mem_type_index - (bar_h/2), mem_type_index + (bar_h/2)]
-                ax_type.plot([row['count'], row['count']], h, color='k', lw=1)
-            left_start += row['count']
-
-    return fig
 
 # dasm
 def backannotate_dasm(args, df, section) -> \
@@ -1143,7 +1013,151 @@ def plot_hw_hm(ax, df, col, win_size) -> None:
     ax.callbacks.connect("xlim_changed", _on_xlim_changed)
 
 # main drawing functions (entire figure)
-def draw_freq(df, hl_inst_g, title, symbols, args, ctype) -> \
+def draw_inst_breakdown(df, hl_inst_g, title, args) -> plt.Figure:
+    inst_profiled = df['count'].sum()
+    if inst_profiled == 0:
+        raise ValueError("No instructions in the json log")
+    df['i_type'] = df['name'].map(icfg.INST_TO_TYPE_DICT)
+    df['i_mem_type'] = df['name'].map(icfg.INST_TO_MEM_TYPE_DICT)
+    df['i_ops'] = df['name'].map(icfg.INST_TO_OPS_DICT)
+    df['ops'] = df['count'] * df['i_ops']
+
+    # filter out instructions if needed
+    if args.exclude:
+        df = df[~df['name'].isin(args.exclude)]
+
+    if args.exclude_type:
+        df = df[~df['i_type'].isin(args.exclude_type)]
+
+    if args.top:
+        df = df.tail(args.top)
+    if not args.allow_zero:
+        df = df[df['count'] != 0]
+
+    # separate the instructions by type for count
+    df_g = df[['i_type', 'count']].groupby('i_type').sum()
+    df_g = df_g.sort_values(by='count', ascending=True)
+
+    # separate the memory instructions by type for count
+    df_mem_g = df[['i_mem_type', 'count']].groupby('i_mem_type').sum()
+    df_mem_g = df_mem_g.sort_values(by='count', ascending=False)
+
+    # separate the instructions by type for ops
+    df_ops_g = df[['i_type', 'ops']].groupby('i_type').sum()
+    df_ops_g = df_ops_g.sort_values(by='ops', ascending=True)
+    if not args.allow_zero:
+        df_ops_g = df_ops_g[df_ops_g['ops'] != 0]
+
+    # add a bar chart
+    fmt = smarter_eng_formatter()
+    ldf = [len(df_g), len(df_ops_g), len(df)]
+    ROWS, COLS = 3, 1
+    box = []
+    fig, ax = plt.subplots(
+        ROWS, COLS, figsize=(COLS*10, (ROWS*(sum(ldf)/10))+2),
+        height_ratios=ldf, constrained_layout=True)
+
+    suptitle_str = f"Execution breakdown for '{title}'"
+    suptitle_str += f"\nSamples profiled: {fmt(inst_profiled)}"
+    if args.exclude or args.exclude_type:
+        suptitle_str += f" ({df['count'].sum()} shown, "
+        suptitle_str += f"{inst_profiled - df['count'].sum()} excluded)"
+    fig.suptitle(suptitle_str, size=12)
+
+    ax_type, ax_ops, ax_inst = ax
+    c = CLR["blue_b0"]
+    box.append(ax_type.barh(df_g.index, df_g['count'], color=c))
+    box.append(ax_ops.barh(df_ops_g.index, df_ops_g['ops'], color=c))
+    box.append(ax_inst.barh(df['name'], df['count'], color=c))
+
+    def get_h(fig, ax) -> Tuple[float, float]:
+        fig_w, fig_h = fig.get_size_inches()
+        bbox = ax.get_position() # relative to the figure (0–1)
+        #ax_w = bbox.width * fig_w
+        ax_h = bbox.height * fig_h
+        return ax_h
+
+    def find_y_margin(ax_h) -> float:
+        return (1 / ax_h / 20)
+
+    ax_type.margins(y=find_y_margin(get_h(fig, ax_type)))
+    ax_ops.margins(y=find_y_margin(get_h(fig, ax_ops)))
+    ax_inst.margins(y=find_y_margin(get_h(fig, ax_inst)))
+
+    y_labels = ["Instruction Type", "Operation", "Instruction"]
+    for a,bars,yl in zip(ax, box, y_labels):
+        # sum of all bar values on that axis
+        total = sum(bar.get_width() for bar in bars)
+        if a == ax_ops: # ops don't have %, can't compare them like that
+            labels = [f"{fmt(bar.get_width())}" for bar in bars]
+        else:
+            labels = [
+                f"{fmt(bar.get_width())} ({bar.get_width() / total:.1%})"
+                for bar in bars]
+        a.bar_label(bars, labels=labels, padding=3, fmt=fmt)
+        a.set_ylabel(yl)
+        a.grid(axis='x')
+        a.margins(x=0.15)
+        a.xaxis.set_major_formatter(FMT_AXIS)
+    ax[ROWS-1].set_xlabel(X_LABEL) # only label bottom axis
+
+    # highlight specific instructions, if any
+    hc = 0
+    added_hl = []
+    for hl_g in hl_inst_g:
+        for i, r in enumerate(box[ROWS-1]): # ax_inst bars
+            if df.iloc[i]['name'] in hl_g:
+                r.set_color(CLR_HL[hc])
+                if (CLR_HL[hc] not in added_hl):
+                    ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
+                    added_hl.append(CLR_HL[hc])
+        hc += 1
+
+    if len(hl_inst_g) > 0:
+        add_legend_for_hl_groups(ax_inst, "log")
+
+    using_def_hl = (icfg.HL_DEFAULT == hl_inst_g)
+    if using_def_hl: # also highlight ops and type charts
+        ncol = 0
+        for i, r in reversed(list(enumerate(box[0]))): # ax_type, largest first
+            op_type = df_g.index[i]
+            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
+            if clr != CLR_TAB_BLUE:
+                ncol += 1
+                r.set_color(clr)
+                ax_type.barh(0, 0, color=clr, label=op_type)
+        add_legend_for_hl_groups(ax_type, "log", ncol=ncol, nt=True)
+
+        ncol = 0
+        for i, r in reversed(list(enumerate(box[1]))): # ax_ops, largest first
+            op_type = df_ops_g.index[i]
+            clr = icfg.HL_COLORS_OPS_U.get(op_type, CLR_TAB_BLUE)
+            if clr != CLR_TAB_BLUE:
+                ncol += 1
+                r.set_color(clr)
+                ax_ops.barh(0, 0, color=clr, label=op_type)
+        add_legend_for_hl_groups(ax_ops, "log", ncol=4, nt=True)
+
+    # add memory instructions breakdown, if any
+    df_mem_g = df_mem_g[df_mem_g['count'] != 0] # never label if count is zero
+    if len(df_mem_g) > 0:
+        mem_type_index = df_g.index.get_loc("MEM")
+        left_start = 0
+        for i, row in df_mem_g.iterrows():
+            rect_m = ax_type.barh(
+                mem_type_index, row['count'], left=left_start,
+                fill=False, edgecolor='none'
+            )
+            ax_type.bar_label(rect_m, padding=0, label_type='center', size=7)
+            if left_start == 0: # add black line at the end of load before store
+                bar_h = rect_m.patches[0].get_height()
+                h = [mem_type_index - (bar_h/2), mem_type_index + (bar_h/2)]
+                ax_type.plot([row['count'], row['count']], h, color='k', lw=1)
+            left_start += row['count']
+
+    return fig
+
+def draw_hist(df, hl_inst_g, title, symbols, args, ctype) -> \
 Tuple[plt.Figure, RangeSlider]:
     cols, ylabel = ctype_check(ctype)
     FS = (15,13)
@@ -1184,7 +1198,7 @@ Tuple[plt.Figure, RangeSlider]:
             hc += 1
 
         if len(hl_inst_g) > 0:
-            add_legend_for_hl_groups(ax, "trace_freq")
+            add_legend_for_hl_groups(ax, "trace_hist")
 
     ax = annotate_chart(df, symbols, ax, args, ctype)
     if args.add_cache_lines:
@@ -1706,30 +1720,31 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     return df
 
 # main run functions
-def run_inst_profile(log, hl_inst_g, title, args) -> \
+def run_inst_breakdown(log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
 
     df = load_inst_prof(log)
-    fig = draw_inst_profile(df, hl_inst_g, title, args)
+    if args.save_exec_breakdown:
+        save_df_to_file(df, log.replace(".json", "_exec_breakdown"))
+    fig = draw_inst_breakdown(df, hl_inst_g, title, args)
 
     return df, fig
 
 def run_bin_trace(bin_log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
     df_t = load_bin_trace(bin_log, args)
-    df_ret = None
     figs_ret = {}
 
-    df_ret, df_t_ops, fig_tl, rsx_tl, fig_pc, fig2_pc, rsx2_pc = \
+    df_t_ops, fig_tl, rsx_tl, fig_pc_h, fig_pc_t, rsx2_t = \
         run_bin_trace_pc(df_t, hl_inst_g, title, args)
-    figs_ret['tl'] = fig_tl
-    figs_ret['pc'] = fig_pc
-    figs_ret['pc_exec'] = fig2_pc
+    figs_ret['timeline'] = fig_tl
+    figs_ret['pc_hist'] = fig_pc_h
+    figs_ret['pc_exec'] = fig_pc_t
 
-    fig_dmem, fig2_dmem, rsx2_dmem = \
+    fig_dmem_h, fig_dmem_t, rsx2_dmem_t = \
         run_bin_trace_dmem(df_t, title, args)
-    figs_ret['dmem'] = fig_dmem
-    figs_ret['dmem_exec'] = fig2_dmem
+    figs_ret['dmem_hist'] = fig_dmem_h
+    figs_ret['dmem_exec'] = fig_dmem_t
 
     fig_hw, rsx_hw = None, None
     if args.stats_trace:
@@ -1738,8 +1753,8 @@ Tuple[pd.DataFrame, plt.Figure]:
         fig_hw, rsx_hw = draw_stats_exec(df_t_ops, title, args)
         figs_ret['hw_exec'] = fig_hw
 
-    figs_exec = [fig_tl, fig2_pc, fig2_dmem, fig_hw]
-    rsx_exec = [rsx_tl, rsx2_pc, rsx2_dmem, rsx_hw]
+    figs_exec = [fig_tl, fig_pc_t, fig_dmem_t, fig_hw]
+    rsx_exec = [rsx_tl, rsx2_t, rsx2_dmem_t, rsx_hw]
 
     # link x ranges of all exec figs that exist
     first_ax = None
@@ -1752,20 +1767,21 @@ Tuple[pd.DataFrame, plt.Figure]:
             else:
                 link_xrange(first_ax, first_rs, fige.get_axes()[0], rse)
 
-    return df_ret, figs_ret
+    return figs_ret
 
 def run_bin_trace_pc(df_t, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, pd.DataFrame,
         plt.Figure, RangeSlider,
         plt.Figure, plt.Figure, RangeSlider]:
 
-    df_f = df_t.groupby('pc').agg(
+    # build pc histogram
+    df_h = df_t.groupby('pc').agg(
         isz=('isz', 'first'), # get only the first value
         count=('cpi', 'sum') # count them all (size of the group)
     ).reset_index()
-    df_f = df_f.sort_values(by='pc', ascending=True)
-    df_f['pc'] = df_f['pc'].astype(int)
-    df_f['pc_hex'] = df_f['pc'].apply(lambda x: f'{x:08x}')
+    df_h = df_h.sort_values(by='pc', ascending=True)
+    df_h['pc'] = df_h['pc'].astype(int)
+    df_h['pc_hex'] = df_h['pc'].apply(lambda x: f'{x:08x}')
 
     #if args.pc_begin:
     #    df_t = df_t.loc[df_t.pc > hex2int(args.pc_begin)]
@@ -1776,11 +1792,11 @@ Tuple[pd.DataFrame, pd.DataFrame,
     m_hl_groups = []
     if args.dasm:
         m_hl_groups = hl_inst_g
-        symbols, df_map = backannotate_dasm(args, df_f, "text")
+        symbols, df_map = backannotate_dasm(args, df_h, "text")
 
         # merge df_map into df_f by keeping only records in the df_f
-        df_f = pd.merge(df_f, df_map, how='left', left_on='pc', right_on='pc')
-        df_f['count'] = df_f['count'].astype(int) # after merge, count is float
+        df_h = pd.merge(df_h, df_map, how='left', left_on='pc', right_on='pc')
+        df_h['count'] = df_h['count'].astype(int) # after merge, count is float
         df_t = pd.merge(df_t, df_map, how='left', left_on='pc', right_on='pc')
 
         df_t['i_type'] = df_t['inst_mnm'].map(icfg.INST_TO_TYPE_DICT)
@@ -1825,56 +1841,60 @@ Tuple[pd.DataFrame, pd.DataFrame,
             # and backfill to cover leading NaNs
             df_t['symbol'] = df_t['symbol'].ffill().bfill()
 
-    if args.save_converted_trace:
-        df_s = df_t.copy()
+    if args.save_decoded_trace:
+        # slightly reformat and save decoded trace
+        df_d = df_t.copy()
         # revert NaNs to 0 for saving as hex
-        df_s.inst = df_s.inst.replace(np.nan, 0).astype(int)
-        df_s.pc = df_s.pc.replace(np.nan, 0).astype(int)
+        df_d.inst = df_d.inst.replace(np.nan, 0).astype(int)
+        df_d.pc = df_d.pc.replace(np.nan, 0).astype(int)
         if args.dasm:
             # drop 'dtyp' to avoid duplication
             # as 'i_type' & 'i_mem_type' columns are added with dasm parsing
-            df_s = df_s.drop(columns=['dtyp'])
+            df_d = df_d.drop(columns=['dtyp'])
         # some columns to hex
         for c in ["inst"]:
-            df_s[c] = df_s[c].apply(lambda x: f'{x:08X}')
+            df_d[c] = df_d[c].apply(lambda x: f'{x:08X}')
         for c in ["pc", "next_pc", "dmem", "sp"]:
             digits = int(math.ceil(np.log2(BASE_ADDR)/4))
-            df_s[c] = df_s[c].apply(lambda x: f'{x:0{digits}X}')
-        df_s.to_csv(args.trace.replace('.bin', '.bin.csv'), index=False)
+            df_d[c] = df_d[c].apply(lambda x: f'{x:0{digits}X}')
+        save_df_to_file(df_d, args.trace.replace('.bin', '_decoded'))
 
-    fig_tl, fig, rsy, rsx_tl, fig2, rsx2, rsy2 = [None] * 7
+    if args.save_pc_hist:
+        save_df_to_file(df_h, args.trace.replace(".bin", "_pc_hist"))
+
+    fig_tl, fig_h, rsy_h, rsx_tl, fig_t, rsx_t, rsy_t = [None] * 7
     if args.symbols_only or \
-        not (args.pc_freq or args.pc_trace or args.timeline):
+        not (args.pc_hist or args.pc_trace or args.timeline):
         # early exit, no plotting for PC
-        return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
+        return df_t, fig_tl, rsx_tl, fig_h, fig_t, rsx_t
 
     if args.timeline:
         fig_tl, rsx_tl = draw_timeline_exec(df_t, title)
-    if args.pc_freq:
-        fig, rsy = draw_freq(df_f, m_hl_groups, title, symbols, args, 'pc')
+    if args.pc_hist:
+        fig_h, rsy_h = draw_hist(df_h, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
-        fig2, rsx2, rsy2 = draw_exec(
+        fig_t, rsx_t, rsy_t = draw_exec(
             df_t, m_hl_groups, title, symbols, args, 'pc')
 
     # link y ranges if both figures exist
-    if rsy != None and rsy2 != None:
-        link_yrange(fig.get_axes()[0], rsy, fig2.get_axes()[0], rsy2)
+    if rsy_h != None and rsy_t != None:
+        link_yrange(fig_h.get_axes()[0], rsy_h, fig_t.get_axes()[0], rsy_t)
 
-    return df_f, df_t, fig_tl, rsx_tl, fig, fig2, rsx2
+    return df_t, fig_tl, rsx_tl, fig_h, fig_t, rsx_t
 
 def run_bin_trace_dmem(df_t, title, args) -> \
 Tuple[plt.Figure, plt.Figure, RangeSlider]:
 
-    fig, rsy, fig2, rsx2, rsy2 = [None] * 5
-    if not (args.symbols_only or args.dmem_freq or args.dmem_trace):
-        return fig, fig2, rsx2
+    fig_h, rsy_h, fig_t, rsx_t, rsy_t = [None] * 5
+    if not (args.symbols_only or args.dmem_hist or args.dmem_trace):
+        return fig_h, fig_t, rsx_t
 
     symbols = {}
     if args.dasm:
         symbols, _ = backannotate_dasm(args, None, "data")
 
-    if args.symbols_only or not (args.dmem_freq or args.dmem_trace):
-        return fig, fig2, rsx2
+    if args.symbols_only or not (args.dmem_hist or args.dmem_trace):
+        return fig_h, fig_t, rsx_t
 
     df_t['dmem'] = df_t['dmem'].replace(0, np.nan) # gaps in dmem acces/chart
 
@@ -1884,95 +1904,104 @@ Tuple[plt.Figure, plt.Figure, RangeSlider]:
     #    df_t = df_t.loc[df_t.dmem < hex2int(args.dmem_end)]
 
     def expand_byte_accesses(df_t: pd.DataFrame) -> pd.DataFrame:
-        # Work only on rows with dsz > 0
-        df = df_t.loc[df_t['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
+        # work only on rows with dsz > 0
+        df_e = df_t.loc[df_t['dsz'] > 0, ['dmem', 'dsz', 'dtyp']]
 
         # repeat indices
-        rep_idx = np.repeat(df.index.to_numpy(), df['dsz'].to_numpy())
-        out = df.loc[rep_idx, ['dmem', 'dtyp']].copy()
-        out['dsz'] = 1
+        rep_idx = np.repeat(df_e.index.to_numpy(), df_e['dsz'].to_numpy())
+        df_ec = df_e.loc[rep_idx, ['dmem', 'dtyp']].copy()
+        df_ec['dsz'] = 1
 
         # offset within each original row
-        out['dmem'] = out['dmem'].to_numpy() + \
-            out.groupby(level=0).cumcount().to_numpy()
+        df_ec['dmem'] = df_ec['dmem'].to_numpy() + \
+            df_ec.groupby(level=0).cumcount().to_numpy()
 
-        out.reset_index(drop=True, inplace=True)
-        return out
+        df_ec.reset_index(drop=True, inplace=True)
+        return df_ec
 
     # NOTE: expand_byte_accesses takes awfully long time for large traces
-    if args.dmem_freq:
-        # to bytes as ISA is byte addressable, combined accesses for freq plot
+    if args.dmem_hist:
+        # to bytes as ISA is byte addressable, combined accesses for hist plot
         df_exp = expand_byte_accesses(df_t)
-        df = df_exp.groupby('dmem').agg(
+        # build dmem histogram
+        df_h = df_exp.groupby('dmem').agg(
             dsz=('dsz', 'first'), # get only the first value
             count=('dmem', 'size') # count them all (size of the group)
         ).reset_index()
-        df = df.sort_values(by='dmem', ascending=True)
-        df['dmem'] = df['dmem'].astype(int)
-        df['dmem_hex'] = df['dmem'].apply(lambda x: f'{x:08x}')
+        df_h = df_h.sort_values(by='dmem', ascending=True)
+        df_h['dmem'] = df_h['dmem'].astype(int)
+        df_h['dmem_hex'] = df_h['dmem'].apply(lambda x: f'{x:08x}')
 
         # FIXME: why was this ever needed? some corner case?
         #if df.iloc[0]['dmem'] == 0:
         #    df = df.drop(0)
 
-        fig, rsy = draw_freq(df, [], title, symbols, args, ctype='dmem')
+        fig_h, rsy_h = draw_hist(df_h, [], title, symbols, args, ctype='dmem')
+
+        if args.save_dmem_hist:
+            save_df_to_file(df_h, args.trace.replace(".bin", "_dmem_hist"))
 
     if args.dmem_trace:
-        fig2, rsx2, rsy2 = draw_exec(df_t, [], title, symbols, args, 'dmem')
+        fig_t, rsx_t, rsy_t = draw_exec(df_t, [], title, symbols, args, 'dmem')
 
     # link y ranges if both figures exist
-    if rsy != None and rsy2 != None:
-        link_yrange(fig.get_axes()[0], rsy, fig2.get_axes()[0], rsy2)
+    if ((rsy_h != None) and (rsy_t != None)):
+        link_yrange(fig_h.get_axes()[0], rsy_h, fig_t.get_axes()[0], rsy_t)
 
-    return fig, fig2, rsx2
+    return fig_h, fig_t, rsx_t
 
 # args
 def parse_args() -> argparse.Namespace:
     TRACE_LIMIT = 1_000_000 # should be able to do more than this easily, but make user aware they have a lot of samples
-    parser = argparse.ArgumentParser(description="Analysis of memory access logs and traces")
+    parser = argparse.ArgumentParser(description="Workload analysis tool")
     # either
     parser.add_argument('-i', '--inst_profile', type=str, help="Path to instruction profiling output 'inst_profile.json'")
     # or
     parser.add_argument('-t', '--trace', type=str, help="Path to binary execution trace 'trace_clk.bin'")
 
-    # instruction count log only options
-    parser.add_argument('--exclude', type=inst_exists, nargs='+', help="Exclude specific instructions. Instruction profile only option")
-    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(icfg.INST_T.keys())}. Instruction profile only option")
-    parser.add_argument('--top', type=int, help="Number of N most common instructions to display. Default is all. Instruction profile only option")
-    parser.add_argument('--allow_zero', action='store_true', default=False, help="Allow instructions with zero count to be displayed. Instruction profile only option")
+    # instruction breakdown only options
+    INST_ONLY = "Instruction profile only option"
+    parser.add_argument('--exclude', type=inst_exists, nargs='+', help=f"Exclude specific instructions. {INST_ONLY}")
+    parser.add_argument('--exclude_type', type=inst_type_exists, nargs='+', help=f"Exclude specific instruction types. Available types are: {', '.join(icfg.INST_T.keys())}. {INST_ONLY}")
+    parser.add_argument('--top', type=int, help=f"Number of N most common instructions to display. Default is all. {INST_ONLY}")
+    parser.add_argument('--allow_zero', action='store_true', default=False, help=f"Allow instructions with zero count to be displayed. {INST_ONLY}")
+    parser.add_argument('--save_exec_breakdown', action='store_true', help=f"Save data used for execution breakdown chart, formatted as a CSV. {INST_ONLY}")
 
     # trace only options
-    parser.add_argument('--dasm', type=str, help="Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. Trace only option")
+    TRACE_ONLY = "Trace only option"
+    parser.add_argument('--dasm', type=str, help=f"Path to disassembly 'dasm' file to backannotate the trace. This file and the new annotated file is saved in the same directory as the input trace with *.prof.<original ext> suffix. {TRACE_ONLY}")
 
-    parser.add_argument('--sample_begin', type=int, help="Show only samples after this sample. Applied before any other filtering options. Trace only option")
-    parser.add_argument('--sample_end', type=int, help="Show only samples before this sample. Applied before any other filtering options. Trace only option")
-    parser.add_argument('--clk', action='store_true', help="Trace is from the RTL simulation with real clock. Trace only option") # TODO: can it be autodetected?
-    parser.add_argument('--freq', type=int, default=FREQ_DEFAULT, help="Core clock frequency in [MHz]. Trace only option")
-    parser.add_argument('--sample_begin_norm', action='store_true', help="Normalize trace start to 0th sample. Trace only option")
+    parser.add_argument('--sample_begin', type=int, help=f"Show only samples after this sample. Applied before any other filtering options. {TRACE_ONLY}")
+    parser.add_argument('--sample_end', type=int, help=f"Show only samples before this sample. Applied before any other filtering options. {TRACE_ONLY}")
+    parser.add_argument('--clk', action='store_true', help=f"Trace is from the RTL simulation with real clock. {TRACE_ONLY}") # TODO: can it be autodetected?
+    parser.add_argument('--freq', type=int, default=FREQ_DEFAULT, help=f"Core clock frequency in [MHz]. {TRACE_ONLY}")
+    parser.add_argument('--sample_begin_norm', action='store_true', help=f"Normalize trace start to 0th sample. {TRACE_ONLY}")
 
-    parser.add_argument('--timeline', action='store_true', help="Plot top of stack trace as timeline. Requires --dasm. Trace only option")
-    parser.add_argument('--pc_freq', action='store_true', help="Plot PC frequency. Each instruction as a separate entry. Trace only option")
-    parser.add_argument('--pc_trace', action='store_true', help="Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). Trace only option")
-    parser.add_argument('--no_pc_limit', action='store_true', help="Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. Trace only option")
-    parser.add_argument('--pc_begin', type=str, help="Show only PCs after this PC (hex). Applied after --no_pc_limit. Trace only option")
-    parser.add_argument('--pc_end', type=str, help="Show only PCs before this PC (hex). Applied after --no_pc_limit. Trace only option")
+    parser.add_argument('--timeline', action='store_true', help=f"Plot top of stack trace as timeline. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--pc_hist', action='store_true', help=f"Plot PC histogram. Each instruction is assigned to a separate bin. {TRACE_ONLY}")
+    parser.add_argument('--pc_trace', action='store_true', help=f"Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). {TRACE_ONLY}")
+    parser.add_argument('--no_pc_limit', action='store_true', help=f"Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. {TRACE_ONLY}")
+    parser.add_argument('--pc_begin', type=str, help=f"Show only PCs after this PC (hex). Applied after --no_pc_limit. {TRACE_ONLY}")
+    parser.add_argument('--pc_end', type=str, help=f"Show only PCs before this PC (hex). Applied after --no_pc_limit. {TRACE_ONLY}")
 
-    parser.add_argument('--dmem_freq', action='store_true', help="Plot DMEM frequency. Each byte is plotted as a separate entry. Trace only option")
-    parser.add_argument('--dmem_trace', action='store_true', help="Plot DMEM time trace. Each accessed memory location is plotted using its respective size (1/2/4 B). Trace only option")
-    parser.add_argument('--no_dmem_limit', action='store_true', help="Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Same as --no_pc_limit but for DMEM. Trace only option")
-    parser.add_argument('--dmem_begin', type=str, help="Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. Trace only option")
-    parser.add_argument('--dmem_end', type=str, help="Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. Trace only option")
+    parser.add_argument('--dmem_hist', action='store_true', help=f"Plot DMEM histogram. Each byte is assigned to a separate bin. {TRACE_ONLY}")
+    parser.add_argument('--dmem_trace', action='store_true', help=f"Plot DMEM time trace. Each accessed memory location is plotted using its respective size (1/2/4 B). {TRACE_ONLY}")
+    parser.add_argument('--no_dmem_limit', action='store_true', help=f"Don't limit the DMEM range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Same as --no_pc_limit but for DMEM. {TRACE_ONLY}")
+    parser.add_argument('--dmem_begin', type=str, help=f"Show only DMEM addresses after this address (hex). Applied after --no_dmem_limit. {TRACE_ONLY}")
+    parser.add_argument('--dmem_end', type=str, help=f"Show only DMEM addresses before this address (hex). Applied after --no_dmem_limit. {TRACE_ONLY}")
 
-    parser.add_argument('--stats_trace', action='store_true', help="Plot stats and hardware (model) counters time trace. Trace only option. Eequires trace from either ISA sim with HW models or RTL sim")
-    parser.add_argument('--win_size_stats', type=int, default=32, help="Number of samples to use for rolling average window for stats plots (IPC, OPC, etc.). Trace only option")
-    parser.add_argument('--win_size_hw', type=int, default=16, help="Number of samples to use for rolling average window for hardware (model) plots. Trace only option")
+    parser.add_argument('--stats_trace', action='store_true', help=f"Plot stats and hardware (model) counters time trace. Requires trace from either ISA sim with HW models or RTL sim. {TRACE_ONLY}")
+    parser.add_argument('--win_size_stats', type=int, default=32, help=f"Number of samples to use for rolling average window for stats plots (IPC, OPC, etc.). {TRACE_ONLY}")
+    parser.add_argument('--win_size_hw', type=int, default=16, help=f"Number of samples to use for rolling average window for hardware (model) plots. {TRACE_ONLY}")
 
-    parser.add_argument('--add_cache_lines', action='store_true', default=False, help="Add alternate coloring for cache lines (both Icache and Dcache). Useful to inspect data locality. Trace only option")
-    parser.add_argument('--symbols_only', action='store_true', help="Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. Doesn't display figures and ignores all save options except --save_csv. Trace only option")
-    parser.add_argument('--save_symbols', action='store_true', help="Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. Trace only option")
-    parser.add_argument('--print_symbols', action='store_true', help="Print symbols from dasm to the stdout. Requires --dasm. Trace only option")
-    parser.add_argument('--trace_limit', type=int, default=TRACE_LIMIT, help=f"Limit the number of address entries to display in the time series chart. Default is {TRACE_LIMIT}. Trace only option")
-    parser.add_argument('--save_converted_trace', action='store_true', help="Save the converted binary trace as a CSV file. Trace only option")
+    parser.add_argument('--add_cache_lines', action='store_true', default=False, help=f"Add alternate gray shading for cache lines (both Icache and Dcache). Useful to inspect data locality. {TRACE_ONLY}")
+    parser.add_argument('--symbols_only', action='store_true', help=f"Only backannotate and display the symbols found in the 'dasm' file. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--save_symbols', action='store_true', help=f"Save the symbols found in the 'dasm' file as a JSON file. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--print_symbols', action='store_true', help=f"Print symbols from dasm to the stdout. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--trace_limit', type=int, default=TRACE_LIMIT, help=f"Limit the number of address entries to display in the time series chart. Default is {TRACE_LIMIT}. {TRACE_ONLY}")
+    parser.add_argument('--save_decoded_trace', action='store_true', help=f"Save the decoded binary trace data, formatted as a CSV. {TRACE_ONLY}")
+    parser.add_argument('--save_pc_hist', action='store_true', help=f"Save data used for PC histogram chart, formatted as a CSV. {TRACE_ONLY}")
+    parser.add_argument('--save_dmem_hist', action='store_true', help=f"Save data used for DMEM histogram chart, formatted as a CSV. {TRACE_ONLY}")
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color. Defaults to predefined groups if not provided. Use 'off' to disable highlighting")
@@ -1982,7 +2011,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")
     parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
-    parser.add_argument('--save_csv', action='store_true', help="Save summary data used for charts formatted as CSV")
 
     return parser.parse_args()
 
@@ -2004,19 +2032,25 @@ def run_main(args) -> None:
     if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
-    at_least_one = \
-        args.timeline or args.pc_freq or args.pc_trace or \
-        args.dmem_freq or args.dmem_trace or \
+    at_least_one = ( \
+        args.timeline or args.pc_hist or args.pc_trace or \
+        args.dmem_hist or args.dmem_trace or \
         args.stats_trace
-    data_run = args.save_converted_trace or args.save_csv
-    if run_trace and not at_least_one and not data_run:
+    )
+
+    data_run = \
+        (args.save_pc_hist or args.save_dmem_hist or args.save_decoded_trace)
+
+    if (run_trace and (not at_least_one) and (not data_run)):
         raise ValueError("At least one trace-based plot needs to be specified "
                          "or trace needs to be saved for trace run")
 
     # filtering args
-    if args.sample_begin or args.sample_end or \
-       args.pc_begin or args.pc_end or \
-       args.dmem_begin or args.dmem_end:
+    flitering_applied = (
+        args.sample_begin or args.sample_end or \
+        args.pc_begin or args.pc_end or args.dmem_begin or args.dmem_end
+    )
+    if flitering_applied:
         if not args.trace:
             raise ValueError("trace filtering options require execution trace")
         if not args.dasm:
@@ -2038,19 +2072,19 @@ def run_main(args) -> None:
             raise ValueError("--dmem_begin must be less than --dmem_end")
 
     args_log = args.trace if run_trace else args.inst_profile
-    if not os.path.exists(args_log):
+    if (not os.path.exists(args_log)):
         raise FileNotFoundError(f"File {args_log} not found")
 
     hl_inst_g = []
     if (args.highlight == ["off"]):
         pass
     elif (args.highlight != None):
-        if len(args.highlight) > len(CLR_HL):
-            raise ValueError(f"Too many instructions to highlight " + \
-                             f"max is {len(CLR_HL)}, " + \
-                             f"got {len(args.highlight)}")
+        if (len(args.highlight) > len(CLR_HL)):
+            raise ValueError(
+                f"Too many instructions to highlight, " + \
+                f"max is {len(CLR_HL)}, got {len(args.highlight)}")
         else:
-            if len(args.highlight) == 1: # multiple arguments but 1 element
+            if (len(args.highlight) == 1): # multiple arguments but 1 element
                 hl_inst_g = args.highlight[0].split()
             else: # already split on whitespace (somehow?)
                 hl_inst_g = args.highlight
@@ -2073,27 +2107,32 @@ def run_main(args) -> None:
             matplotlib.rcParams['webagg.open_in_browser'] = False
 
     if run_trace:
-        df, figs_dict = run_bin_trace(args_log, hl_inst_g, title, args)
+        figs_dict = run_bin_trace(args_log, hl_inst_g, title, args)
         for name, fig in figs_dict.items():
             fig_arr.append([log_path.replace(ext, f"_{name}{ext}"), fig])
     else:
-        df, fig = run_inst_profile(args_log, hl_inst_g, title, args)
+        fig = run_inst_breakdown(args_log, hl_inst_g, title, args)
         fig_arr.append([log_path, fig])
         figs_dict = {"inst": fig}
-
-    if args.save_csv:
-        df.to_csv(args_log.replace(ext, "_summary.csv"), index=False)
 
     if args.symbols_only and run_trace:
         return
 
     if args.save_png: # each chart is saved as a separate PNG file
         for name, fig in (fig_arr):
-            fig.savefig(name.replace(" ", "_").replace(ext, ".png"))
+            if fig == None:
+                continue
+            out = name.replace(" ", "_").replace(ext, ".png")
+            fig.savefig(out, dpi=300)
+            print(f"Saved PNG chart to: '{out}'")
 
     if args.save_svg: # each chart is saved as a separate SVG file
         for name, fig in (fig_arr):
-            fig.savefig(name.replace(" ", "_").replace(ext, ".svg"))
+            if fig == None:
+                continue
+            out = name.replace(" ", "_").replace(ext, ".svg")
+            fig.savefig(out)
+            print(f"Saved SVG chart to: '{out}'")
 
     if not args.silent:
         if args.browser:
