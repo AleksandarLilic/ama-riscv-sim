@@ -122,7 +122,7 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_g_arr[TO_U32(opc_g::i_c_lui)] = {"c.lui", 0};
     prof_g_arr[TO_U32(opc_g::i_c_ebreak)] = {"c.ebreak", 0};
 
-    // Control transfer
+    // ctrl
     prof_b_arr[TO_U32(opc_b::i_beq)] = {"beq", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_bne)] = {"bne", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_blt)] = {"blt", 0, 0, 0, 0};
@@ -131,7 +131,8 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_b_arr[TO_U32(opc_b::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_jalr)] = {"jalr", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_jal)] = {"jal", 0, 0, 0, 0};
-    // C extension
+
+    // C extension ctrl
     prof_b_arr[TO_U32(opc_b::i_c_j)] = {"c.j", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_c_jal)] = {"c.jal", 0, 0, 0, 0};
     prof_b_arr[TO_U32(opc_b::i_c_jr)] = {"c.jr", 0, 0, 0, 0};
@@ -199,21 +200,34 @@ void profiler::log_to_file_and_print() {
     ofs.open(out_dir + "inst_profile" + pt + ".json");
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
-        if (i.name != "") {
+        if ((i.name != "")
+            #ifndef RV32C
+            && !(i.name.rfind("c.", 0) == 0)
+            #endif
+        ) {
             ofs << PROF_JSON_ENTRY(i.name, i.count) << "\n";
             cnt.tot += i.count;
         }
     }
 
     for (const auto &e : prof_b_arr) {
-        ofs << PROF_JSON_ENTRY_B(e.name, e.count_taken, e.count_taken_fwd,
-                                 e.count_not_taken, e.count_not_taken_fwd);
-        ofs << "\n";
-        cnt.tot += e.count_taken + e.count_not_taken;
+        // .starts_with() on c++20
+        if ((e.name != "")
+            #ifndef RV32C
+            && !(e.name.rfind("c.", 0) == 0)
+            #endif
+        ) {
+            ofs << PROF_JSON_ENTRY_B(
+                e.name, e.count_taken, e.count_taken_fwd,
+                e.count_not_taken, e.count_not_taken_fwd
+            );
+            ofs << "\n";
+            cnt.tot += e.count_taken + e.count_not_taken;
+        }
     }
 
     min_sp = BASE_ADDR + MEM_SIZE - min_sp; // remove offset
-    ofs << "\"_max_sp_usage\": " << min_sp << ",\n";
+    ofs << INDENT << "\"_max_sp_usage\": " << min_sp << ",\n" << INDENT;
     if (prof_src == profiler_source_t::clock) {
         ofs << "\"_profiled_cycles\": " << cnt.tot;
     } else {
@@ -237,6 +251,7 @@ void profiler::log_to_file_and_print() {
         ofs.close();
     }
 
+    #ifdef RV32C
     // compressed inst cnt
     uint32_t comp_cnt = 0;
     for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
@@ -245,6 +260,7 @@ void profiler::log_to_file_and_print() {
                     prof_b_arr[TO_U32(c)].count_not_taken;
     }
     float_t comp_perc = cnt.get_perc(comp_cnt);
+    #endif
 
     // per type breakdown
     for (auto &b: branch_opcs) {
@@ -294,8 +310,10 @@ void profiler::log_to_file_and_print() {
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Profiler: "
               << "Inst: " << cnt.tot
+              #ifdef RV32C
               << " - 32/16-bit: " << cnt.tot - comp_cnt << "/" << comp_cnt
               << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
+              #endif
               << "\n";
 
     std::cout << INDENT << "Control:"
@@ -310,7 +328,7 @@ void profiler::log_to_file_and_print() {
               << "(" << perc.load << "%/" << perc.store << "%)"
               << "\n";
 
-    std::cout << INDENT << "Compute: "
+    std::cout << INDENT << "Compute:"
               << " ALU: " << cnt.alu << "(" << perc.alu << "%),"
               << " MUL: " << cnt.mul << "(" << perc.mul << "%),"
               << " DIV: " << cnt.div << "(" << perc.div << "%)"
@@ -349,9 +367,9 @@ void profiler::log_to_file_and_print() {
     float_t sa_perc = 0.0;
     float_t sa_perc_load = 0.0;
     float_t sa_perc_store = 0.0;
-    if (cnt.mem) sa_perc = 100.0 * sa_cnt / cnt.mem;
-    if (cnt.load) sa_perc_load = 100.0 * sa_cnt_load / cnt.mem;
-    if (cnt.store) sa_perc_store = 100.0 * sa_cnt_store / cnt.mem;
+    if (cnt.mem) sa_perc = (100.0 * sa_cnt / cnt.mem);
+    if (cnt.load) sa_perc_load = (100.0 * sa_cnt_load / cnt.mem);
+    if (cnt.store) sa_perc_store = (100.0 * sa_cnt_store / cnt.mem);
     std::cout << "Profiler Stack: peak usage: " << min_sp << " B, Accesses: "
               << sa_cnt << "(" << sa_perc << "%) - L/S: "
               << sa_cnt_load << "/" << sa_cnt_store

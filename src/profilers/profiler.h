@@ -7,11 +7,12 @@
 #include <cassert>
 
 #define PROF_JSON_ENTRY(name, count) \
-    "\"" << name << "\"" << ": {\"count\": " << count << "},"
+    INDENT << "\"" << name << "\"" << ": {\"count\": " << count << "},"
 
 #define PROF_JSON_ENTRY_B(name, count_taken, count_taken_fwd, \
                           count_not_taken, count_not_taken_fwd) \
-    "\"" << name << "\"" << ": {\"count\": " << count_taken + count_not_taken \
+    INDENT << "\"" << name << "\"" \
+    << ": {\"count\": " << count_taken + count_not_taken \
     << ", \"breakdown\": {" \
     << "\"taken\": " << count_taken << ", " \
     << "\"taken_fwd\": " << count_taken_fwd << ", " \
