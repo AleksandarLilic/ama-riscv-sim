@@ -5,7 +5,7 @@ OPT := -O3 -flto
 TEST_DEFINES := $(foreach t,$(TYPES), $(t):-D$(shell echo $(t) | tr a-z A-Z))
 
 # so the icache is happy
-CODE_ALIGN := -falign-loops=64 # -falign-functions=64
+#CODE_ALIGN := -falign-loops=64 # -falign-functions=64
 PERF_COUNTERS ?= -DMHPM
 
 #MATH_LIB_FLAGS ?= -DLOAD_OPT # incompatible with CUSTOM_ISA
