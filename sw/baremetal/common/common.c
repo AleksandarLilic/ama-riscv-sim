@@ -107,10 +107,12 @@ void print_perf_counters(const perf_event_cnt_t* p) {
         "Bad Spec: %u, FE: %u, BE: %u, Retired: %u\n"
         "    L2: "
         "FE ICache: %u, FE Core: %u, "
-        "BE DCache: %u, BE Core: %u, SIMD retired: %u\n",
+        "BE DCache: %u, BE Core: %u, "
+        "INT: %u, SIMD: %u\n",
         (uint32_t)p->bad_spec, (uint32_t)p->fe,(uint32_t)p->be,(uint32_t)p->ret,
         (uint32_t)p->fe_ic, (uint32_t)p->fe_core,
-        (uint32_t)p->be_dc, (uint32_t)p->be_core, (uint32_t)p->ret_simd
+        (uint32_t)p->be_dc, (uint32_t)p->be_core,
+        (uint32_t)p->ret, (uint32_t)p->ret_simd
     );
 }
 
