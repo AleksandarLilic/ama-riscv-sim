@@ -2,8 +2,6 @@
 
 #include "bp.h"
 
-
-
 class bp_static : public bp {
     private:
         bp_sttc_t method;
@@ -11,7 +9,7 @@ class bp_static : public bp {
     public:
         bp_static(bp_cfg_t cfg) : bp(cfg) {
             size = 0;
-            cnt_ptr = nullptr;
+            pht_ptr = nullptr;
             uint8_t m = cfg.cnt_bits;
 
             if (m >= TO_U8(bp_sttc_t::_count)) {

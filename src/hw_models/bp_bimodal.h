@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bp.h"
-#include "bp_cnt.h"
 
 /*
 struct bp_bimodal_entry_t {
@@ -14,27 +13,29 @@ struct bp_bimodal_entry_t {
 
 class bp_bimodal : public bp {
     private:
-        bp_cnt cnt;
+        bp_pht pht;
         uint32_t idx_last;
+        uint32_t pc_bits;
 
     public:
         bp_bimodal(bp_cfg_t cfg) :
             bp(cfg),
-            cnt({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
+            pht({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
         {
-            size = (cnt.get_bit_size() + 4) >> 3; // to bytes, round up
-            cnt_ptr = &cnt;
+            size = (pht.get_bit_size() + 4) >> 3; // to bytes, round up
+            pht_ptr = &pht;
+            pc_bits = cfg.pc_bits;
         }
 
-        uint32_t get_idx(uint32_t pc) { return get_pc(pc, cnt.get_idx_mask()); }
+        uint32_t get_idx(uint32_t pc) { return get_pc(pc, pht.get_idx_mask()); }
 
         virtual uint32_t predict(uint32_t target_pc, uint32_t pc) override {
             idx_last = get_idx(pc);
-            return predict_common(target_pc, pc, cnt.thr_check(idx_last));
+            return predict_common(target_pc, pc, pht.thr_check(idx_last));
         }
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
-            cnt.update(taken, idx_last);
+            pht.update(taken, idx_last);
             return (next_pc == predicted_pc);
         }
 };

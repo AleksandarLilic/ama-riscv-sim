@@ -1,15 +1,13 @@
 #pragma once
 
 #include "bp.h"
-#include "bp_cnt.h"
 
 class bp_combined : public bp {
     public:
         const std::string type_name;
 
     private:
-        bp_cnt cnt;
-        std::array<bp_t, 2> bps;
+        bp_pht pht;
         std::array<std::unique_ptr<bp>, 2> bpsn;
         uint32_t idx_last;
 
@@ -19,22 +17,22 @@ class bp_combined : public bp {
             std::array<std::unique_ptr<bp>, 2> bps_in) :
                 bp(cfg),
                 type_name(cfg.type_name),
-                cnt({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
+                pht({cfg.pc_bits, cfg.cnt_bits, cfg.type_name})
         {
             bpsn = std::move(bps_in);
             size = bpsn[0]->get_size() + bpsn[1]->get_size();
-            size += (cnt.get_bit_size() + 4) >> 3;
+            size += (pht.get_bit_size() + 4) >> 3;
         }
 
         virtual ~bp_combined() = default;
 
         void add_size(uint32_t size) { this->size += size; }
 
-        uint32_t get_idx(uint32_t pc) { return get_pc(pc, cnt.get_idx_mask()); }
+        uint32_t get_idx(uint32_t pc) { return get_pc(pc, pht.get_idx_mask()); }
 
         uint32_t select(uint32_t pc) {
             idx_last = get_idx(pc);
-            if (cnt.thr_check(idx_last)) return 0;
+            if (pht.thr_check(idx_last)) return 0;
             else return 1;
         }
 
@@ -50,13 +48,13 @@ class bp_combined : public bp {
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             bool p0c = bpsn[0]->eval_and_update(taken, next_pc);
             bool p1c = bpsn[1]->eval_and_update(taken, next_pc);
-            cnt.update(p0c, p1c, idx_last);
+            pht.update(p0c, p1c, idx_last);
             return (next_pc == predicted_pc);
         }
 
         virtual void dump() override {
             std::cout << INDENT << type_name << ": " << std::endl;
-            cnt.dump();
+            pht.dump();
             std::cout << INDENT << "bp 1: ";
             bpsn[0]->dump();
             std::cout << INDENT << "bp 2: ";

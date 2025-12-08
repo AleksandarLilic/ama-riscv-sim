@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bp.h"
-#include "bp_cnt.h"
 
 struct bp_local_entry_t {
     // tag table, can be used to improve prediction
@@ -19,9 +18,9 @@ class bp_local : public bp {
         const uint32_t pc_mask;
         std::vector<bp_local_entry_t> hist_table;
         const uint8_t hist_bits;
-        const uint32_t cnt_entries_num;
+        const uint32_t pht_entries_num;
         const uint32_t hist_mask;
-        bp_cnt cnt; // counter per history entry
+        bp_pht pht;
         uint32_t idx_last;
         uint32_t hist_last;
 
@@ -51,15 +50,15 @@ class bp_local : public bp {
             pc_mask(hist_entries_num - 1),
             hist_table(hist_entries_num),
             hist_bits(cfg.hist_bits),
-            cnt_entries_num(1 << hist_bits),
-            hist_mask(cnt_entries_num - 1),
-            cnt({hist_bits, cfg.cnt_bits, cfg.type_name})
+            pht_entries_num(1 << hist_bits),
+            hist_mask(pht_entries_num - 1),
+            pht({hist_bits, cfg.cnt_bits, cfg.type_name})
         {
             for (auto& e : hist_table) e.hist_pattern = 0;
             size = hist_table.size() * hist_bits;
-            size += cnt.get_bit_size();
+            size += pht.get_bit_size();
             size = (size + 4) >> 3;
-            cnt_ptr = &cnt;
+            pht_ptr = &pht;
         }
 
         uint32_t get_idx(uint32_t pc) { return get_pc(pc, pc_mask); }
@@ -67,13 +66,13 @@ class bp_local : public bp {
         uint32_t predict(uint32_t target_pc, uint32_t pc) {
             idx_last = get_idx(pc);
             hist_last = hist_table[idx_last].hist_pattern & hist_mask;
-            return predict_common(target_pc, pc, cnt.thr_check(hist_last));
+            return predict_common(target_pc, pc, pht.thr_check(hist_last));
         }
 
         virtual bool eval_and_update(bool taken, uint32_t next_pc) override {
             uint32_t& hist_entry = hist_table[idx_last].hist_pattern;
             hist_entry = ((hist_entry << 1) | taken) & hist_mask;
-            cnt.update(taken, hist_last);
+            pht.update(taken, hist_last);
             return (next_pc == predicted_pc);
         }
 
@@ -84,7 +83,7 @@ class bp_local : public bp {
                 std::cout << std::hex << TO_U32(local_entry.hist_pattern) <<" ";
             }
             std::cout << std::endl;
-            cnt.dump();
+            pht.dump();
             std::cout << std::dec << std::endl;
         }
 };

@@ -2,8 +2,8 @@
 
 #include "defines.h"
 #include "hw_model_types.h"
+#include "bp_pht.h"
 #include "bp_stats.h"
-#include "bp_cnt.h"
 
 #ifdef RV32C
 #define BP_PC_CUTOFF_BITS 1
@@ -14,7 +14,7 @@
 class bp {
     public:
         const std::string type_name;
-        bp_cnt* cnt_ptr = nullptr;
+        bp_pht* pht_ptr = nullptr;
         const uint8_t pc_bits;
         const bp_pc_folds_t fold_pc;
 
@@ -66,9 +66,9 @@ class bp {
         virtual void goto_future(uint32_t /* correct_pc */) {}; // ideal bp only
 
         virtual void dump() {
-            if (cnt_ptr == nullptr) return;
+            if (pht_ptr == nullptr) return;
             std::cout << INDENT << type_name << ": " << std::endl;
-            cnt_ptr->dump();
+            pht_ptr->dump();
             std::cout << std::dec << std::endl;
         }
 
