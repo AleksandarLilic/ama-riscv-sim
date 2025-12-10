@@ -68,22 +68,25 @@ void set_up_perf_counters() {
     write_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, 0u);
-    // set up events
+    // set up events L1 events first
     write_csr(CSR_MHPMEVENT3, mhpmevent_bad_spec);
     write_csr(CSR_MHPMEVENT4, mhpmevent_fe);
     write_csr(CSR_MHPMEVENT5, mhpmevent_be);
+    // then L2 events
     write_csr(CSR_MHPMEVENT6, mhpmevent_fe_ic);
     write_csr(CSR_MHPMEVENT7, mhpmevent_be_dc);
     write_csr(CSR_MHPMEVENT8, mhpmevent_ret_simd);
 }
 
 void save_perf_counters(perf_event_cnt_t* p) {
-    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
-    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->fe);
-    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->be);
+    // read L2 events first
     read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->fe_ic);
     read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->be_dc);
     read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->ret_simd);
+    // then L1 events
+    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
+    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->fe);
+    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->be);
     read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
     // figure out the rest
     p->be_core = (p->be - p->be_dc);
