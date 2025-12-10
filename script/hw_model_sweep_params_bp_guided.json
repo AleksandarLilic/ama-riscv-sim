@@ -4,9 +4,9 @@
             "bp_static":  {"method": ["at", "ant", "btfn"]},
             "bp_bimodal": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9],                                            "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
             "bp_local":   {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "lhist_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
-            "bp_global":  {                                        "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none"]       },
-            "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
-            "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "gr_bits":    [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
+            "bp_global":  {                                        "ghr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none"]       },
+            "bp_gselect": {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "ghr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
+            "bp_gshare":  {"pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "ghr_bits":   [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [1, 2, 3, 4], "fold_pc": ["none", "all"]},
 
             "bp_combined-sttc_bmdl": {"predictors": ["bp_static", "bp_bimodal"],  "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},
             "bp_combined-sttc-locl": {"predictors": ["bp_static", "bp_local"],    "use_max_top_n": 24, "pc_bits": [1, 2, 3, 4, 5, 6, 7, 8, 9], "cnt_bits": [3, 4], "fold_pc": ["none", "all"]},

@@ -163,9 +163,9 @@ def get_bp_row_entries(bp_name, col_bits):
     if bp_name == "bp_local":
         return [1, 2**col_bits[0], 2**col_bits[1]]
     if bp_name == "bp_gshare":
-        return [2, 1, 2**col_bits[1]] # raise to the pow of max(pc, gr)
+        return [2, 1, 2**col_bits[1]] # raise to the pow of max(pc, ghr)
     if bp_name == "bp_gselect":
-        return [2, 1, 2**col_bits[1]] # raise to the pow of sum(pc, gr)
+        return [2, 1, 2**col_bits[1]] # raise to the pow of sum(pc, ghr)
     if bp_name in ["bp_bimodal", "bp_global", "bp_combined"]:
         return [1, 2**col_bits[0]]
 
@@ -178,18 +178,18 @@ def get_bp_all_col_bits(bp_name, params):
         return [int(params['bp_pc_bits']), int(params['bp_cnt_bits'])]
     if bp_name == "bp_gshare":
         return [
-            max(int(params['bp_pc_bits']), int(params['bp_gr_bits'])),
-            max(int(params['bp_pc_bits']), int(params['bp_gr_bits'])),
+            max(int(params['bp_pc_bits']), int(params['bp_ghr_bits'])),
+            max(int(params['bp_pc_bits']), int(params['bp_ghr_bits'])),
             int(params['bp_cnt_bits'])
         ]
     if bp_name == "bp_gselect":
         return [
-            max(int(params['bp_pc_bits']), int(params['bp_gr_bits'])),
-            (int(params['bp_pc_bits']) + int(params['bp_gr_bits'])),
+            max(int(params['bp_pc_bits']), int(params['bp_ghr_bits'])),
+            (int(params['bp_pc_bits']) + int(params['bp_ghr_bits'])),
             int(params['bp_cnt_bits'])
         ]
     if bp_name == "bp_global":
-        return [int(params['bp_gr_bits']), int(params['bp_cnt_bits'])]
+        return [int(params['bp_ghr_bits']), int(params['bp_cnt_bits'])]
     if bp_name == "bp_local":
         return [
             int(params['bp_pc_bits']),
@@ -220,9 +220,9 @@ for i in range(17, -1, -1):
 BP_ROW_LABELS = {
     "bp_static": [None, None, None], # placeholder
     "bp_bimodal": [["PC"], None, None],
-    "bp_gshare":  [["PC", "GR"], ["PC⊕GR"], None],
-    "bp_gselect": [["PC", "GR"], ["{PC,GR}"], None],
-    "bp_global": [["GR"], None, None],
+    "bp_gshare":  [["PC", "GHR"], ["PC⊕GHR"], None],
+    "bp_gselect": [["PC", "GHR"], ["{PC,GHR}"], None],
+    "bp_global": [["GHR"], None, None],
     "bp_local": [["PC"], None, None],
     "bp_combined": [["PC"], None, None],
 }
@@ -242,42 +242,42 @@ def get_bp_fig_w(all_col_bits):
         return cols_sum/1.3
     return cols_sum/1.5
 
-def get_bp_pc_gr_strings(params):
+def get_bp_pc_ghr_strings(params):
     pc_bits = int(params['bp_pc_bits'])
-    gr_bits = int(params['bp_gr_bits'])
+    ghr_bits = int(params['bp_ghr_bits'])
 
-    max_bits = max(pc_bits, gr_bits)
+    max_bits = max(pc_bits, ghr_bits)
     max_strs = [f"" for b in range(max_bits)]
 
     pc_all_strs = max_strs[0:max_bits-pc_bits] + STR_INDEXES[-pc_bits:]
-    gr_all_strs = max_strs[0:max_bits-gr_bits] + STR_INDEXES[-gr_bits:]
-    return pc_all_strs, gr_all_strs
+    ghr_all_strs = max_strs[0:max_bits-ghr_bits] + STR_INDEXES[-ghr_bits:]
+    return pc_all_strs, ghr_all_strs
 
 def get_bp_idx_strings(params, bp_name):
     pc_bits = int(params['bp_pc_bits'])
-    gr_bits = int(params['bp_gr_bits'])
+    ghr_bits = int(params['bp_ghr_bits'])
 
-    max_bits = max(pc_bits, gr_bits)
+    max_bits = max(pc_bits, ghr_bits)
     max_strs = [f"" for b in range(max_bits)]
 
     pc_all_strs = max_strs[0:max_bits-pc_bits] + STR_INDEXES[-pc_bits:]
-    gr_all_strs = max_strs[0:max_bits-gr_bits] + STR_INDEXES[-gr_bits:]
+    ghr_all_strs = max_strs[0:max_bits-ghr_bits] + STR_INDEXES[-ghr_bits:]
 
     if bp_name == "bp_gselect":
         out_str = [f"PC{s}" for s in pc_all_strs] + \
-                  [f"GR{s}" for s in gr_all_strs]
+                  [f"GHR{s}" for s in ghr_all_strs]
         out_str = [o for o in out_str if '[' in o]
         return out_str
 
     if bp_name == "bp_gshare":
-        # GR xor'd with top PC bits if not the same length
+        # GHR xor'd with top PC bits if not the same length
         out_str = [
-            f"PC{pcs}⊕GR{grs}"
-            for pcs,grs
-            in zip(pc_all_strs,rotate_left(gr_all_strs, max_bits-gr_bits))
+            f"PC{pcs}⊕GHR{ghrs}"
+            for pcs,ghrs
+            in zip(pc_all_strs,rotate_left(ghr_all_strs, max_bits-ghr_bits))
         ]
         out_str = [o.replace('PC⊕','') for o in out_str]
-        out_str = [o.replace('⊕GR','') if o.endswith('⊕GR') else o
+        out_str = [o.replace('⊕GHR','') if o.endswith('⊕GHR') else o
                    for o in out_str]
         out_str = [o.replace('⊕', '\n⊕\n') for o in out_str]
         return out_str
@@ -318,12 +318,12 @@ def draw_predictor(bp_name, params, title_name=""):
         h_offset = min(row_entries) / max(row_entries)
 
         if bp_name in ['bp_gselect', 'bp_gshare'] and idx <= 1:
-            # show and label gr and pc bits
+            # show and label ghr and pc bits
             if idx == 0:
-                # registers (GR/PC)
-                pc_strs, gr_strs = (get_bp_pc_gr_strings(params))
+                # registers (GHR/PC)
+                pc_strs, ghr_strs = (get_bp_pc_ghr_strings(params))
                 df = pd.DataFrame(
-                    [pc_strs, gr_strs],
+                    [pc_strs, ghr_strs],
                     index=range(row_entries[idx]),
                     columns=STR_INDEXES[-all_col_bits[idx]:]
                 )
@@ -416,10 +416,10 @@ DEFAULTS = {
     # bp
     "bp": "gshare",
     "bp_static_method": "btfn", "bp_pc_bits": 5, "bp_cnt_bits": 2,
-    "bp_lhist_bits": 5, "bp_gr_bits": 5, "bp_fold_pc": "none",
+    "bp_lhist_bits": 5, "bp_ghr_bits": 5, "bp_fold_pc": "none",
     "bp2": "none",
     "bp2_static_method": "at", "bp2_pc_bits": 5, "bp2_cnt_bits": 2,
-    "bp2_lhist_bits": 5, "bp2_gr_bits": 5, "bp2_fold_pc": "none",
+    "bp2_lhist_bits": 5, "bp2_ghr_bits": 5, "bp2_fold_pc": "none",
     "bp_combined_pc_bits": 6,
     "bp_combined_cnt_bits": 3,
     "bp_combined_fold_pc": "none",
@@ -464,13 +464,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bp_pc_bits", type=int, default=DEFAULTS["bp_pc_bits"], metavar="N", help=f"Branch predictor - PC bits (default: {DEFAULTS['bp_pc_bits']})")
     parser.add_argument("--bp_cnt_bits", type=int, default=DEFAULTS["bp_cnt_bits"], metavar="N", help=f"Branch predictor - counter bits (default: {DEFAULTS['bp_cnt_bits']})")
     parser.add_argument("--bp_lhist_bits", type=int, default=DEFAULTS["bp_lhist_bits"], metavar="N", help=f"Branch predictor - local history bits (default: {DEFAULTS['bp_lhist_bits']})")
-    parser.add_argument("--bp_gr_bits", type=int, default=DEFAULTS["bp_gr_bits"], metavar="N", help=f"Branch predictor - global register bits (default: {DEFAULTS['bp_gr_bits']})")
+    parser.add_argument("--bp_ghr_bits", type=int, default=DEFAULTS["bp_ghr_bits"], metavar="N", help=f"Branch predictor - global register bits (default: {DEFAULTS['bp_ghr_bits']})")
     parser.add_argument("--bp_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp_fold_pc"], metavar="FOLD", help=f"Branch predictor - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp_fold_pc']})")
     parser.add_argument("--bp2_static_method", type=str, choices=CHOICES["bp_method"], default=DEFAULTS["bp2_static_method"], metavar="METHOD", help=f"Static predictor - method.\nOptions: {', '.join(CHOICES['bp_method'])} (default: {DEFAULTS['bp2_static_method']})")
     parser.add_argument("--bp2_pc_bits", type=int, default=DEFAULTS["bp2_pc_bits"], metavar="N", help=f"Branch predictor 2 - PC bits (default: {DEFAULTS['bp2_pc_bits']})")
     parser.add_argument("--bp2_cnt_bits", type=int, default=DEFAULTS["bp2_cnt_bits"], metavar="N", help=f"Branch predictor 2 - counter bits (default: {DEFAULTS['bp2_cnt_bits']})")
     parser.add_argument("--bp2_lhist_bits", type=int, default=DEFAULTS["bp2_lhist_bits"], metavar="N", help=f"Branch predictor 2 - local history bits (default: {DEFAULTS['bp2_lhist_bits']})")
-    parser.add_argument("--bp2_gr_bits", type=int, default=DEFAULTS["bp2_gr_bits"], metavar="N", help=f"Branch predictor 2 - global register bits (default: {DEFAULTS['bp2_gr_bits']})")
+    parser.add_argument("--bp2_ghr_bits", type=int, default=DEFAULTS["bp2_ghr_bits"], metavar="N", help=f"Branch predictor 2 - global register bits (default: {DEFAULTS['bp2_ghr_bits']})")
     parser.add_argument("--bp2_fold_pc", type=str, choices=CHOICES["fold_pc"], default=DEFAULTS["bp2_fold_pc"], metavar="FOLD", help=f"Branch predictor 2 - Fold higher order PC bits for indexing\nOptions: {', '.join(CHOICES['fold_pc'])} (default: {DEFAULTS['bp2_fold_pc']})")
     parser.add_argument("--bp_combined_pc_bits", type=int, default=DEFAULTS["bp_combined_pc_bits"], metavar="N", help=f"Combined predictor - PC bits (default: {DEFAULTS['bp_combined_pc_bits']})")
     parser.add_argument("--bp_combined_cnt_bits", type=int, default=DEFAULTS["bp_combined_cnt_bits"], metavar="N", help=f"Combined predictor - counter bits (default: {DEFAULTS['bp_combined_cnt_bits']})")
@@ -495,7 +495,7 @@ def convert_switches_to_dict(args):
         bp_entry = {
                 "static_method": args.bp_static_method,
                 "pc_bits": args.bp_pc_bits,
-                "gr_bits": args.bp_gr_bits,
+                "ghr_bits": args.bp_ghr_bits,
                 "lhist_bits": args.bp_lhist_bits,
                 "cnt_bits": args.bp_cnt_bits,
                 "fold_pc": args.bp_fold_pc,
@@ -511,7 +511,7 @@ def convert_switches_to_dict(args):
             bp2_entry = {
                 "static_method": args.bp2_static_method,
                 "pc_bits": args.bp2_pc_bits,
-                "gr_bits": args.bp2_gr_bits,
+                "ghr_bits": args.bp2_ghr_bits,
                 "lhist_bits": args.bp2_lhist_bits,
                 "cnt_bits": args.bp2_cnt_bits,
                 "fold_pc": args.bp2_fold_pc,

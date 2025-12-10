@@ -170,13 +170,13 @@ struct hw_defs_t {
     static constexpr char bp_pc_bits[] = "5";
     static constexpr char bp_cnt_bits[] = "3";
     static constexpr char bp_lhist_bits[] = "5";
-    static constexpr char bp_gr_bits[] = "5";
+    static constexpr char bp_ghr_bits[] = "5";
     static constexpr char bp_fold_pc[] = "none";
     static constexpr char bp2_static_method[] = "at";
     static constexpr char bp2_pc_bits[] = "5";
     static constexpr char bp2_cnt_bits[] = "1";
     static constexpr char bp2_lhist_bits[] = "5";
-    static constexpr char bp2_gr_bits[] = "9";
+    static constexpr char bp2_ghr_bits[] = "9";
     static constexpr char bp2_fold_pc[] = "none";
     static constexpr char bp_combined_pc_bits[] = "4";
     static constexpr char bp_combined_cnt_bits[] = "4";
@@ -322,8 +322,8 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_cnt_bits))
         ("bp_lhist_bits", "Branch predictor - local history bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_lhist_bits))
-        ("bp_gr_bits", "Branch predictor - global register bits",
-         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_gr_bits))
+        ("bp_ghr_bits", "Branch predictor - global register bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp_ghr_bits))
         ("bp_fold_pc",
          "Branch predictor - Fold higher order PC bits for indexing"
          "\nOptions: " +
@@ -340,8 +340,8 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_cnt_bits))
         ("bp2_lhist_bits", "Branch predictor 2 - local history bits",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_lhist_bits))
-        ("bp2_gr_bits", "Branch predictor 2 - global register bits",
-         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_gr_bits))
+        ("bp2_ghr_bits", "Branch predictor 2 - global register bits",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2_ghr_bits))
         ("bp2_fold_pc",
          "Branch predictor 2 - Fold higher order PC bits for indexing"
          "\nOptions: " +
@@ -462,14 +462,14 @@ int main(int argc, char* argv[]) {
         hw_cfg.bp_pc_bits = TO_SIZE(result["bp_pc_bits"]);
         hw_cfg.bp_cnt_bits = TO_SIZE(result["bp_cnt_bits"]);
         hw_cfg.bp_lhist_bits = TO_SIZE(result["bp_lhist_bits"]);
-        hw_cfg.bp_gr_bits = TO_SIZE(result["bp_gr_bits"]);
+        hw_cfg.bp_ghr_bits = TO_SIZE(result["bp_ghr_bits"]);
         hw_cfg.bp_fold_pc = RESOLVE_ARG("bp_fold_pc", bp_pc_folds_map);
 
         hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
         hw_cfg.bp2_pc_bits = TO_SIZE(result["bp2_pc_bits"]);
         hw_cfg.bp2_cnt_bits = TO_SIZE(result["bp2_cnt_bits"]);
         hw_cfg.bp2_lhist_bits = TO_SIZE(result["bp2_lhist_bits"]);
-        hw_cfg.bp2_gr_bits = TO_SIZE(result["bp2_gr_bits"]);
+        hw_cfg.bp2_ghr_bits = TO_SIZE(result["bp2_ghr_bits"]);
         hw_cfg.bp2_fold_pc = RESOLVE_ARG("bp2_fold_pc", bp_pc_folds_map);
 
         hw_cfg.bp_combined_pc_bits = TO_SIZE(result["bp_combined_pc_bits"]);

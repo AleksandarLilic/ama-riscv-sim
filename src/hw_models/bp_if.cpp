@@ -4,7 +4,7 @@
 //     pc_bits,
 //     cnt_bits,
 //     hist_bits,
-//     gr_bits,
+//     ghr_bits,
 //     type_name
 // }
 
@@ -49,7 +49,7 @@
     0, \
     hw_cfg.bp_cnt_bits, \
     0, \
-    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_ghr_bits, \
     bp_pc_folds_t::none, \
     hw_cfg.bp_active_name.c_str() \
 }
@@ -58,7 +58,7 @@
     hw_cfg.bp_pc_bits, \
     hw_cfg.bp_cnt_bits, \
     0, \
-    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_ghr_bits, \
     hw_cfg.bp_fold_pc, \
     hw_cfg.bp_active_name.c_str() \
 }
@@ -67,7 +67,7 @@
     hw_cfg.bp_pc_bits, \
     hw_cfg.bp_cnt_bits, \
     0, \
-    hw_cfg.bp_gr_bits, \
+    hw_cfg.bp_ghr_bits, \
     hw_cfg.bp_fold_pc, \
     hw_cfg.bp_active_name.c_str() \
 }
@@ -143,7 +143,7 @@ std::unique_ptr<bp> bp_if::create_predictor(bp_t bp_type, hw_cfg_t hw_cfg) {
             hw_cfg.bp_pc_bits = hw_cfg.bp2_pc_bits;
             hw_cfg.bp_cnt_bits = hw_cfg.bp2_cnt_bits;
             hw_cfg.bp_lhist_bits = hw_cfg.bp2_lhist_bits;
-            hw_cfg.bp_gr_bits = hw_cfg.bp2_gr_bits;
+            hw_cfg.bp_ghr_bits = hw_cfg.bp2_ghr_bits;
             hw_cfg.bp_fold_pc = hw_cfg.bp2_fold_pc;
             bp2 = create_predictor(bp_combined_p2_type, hw_cfg);
 

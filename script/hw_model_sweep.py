@@ -35,8 +35,8 @@ MARKERS_BP = {
     "static": "_", # as in, always the same prediction - hline
     "bimodal": "d", # as in, up or down, diamond
     "local": "1", # 'Y' (tri_down), as in two levels, idk
-    "gselect": "+", # as in concatenates pc and gr
-    "gshare": "x", # as in xors pc and gr
+    "gselect": "+", # as in concatenates pc and ghr
+    "gshare": "x", # as in xors pc and ghr
     "global": "*", # whatever, it's different
 }
 
@@ -585,16 +585,16 @@ def get_bp_size(bp: str, params: Dict[str, Any]) -> int:
         return (hist_entries*params["lhist_bits"] + \
                 cnt_entries*params["cnt_bits"] + 4) >> 3
     if bp == "global":
-        cnt_entries = 1 << (params["gr_bits"])
-        idx_bits = params["gr_bits"]
+        cnt_entries = 1 << (params["ghr_bits"])
+        idx_bits = params["ghr_bits"]
         return (cnt_entries*params["cnt_bits"] + idx_bits + 4) >> 3
     if bp == "gselect":
-        cnt_entries = 1 << (params["gr_bits"] + params["pc_bits"])
-        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 4) >> 3
+        cnt_entries = 1 << (params["ghr_bits"] + params["pc_bits"])
+        return (cnt_entries*params["cnt_bits"] + params["ghr_bits"] + 4) >> 3
     if bp == "gshare":
-        idx_bits = max(params["pc_bits"], params["gr_bits"])
+        idx_bits = max(params["pc_bits"], params["ghr_bits"])
         cnt_entries = 1 << idx_bits
-        return (cnt_entries*params["cnt_bits"] + params["gr_bits"] + 4) >> 3
+        return (cnt_entries*params["cnt_bits"] + params["ghr_bits"] + 4) >> 3
 
     return 1 # can't help you
 
@@ -610,15 +610,15 @@ def valid_bp_bits(bp: str, params: Dict[str, Any]) -> bool:
     elif bp == "bimodal" or bp == "combined":
         valid &= (params.get('pc_bits', 0) > 0)
     elif bp == "local":
-        valid &= (params.get('gr_bits', 0) > 0)
+        valid &= (params.get('ghr_bits', 0) > 0)
     elif bp == "gselect" or bp == "gshare":
         # can play around a bit with these
-        # gr_bits == 0 -> bp_bimodal, pc_bits == 0 -> bp_global
-        #valid &= ((params.get('pc_bits', 0) + params.get('gr_bits', 0)) > 0)
+        # ghr_bits == 0 -> bp_bimodal, pc_bits == 0 -> bp_global
+        #valid &= ((params.get('pc_bits', 0) + params.get('ghr_bits', 0)) > 0)
 
         # but in general, both have to be > 1
         valid &= (params.get('pc_bits', 0) > 0)
-        valid &= (params.get('gr_bits', 0) > 0)
+        valid &= (params.get('ghr_bits', 0) > 0)
 
     return valid
 
@@ -783,11 +783,11 @@ def guided_bp_search_for_combined(
                                               "lhist_bits": int(bp_params[1]),
                                               "cnt_bits": int(bp_params[2])})
             elif bp_type == 'global':
-                size += get_bp_size(bp_type, {"gr_bits": int(bp_params[0]),
+                size += get_bp_size(bp_type, {"ghr_bits": int(bp_params[0]),
                                               "cnt_bits": int(bp_params[1])})
             elif bp_type in ['gselect', 'gshare']:
                 size += get_bp_size(bp_type, {"pc_bits": int(bp_params[0]),
-                                              "gr_bits": int(bp_params[1]),
+                                              "ghr_bits": int(bp_params[1]),
                                               "cnt_bits": int(bp_params[2])})
             else:
                 size += 0 # placeholder, maybe error out?
@@ -823,12 +823,12 @@ def guided_bp_search_for_combined(
                              f"{bp_arg}_cnt_bits", bp_params[2]]
                 fold_pc_idx = 3
             elif bp_type == 'global':
-                out_args += [f"{bp_arg}_gr_bits", bp_params[0],
+                out_args += [f"{bp_arg}_ghr_bits", bp_params[0],
                              f"{bp_arg}_cnt_bits", bp_params[1]]
                 fold_pc_idx = 2
             elif bp_type in ['gselect', 'gshare']:
                 out_args += [f"{bp_arg}_pc_bits", bp_params[0],
-                             f"{bp_arg}_gr_bits", bp_params[1],
+                             f"{bp_arg}_ghr_bits", bp_params[1],
                              f"{bp_arg}_cnt_bits", bp_params[2]]
                 fold_pc_idx = 3
             else:

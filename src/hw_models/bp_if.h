@@ -74,7 +74,7 @@ class bp_if {
 
         inline static const
         std::array<bp_def_t, 15> arch_bp_defs = {{
-            // {pc_bits, cnt_bits, hist_bits, gr_bits, pc_fold_bits, type_name}
+            // {pc_bits, cnt_bits, hist_bits, ghr_bits, pc_fold_bits, type_name}
             // statics
             {bp_t::sttc, bp_cfg_t{0, STTC(at), 0, 0, FN, "d_static_at"}},
             {bp_t::sttc, bp_cfg_t{0, STTC(ant), 0, 0, FN, "d_static_ant"}},
@@ -98,7 +98,7 @@ class bp_if {
 
         inline static const
         std::array<std::array<bp_def_t, 3>, 3> arch_bpc_defs = {{
-        // {pc_bits, cnt_bits, hist_bits, gr_bits, pc_fold_bits, type_name}
+        // {pc_bits, cnt_bits, hist_bits, ghr_bits, pc_fold_bits, type_name}
         {{
             // combined predictor 1
             {bp_t::combined, bp_cfg_t{4, 4, 0, 0, FN, "d_combined_v1"}},
