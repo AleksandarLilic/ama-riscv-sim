@@ -1,0 +1,62 @@
+diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
+index 6ff3c0e..8e231e0 100644
+--- a/aapg/isa_funcs.py
++++ b/aapg/isa_funcs.py
+@@ -258,10 +258,10 @@ inst_store_by_set = {
+         'mulh    rd rs1 rs2 31..25=1 14..12=1 6..2=0x0C 1..0=3',
+         'mulhsu  rd rs1 rs2 31..25=1 14..12=2 6..2=0x0C 1..0=3',
+         'mulhu   rd rs1 rs2 31..25=1 14..12=3 6..2=0x0C 1..0=3',
+-        'div     rd rs1 rs2 31..25=1 14..12=4 6..2=0x0C 1..0=3',
+-        'divu    rd rs1 rs2 31..25=1 14..12=5 6..2=0x0C 1..0=3',
+-        'rem     rd rs1 rs2 31..25=1 14..12=6 6..2=0x0C 1..0=3',
+-        'remu    rd rs1 rs2 31..25=1 14..12=7 6..2=0x0C 1..0=3',
++        #'div     rd rs1 rs2 31..25=1 14..12=4 6..2=0x0C 1..0=3',
++        #'divu    rd rs1 rs2 31..25=1 14..12=5 6..2=0x0C 1..0=3',
++        #'rem     rd rs1 rs2 31..25=1 14..12=6 6..2=0x0C 1..0=3',
++        #'remu    rd rs1 rs2 31..25=1 14..12=7 6..2=0x0C 1..0=3',
+     ],
+     'rv64m' : [
+         'mulw    rd rs1 rs2 31..25=1 14..12=0 6..2=0x0E 1..0=3',
+diff --git a/aapg/main.py b/aapg/main.py
+index 1c3303a..764194f 100644
+--- a/aapg/main.py
++++ b/aapg/main.py
+@@ -95,7 +95,7 @@ def gen(num_programs,config_file,asm_name,setup_dir,output_dir,arch,seed,linker_
+     logger = logging.getLogger()
+     logger.handlers = []
+     ch = logging.StreamHandler()
+-    ch.setFormatter(aapg.utils.ColoredFormatter())
++    #ch.setFormatter(aapg.utils.ColoredFormatter())
+     logger.addHandler(ch)
+     logger.info("aapg started")
+     logger.info(VERSION)
+@@ -159,7 +159,7 @@ def setup(setup_dir):
+     logger = logging.getLogger()
+     logger.handlers = []
+     ch = logging.StreamHandler()
+-    ch.setFormatter(aapg.utils.ColoredFormatter())
++    #ch.setFormatter(aapg.utils.ColoredFormatter())
+     logger.addHandler(ch)
+     logger.info("aapg started")
+     logger.info(VERSION)
+diff --git a/setup.py b/setup.py
+index 094f585..7a953b0 100644
+--- a/setup.py
++++ b/setup.py
+@@ -50,3 +50,16 @@ setup(
+     tests_require=test_requirements,
+     zip_safe=False,
+ )
++#setup(
++#    name='aapg',
++#    version='2.4.2',
++#    description="RISC-V AAPG",
++#    long_description=' AAPG \n\n',
++#    package_dir={'aapg': 'aapg'},
++#    entry_points={
++#        'console_scripts': ['aapg=aapg.main:cli'],
++#    },
++#    include_package_data=True,
++#    keywords='aapg',
++#    test_suite='tests',
++#)
