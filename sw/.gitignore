@@ -12,7 +12,7 @@
 local/
 baremetal/*/test_array*h
 baremetal/*/test_matrices*h
-baremetal/aapg_static/*/main.S
+baremetal/aapg/*/main.S
 
 baremetal/mlp/model*.h
 

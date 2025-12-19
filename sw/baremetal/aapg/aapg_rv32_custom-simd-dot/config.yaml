@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 4800
+  total_instructions: 8500
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x40000
@@ -12,9 +12,10 @@ general:
 isa-instruction-distribution:
   rel_sys.csr: 0
   rel_rv32i.ctrl: 1
-  rel_rv32i.compute: 2
+  rel_rv32i.compute: 20
   rel_rv32i.data: 20
   rel_rv32zmmul: 0
+  rel_rv32simd.dot: 20
 
 # Compressed instructions
   rel_rvc.ctrl: 0

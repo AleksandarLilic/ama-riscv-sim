@@ -1,0 +1,65 @@
+# list of meta config files to generate based on the provided template
+# only entries that differ from the template are needed, but any can be included
+# keys need to match the aapg/template yaml
+# top-level keys should be unique as those are used for directory names
+
+rv32_generic:
+  general:
+    total_instructions: 6000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 0
+
+rv32_zmmul:
+  general:
+    total_instructions: 8000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+
+rv32_mem:
+  general:
+    total_instructions: 4800
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 2
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 0
+
+rv32_branches:
+  general:
+    total_instructions: 3500
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 2
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 10
+    rel_rv32zmmul: 0
+  branch-control:
+    backward-probability: 0.5
+    block-size: 9
+
+rv32_branches_short:
+  general:
+    total_instructions: 9000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32zmmul: 0
+  branch-control:
+    backward-probability: 0.7
+    block-size: 2
+
+rv32_custom-simd-dot:
+  general:
+    total_instructions: 8500
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 20
+    rel_rv32simd.dot: 20
