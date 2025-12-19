@@ -15,7 +15,7 @@ isa-instruction-distribution:
   rel_rv32i.compute: 2
   rel_rv32i.data: 20
   rel_rv32i.fence: 0
-  rel_rv32m: 0
+  rel_rv32zmmul: 0
 
 # Compressed instructions
   rel_rvc.ctrl: 0

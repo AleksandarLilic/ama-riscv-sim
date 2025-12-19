@@ -1,22 +1,18 @@
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..8e231e0 100644
+index 6ff3c0e..c522c5d 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
-@@ -258,10 +258,10 @@ inst_store_by_set = {
-         'mulh    rd rs1 rs2 31..25=1 14..12=1 6..2=0x0C 1..0=3',
-         'mulhsu  rd rs1 rs2 31..25=1 14..12=2 6..2=0x0C 1..0=3',
-         'mulhu   rd rs1 rs2 31..25=1 14..12=3 6..2=0x0C 1..0=3',
--        'div     rd rs1 rs2 31..25=1 14..12=4 6..2=0x0C 1..0=3',
--        'divu    rd rs1 rs2 31..25=1 14..12=5 6..2=0x0C 1..0=3',
--        'rem     rd rs1 rs2 31..25=1 14..12=6 6..2=0x0C 1..0=3',
--        'remu    rd rs1 rs2 31..25=1 14..12=7 6..2=0x0C 1..0=3',
-+        #'div     rd rs1 rs2 31..25=1 14..12=4 6..2=0x0C 1..0=3',
-+        #'divu    rd rs1 rs2 31..25=1 14..12=5 6..2=0x0C 1..0=3',
-+        #'rem     rd rs1 rs2 31..25=1 14..12=6 6..2=0x0C 1..0=3',
-+        #'remu    rd rs1 rs2 31..25=1 14..12=7 6..2=0x0C 1..0=3',
-     ],
-     'rv64m' : [
-         'mulw    rd rs1 rs2 31..25=1 14..12=0 6..2=0x0E 1..0=3',
+@@ -453,6 +453,10 @@ inst_store_by_set = {
+     ]
+ }
+ 
++inst_store_by_set.update({
++    'rv32zmmul' : [entry for entry in inst_store_by_set['rv32m'] if entry.startswith('mul')],
++})
++
+ comp_insts_subs = {
+     'addi4spn': 'addi',
+     'c.fld': 'fld',
 diff --git a/aapg/main.py b/aapg/main.py
 index 1c3303a..764194f 100644
 --- a/aapg/main.py
