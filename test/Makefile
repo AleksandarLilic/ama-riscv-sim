@@ -63,7 +63,9 @@ cleantestruns:
 clean: cleanlogs cleanbins
 	rm -rf $(TEST) $(COV_DIR) *.gc* gtest_testlist.txt
 
-cleanall: clean
-	make -C ../src --no-print-directory clean
+cleansim:
+	make -C ../src --no-print-directory BDIR=$(BDIR) clean
+
+cleanall: clean cleansim
 
 .PHONY: all run_gtest coverage run_valgrind prepare_tests clean_tests build_sim cleanlogs cleanbins clean cleanall
