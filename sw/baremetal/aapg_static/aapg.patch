@@ -1,13 +1,23 @@
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..c522c5d 100644
+index 6ff3c0e..17eab31 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
-@@ -453,6 +453,10 @@ inst_store_by_set = {
+@@ -453,6 +453,20 @@ inst_store_by_set = {
      ]
  }
  
 +inst_store_by_set.update({
 +    'rv32zmmul' : [entry for entry in inst_store_by_set['rv32m'] if entry.startswith('mul')],
++})
++
++# custom isa
++inst_store_by_set.update({
++    'rv32simd.dot' : [
++        'dot16  rd rs1 rs2 31..25=0x06 14..12=0 6..2=0x02 1..0=3',
++        'dot8   rd rs1 rs2 31..25=0x07 14..12=0 6..2=0x02 1..0=3',
++        #'dot4   rd rs1 rs2 31..25=0x46 14..12=0 6..2=0x02 1..0=3',
++        #'dot2   rd rs1 rs2 31..25=0x47 14..12=0 6..2=0x02 1..0=3',
++    ],
 +})
 +
  comp_insts_subs = {
