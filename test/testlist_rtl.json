@@ -74,6 +74,7 @@
     "aapg_static/rv32i_branches": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
     "aapg_static/rv32i_branches_short": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
     "aapg_static/rv32i_mem": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
+    "aapg_static/rv32i_custom-simd-dot": [["aapg"], ["MARCH=rv32i_zicsr", "USER_DEFINES=-DNO_PROF -DNO_TRAP"]],
 
     "imperas-riscv-tests/ADD": [["test"], ["MARCH=rv32i_zicsr"]],
     "imperas-riscv-tests/ADDI": [["test"], ["MARCH=rv32i_zicsr"]],
