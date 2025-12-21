@@ -30,8 +30,10 @@ vpath %.c $(COMMON_SRC_PATH)
 vpath %.h $(COMMON_SRC_PATH)
 vpath %.S $(COMMON_SRC_PATH)
 
+ifneq ($(EXPLICIT_SRCS), 1)
 C_SRCS += $(wildcard *.c)
 S_SRCS += $(wildcard *.S)
+endif
 LD_SRC := $(COMMON_SRC_PATH)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS)
 INC_PATHS += $(COMMON_SRC_PATH)

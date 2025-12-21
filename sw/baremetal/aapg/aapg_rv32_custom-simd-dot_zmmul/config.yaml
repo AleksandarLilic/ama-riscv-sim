@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 9000
+  total_instructions: 8000
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x40000
@@ -13,9 +13,9 @@ isa-instruction-distribution:
   rel_sys.csr: 0
   rel_rv32i.ctrl: 1
   rel_rv32i.compute: 10
-  rel_rv32i.data: 0
-  rel_rv32zmmul: 0
-  rel_rv32simd.dot: 0
+  rel_rv32i.data: 20
+  rel_rv32zmmul: 20
+  rel_rv32simd.dot: 20
 
 # Compressed instructions
   rel_rvc.ctrl: 0
@@ -29,31 +29,13 @@ isa-instruction-distribution:
   rel_rv32c.fdata: 0
 
 branch-control:
-  backward-probability: 0.7
-  block-size: 2
+  backward-probability: 0.5
+  block-size: 7
 
 recursion-options:
   recursion-enable: false
   recursion-depth: 10
   recursion-calls: 5
-
-data-hazards:
-  raw_prob: 0.5
-  war_prob: 0.5
-  waw_prob: 0.5
-  num_regs_lookbehind: 3
-
-i-cache:
-  num_calls: 0
-  num_bytes_per_block: 64
-  num_blocks: 8
-  num_cycles: 5
-
-d-cache:
-  num_calls: 0
-  num_bytes_per_block: 64
-  num_blocks: 8
-  num_cycles: 10
 
 access-sections:
   section1: 0x10000,0x11000,rw
@@ -69,6 +51,18 @@ user-functions:
 switch-priv-modes:
   switch_modes: false
   num_switches: 0
+
+i-cache:
+  num_calls: 0
+  num_bytes_per_block: 16
+  num_blocks: 8
+  num_cycles: 10
+
+d-cache:
+  num_calls: 0
+  num_bytes_per_block: 16
+  num_blocks: 8
+  num_cycles: 10
 
 exception-generation:
   ecause00: 0
@@ -86,6 +80,12 @@ exception-generation:
   ecause12: 0
   ecause13: 0
   ecause14: 0
+
+data-hazards:
+  raw_prob: 0.5
+  war_prob: 0.5
+  waw_prob: 0.5
+  num_regs_lookbehind: 3
 
 program-macro:
   post_program_macro: "j pass"

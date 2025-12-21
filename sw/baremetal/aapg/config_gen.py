@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 
+import regex
 from ruamel.yaml import YAML
 
 yaml = YAML()
@@ -34,7 +35,7 @@ with open(args.config, 'r') as f:
 
 for test, config_updates in config.items():
     # if filter is provided, and any fiter entry is not in test, skip
-    if args.filter and not any(f in test for f in args.filter):
+    if args.filter and not any(regex.search(f, test) for f in args.filter):
         #print(f"Skipping test: {test}")
         continue
 

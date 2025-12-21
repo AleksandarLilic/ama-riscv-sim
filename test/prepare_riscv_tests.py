@@ -7,13 +7,15 @@ import json
 import os
 import subprocess
 
+import numpy as np
+
 GIT_ROOT = (subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
             .strip().decode('utf-8'))
 TEST_DIR = os.path.join(GIT_ROOT, 'sw/baremetal')
 ISA_TEST_DIR = os.path.join(GIT_ROOT, 'sw/riscv-isa-tests')
 WORK_DIR = os.getcwd()
 
-CODEGEN_APPS = ["aapg_static", "sorting", "vector_ew_basic", "matmul"]
+CODEGEN_APPS = ["aapg", "sorting", "vector_ew_basic", "matmul"]
 
 def file_exists(filename):
     if not os.path.exists(filename):
@@ -27,6 +29,7 @@ def parse_args():
     parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
     parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
     parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
+    parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
     return parser.parse_args()
 
 def run_make(make_cmd, cwd=None):
@@ -50,22 +53,34 @@ def build_test(test):
     run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
     if args.clean_only:
         return
+
+    aapg_run = t_dir.startswith("aapg")
+    if aapg_run:
+        # always clean codegen for aapg to remove old seeds
+        run_make(["make", "clean_codegen"], cwd=test_dir)
+
     if args.rebuild_codegen:
         # if any of the CODEGEN_APPS is in the test directory, run codegen first
         if any(t_dir.startswith(app) for app in CODEGEN_APPS):
             run_make(["make", "clean_codegen"], cwd=test_dir)
             run_make(["make", "codegen"], cwd=test_dir)
+
     make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
     make_cmd = ["make", "-j", "-B", "build_common"] + test_opts
     run_make(make_cmd, cwd=test_dir)
     make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
-    run_make(make_cmd, cwd=test_dir)
-    if make_all:
-        all_elf_files = glob.glob(f"{test_dir}/*.elf")
+
+    if not aapg_run:
+        run_make(make_cmd, cwd=test_dir)
     else:
-        all_elf_files = [os.path.join(test_dir, f"{t}.elf") for t in test_list]
-    return all_elf_files
+        run_make(make_cmd, cwd=test_dir) # build with default seed first
+        for _ in range(args.aapg_seeds-1):
+            # randomize seed for each run
+            seed_rnd = np.random.randint(0, 2**32 - 1)
+            run_make(make_cmd + [f"SEED={seed_rnd}"], cwd=test_dir)
+
+    return glob.glob(f"{test_dir}/*.elf")
 
 args = parse_args()
 with open(args.testlist, 'r') as f:

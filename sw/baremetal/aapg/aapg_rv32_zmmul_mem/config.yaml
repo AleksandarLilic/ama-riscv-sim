@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 9000
+  total_instructions: 10000
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x40000
@@ -11,10 +11,10 @@ general:
 
 isa-instruction-distribution:
   rel_sys.csr: 0
-  rel_rv32i.ctrl: 1
+  rel_rv32i.ctrl: 0
   rel_rv32i.compute: 10
-  rel_rv32i.data: 0
-  rel_rv32zmmul: 0
+  rel_rv32i.data: 20
+  rel_rv32zmmul: 20
   rel_rv32simd.dot: 0
 
 # Compressed instructions
@@ -29,8 +29,8 @@ isa-instruction-distribution:
   rel_rv32c.fdata: 0
 
 branch-control:
-  backward-probability: 0.7
-  block-size: 2
+  backward-probability: 0.5
+  block-size: 7
 
 recursion-options:
   recursion-enable: false

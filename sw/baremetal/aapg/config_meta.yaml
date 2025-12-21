@@ -3,23 +3,16 @@
 # keys need to match the aapg/template yaml
 # top-level keys should be unique as those are used for directory names
 
+# keep generated .elf under 64000 bytes so seeds don't push it over 65536 limit
+
 rv32_generic:
   general:
-    total_instructions: 6000
+    total_instructions: 7000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 1
     rel_rv32i.compute: 20
     rel_rv32i.data: 20
     rel_rv32zmmul: 0
-
-rv32_zmmul:
-  general:
-    total_instructions: 8000
-  isa-instruction-distribution:
-    rel_rv32i.ctrl: 1
-    rel_rv32i.compute: 20
-    rel_rv32i.data: 20
-    rel_rv32zmmul: 20
 
 rv32_mem:
   general:
@@ -54,12 +47,144 @@ rv32_branches_short:
     backward-probability: 0.7
     block-size: 2
 
+rv32_zmmul:
+  general:
+    total_instructions: 14000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32zmmul: 20
+
+rv32_zmmul_mem:
+  general:
+    total_instructions: 10000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+
+rv32_zmmul_mem_ctrl:
+  general:
+    total_instructions: 3900
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 9
+
+rv32_zmmul_mem_ctrl2:
+  general:
+    total_instructions: 4100
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 8
+
+rv32_zmmul_mem_ctrl_short:
+  general:
+    total_instructions: 7000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 2
+
 rv32_custom-simd-dot:
   general:
-    total_instructions: 8500
+    total_instructions: 14000
   isa-instruction-distribution:
     rel_sys.csr: 0
-    rel_rv32i.ctrl: 1
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32zmmul: 0
+    rel_rv32simd.dot: 20
+
+rv32_custom-simd-dot_mem:
+  general:
+    total_instructions: 10000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 0
+    rel_rv32simd.dot: 20
+
+rv32_custom-simd-dot_mem_zmmul:
+  general:
+    total_instructions: 11000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.dot: 20
+
+rv32_custom-simd-dot_mem_zmmul_ctrl:
+  general:
+    total_instructions: 5000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.dot: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 9
+
+rv32_custom-simd-dot_mem_zmmul_ctrl_short:
+  general:
+    total_instructions: 8000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.dot: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 2
+
+rv32_all:
+  general:
+    total_instructions: 7500
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 5
     rel_rv32i.compute: 20
     rel_rv32i.data: 20
+    rel_rv32zmmul: 20
     rel_rv32simd.dot: 20
+  branch-control:
+    backward-probability: 0.6
+    block-size: 3
+
+rv32_all2:
+  general:
+    total_instructions: 6800
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 6
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.dot: 20
+  branch-control:
+    backward-probability: 0.6
+    block-size: 4
