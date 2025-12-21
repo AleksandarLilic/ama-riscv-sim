@@ -446,8 +446,10 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define DASM_RD_UPDATE_PAIR \
     { \
-        dasm.asm_ss << ", "; \
-        DASM_RD_UPDATE_P(ip.rd() + 1) \
+        if (ip.rd()) { \
+            dasm.asm_ss << ", "; \
+            DASM_RD_UPDATE_P(ip.rd() + 1) \
+        } \
     }
 
 // parametrized
