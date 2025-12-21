@@ -1,3 +1,16 @@
+diff --git a/aapg/gen_random_program.py b/aapg/gen_random_program.py
+index f112a44..45a8f62 100644
+--- a/aapg/gen_random_program.py
++++ b/aapg/gen_random_program.py
+@@ -3409,7 +3409,7 @@ def run(args, index):
+       lines = output_file.readlines()
+ 
+     
+-    lines[4] = '#include "{template}"\n#define TEST_NAME {test_name}\n'.format(template=line_add,test_name=name_add)
++    lines[4] = '#include \"aapg_common.h\"\n#define TEST_NAME {test_name}\n'.format(template=line_add,test_name=name_add)
+ 
+     with open(output_file_path, "w") as outfile:
+       outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
 index 6ff3c0e..17eab31 100644
 --- a/aapg/isa_funcs.py

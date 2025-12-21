@@ -93,7 +93,6 @@
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul_ctrl": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul_ctrl_short": ["all"],
-    "aapg/aapg_rv32_custom-simd-dot_zmmul": ["all"],
 
     "imperas-riscv-tests/ADD": ["test"],
     "imperas-riscv-tests/ADDI": ["test"],

@@ -33,7 +33,6 @@ $(S_SRCS): $(CONFIG_FILE)
 	@aapg setup 2> /dev/null
 	aapg gen --arch $(AAPG_ARCH) --config_file $(CONFIG_FILE) --seed $(SEED) --asm_name $(basename $@) $(LOG_AAPG_ARG)
 	@mv work/asm/$(basename $@).S $@
-	@sed -i 's/$(basename $@)_template.S/aapg_common.h/' $@
 	@rm -rf work
 
 clean_aapg:

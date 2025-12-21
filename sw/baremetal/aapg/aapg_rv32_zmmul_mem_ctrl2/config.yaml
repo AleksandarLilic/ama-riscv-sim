@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 4100
+  total_instructions: 3500
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x40000
@@ -64,7 +64,7 @@ csr-sections:
   sections: 0x340:0x340 # mscratch
 
 user-functions:
-  func1: '{0:"add x0,x0,x0"}'
+  randomize: '{64: "nop"}' # dc about function, new one is provided
 
 switch-priv-modes:
   switch_modes: false

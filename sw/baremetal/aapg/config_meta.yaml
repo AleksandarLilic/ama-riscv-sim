@@ -3,7 +3,10 @@
 # keys need to match the aapg/template yaml
 # top-level keys should be unique as those are used for directory names
 
-# keep generated .elf under 64000 bytes so seeds don't push it over 65536 limit
+# rules to follow
+# 1. keep final .elf under 64000 bytes so seeds don't push it over 65536 bytes
+# 2. 'rel_rv32i.compute' should about match other groups
+# (otherwise either zeros galore, or generator may give up on some groups at the end so that last portion becomes useless if targeted instructions are dropped)
 
 rv32_generic:
   general:
@@ -54,7 +57,9 @@ rv32_zmmul:
     rel_rv32i.ctrl: 0
     rel_rv32i.compute: 10
     rel_rv32i.data: 0
-    rel_rv32zmmul: 20
+    rel_rv32zmmul: 10
+  user-functions:
+    randomize: '{128: "nop"}'
 
 rv32_zmmul_mem:
   general:
@@ -64,6 +69,8 @@ rv32_zmmul_mem:
     rel_rv32i.compute: 10
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_zmmul_mem_ctrl:
   general:
@@ -76,10 +83,12 @@ rv32_zmmul_mem_ctrl:
   branch-control:
     backward-probability: 0.5
     block-size: 9
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_zmmul_mem_ctrl2:
   general:
-    total_instructions: 4100
+    total_instructions: 3500
   isa-instruction-distribution:
     rel_rv32i.ctrl: 5
     rel_rv32i.compute: 10
@@ -88,6 +97,8 @@ rv32_zmmul_mem_ctrl2:
   branch-control:
     backward-probability: 0.5
     block-size: 8
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_zmmul_mem_ctrl_short:
   general:
@@ -100,6 +111,8 @@ rv32_zmmul_mem_ctrl_short:
   branch-control:
     backward-probability: 0.5
     block-size: 2
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_custom-simd-dot:
   general:
@@ -111,6 +124,8 @@ rv32_custom-simd-dot:
     rel_rv32i.data: 0
     rel_rv32zmmul: 0
     rel_rv32simd.dot: 20
+  user-functions:
+    randomize: '{256: "nop"}'
 
 rv32_custom-simd-dot_mem:
   general:
@@ -133,6 +148,8 @@ rv32_custom-simd-dot_mem_zmmul:
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
     rel_rv32simd.dot: 20
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_custom-simd-dot_mem_zmmul_ctrl:
   general:
@@ -146,6 +163,8 @@ rv32_custom-simd-dot_mem_zmmul_ctrl:
   branch-control:
     backward-probability: 0.5
     block-size: 9
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_custom-simd-dot_mem_zmmul_ctrl_short:
   general:
@@ -160,6 +179,8 @@ rv32_custom-simd-dot_mem_zmmul_ctrl_short:
   branch-control:
     backward-probability: 0.5
     block-size: 2
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_all:
   general:
@@ -174,6 +195,8 @@ rv32_all:
   branch-control:
     backward-probability: 0.6
     block-size: 3
+  user-functions:
+    randomize: '{64: "nop"}'
 
 rv32_all2:
   general:
@@ -188,3 +211,5 @@ rv32_all2:
   branch-control:
     backward-probability: 0.6
     block-size: 4
+  user-functions:
+    randomize: '{64: "nop"}'
