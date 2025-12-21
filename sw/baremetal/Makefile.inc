@@ -96,18 +96,19 @@ endif
 
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
+	$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
 	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
+		$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin; \
 		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
+		rm $(basename $@).bin; \
 	fi
 
 %.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
-	$(BUILD_APP)
+	$(Q)$(BUILD_APP)
 	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
-	$(Q)$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin
 	$(Q)$(HEX_GEN)
 	@echo "Executable built: $@"
 	$(Q)$(RV_GNU)-size -G $@
