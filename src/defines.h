@@ -515,7 +515,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     prof.log_reg_use(reg_use_t::rd, ip.rd());
 
 #define PROF_RDP \
-    prof.log_reg_use(reg_use_t::rd, ip.rd()+1);
+    prof.log_reg_use(reg_use_t::rdp, ip.rd()+1);
 
 #define PROF_RS1 \
     prof.log_reg_use(reg_use_t::rs1, ip.rs1());

@@ -247,7 +247,10 @@ void profiler::log_to_file_and_print() {
         ofs.open(out_dir + "rf_usage" +  pt + ".bin", std::ios::binary);
         ofs.write(
             reinterpret_cast<const char*>(prof_rf_usage.data()),
-            prof_rf_usage.size() * prof_rf_usage[0].size() * sizeof(uint32_t));
+            (prof_rf_usage.size() * // num of regs
+             prof_rf_usage[0].size() * // num of options for each reg
+             sizeof(prof_rf_usage[0][0])) // counter width
+        );
         ofs.close();
     }
 

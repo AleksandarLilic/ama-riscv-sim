@@ -87,7 +87,7 @@ enum class opc_b {
     _count
 };
 
-enum class reg_use_t { rd, rs1, rs2 };
+enum class reg_use_t { rd, rdp, rs1, rs2, _count };
 
 struct stack_access_t {
     private:
@@ -252,7 +252,8 @@ class profiler {
         #endif
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_b, TO_U32(opc_b::_count)> prof_b_arr;
-        std::array<std::array<uint32_t, 3>, 32> prof_rf_usage = {0};
+        std::array<std::array<uint64_t, TO_U32(reg_use_t::_count)>, 32>
+            prof_rf_usage = {0};
         sparsity_cnt_t sparsity_cnt;
         bool trace_en;
         bool rf_usage;

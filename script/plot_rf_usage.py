@@ -7,7 +7,12 @@ import numpy as np
 import pandas as pd
 from utils import get_test_title, smarter_eng_formatter
 
-COLUMNS = [['rd', 'rs1', 'rs2'], ['rd', 'rs'], ['total']]
+H = ['rd', 'rdp', 'rs1', 'rs2']
+H_ALL_TYPE = ['rd_all', 'rs_all']
+H_TOTAL = ['total']
+COLUMNS = [H, H_ALL_TYPE, H_TOTAL]
+
+CLRS = ["tab:blue", "tab:green", "tab:orange", "tab:red"]
 
 parser = argparse.ArgumentParser(description="Plot register file usage")
 parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
@@ -25,12 +30,17 @@ rf_names = [
     "s8",   "s9", "s10", "s11", "t3", "t4", "t5", "t6",
 ]
 
-h = ['rd', 'rs1', 'rs2']
-dtype = np.dtype([(h[0], np.uint32), (h[1], np.uint32), (h[2], np.uint32)])
+dtype = np.dtype([
+    (H[0], np.uint64),
+    (H[1], np.uint64),
+    (H[2], np.uint64),
+    (H[3], np.uint64),
+])
 data = np.fromfile(args.prof, dtype=dtype)
-df = pd.DataFrame(data, columns=h)
-df['total'] = df.sum(axis=1)
-df['rs'] = df['rs1'] + df['rs2']
+df = pd.DataFrame(data)
+df[H_TOTAL[0]] = df.sum(axis=1)
+df[H_ALL_TYPE[0]] = df['rd'] + df['rdp']
+df[H_ALL_TYPE[1]] = df['rs1'] + df['rs2']
 
 # add first column named 'reg' as 'x' concat with index, e.g. x0, x1, x2, ...
 df.insert(0, 'reg', 'x' + df.index.astype(str))
@@ -48,22 +58,26 @@ if args.single:
 
 for col_set in columns:
     fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=True)
-    bar_width = 0.7
-    alpha = 0.55
-    y_axis_numeric = np.arange(df.index.size)
+    BW = 0.7
+    A = 0.55
+    y_ax_num = np.arange(df.index.size)
     bars = []
+    left = np.zeros(df.index.size)
     for idx, col in enumerate(col_set):
+        # replace 0 with np.nan to avoid plotting & labeling zero-height bars
+        d = df[col].replace(0, np.nan)
+        clr = CLRS[idx%2 + 2] if "rs" in col else CLRS[idx]
         if idx == 0:
-            bars.append(ax.barh(y_axis_numeric, df[col], bar_width,
-                                label=col, alpha=alpha))
+            bars.append(ax.barh(y_ax_num, d, BW, label=col, color=clr, alpha=A))
         else:
-            bars.append(ax.barh(y_axis_numeric, df[col], bar_width,
-                                left=df[df.columns[1:idx+1]].sum(axis=1),
-                                label=col, alpha=alpha))
+            bars.append(ax.barh(
+                y_ax_num, d, BW, left=left, label=col, color=clr, alpha=A
+            ))
         ax.bar_label(bars[-1], fmt=base_fmt, label_type='center', size=8)
+        left += df[col].fillna(0).values
 
     ax.xaxis.set_major_formatter(base_fmt)
-    ax.set_yticks(y_axis_numeric)
+    ax.set_yticks(y_ax_num)
     ax.set_yticklabels(df['reg_comb'])
     ax.set_xlabel('Count')
     ax.set_title(f"Register File usage for {get_test_title(args.prof)}\n\n")
