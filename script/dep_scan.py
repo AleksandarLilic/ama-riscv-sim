@@ -4,8 +4,9 @@ from collections import deque
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
-from run_analysis import icfg
-from utils import FMT_AXIS, INDENT, get_test_title, smarter_eng_formatter
+from matplotlib.ticker import EngFormatter
+from run_analysis import icfg, rolling_mean
+from utils import INDENT, get_test_title, smarter_eng_formatter
 
 BRANCH_MNM = icfg.INST_T[icfg.BRANCH]
 STORE_MNM = icfg.INST_T_MEM[icfg.MEM_S]
@@ -129,6 +130,7 @@ def parse_args():
     parser.add_argument("--src", required=True, help=f"Comma-separated list of source instruction mnemonics (e.g. 'addi,add,auipc') or '{MNM_ANY}' for any")
     parser.add_argument("--dep", required=True, help=f"Comma-separated list of dependent instruction mnemonics (e.g. 'add,bne,sw') or '{MNM_ANY}' for any")
     parser.add_argument("--window", type=int, default=8, help="Lookahead window size (number of subsequent executed instructions to inspect)")
+    parser.add_argument("--count_zeros", action="store_true", help="Count how many instructions wrote 0x00000000 to rd")
     return parser.parse_args()
 
 def search(args):
@@ -172,9 +174,14 @@ def search(args):
 
     n = len(res.inst_idxs)
     res.line_fmt_issue = 0
+    rd_val_zero_cnt = 0
+    #rd_val_zero_trace = []
     for pos, li in enumerate(res.inst_idxs):
         line = lines[li]
         mnm = extract_mnemonic(line)
+        rd_val_zero = (": 0x00000000" in line) or ("(0x00000000)" in line)
+        rd_val_zero_cnt += rd_val_zero
+        #rd_val_zero_trace.append(rd_val_zero)
 
         if mnm is None:
             res.line_fmt_issue += 1
@@ -231,17 +238,23 @@ def search(args):
                             res.dep_line_num[dist].append(int(seq))
                     # only one increment per dep even if both rs1/rs2 == rd
 
-    return res
+    #import pandas as pd
+    #fig, ax = plt.subplots()
+    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace), 128))
+    return res, rd_val_zero_cnt
 
 def main(args):
     win = args.window
     FMT = smarter_eng_formatter()
-    res = search(args)
-    exec_inst = FMT(len(res.inst_idxs))
+    res, zcnt = search(args)
+    exec_inst = len(res.inst_idxs)
+    if zcnt and args.count_zeros:
+        perc = (zcnt / exec_inst) * 100
+        print(f"Note: {zcnt} instructions had 0x0 written to rd ({perc:.2f}%)")
     # move forward only if there are dependencies found
     if sum(res.dep_arr_cnt) == 0:
         print("No dependencies found for the given source/dependent mnemonics"+\
-              f" for {exec_inst} executed instructions and window {win}.")
+              f" for {FMT(exec_inst)} executed instructions and window {win}.")
         return
 
     LN = 5
@@ -249,12 +262,12 @@ def main(args):
           f"Dependent inst ({len(res.dep_s['mnm'])}): '{res.dep_s['lst']}'\n")
     print(f"Dependency counts by distance " +
           f"for '{get_test_title(args.exec_log)}': " +
-          f"{exec_inst} executed instructions, " +
+          f"{FMT(exec_inst)} executed instructions, " +
           f"window {win}, first {LN} sample line numbers:")
 
     max_digits = len(str(max(res.dep_arr_cnt))) + 1
     for d in range(1, win + 1):
-        perc = (res.dep_arr_cnt[d] / len(res.inst_idxs)) * 100
+        perc = (res.dep_arr_cnt[d] / exec_inst) * 100
         print(f"{INDENT}{d:{2}}: {FMT(res.dep_arr_cnt[d]):>{max_digits}}" +
               f" ({perc:5.2f}%)   {res.dep_line_num[d][:LN]}")
 
@@ -269,7 +282,7 @@ def main(args):
         f"Register dependency distances for\n'{get_test_title(args.exec_log)}'")
     ax.set_xlabel("Distance (next executed instruction = 1)")
     ax.set_ylabel("Count")
-    ax.yaxis.set_major_formatter(FMT_AXIS)
+    ax.yaxis.set_major_formatter(EngFormatter(unit='', places=1, sep=''))
     ax.set_xticks(list(range(1, win + 1)))
     ax.grid(True, axis="y")
     ax.margins(x=0.01)
