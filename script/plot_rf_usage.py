@@ -7,11 +7,14 @@ import numpy as np
 import pandas as pd
 from utils import get_test_title, smarter_eng_formatter
 
+COLUMNS = [['rd', 'rs1', 'rs2'], ['rd', 'rs'], ['total']]
+
 parser = argparse.ArgumentParser(description="Plot register file usage")
 parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
 parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
 parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
 parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
+parser.add_argument('--single', default=None, help=f"Index of single column set to plot from {COLUMNS}")
 
 args = parser.parse_args()
 
@@ -39,7 +42,10 @@ if args.save_csv:
     df.to_csv(args.prof.replace('.bin', '.csv'), index=False)
 
 base_fmt = smarter_eng_formatter()
-columns = [['rd', 'rs1', 'rs2'], ['rd', 'rs'], ['total']]
+columns = COLUMNS
+if args.single:
+    columns = [columns[int(args.single)]]
+
 for col_set in columns:
     fig, ax = plt.subplots(figsize=(12, 10), constrained_layout=True)
     bar_width = 0.7
