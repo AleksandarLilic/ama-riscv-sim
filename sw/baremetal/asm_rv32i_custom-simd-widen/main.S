@@ -26,164 +26,164 @@ op_add:
     add x26, x11, x12
     OP_END(100)
 
-op_unpk16:
+op_widen16:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk16 RD, x12
+    widen16 RD, x12
     mv x26, RD
     OP_END(0x00000605)
     mv x26, RDP
     OP_END(0x00000807)
 
-op_unpk16_fwd: // test operand forwarding in RTL
+op_widen16_fwd: // test operand forwarding in RTL
     lla x11, dat3 # 0x01020304
     lw x12, 0(x11)
-    unpk16 RD, x12
+    widen16 RD, x12
     mv x26, RDP
     OP_END(0x00000102)
     mv x26, RD
     OP_END(0x00000304)
 
-op_unpk16_msb_set:
+op_widen16_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    unpk16 RD, x12
+    widen16 RD, x12
     mv x26, RD
     OP_END(0xffffa701)
     mv x26, RDP
     OP_END(0x00000282)
 
-op_unpk16u:
+op_widen16u:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk16u RD, x12
+    widen16u RD, x12
     mv x26, RD
     OP_END(0x00000605)
     mv x26, RDP
     OP_END(0x00000807)
 
-op_unpk16u_msb_set:
+op_widen16u_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    unpk16u RD, x12
+    widen16u RD, x12
     mv x26, RD
     OP_END(0x0000a701)
     mv x26, RDP
     OP_END(0x00000282)
 
-op_unpk8:
+op_widen8:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk8 RD, x12
+    widen8 RD, x12
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
     OP_END(0x00080007)
 
-op_unpk8_fwd:
+op_widen8_fwd:
     lla x11, dat3 # 0x01020304
     lw x12, 0(x11)
-    unpk8 RD, x12
+    widen8 RD, x12
     nop
     mv x26, RDP
     OP_END(0x00010002)
     mv x26, RD
     OP_END(0x00030004)
 
-op_unpk8_msb_set:
+op_widen8_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    unpk8 RD, x12
+    widen8 RD, x12
     mv x26, RD
     OP_END(0xffa70001)
     mv x26, RDP
     OP_END(0x0002ff82)
 
-op_unpk8u:
+op_widen8u:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk8u RD, x12
+    widen8u RD, x12
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
     OP_END(0x00080007)
 
-op_unpk8u_msb_set:
+op_widen8u_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    unpk8u RD, x12
+    widen8u RD, x12
     mv x26, RD
     OP_END(0x00a70001)
     mv x26, RDP
     OP_END(0x00020082)
 
-op_unpk4:
+op_widen4:
     lla x11, dat3
     lw x12, 0(x11)
-    unpk4 RD, x12
+    widen4 RD, x12
     mv x26, RD
     OP_END(0x00030004)
     mv x26, RDP
     OP_END(0x00010002)
 
-op_unpk4_msb_set:
+op_widen4_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk4 RD, x12
+    widen4 RD, x12
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
     OP_END(0x00f80007)
 
-op_unpk4u:
+op_widen4u:
     lla x11, dat3
     lw x12, 0(x11)
-    unpk4u RD, x12
+    widen4u RD, x12
     mv x26, RD
     OP_END(0x00030004)
     mv x26, RDP
     OP_END(0x00010002)
 
-op_unpk4u_msb_set:
+op_widen4u_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk4u RD, x12
+    widen4u RD, x12
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
     OP_END(0x00080007)
 
-op_unpk2:
+op_widen2:
     lla x11, dat4
     lw x12, 0(x11)
-    unpk2 RD, x12
+    widen2 RD, x12
     mv x26, RD
     OP_END(0x01100010)
     mv x26, RDP
     OP_END(0x00010000)
 
-op_unpk2_msb_set:
+op_widen2_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk2 RD, x12
+    widen2 RD, x12
     mv x26, RD
     OP_END(0x001e0011)
     mv x26, RDP
     OP_END(0x00e0001f)
 
-op_unpk2u:
+op_widen2u:
     lla x11, dat4
     lw x12, 0(x11)
-    unpk2u RD, x12
+    widen2u RD, x12
     mv x26, RD
     OP_END(0x01100010)
     mv x26, RDP
     OP_END(0x00010000)
 
-op_unpk2u_msb_set:
+op_widen2u_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    unpk2u RD, x12
+    widen2u RD, x12
     mv x26, RD
     OP_END(0x00120011)
     mv x26, RDP

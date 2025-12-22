@@ -312,7 +312,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_CUSTOM_OP(op) \
     case TO_U8(alu_custom_op_t::op_##op): \
-        write_rf(ip.rd(), al_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        write_rf(ip.rd(), alu_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
@@ -320,15 +320,15 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_CUSTOM_OP_PAIR(op) \
     case TO_U8(alu_custom_op_t::op_##op): \
-        write_rf_pair(ip.rd(), al_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        write_rf_pair(ip.rd(), alu_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1_RS2 \
         break;
 
-#define CASE_MEM_CUSTOM_OP(op) \
-    case TO_U8(mem_custom_op_t::op_##op): \
-        write_rf_pair(ip.rd(), mem_c_##op(rs1)); \
+#define CASE_DATA_FMT_CUSTOM_OP(op) \
+    case TO_U8(data_fmt_custom_op_t::op_##op): \
+        write_rf_pair(ip.rd(), data_fmt_c_##op(rs1)); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1 \

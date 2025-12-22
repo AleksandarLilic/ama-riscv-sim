@@ -63,7 +63,7 @@ class icfg:
     SIMD_DOT = "SIMD_DOT"
     SIMD_ADD = "SIMD_ADD"
     SIMD_MUL = "SIMD_MUL"
-    UNPAK = "UNPAK"
+    WIDEN = "WIDEN"
     MEM = "MEM"
     MEM_HINTS = "MEM_HINTS"
     BRANCH = "BRANCH"
@@ -102,9 +102,9 @@ class icfg:
         SIMD: INST_T_SIMD[SIMD_ADD] + \
                 INST_T_SIMD[SIMD_MUL] + \
                 INST_T_SIMD[SIMD_DOT],
-        UNPAK: [
-            "unpk16", "unpk16u", "unpk8", "unpk8u",
-            "unpk4", "unpk4u", "unpk2", "unpk2u",
+        WIDEN: [
+            "widen16", "widen16u", "widen8", "widen8u",
+            "widen4", "widen4u", "widen2", "widen2u",
         ],
         MEM: INST_T_MEM[MEM_S] + INST_T_MEM[MEM_L],
         MEM_HINTS: ["scp.ld", "scp.rel"],
@@ -116,7 +116,7 @@ class icfg:
         FENCE: ["fence", "fence.i"],
     }
 
-    INST_T_SIMD_Z = INST_T[SIMD] + INST_T[UNPAK]
+    INST_T_SIMD_Z = INST_T[SIMD] + INST_T[WIDEN]
     OPS_PER_INST = {
         1: INST_T[ALU]+INST_T[MEM]+INST_T[MUL]+INST_T[DIV]+INST_T[BITMANIP],
         2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
@@ -162,7 +162,7 @@ class icfg:
         INST_T[JUMP],
         INST_T[MUL] + INST_T[DIV],
         INST_T[SIMD],
-        INST_T[UNPAK]
+        INST_T[WIDEN]
     ]
 
     HL_COLORS_OPS = {
@@ -171,7 +171,7 @@ class icfg:
         MUL: CLR_HL[3], # persian red
         DIV: CLR_HL[2], # sandy brown
         SIMD: CLR_HL[4], # myrtle green
-        UNPAK: CLR_HL[5], # lavander (floral)
+        WIDEN: CLR_HL[5], # lavander (floral)
         # separate chart
         BRANCH: CLR_HL[0], # peach yellow
         JUMP: CLR_HL[3], # persian red
@@ -185,7 +185,7 @@ class icfg:
         MUL: CLR_HL[3], # persian red
         #DIV: CLR_HL[2], # sandy brown
         SIMD: CLR_HL[4], # myrtle green
-        UNPAK: CLR_HL[5], # lavander (floral)
+        WIDEN: CLR_HL[5], # lavander (floral)
     }
 
     # memory instructions breakdown store vs load
@@ -1510,8 +1510,8 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
               'ops', win_s, 'MEM', clr=icfg.HL_COLORS_OPS[icfg.MEM])
     plot_stat(ax_ops, df.ops.where(df.i_type==icfg.SIMD, 0), y,
               'ops', win_s, 'SIMD', clr=icfg.HL_COLORS_OPS[icfg.SIMD])
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.UNPAK, 0), y,
-              'ops', win_s, 'UNPAK', clr=icfg.HL_COLORS_OPS[icfg.UNPAK])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.WIDEN, 0), y,
+              'ops', win_s, 'WIDEN', clr=icfg.HL_COLORS_OPS[icfg.WIDEN])
 
     plot_hw_hm(ax_bp, df, 'bp', win_hw)
     plot_hw_hm(ax_ic, df, 'ic', win_hw)

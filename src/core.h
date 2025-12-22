@@ -296,27 +296,27 @@ class core {
         }
 
         // custom extension - arithmetic and logic operations
-        uint32_t al_c_add16(uint32_t a, uint32_t b);
-        uint32_t al_c_add8(uint32_t a, uint32_t b);
-        uint32_t al_c_sub16(uint32_t a, uint32_t b);
-        uint32_t al_c_sub8(uint32_t a, uint32_t b);
-        reg_pair al_c_mul16(uint32_t a, uint32_t b);
-        reg_pair al_c_mul16u(uint32_t a, uint32_t b);
-        reg_pair al_c_mul8(uint32_t a, uint32_t b);
-        reg_pair al_c_mul8u(uint32_t a, uint32_t b);
-        uint32_t al_c_dot16(uint32_t a, uint32_t b);
-        uint32_t al_c_dot8(uint32_t a, uint32_t b);
-        uint32_t al_c_dot4(uint32_t a, uint32_t b);
+        uint32_t alu_c_add16(uint32_t a, uint32_t b);
+        uint32_t alu_c_add8(uint32_t a, uint32_t b);
+        uint32_t alu_c_sub16(uint32_t a, uint32_t b);
+        uint32_t alu_c_sub8(uint32_t a, uint32_t b);
+        reg_pair alu_c_mul16(uint32_t a, uint32_t b);
+        reg_pair alu_c_mul16u(uint32_t a, uint32_t b);
+        reg_pair alu_c_mul8(uint32_t a, uint32_t b);
+        reg_pair alu_c_mul8u(uint32_t a, uint32_t b);
+        uint32_t alu_c_dot16(uint32_t a, uint32_t b);
+        uint32_t alu_c_dot8(uint32_t a, uint32_t b);
+        uint32_t alu_c_dot4(uint32_t a, uint32_t b);
 
         // custom extension - memory operations
-        reg_pair mem_c_unpk16(uint32_t a);
-        reg_pair mem_c_unpk16u(uint32_t a);
-        reg_pair mem_c_unpk8(uint32_t a);
-        reg_pair mem_c_unpk8u(uint32_t a);
-        reg_pair mem_c_unpk4(uint32_t a);
-        reg_pair mem_c_unpk4u(uint32_t a);
-        reg_pair mem_c_unpk2(uint32_t a);
-        reg_pair mem_c_unpk2u(uint32_t a);
+        reg_pair data_fmt_c_widen16(uint32_t a);
+        reg_pair data_fmt_c_widen16u(uint32_t a);
+        reg_pair data_fmt_c_widen8(uint32_t a);
+        reg_pair data_fmt_c_widen8u(uint32_t a);
+        reg_pair data_fmt_c_widen4(uint32_t a);
+        reg_pair data_fmt_c_widen4u(uint32_t a);
+        reg_pair data_fmt_c_widen2(uint32_t a);
+        reg_pair data_fmt_c_widen2u(uint32_t a);
 
         // C extension
         void c0();

@@ -716,14 +716,14 @@ void core::custom_ext() {
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
         switch (funct7) {
-            CASE_MEM_CUSTOM_OP(unpk16)
-            CASE_MEM_CUSTOM_OP(unpk16u)
-            CASE_MEM_CUSTOM_OP(unpk8)
-            CASE_MEM_CUSTOM_OP(unpk8u)
-            CASE_MEM_CUSTOM_OP(unpk4)
-            CASE_MEM_CUSTOM_OP(unpk4u)
-            CASE_MEM_CUSTOM_OP(unpk2)
-            CASE_MEM_CUSTOM_OP(unpk2u)
+            CASE_DATA_FMT_CUSTOM_OP(widen16)
+            CASE_DATA_FMT_CUSTOM_OP(widen16u)
+            CASE_DATA_FMT_CUSTOM_OP(widen8)
+            CASE_DATA_FMT_CUSTOM_OP(widen8u)
+            CASE_DATA_FMT_CUSTOM_OP(widen4)
+            CASE_DATA_FMT_CUSTOM_OP(widen4u)
+            CASE_DATA_FMT_CUSTOM_OP(widen2)
+            CASE_DATA_FMT_CUSTOM_OP(widen2u)
             default: tu.e_unsupported_inst("custom extension - memory");
         }
 
@@ -755,7 +755,7 @@ void core::custom_ext() {
     next_pc = pc + 4;
 }
 
-uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_add16(uint32_t a, uint32_t b) {
     // parallel add 2 halfword chunks
     constexpr size_t e = 2;
     int32_t res = 0;
@@ -784,7 +784,7 @@ uint32_t core::al_c_add16(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_add8(uint32_t a, uint32_t b) {
     // parallel add 4 byte chunks
     constexpr size_t e = 4;
     int32_t res = 0;
@@ -813,7 +813,7 @@ uint32_t core::al_c_add8(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_sub16(uint32_t a, uint32_t b) {
     // parallel sub 2 halfword chunks
     constexpr size_t e = 2;
     int32_t res = 0;
@@ -842,7 +842,7 @@ uint32_t core::al_c_sub16(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_sub8(uint32_t a, uint32_t b) {
     // parallel sub 4 byte chunks
     constexpr size_t e = 4;
     int32_t res = 0;
@@ -871,7 +871,7 @@ uint32_t core::al_c_sub8(uint32_t a, uint32_t b) {
     return res;
 }
 
-reg_pair core::al_c_mul16(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_mul16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     int32_t words[2];
     #ifdef DASM_EN
@@ -895,7 +895,7 @@ reg_pair core::al_c_mul16(uint32_t a, uint32_t b) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::al_c_mul16u(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_mul16u(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     uint32_t words[2];
     #ifdef DASM_EN
@@ -919,7 +919,7 @@ reg_pair core::al_c_mul16u(uint32_t a, uint32_t b) {
     return {words[0], words[1]};
 }
 
-reg_pair core::al_c_mul8(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_mul8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     int16_t halves[4];
     #ifdef DASM_EN
@@ -951,7 +951,7 @@ reg_pair core::al_c_mul8(uint32_t a, uint32_t b) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::al_c_mul8u(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_mul8u(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     uint16_t halves[4];
     #ifdef DASM_EN
@@ -983,7 +983,7 @@ reg_pair core::al_c_mul8u(uint32_t a, uint32_t b) {
     return {words[0], words[1]};
 }
 
-uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks and sum the results
     constexpr size_t e = 2;
     int32_t res = 0;
@@ -1011,7 +1011,7 @@ uint32_t core::al_c_dot16(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks and sum the results
     constexpr size_t e = 4;
     int32_t res = 0;
@@ -1039,7 +1039,7 @@ uint32_t core::al_c_dot8(uint32_t a, uint32_t b) {
     return res;
 }
 
-uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot4(uint32_t a, uint32_t b) {
     // multiply 8 nibble chunks and sum the results
     constexpr size_t e = 8;
     int32_t res = 0;
@@ -1066,7 +1066,7 @@ uint32_t core::al_c_dot4(uint32_t a, uint32_t b) {
     return res;
 }
 
-reg_pair core::mem_c_unpk16(uint32_t a) {
+reg_pair core::data_fmt_c_widen16(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values
     constexpr size_t e = 2;
     int16_t halves[e];
@@ -1091,7 +1091,7 @@ reg_pair core::mem_c_unpk16(uint32_t a) {
     return {TO_U32(halves[0]), TO_U32(halves[1])};
 }
 
-reg_pair core::mem_c_unpk16u(uint32_t a) {
+reg_pair core::data_fmt_c_widen16u(uint32_t a) {
     // unpack 2 16-bit values to 2 32-bit values unsigned
     constexpr size_t e = 2;
     uint16_t halves[e];
@@ -1117,7 +1117,7 @@ reg_pair core::mem_c_unpk16u(uint32_t a) {
     return {TO_U32(halves[0]), TO_U32(halves[1])};
 }
 
-reg_pair core::mem_c_unpk8(uint32_t a) {
+reg_pair core::data_fmt_c_widen8(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
     constexpr size_t e = 4;
     int8_t bytes[e];
@@ -1150,7 +1150,7 @@ reg_pair core::mem_c_unpk8(uint32_t a) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::mem_c_unpk8u(uint32_t a) {
+reg_pair core::data_fmt_c_widen8u(uint32_t a) {
     // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 4;
     uint8_t bytes[e];
@@ -1183,7 +1183,7 @@ reg_pair core::mem_c_unpk8u(uint32_t a) {
     return {words[0], words[1]};
 }
 
-reg_pair core::mem_c_unpk4(uint32_t a) {
+reg_pair core::data_fmt_c_widen4(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values)
     constexpr size_t e = 8;
     int8_t nibbles[e];
@@ -1218,7 +1218,7 @@ reg_pair core::mem_c_unpk4(uint32_t a) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::mem_c_unpk4u(uint32_t a) {
+reg_pair core::data_fmt_c_widen4u(uint32_t a) {
     // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 8;
     uint8_t nibbles[e];
@@ -1253,7 +1253,7 @@ reg_pair core::mem_c_unpk4u(uint32_t a) {
     return {words[0], words[1]};
 }
 
-reg_pair core::mem_c_unpk2(uint32_t a) {
+reg_pair core::data_fmt_c_widen2(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values)
     constexpr size_t e = 16;
     int8_t crumbs[e];
@@ -1288,7 +1288,7 @@ reg_pair core::mem_c_unpk2(uint32_t a) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::mem_c_unpk2u(uint32_t a) {
+reg_pair core::data_fmt_c_widen2u(uint32_t a) {
     // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 16;
     uint8_t crumbs[e];

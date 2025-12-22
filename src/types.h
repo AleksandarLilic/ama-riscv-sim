@@ -125,15 +125,15 @@ enum class alu_custom_op_t {
     op_dot4 = 0x46,
 };
 
-enum class mem_custom_op_t {
-    op_unpk16 = 0x00,
-    op_unpk16u = 0x20,
-    op_unpk8 = 0x01,
-    op_unpk8u = 0x21,
-    op_unpk4 = 0x40,
-    op_unpk4u = 0x60,
-    op_unpk2 = 0x41,
-    op_unpk2u = 0x61,
+enum class data_fmt_custom_op_t {
+    op_widen16 = 0x00,
+    op_widen16u = 0x20,
+    op_widen8 = 0x01,
+    op_widen8u = 0x21,
+    op_widen4 = 0x40,
+    op_widen4u = 0x60,
+    op_widen2 = 0x41,
+    op_widen2u = 0x61,
 };
 
 enum class scp_custom_op_t {

@@ -352,7 +352,7 @@ int32_t _simd_dot_product_int16_int8(
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
         asm (
-            "unpk8 "TOSTR(RD_1)", %[b];"
+            "widen8 "TOSTR(RD_1)", %[b];"
             // x30 (RD_1) = 2 lower halves, x31 (RDP_1) = 2 upper halves
             "dot16 %[p1], %[a1], "TOSTR(RD_1)";"
             "dot16 %[p2], %[a2], "TOSTR(RDP_1)";"
@@ -384,13 +384,13 @@ int32_t _simd_dot_product_int16_int4(
         const int32_t a_slice_3 = *(const int32_t*)(a + k + 4);
         const int32_t a_slice_4 = *(const int32_t*)(a + k + 6);
         asm (
-            "unpk4 "TOSTR(RD_1)", %[b];" // nibbles to bytes
-            "unpk8 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low bytes to halfwords
+            "widen4 "TOSTR(RD_1)", %[b];" // nibbles to bytes
+            "widen8 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low bytes to halfwords
             "dot16 %[p1], %[a1], "TOSTR(RD_2)";"
             "dot16 %[p2], %[a2], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
-            "unpk8 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high bytes to halfwords
+            "widen8 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high bytes to halfwords
             "dot16 %[p1], %[a3], "TOSTR(RD_2)";"
             "dot16 %[p2], %[a4], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"
@@ -427,7 +427,7 @@ int32_t _simd_dot_product_int8_int4(
         const int32_t a_slice_1 = *(const int32_t*)(a + k);
         const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
         asm (
-            "unpk4 "TOSTR(RD_1)", %[b];"
+            "widen4 "TOSTR(RD_1)", %[b];"
             "dot8 %[p1], %[a1], "TOSTR(RD_1)";"
             "dot8 %[p2], %[a2], "TOSTR(RDP_1)";"
             "add %[c], %[c], %[p1];"
@@ -464,13 +464,13 @@ int32_t _simd_dot_product_int8_int2(
         const int32_t a_slice_3 = *(const int32_t*)(a + k + 8);
         const int32_t a_slice_4 = *(const int32_t*)(a + k + 12);
         asm (
-            "unpk2 "TOSTR(RD_1)", %[b];" // crumbs to nibbles
-            "unpk4 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low nibbles to bytes
+            "widen2 "TOSTR(RD_1)", %[b];" // crumbs to nibbles
+            "widen4 "TOSTR(RD_2)", "TOSTR(RD_1)";" // low nibbles to bytes
             "dot8 %[p1], %[a1], "TOSTR(RD_2)";"
             "dot8 %[p2], %[a2], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"
             "add %[c], %[c], %[p2];"
-            "unpk4 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high nibbles to bytes
+            "widen4 "TOSTR(RD_2)", "TOSTR(RDP_1)";" // high nibbles to bytes
             "dot8 %[p1], %[a3], "TOSTR(RD_2)";"
             "dot8 %[p2], %[a4], "TOSTR(RDP_2)";"
             "add %[c], %[c], %[p1];"

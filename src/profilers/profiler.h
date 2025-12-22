@@ -45,9 +45,9 @@ enum class opc_g {
     i_add16, i_add8, i_sub16, i_sub8,
     i_mul16, i_mul16u, i_mul8, i_mul8u,
     i_dot16, i_dot8, i_dot4,
-    // custom mem
-    i_unpk16, i_unpk16u, i_unpk8, i_unpk8u,
-    i_unpk4, i_unpk4u, i_unpk2, i_unpk2u,
+    // custom data fmt
+    i_widen16, i_widen16u, i_widen8, i_widen8u,
+    i_widen4, i_widen4u, i_widen2, i_widen2u,
     // custom hints
     i_scp_lcl, i_scp_rel,
 
@@ -183,7 +183,7 @@ struct cnt_t {
         uint32_t dot_c = 0;
         uint32_t alu_c = 0;
         uint32_t mul_c = 0;
-        uint32_t unpk_c = 0;
+        uint32_t widen_c = 0;
         uint32_t scp_c = 0;
 
     public:
@@ -192,7 +192,7 @@ struct cnt_t {
             rest = (
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
-                dot_c - alu_c - mul_c - unpk_c - scp_c
+                dot_c - alu_c - mul_c - widen_c - scp_c
             );
         }
         float_t get_perc(uint32_t count) {
@@ -219,7 +219,7 @@ struct perc_t {
         float_t dot_c = 0.0;
         float_t alu_c = 0.0;
         float_t mul_c = 0.0;
-        float_t unpk_c = 0.0;
+        float_t widen_c = 0.0;
         float_t scp_c = 0.0;
 };
 
@@ -384,11 +384,11 @@ class profiler {
             opc_g::i_mul16, opc_g::i_mul16u, opc_g::i_mul8, opc_g::i_mul8u,
         };
 
-        static constexpr std::array<opc_g, 8> unpk_c_opcs = {
-            opc_g::i_unpk16, opc_g::i_unpk16u,
-            opc_g::i_unpk8, opc_g::i_unpk8u,
-            opc_g::i_unpk4, opc_g::i_unpk4u,
-            opc_g::i_unpk2, opc_g::i_unpk2u,
+        static constexpr std::array<opc_g, 8> widen_c_opcs = {
+            opc_g::i_widen16, opc_g::i_widen16u,
+            opc_g::i_widen8, opc_g::i_widen8u,
+            opc_g::i_widen4, opc_g::i_widen4u,
+            opc_g::i_widen2, opc_g::i_widen2u,
         };
 
         static constexpr std::array<opc_g, 2> scp_c_opcs = {

@@ -63,14 +63,14 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
     prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
 
-    prof_g_arr[TO_U32(opc_g::i_unpk16)] = {"unpk16", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk16u)] = {"unpk16u", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk8)] = {"unpk8", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk8u)] = {"unpk8u", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk4)] = {"unpk4", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk4u)] = {"unpk4u", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk2)] = {"unpk2", 0};
-    prof_g_arr[TO_U32(opc_g::i_unpk2u)] = {"unpk2u", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen16)] = {"widen16", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen16u)] = {"widen16u", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen8)] = {"widen8", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen8u)] = {"widen8u", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen4)] = {"widen4", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen4u)] = {"widen4u", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen2)] = {"widen2", 0};
+    prof_g_arr[TO_U32(opc_g::i_widen2u)] = {"widen2u", 0};
 
     prof_g_arr[TO_U32(opc_g::i_scp_lcl)] = {"scp.lcl", 0};
     prof_g_arr[TO_U32(opc_g::i_scp_rel)] = {"scp.rel", 0};
@@ -281,7 +281,7 @@ void profiler::log_to_file_and_print() {
     for (auto &a: alu_c_opcs) cnt.alu_c += prof_g_arr[TO_U32(a)].count;
     for (auto &m: mul_c_opcs) cnt.mul_c += prof_g_arr[TO_U32(m)].count;
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
-    for (auto &u: unpk_c_opcs) cnt.unpk_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &u: widen_c_opcs) cnt.widen_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.nop = prof_g_arr[TO_U32(opc_g::i_nop)].count;
     cnt.find_mem();
@@ -301,7 +301,7 @@ void profiler::log_to_file_and_print() {
     perc.alu_c = cnt.get_perc(cnt.alu_c);
     perc.mul_c = cnt.get_perc(cnt.mul_c);
     perc.zbb = cnt.get_perc(cnt.zbb);
-    perc.unpk_c = cnt.get_perc(cnt.unpk_c);
+    perc.widen_c = cnt.get_perc(cnt.widen_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
@@ -345,7 +345,7 @@ void profiler::log_to_file_and_print() {
               << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
               << " MUL: " << cnt.mul_c << "(" << perc.mul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
-              << " UNPK: " << cnt.unpk_c << "(" << perc.unpk_c << "%)"
+              << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%)"
               << "\n";
 
     std::cout << INDENT << "Hint:"

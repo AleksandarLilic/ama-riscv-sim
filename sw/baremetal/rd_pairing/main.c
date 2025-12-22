@@ -13,7 +13,7 @@ void unpack16u(uint16_t* in, uint32_t* out, size_t len) {
         register uint32_t b_slice_1 asm("t5");
         register uint32_t b_slice_2 asm("t6");
         asm volatile(
-            "unpk16u %[v1], %[in];"
+            "widen16u %[v1], %[in];"
             : [v1] "=r" (b_slice_1), [v2] "=r" (b_slice_2) // [v2] "+r"
             : [in] "r" (a_slice)
             :

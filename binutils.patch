@@ -1,8 +1,8 @@
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..23aed15838b 100644
+index e77b49a6298..1865ea0bdfa 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
-@@ -3473,6 +3473,41 @@
+@@ -3473,6 +3473,37 @@
  #define CSR_VL 0xc20
  #define CSR_VTYPE 0xc21
  #define CSR_VLENB 0xc22
@@ -17,10 +17,6 @@ index e77b49a6298..23aed15838b 100644
 +
 +#define MATCH_ADD16   0xb
 +#define MATCH_ADD8    0x200000b
-+#define MATCH_SADD16  0x8000000b
-+#define MATCH_SADD16U 0x8000000b
-+#define MATCH_SADD8   0x8200000b
-+#define MATCH_SADD8U  0x8200000b
 +#define MATCH_SUB16   0x400000b
 +#define MATCH_SUB8    0x600000b
 +
@@ -29,14 +25,14 @@ index e77b49a6298..23aed15838b 100644
 +#define MATCH_MUL8    0xa00000b
 +#define MATCH_MUL8U   0x4a00000b
 +
-+#define MATCH_UNPK16  0x100b
-+#define MATCH_UNPK16U 0x4000100b
-+#define MATCH_UNPK8   0x200100b
-+#define MATCH_UNPK8U  0x4200100b
-+#define MATCH_UNPK4   0x8000100b
-+#define MATCH_UNPK4U  0xc000100b
-+#define MATCH_UNPK2   0x8200100b
-+#define MATCH_UNPK2U  0xc200100b
++#define MATCH_WIDEN16  0x100b
++#define MATCH_WIDEN16U 0x4000100b
++#define MATCH_WIDEN8   0x200100b
++#define MATCH_WIDEN8U  0x4200100b
++#define MATCH_WIDEN4   0x8000100b
++#define MATCH_WIDEN4U  0xc000100b
++#define MATCH_WIDEN2   0x8200100b
++#define MATCH_WIDEN2U  0xc200100b
 +
 +#define MATCH_SCP_LCL 0x2000200b
 +#define MATCH_SCP_REL 0x2200200b
@@ -45,10 +41,10 @@ index e77b49a6298..23aed15838b 100644
  #ifdef DECLARE_INSN
  DECLARE_INSN(slli_rv32, MATCH_SLLI_RV32, MASK_SLLI_RV32)
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..b878f225afc 100644
+index fdd05ac75dc..4981b4d222e 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
-@@ -347,6 +347,37 @@ const struct riscv_opcode riscv_opcodes[] =
+@@ -347,6 +347,33 @@ const struct riscv_opcode riscv_opcodes[] =
  {
  /* name, xlen, isa, operands, match, mask, match_func, pinfo.  */
  
@@ -59,10 +55,6 @@ index fdd05ac75dc..b878f225afc 100644
 +
 +{"add16",       0, INSN_CLASS_I, "d,s,t",     MATCH_ADD16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"add8",        0, INSN_CLASS_I, "d,s,t",     MATCH_ADD8, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"sadd16",      0, INSN_CLASS_I, "d,s,t",     MATCH_SADD16, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"sadd16u",     0, INSN_CLASS_I, "d,s,t",     MATCH_SADD16U, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"sadd8",       0, INSN_CLASS_I, "d,s,t",     MATCH_SADD8, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"sadd8u",      0, INSN_CLASS_I, "d,s,t",     MATCH_SADD8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"sub16",       0, INSN_CLASS_I, "d,s,t",     MATCH_SUB16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"sub8",        0, INSN_CLASS_I, "d,s,t",     MATCH_SUB8, MASK_CUSTOM_REG, match_opcode, 0 },
 +
@@ -71,14 +63,14 @@ index fdd05ac75dc..b878f225afc 100644
 +{"mul8",        0, INSN_CLASS_I, "d,s,t",     MATCH_MUL8, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"mul8u",       0, INSN_CLASS_I, "d,s,t",     MATCH_MUL8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
-+{"unpk16",      0, INSN_CLASS_I, "d,s",       MATCH_UNPK16, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk16u",     0, INSN_CLASS_I, "d,s",       MATCH_UNPK16U, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk8",       0, INSN_CLASS_I, "d,s",       MATCH_UNPK8, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk8u",      0, INSN_CLASS_I, "d,s",       MATCH_UNPK8U, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk4",       0, INSN_CLASS_I, "d,s",       MATCH_UNPK4, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk4u",      0, INSN_CLASS_I, "d,s",       MATCH_UNPK4U, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk2",       0, INSN_CLASS_I, "d,s",       MATCH_UNPK2, MASK_CUSTOM_IMM, match_opcode, 0 },
-+{"unpk2u",      0, INSN_CLASS_I, "d,s",       MATCH_UNPK2U, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen16",     0, INSN_CLASS_I, "d,s",       MATCH_WIDEN16, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen16u",    0, INSN_CLASS_I, "d,s",       MATCH_WIDEN16U, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen8",      0, INSN_CLASS_I, "d,s",       MATCH_WIDEN8, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen8u",     0, INSN_CLASS_I, "d,s",       MATCH_WIDEN8U, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen4",      0, INSN_CLASS_I, "d,s",       MATCH_WIDEN4, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen4u",     0, INSN_CLASS_I, "d,s",       MATCH_WIDEN4U, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen2",      0, INSN_CLASS_I, "d,s",       MATCH_WIDEN2, MASK_CUSTOM_IMM, match_opcode, 0 },
++{"widen2u",     0, INSN_CLASS_I, "d,s",       MATCH_WIDEN2U, MASK_CUSTOM_IMM, match_opcode, 0 },
 +
 +{"scp.lcl",     0, INSN_CLASS_I, "d,s",       MATCH_SCP_LCL, MASK_CUSTOM_IMM, match_opcode, 0 },
 +{"scp.rel",     0, INSN_CLASS_I, "d,s",       MATCH_SCP_REL, MASK_CUSTOM_IMM, match_opcode, 0 },
