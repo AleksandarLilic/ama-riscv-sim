@@ -44,7 +44,7 @@ class profiler_perf {
         void set_perf_event_flag(perf_event_t perf_event) {
             perf_event_flags[TO_U32(perf_event)] += 1;
         }
-        void finish() { log_to_file_and_print(); }
+        void finish(bool silent) { log_to_file_and_print(silent); }
 
         // debug helpers
         bool dbg_check_top(uint32_t next_pc);
@@ -61,5 +61,5 @@ class profiler_perf {
             find_symbol_in_range(uint32_t next_pc);
         std::string get_callstack_str(const std::vector<uint16_t>& idx_stack);
         std::u16string callstack_to_key();
-        void log_to_file_and_print();
+        void log_to_file_and_print(bool silent);
 };

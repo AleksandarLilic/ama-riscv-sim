@@ -63,12 +63,19 @@ class core {
         #endif
 
     private:
-        void write_rf(uint32_t reg, uint32_t data) { if (reg) rf[reg] = data; }
+        void write_rf(uint32_t reg, uint32_t data) {
+            if (reg) {
+                rf[reg] = data;
+                prof.log_sparsity((data == 0), sparsity_t::any);
+            }
+        }
         void write_rf_pair(uint32_t reg, reg_pair rp) {
             if (reg & 1) tu.e_hardware_error("RDP Write to odd register");
             if (reg) {
                 rf[reg] = rp.a;
                 rf[reg + 1] = rp.b;
+                prof.log_sparsity((rp.a == 0), sparsity_t::any);
+                prof.log_sparsity((rp.b == 0), sparsity_t::any);
             }
         }
         void write_csr(uint16_t addr, uint32_t data) {

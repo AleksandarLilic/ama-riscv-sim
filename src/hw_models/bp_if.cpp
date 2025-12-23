@@ -248,26 +248,29 @@ void bp_if::update_app_stats(uint32_t pc, bool taken) {
     ptr->pattern.push_back(taken);
 }
 
-void bp_if::finish(std::string out_dir, uint64_t profiled_insts) {
+void bp_if::finish(std::string out_dir, uint64_t profiled_insts, bool silent) {
     for (auto& p : all_bps) p->summarize_stats(profiled_insts);
     active_bp->summarize_stats(profiled_insts);
-    show_stats(out_dir);
+
+    std::string active_bp_name = active_bp->type_name;
+    // put active bp in a list and iterate over all of them to dump/show stats
+    all_bps.insert(all_bps.begin(), std::move(active_bp));
+    if (to_dump_csv) dump_csv(out_dir);
+    if (!silent) show_stats(active_bp_name);
+    active_bp = std::move(all_bps[0]); // restore active_bp
+    all_bps.erase(all_bps.begin()); // remove invalid pointer
 }
 
-void bp_if::show_stats(std::string out_dir) {
-    std::cout << "Branch stats: unique branches: " << bi_app_stats.size()
+void bp_if::show_stats(std::string active_bp_name) {
+    std::cout << "Branch stats:\n"
+              << INDENT << "Unique branches: " << bi_app_stats.size()
               << std::endl;
     std::cout << bp_name;
     // show all, but mark the active one (driving the icache) if running all
-    if (bp_run_all) std::cout << " (active: " << active_bp->type_name << ")";
+    if (bp_run_all) std::cout << " (active: " << active_bp_name << ")";
     std::cout << std::endl;
 
-    // put active in a list an iterate over all of them to show stats
-    all_bps.insert(all_bps.begin(), std::move(active_bp));
-    if (to_dump_csv) dump_csv(out_dir);
     for (auto& p : all_bps) p->show_stats(bp_run_all);
-    active_bp = std::move(all_bps[0]); // restore active_bp
-    all_bps.erase(all_bps.begin()); // remove invalid pointer
     return;
 
     // TODO: dump as cli switch? useful to have BP state at the end at all?

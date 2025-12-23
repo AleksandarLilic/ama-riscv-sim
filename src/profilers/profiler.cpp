@@ -192,7 +192,7 @@ void profiler::track_sp(const uint32_t sp) {
     if (sp != 0 && sp < min_sp) min_sp = sp;
 }
 
-void profiler::log_to_file_and_print() {
+void profiler::log_to_file_and_print(bool silent) {
     cnt_t cnt;
     std::string pt = "";
     if (prof_src == profiler_source_t::clock) pt = "_clk";
@@ -310,12 +310,14 @@ void profiler::log_to_file_and_print() {
     return;
     #endif
 
+    if (silent) return;
+
     std::cout << std::fixed << std::setprecision(2);
-    std::cout << "Profiler: "
-              << "Inst: " << cnt.tot
+    std::cout << "Profiler - Inst:\n"
+              << INDENT << "All: " << cnt.tot
               #ifdef RV32C
-              << " - 32/16-bit: " << cnt.tot - comp_cnt << "/" << comp_cnt
-              << "(" << 100.0 - comp_perc << "%/" << comp_perc << "%)"
+              << " - 32/16-bit: " << (cnt.tot - comp_cnt) << "/" << comp_cnt
+              << "(" << (100.0 - comp_perc) << "%/" << comp_perc << "%)"
               #endif
               << "\n";
 
@@ -357,11 +359,13 @@ void profiler::log_to_file_and_print() {
               << " Misc: " << cnt.rest << "(" << perc.rest << "%)"
               << "\n";
 
-    if (prof_src == profiler_source_t::inst) {
-        float_t sparsity = sparsity_cnt.get_perc();
-        std::cout << "Profiler Sparsity: total: " << sparsity_cnt.total
-                << ", sparse: " << sparsity_cnt.sparse
-                << "(" << sparsity << "%)" << "\n";
+    std::cout << "Profiler - Sparsity:\n";
+    for (size_t i = 0; i < TO_U32(sparsity_t::_count); i++) {
+        sparsity_cnt_t* ptr = &sparsity_cnt[i];
+        const char* n = sparsity_cnt_names[i];
+        std::cout << INDENT << n << ": " << ptr->total << "/" << ptr->sparse
+                  << "(" << TO_F32(ptr->get_perc()) << "%)" << "\n";
+
     }
 
     uint64_t sa_cnt = stack_access.total();
@@ -373,7 +377,9 @@ void profiler::log_to_file_and_print() {
     if (cnt.mem) sa_perc = (100.0 * sa_cnt / cnt.mem);
     if (cnt.load) sa_perc_load = (100.0 * sa_cnt_load / cnt.mem);
     if (cnt.store) sa_perc_store = (100.0 * sa_cnt_store / cnt.mem);
-    std::cout << "Profiler Stack: peak usage: " << min_sp << " B, Accesses: "
+    std::cout << "Profiler - Stack:\n";
+    std::cout << INDENT << "Peak usage: " << min_sp << " B\n"
+              << INDENT << "Accesses: "
               << sa_cnt << "(" << sa_perc << "%) - L/S: "
               << sa_cnt_load << "/" << sa_cnt_store
               << "(" << sa_perc_load << "%/" << sa_perc_store << "%)"

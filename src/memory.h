@@ -60,7 +60,8 @@ class memory {
         void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
             mm.set_cache_hws(ic, dc);
         }
-        void cache_finish() {
+        void cache_finish(bool silent) {
+            if (silent) return;
             mm.finish();
         }
         void cache_profiling(bool enable) {

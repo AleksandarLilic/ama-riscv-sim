@@ -350,6 +350,7 @@ struct cfg_t {
     bool show_state;
     bool exit_on_trap;
     bool sink_uart;
+    bool silent;
     std::string out_dir;
 };
 

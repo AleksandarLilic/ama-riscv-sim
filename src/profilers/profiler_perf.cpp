@@ -179,7 +179,7 @@ std::u16string profiler_perf::callstack_to_key() {
   return std::u16string(p, st.idx_callstack.size());
 }
 
-void profiler_perf::log_to_file_and_print() {
+void profiler_perf::log_to_file_and_print(bool silent) {
     // close last callstack
     save_callstack_cnt();
     std::string pt = "";
@@ -200,11 +200,15 @@ void profiler_perf::log_to_file_and_print() {
         out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
         total_cnt += c.second;
     }
+
     #ifdef DPI
     return;
     #endif
-    std::cout << "Profiler Perf: "
-              << "Event: " << perf_event_names[TO_U32(perf_event)]
+
+    if (silent) return;
+
+    std::cout << "Profiler - Perf:\n"
+              << INDENT << "Event: " << perf_event_names[TO_U32(perf_event)]
               << ", Samples: " << total_cnt << "\n";
 }
 

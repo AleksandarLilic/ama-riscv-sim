@@ -248,34 +248,42 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 
 #define CASE_ALU_REG_OP(op) \
     case TO_U8(alu_r_op_t::op_##op): \
-        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        res = alu_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_ALU \
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
     case TO_U8(alu_r_mul_op_t::op_##op): \
-        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        res = alu_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_ALU \
         break;
 
 #define CASE_ALU_REG_ZBB_OP(op) \
     case TO_U8(alu_r_zbb_op_t::op_##op): \
-        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        res = alu_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_ALU \
         break;
 
 #define CASE_ALU_IMM_OP(op) \
     case TO_U8(alu_i_op_t::op_##op): \
-        write_rf(ip.rd(), alu_##op(rf[ip.rs1()], ip.imm_i())); \
+        res = alu_##op(rf[ip.rs1()], ip.imm_i()); \
+        write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
+        PROF_SPARSITY_ALU \
         break;
 
 #define CASE_LOAD(op) \
@@ -286,15 +294,18 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
+        PROF_SPARSITY_MEM_L \
         break;
 
 #define CASE_STORE(op) \
     case TO_U8(store_op_t::op_##op): \
-        store_##op(rf[ip.rs1()]+ip.imm_s(), rf[ip.rs2()]); \
+        val = (rf[ip.rs1()] + ip.imm_s()); \
+        store_##op(val, rf[ip.rs2()]); \
         if (tu.is_trapped()) return; \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RS1_RS2 \
+        PROF_SPARSITY_MEM_S \
         break;
 
 #define CASE_BRANCH(op) \
@@ -310,28 +321,34 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_RS1_RS2 \
         break;
 
-#define CASE_ALU_CUSTOM_OP(op) \
+#define CASE_ALU_CUSTOM_OP(op, t) \
     case TO_U8(alu_custom_op_t::op_##op): \
-        write_rf(ip.rd(), alu_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(t) \
         break;
 
-#define CASE_ALU_CUSTOM_OP_PAIR(op) \
+#define CASE_ALU_CUSTOM_OP_PAIR(op, t) \
     case TO_U8(alu_custom_op_t::op_##op): \
-        write_rf_pair(ip.rd(), alu_c_##op(rf[ip.rs1()], rf[ip.rs2()])); \
+        rp = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1_RS2 \
+        PROF_SPARSITY_SIMD_PAIR(t) \
         break;
 
-#define CASE_DATA_FMT_CUSTOM_OP(op) \
+#define CASE_DATA_FMT_CUSTOM_OP(op, t) \
     case TO_U8(data_fmt_custom_op_t::op_##op): \
-        write_rf_pair(ip.rd(), data_fmt_c_##op(rs1)); \
+        rp = data_fmt_c_##op(rs1); \
+        write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1 \
+        PROF_SPARSITY_SIMD_PAIR(t) \
         break;
 
 #define CASE_SCP_CUSTOM(op) \
@@ -431,7 +448,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     rf_names[ip.c_regl()][rf_names_idx]
 
 #define DASM_ALIGN \
-    dasm.asm_ss << std::setw(34 - inst_w - dasm.asm_ss.tellp()) \
+    dasm.asm_ss << std::setw(38 - inst_w - dasm.asm_ss.tellp()) \
                 << std::setfill(' ') << "  "
 
 // parametrized
@@ -551,6 +568,15 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     prof.te.dmem_size = TO_U8(size); \
     prof.te.dmem = addr;
 
+#define PROF_SPARSITY_ALU prof.log_sparsity((res == 0), sparsity_t::alu);
+#define PROF_SPARSITY_MEM_L prof.log_sparsity((loaded == 0), sparsity_t::mem_l);
+#define PROF_SPARSITY_MEM_S prof.log_sparsity((val == 0), sparsity_t::mem_s);
+#define PROF_SPARSITY_SIMD(t) \
+    prof.log_sparsity((res == 0), sparsity_t::simd_##t);
+#define PROF_SPARSITY_SIMD_PAIR(t) \
+    prof.log_sparsity((rp.a == 0), sparsity_t::simd_##t); \
+    prof.log_sparsity((rp.b == 0), sparsity_t::simd_##t);
+
 #else
 #define PROF_G(op)
 #define PROF_J(op)
@@ -566,6 +592,11 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)
+#define PROF_SPARSITY_ALU
+#define PROF_SPARSITY_MEM_L
+#define PROF_SPARSITY_MEM_S
+#define PROF_SPARSITY_SIMD
+#define PROF_SPARSITY_SIMD_PAIR
 #endif
 
 #define INDENT "    "

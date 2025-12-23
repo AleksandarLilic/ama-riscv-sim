@@ -125,6 +125,7 @@ struct defs_t {
     static constexpr char mem_dump_start[] = "0";
     static constexpr char mem_dump_size[] = "0";
     static constexpr char run_insts[] = "0";
+    static constexpr char silent[] = "false";
     #ifdef UART_EN
     static constexpr char sink_uart[] = "false";
     #endif
@@ -220,6 +221,9 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(""))
         ("run_insts", "Number of instructions to run. Set to 0 for no limit",
          CXXOPTS_VAL_STR->default_value(defs_t::run_insts))
+        ("silent",
+         "Don't print stats at the end to terminal. Logs stored regardless",
+         CXXOPTS_VAL_BOOL->default_value(defs_t::silent))
         #ifdef UART_EN
         ("sink_uart",
          "Don't print UART output to terminal. UART still fully operational",
@@ -404,6 +408,7 @@ int main(int argc, char* argv[]) {
         cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
         cfg.run_insts = TO_SIZE(result["run_insts"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
+        cfg.silent = TO_BOOL(result["silent"]);
         #ifdef UART_EN
         cfg.sink_uart = TO_BOOL(result["sink_uart"]);
         #endif

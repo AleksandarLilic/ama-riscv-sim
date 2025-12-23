@@ -232,6 +232,16 @@ struct sparsity_cnt_t {
     }
 };
 
+enum class sparsity_t {
+    any, alu, mem_l, mem_s, simd_dot, simd_alu, simd_data_fmt, _count
+};
+
+static constexpr std::array<const char*, TO_U32(sparsity_t::_count)>
+    sparsity_cnt_names =
+    {{
+        "ANY", "ALU", "MEM_L", "MEM_S", "SIMD_DOT", "SIMD_ALU", "SIMD_DATA_FMT"
+    }};
+
 class profiler {
     public:
         trace_entry te;
@@ -254,7 +264,7 @@ class profiler {
         std::array<inst_prof_b, TO_U32(opc_b::_count)> prof_b_arr;
         std::array<std::array<uint64_t, TO_U32(reg_use_t::_count)>, 32>
             prof_rf_usage = {0};
-        sparsity_cnt_t sparsity_cnt;
+        std::array<sparsity_cnt_t, TO_U32(sparsity_t::_count)> sparsity_cnt;
         bool trace_en;
         bool rf_usage;
         uint32_t min_sp = BASE_ADDR + MEM_SIZE; // add offset
@@ -268,6 +278,11 @@ class profiler {
         void log_inst(opc_g opc, uint64_t inc);
         void log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc);
         void log_reg_use(reg_use_t reg_use, uint8_t reg);
+        void log_sparsity(bool sparse, sparsity_t stype) {
+            if (!active) return;
+            sparsity_cnt[TO_U32(stype)].total++;
+            sparsity_cnt[TO_U32(stype)].sparse += sparse;
+        }
         void log_stack_access_load(bool in_range) {
             if (active) stack_access.loading(in_range);
         }
@@ -278,15 +293,10 @@ class profiler {
             this->trace_en = trace_en;
             this->rf_usage = rf_usage;
         }
-        void finish() { log_to_file_and_print(); }
-        void log_sparsity(bool sparse) {
-            if (!active) return;
-            sparsity_cnt.total++;
-            sparsity_cnt.sparse += sparse;
-        }
+        void finish(bool silent) { log_to_file_and_print(silent); }
 
     private:
-        void log_to_file_and_print();
+        void log_to_file_and_print(bool silent);
 
     private:
         // all compressed instructions

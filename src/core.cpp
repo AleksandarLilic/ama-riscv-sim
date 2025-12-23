@@ -319,13 +319,13 @@ void core::finish(bool dump_regs) {
         mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, cfg.out_dir);
     }
     #ifdef PROFILERS_EN
-    prof_fusion.finish();
-    prof_perf.finish();
-    prof.finish();
+    prof.finish(cfg.silent);
+    prof_perf.finish(cfg.silent);
+    prof_fusion.finish(cfg.silent);
     #endif
     #ifdef HW_MODELS_EN
-    bp.finish(cfg.out_dir, prof_pc.inst_cnt);
-    mem->cache_finish();
+    bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.silent);
+    mem->cache_finish(cfg.silent);
     log_hw_stats();
     #endif
     #ifdef DASM_EN
@@ -337,7 +337,8 @@ void core::finish(bool dump_regs) {
 void core::alu_reg() {
     uint32_t funct7 = ip.funct7();
     uint32_t funct3 = ip.funct3();
-    uint32_t alu_op_sel = ((ip.funct7_b5()) << 3) | funct3;
+    uint32_t alu_op_sel = (((ip.funct7_b5()) << 3) | funct3);
+    uint32_t res;
     switch(funct7) {
         case 0x00: // rv32i
         case 0x20: // rv32i sub and sra
@@ -390,6 +391,7 @@ void core::alu_imm() {
     uint32_t alu_op_sel_shift = ((ip.funct7_b5()) << 3) | ip.funct3();
     bool is_shift = (ip.funct3() & 0x3) == 1;
     uint32_t alu_op_sel = is_shift ? alu_op_sel_shift : ip.funct3();
+    uint32_t res;
     switch (alu_op_sel) {
         CASE_ALU_IMM_OP(addi)
         CASE_ALU_IMM_OP(slli)
@@ -445,6 +447,7 @@ void core::load() {
 }
 
 void core::store() {
+    uint32_t val;
     switch (ip.funct3()) {
         CASE_STORE(sb)
         CASE_STORE(sh)
@@ -684,18 +687,20 @@ void core::custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
     if (funct3 == TO_U8(custom_ext_t::arith)) {
+        uint32_t res;
+        reg_pair rp;
         switch (funct7) {
-            CASE_ALU_CUSTOM_OP(add16)
-            CASE_ALU_CUSTOM_OP(add8)
-            CASE_ALU_CUSTOM_OP(sub16)
-            CASE_ALU_CUSTOM_OP(sub8)
-            CASE_ALU_CUSTOM_OP_PAIR(mul16)
-            CASE_ALU_CUSTOM_OP_PAIR(mul16u)
-            CASE_ALU_CUSTOM_OP_PAIR(mul8)
-            CASE_ALU_CUSTOM_OP_PAIR(mul8u)
-            CASE_ALU_CUSTOM_OP(dot16)
-            CASE_ALU_CUSTOM_OP(dot8)
-            CASE_ALU_CUSTOM_OP(dot4)
+            CASE_ALU_CUSTOM_OP(add16, alu)
+            CASE_ALU_CUSTOM_OP(add8, alu)
+            CASE_ALU_CUSTOM_OP(sub16, alu)
+            CASE_ALU_CUSTOM_OP(sub8, alu)
+            CASE_ALU_CUSTOM_OP_PAIR(mul16, alu)
+            CASE_ALU_CUSTOM_OP_PAIR(mul16u, alu)
+            CASE_ALU_CUSTOM_OP_PAIR(mul8, alu)
+            CASE_ALU_CUSTOM_OP_PAIR(mul8u, alu)
+            CASE_ALU_CUSTOM_OP(dot16, dot)
+            CASE_ALU_CUSTOM_OP(dot8, dot)
+            CASE_ALU_CUSTOM_OP(dot4, dot)
             default : tu.e_unsupported_inst("custom extension - arith");
         }
 
@@ -706,24 +711,27 @@ void core::custom_ext() {
         #ifdef DASM_EN
         DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
         DASM_RD_UPDATE;
-        bool paired_arith = (funct7 == TO_U8(alu_custom_op_t::op_mul16) ||
-                             funct7 == TO_U8(alu_custom_op_t::op_mul16u) ||
-                             funct7 == TO_U8(alu_custom_op_t::op_mul8) ||
-                             funct7 == TO_U8(alu_custom_op_t::op_mul8u));
+        bool paired_arith = (
+            (funct7 == TO_U8(alu_custom_op_t::op_mul16)) ||
+            (funct7 == TO_U8(alu_custom_op_t::op_mul16u)) ||
+            (funct7 == TO_U8(alu_custom_op_t::op_mul8)) ||
+            (funct7 == TO_U8(alu_custom_op_t::op_mul8u))
+        );
         if (paired_arith) DASM_RD_UPDATE_PAIR;
         #endif
 
     } else if (funct3 == TO_U8(custom_ext_t::memory)) {
         uint32_t rs1 = rf[ip.rs1()];
+        reg_pair rp;
         switch (funct7) {
-            CASE_DATA_FMT_CUSTOM_OP(widen16)
-            CASE_DATA_FMT_CUSTOM_OP(widen16u)
-            CASE_DATA_FMT_CUSTOM_OP(widen8)
-            CASE_DATA_FMT_CUSTOM_OP(widen8u)
-            CASE_DATA_FMT_CUSTOM_OP(widen4)
-            CASE_DATA_FMT_CUSTOM_OP(widen4u)
-            CASE_DATA_FMT_CUSTOM_OP(widen2)
-            CASE_DATA_FMT_CUSTOM_OP(widen2u)
+            CASE_DATA_FMT_CUSTOM_OP(widen16, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen16u, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen8, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen8u, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen4, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen4u, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen2, data_fmt)
+            CASE_DATA_FMT_CUSTOM_OP(widen2u, data_fmt)
             default: tu.e_unsupported_inst("custom extension - memory");
         }
 
@@ -1003,11 +1011,6 @@ uint32_t core::alu_c_dot16(uint32_t a, uint32_t b) {
     #ifdef DASM_EN
     simd_ss_finish("]", "]", res);
     #endif
-
-    #ifdef PROFILERS_EN
-    prof.log_sparsity(res==0);
-    #endif
-
     return res;
 }
 
@@ -1031,11 +1034,6 @@ uint32_t core::alu_c_dot8(uint32_t a, uint32_t b) {
     #ifdef DASM_EN
     simd_ss_finish("]", "]", res);
     #endif
-
-    #ifdef PROFILERS_EN
-    prof.log_sparsity(res==0);
-    #endif
-
     return res;
 }
 
@@ -1059,10 +1057,6 @@ uint32_t core::alu_c_dot4(uint32_t a, uint32_t b) {
     #ifdef DASM_EN
     simd_ss_finish("]", "]", res);
     #endif
-    #ifdef PROFILERS_EN
-    prof.log_sparsity(res==0);
-    #endif
-
     return res;
 }
 
@@ -1567,9 +1561,11 @@ void core::c2() {
 
 // C extension - arithmetic and logic operations
 void core::c_addi() {
-    write_rf(ip.rd(), alu_addi(rf[ip.rd()], ip.c_imm_arith()));
+    uint32_t res = alu_addi(rf[ip.rd()], ip.c_imm_arith());
+    write_rf(ip.rd(), res);
     DASM_OP(c.addi)
     PROF_G(c_addi)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
@@ -1578,9 +1574,11 @@ void core::c_addi() {
 }
 
 void core::c_li() {
-    write_rf(ip.rd(), ip.c_imm_arith());
+    uint32_t res = ip.c_imm_arith();
+    write_rf(ip.rd(), res);
     DASM_OP(c.li)
     PROF_G(c_li)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
@@ -1589,10 +1587,12 @@ void core::c_li() {
 }
 
 void core::c_lui() {
-    if (ip.c_imm_lui() == 0) tu.e_illegal_inst("c.lui (imm=0)", 4);
-    write_rf(ip.rd(), ip.c_imm_lui());
+    uint32_t res = ip.c_imm_lui();
+    if (res == 0) tu.e_illegal_inst("c.lui (imm=0)", 4);
+    write_rf(ip.rd(), res);
     DASM_OP(c.lui)
     PROF_G(c_lui)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << FHEXN((ip.c_imm_lui() >> 12), 5);
     DASM_RD_UPDATE;
@@ -1612,9 +1612,11 @@ void core::c_nop() {
 
 void core::c_addi16sp() {
     if (ip.c_imm_16sp() == 0) tu.e_illegal_inst("c.addi16sp (imm=0)", 4);
-    write_rf(2, alu_addi(rf[2], ip.c_imm_16sp()));
+    uint32_t res = alu_addi(rf[2], ip.c_imm_16sp());
+    write_rf(2, res);
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_16sp());
     DASM_RD_UPDATE_P(2);
@@ -1623,9 +1625,11 @@ void core::c_addi16sp() {
 }
 
 void core::c_srli() {
-    write_rf(ip.c_regh(), alu_srli(rf[ip.c_regh()], ip.c_imm_arith()));
+    uint32_t res = alu_srli(rf[ip.c_regh()], ip.c_imm_arith());
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.srli)
     PROF_G(c_srli)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1634,9 +1638,11 @@ void core::c_srli() {
 }
 
 void core::c_srai() {
-    write_rf(ip.c_regh(), alu_srai(rf[ip.c_regh()], ip.c_imm_arith()));
+    uint32_t res = alu_srai(rf[ip.c_regh()], ip.c_imm_arith());
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.srai)
     PROF_G(c_srai)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1645,9 +1651,11 @@ void core::c_srai() {
 }
 
 void core::c_andi() {
-    write_rf(ip.c_regh(), alu_andi(rf[ip.c_regh()], ip.c_imm_arith()));
+    uint32_t res = alu_andi(rf[ip.c_regh()], ip.c_imm_arith());
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.andi)
     PROF_G(c_andi)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1656,9 +1664,11 @@ void core::c_andi() {
 }
 
 void core::c_and() {
-    write_rf(ip.c_regh(), alu_and(rf[ip.c_regh()], rf[ip.c_regl()]));
+    uint32_t res = alu_and(rf[ip.c_regh()], rf[ip.c_regl()]);
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.and)
     PROF_G(c_and)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1667,9 +1677,11 @@ void core::c_and() {
 }
 
 void core::c_or() {
-    write_rf(ip.c_regh(), alu_or(rf[ip.c_regh()], rf[ip.c_regl()]));
+    uint32_t res = alu_or(rf[ip.c_regh()], rf[ip.c_regl()]);
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.or)
     PROF_G(c_or)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1678,9 +1690,11 @@ void core::c_or() {
 }
 
 void core::c_xor() {
-    write_rf(ip.c_regh(), alu_xor(rf[ip.c_regh()], rf[ip.c_regl()]));
+    uint32_t res = alu_xor(rf[ip.c_regh()], rf[ip.c_regl()]);
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.xor)
     PROF_G(c_xor)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1689,9 +1703,11 @@ void core::c_xor() {
 }
 
 void core::c_sub() {
-    write_rf(ip.c_regh(), alu_sub(rf[ip.c_regh()], rf[ip.c_regl()]));
+    uint32_t res = alu_sub(rf[ip.c_regh()], rf[ip.c_regl()]);
+    write_rf(ip.c_regh(), res);
     DASM_OP(c.sub)
     PROF_G(c_sub)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -1700,11 +1716,13 @@ void core::c_sub() {
 }
 
 void core::c_addi4spn() {
+    uint32_t res = alu_addi(rf[2], ip.c_imm_4spn());
     if (ip.c_imm_4spn() == 0) tu.e_illegal_inst("c.addi4spn (imm=0)", 4);
     if (inst == 0) tu.e_illegal_inst("c.inst == 0", 4);
-    write_rf(ip.c_regl(), alu_addi(rf[2], ip.c_imm_4spn()));
+    write_rf(ip.c_regl(), res);
     DASM_OP(c.addi4spn)
     PROF_G(c_addi4spn)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
                 << TO_I32(ip.c_imm_4spn());
@@ -1714,9 +1732,11 @@ void core::c_addi4spn() {
 }
 
 void core::c_slli() {
-    write_rf(ip.rd(), alu_sll(rf[ip.rd()], ip.c_imm_slli()));
+    uint32_t res = alu_sll(rf[ip.rd()], ip.c_imm_slli());
+    write_rf(ip.rd(), res);
     DASM_OP(c.slli)
     PROF_G(c_slli)
+    PROF_SPARSITY_ALU
     #ifdef PROFILERS_EN
     prof_fusion.attack({trigger::slli_lea, inst, mem->just_inst(pc + 2), true});
     #endif
@@ -1728,9 +1748,11 @@ void core::c_slli() {
 }
 
 void core::c_mv() {
-    write_rf(ip.rd(), rf[ip.c_rs2()]);
+    uint32_t res = rf[ip.c_rs2()];
+    write_rf(ip.rd(), res);
     DASM_OP(c.mv)
     PROF_G(c_mv)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
@@ -1739,9 +1761,11 @@ void core::c_mv() {
 }
 
 void core::c_add() {
-    write_rf(ip.rd(), alu_add(rf[ip.rd()], rf[ip.c_rs2()]));
+    uint32_t res = alu_add(rf[ip.rd()], rf[ip.c_rs2()]);
+    write_rf(ip.rd(), res);
     DASM_OP(c.add)
     PROF_G(c_add)
+    PROF_SPARSITY_ALU
     #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
@@ -1757,6 +1781,7 @@ void core::c_lw() {
     write_rf(ip.c_regl(), loaded);
     DASM_OP(c.lw)
     PROF_G(c_lw)
+    PROF_SPARSITY_MEM_L
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.c_imm_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
@@ -1779,6 +1804,7 @@ void core::c_lwsp() {
     write_rf(ip.rd(), loaded);
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
+    PROF_SPARSITY_MEM_L
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rf[2] + ip.c_imm_lwsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
@@ -1796,10 +1822,12 @@ void core::c_lwsp() {
 }
 
 void core::c_sw() {
-    mem->wr(rf[ip.c_regh()] + ip.c_imm_mem(), rf[ip.c_regl()], 4u);
+    uint32_t val = (rf[ip.c_regh()] + ip.c_imm_mem());
+    mem->wr(val, rf[ip.c_regl()], 4u);
     if (tu.is_trapped()) return;
     DASM_OP(c.sw)
     PROF_G(c_sw)
+    PROF_SPARSITY_MEM_S
     #ifdef PROFILERS_EN
     prof.log_stack_access_store(
         (rf[ip.c_regh()] + ip.c_imm_mem()) > TO_U32(rf[2]));
@@ -1814,10 +1842,12 @@ void core::c_sw() {
 }
 
 void core::c_swsp() {
-    mem->wr(rf[2] + ip.c_imm_swsp(), rf[ip.c_rs2()], 4u);
+    uint32_t val = (rf[2] + ip.c_imm_swsp());
+    mem->wr(val, rf[ip.c_rs2()], 4u);
     if (tu.is_trapped()) return;
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
+    PROF_SPARSITY_MEM_S
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[2] + ip.c_imm_swsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);

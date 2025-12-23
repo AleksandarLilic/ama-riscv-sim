@@ -43,7 +43,7 @@ class bp_if {
         uint32_t predict(uint32_t pc, int32_t offset, uint32_t funct3);
         void update(uint32_t pc, uint32_t next_pc);
         void log_stats(std::ofstream& log_file);
-        void finish(std::string out_dir, uint64_t profiled_insts);
+        void finish(std::string out_dir, uint64_t profiled_insts, bool silent);
         void ideal(uint32_t correct_pc) {
             if (bp_ideal_arch) bp_ideal_arch->goto_future(correct_pc);
             if (bp_ideal_is_active) active_bp->goto_future(correct_pc);
