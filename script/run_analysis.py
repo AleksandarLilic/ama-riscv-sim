@@ -203,7 +203,7 @@ def int2hex(val, pos) -> str:
 
 def get_count(parts, df) -> Tuple[int, int]:
     pc = hex2int(parts[0].strip())
-    count_series  = df.loc[df["pc"] == pc, "count"]
+    count_series = df.loc[df["pc"] == pc, "count"]
     count = count_series.squeeze() if not count_series.empty else 0
     return int(count), pc # FIXME: count may be float in rtl trace?
 
@@ -506,11 +506,11 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
 
                         inst_mn = line.split('\t')
                         inst_mn = [x.strip() for x in inst_mn]
-                        pc_inst_map_arr.append(
-                            [hex2int(inst_mn[0].replace(':', '')), #pc
+                        pc_inst_map_arr.append([
+                            hex2int(inst_mn[0].replace(':', '')), # pc
                             inst_mn[2], # instruction mnemonic
                             ' '.join(inst_mn[2:]) # full instruction
-                            ])
+                        ])
 
                     elif section == "data":
                         # outfile.write(line) # not annotating data section
@@ -1676,7 +1676,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df = pd.DataFrame(data)
     df = df.drop(columns=[c for c in df.columns if pad_str in c])
     if args.sample_begin_norm:
-        df.smp = df.smp - df.smp.head(1).values[0] # normalize smp to 0
+        df.smp = df.smp - df.smp.head(1).values[0] + 1 # normalize smp to 1
 
     # enum class dmem_size_t {
     #     lb, lh, lw, ld,
@@ -1700,6 +1700,9 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df.bp = df.bp.replace(hw_status_t_none, TRACE_NA)
     # cpi in isa sim is just 1
     df['cpi'] = df[df['inst'] != 0]['smp'].diff().fillna(df['smp']).astype(int)
+    if not args.sample_begin_norm:
+        i0 = df.index[0]
+        df.at[i0, 'cpi'] = int(df.at[i0, 'inst'] != 0)
     if args.clk:
         df['ipc_inst'] = df['inst'].ne(0).astype(int)
         df['ipc_rolling'] = rolling_mean(df['ipc_inst'], args.win_size_stats)
