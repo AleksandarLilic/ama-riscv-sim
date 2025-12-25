@@ -22,14 +22,20 @@ op_add:
     add x26, x11, x12
     OP_END(100)
 
+# dot16
 op_dot16:
+    li x26, 22
+    nop # add some nops so bypass isn't used for the first test
+    nop
+    nop
     lw x11, dat1
     lw x12, dat2
     dot16 x26, x11, x12
-    OP_END(1719842)
+    OP_END(1719842 + 22)
 
 # all zeros
 op_dot16_zero:
+    li x26, 0
     lw x11, dat_zero1
     lw x12, dat_zero2
     dot16 x26, x11, x12
@@ -37,20 +43,23 @@ op_dot16_zero:
 
 # single active low lane, small positive
 op_dot16_single_lane_pos:
+    li x26, 10
     lw x11, dat_single1
     lw x12, dat_single2
     dot16 x26, x11, x12
-    OP_END(35)
+    OP_END(35 + 10)
 
 # alternating bytes: dot16 large negative, dot8 zero
 op_dot16_alt_mixed_neg:
+    li x26, -1000
     lw x11, dat_alt1
     lw x12, dat_alt2
     dot16 x26, x11, x12
-    OP_END(-130560) # = 2 * (0xff00 * 0x00ff) as signed 16x16
+    OP_END(-130560 - 1000) # = 2 * (0xff00 * 0x00ff) as signed 16x16
 
 # sign-heavy 0x80 vs 0x01 (all lanes negative * positive)
 op_dot16_sign_large_negative:
+    li x26, 0
     lw x11, dat_sign1
     lw x12, dat_sign2
     dot16 x26, x11, x12
@@ -58,79 +67,96 @@ op_dot16_sign_large_negative:
 
 # all -1 lanes (0xffffffff)
 op_dot16_all_minus1_pos:
+    li x26, -1
     lw x11, dat_allm1_1
     lw x12, dat_allm1_2
     dot16 x26, x11, x12
-    OP_END(2)
+    OP_END(2 - 1)
 
-# medium mixed pattern
+# mid mixed pattern
 op_dot16_mid_mixed:
+    li x26, 37812
     lw x11, dat3
     lw x12, dat4
     dot16 x26, x11, x12
-    OP_END(527622)
+    OP_END(527622 + 37812)
 
 op_dot16_max_pos_pos:
+    li x26, 0
     lw x11, dat_max_p16
     lw x12, dat_max_p16
     dot16 x26, x11, x12
     OP_END(2147352578) # 2 * (32767 * 32767)
 
 op_dot16_max_neg_pos:
+    li x26, 0
     lw x11, dat_max_n16
     lw x12, dat_max_p16
     dot16 x26, x11, x12
     OP_END(-2147352578) # 2 * (-32767 * 32767)
 
+# dot8
 op_dot8:
+    li x26, 55
+    nop # add some nops so bypass isn't used for the first test
+    nop
+    nop
     lw x11, dat1
     lw x12, dat2
     dot8 x26, x11, x12
-    OP_END(60)
+    OP_END(60 + 55)
 
 op_dot8_zero:
+    li x26, 0
     lw x11, dat_zero1
     lw x12, dat_zero2
     dot8 x26, x11, x12
     OP_END(0)
 
 op_dot8_single_lane_pos:
+    li x26, 3
     lw x11, dat_single1
     lw x12, dat_single2
     dot8 x26, x11, x12
-    OP_END(35)
+    OP_END(35 + 3)
 
 op_dot8_alt_mixed_neg:
+    li x26, -27
     lw x11, dat_alt1
     lw x12, dat_alt2
     dot8 x26, x11, x12
-    OP_END(0)
+    OP_END(0 - 27)
 
 op_dot8_sign_large_negative:
+    li x26, 0
     lw x11, dat_sign1
     lw x12, dat_sign2
     dot8 x26, x11, x12
     OP_END(-512) # 4 * (-128 * 1)
 
-op_dot8_mid_mixed:
-    lw x11, dat3
-    lw x12, dat4
-    dot8 x26, x11, x12
-    OP_END(14)
-
 op_dot8_all_minus1_pos:
+    li x26, -1
     lw x11, dat_allm1_1
     lw x12, dat_allm1_2
     dot8 x26, x11, x12
-    OP_END(4)
+    OP_END(4 - 1)
+
+op_dot8_mid_mixed:
+    li x26, 31
+    lw x11, dat3
+    lw x12, dat4
+    dot8 x26, x11, x12
+    OP_END(14 + 31)
 
 op_dot8_max_pos_pos:
+    li x26, 0
     lw x11, dat_max_p8
     lw x12, dat_max_p8
     dot8 x26, x11, x12
     OP_END(64516) # 4 * (127 * 127)
 
 op_dot8_max_neg_pos:
+    li x26, 0
     lw x11, dat_max_n8
     lw x12, dat_max_p8
     dot8 x26, x11, x12

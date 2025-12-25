@@ -71,52 +71,46 @@ int32_t _simd_dot_product_int8_int2(
 
 // asm wrapper functions
 INLINE
-int32_t add16(const int32_t a, const int32_t b) {
+int32_t _add16(const int32_t a, const int32_t b) {
     int32_t c;
     asm volatile("add16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 INLINE
-int32_t add8(const int32_t a, const int32_t b) {
+int32_t _add8(const int32_t a, const int32_t b) {
     int32_t c;
     asm volatile("add8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 INLINE
-int32_t sub16(const int32_t a, const int32_t b) {
+int32_t _sub16(const int32_t a, const int32_t b) {
     int32_t c;
     asm volatile("sub16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 INLINE
-int32_t sub8(const int32_t a, const int32_t b) {
+int32_t _sub8(const int32_t a, const int32_t b) {
     int32_t c;
     asm volatile("sub8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 INLINE
-int32_t dot16(const int32_t a, const int32_t b) {
-    int32_t c;
-    asm volatile("dot16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
-    return c;
+void _dot16(const int32_t a, const int32_t b, int32_t* c) {
+    asm volatile("dot16 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
 INLINE
-int32_t dot8(const int32_t a, const int32_t b) {
-    int32_t c;
-    asm volatile("dot8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
-    return c;
+void _dot8(const int32_t a, const int32_t b, int32_t* c) {
+    asm volatile("dot8 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
 INLINE
-int32_t dot4(const int32_t a, const int32_t b) {
-    int32_t c;
-    asm volatile("dot4 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
-    return c;
+void _dot4(const int32_t a, const int32_t b, int32_t* c) {
+    asm volatile("dot4 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
 #else

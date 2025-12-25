@@ -698,9 +698,9 @@ void core::custom_ext() {
             CASE_ALU_CUSTOM_OP_PAIR(mul16u, alu)
             CASE_ALU_CUSTOM_OP_PAIR(mul8, alu)
             CASE_ALU_CUSTOM_OP_PAIR(mul8u, alu)
-            CASE_ALU_CUSTOM_OP(dot16, dot)
-            CASE_ALU_CUSTOM_OP(dot8, dot)
-            CASE_ALU_CUSTOM_OP(dot4, dot)
+            CASE_ALU_CUSTOM_DOT(dot16, dot)
+            CASE_ALU_CUSTOM_DOT(dot8, dot)
+            CASE_ALU_CUSTOM_DOT(dot4, dot)
             default : tu.e_unsupported_inst("custom extension - arith");
         }
 
@@ -991,7 +991,7 @@ reg_pair core::alu_c_mul8u(uint32_t a, uint32_t b) {
     return {words[0], words[1]};
 }
 
-uint32_t core::alu_c_dot16(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot16(uint32_t a, uint32_t b, uint32_t c) {
     // multiply 2 halfword chunks and sum the results
     constexpr size_t e = 2;
     int32_t res = 0;
@@ -1007,14 +1007,15 @@ uint32_t core::alu_c_dot16(uint32_t a, uint32_t b) {
         a >>= 16;
         b >>= 16;
     }
+    res += c;
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", res);
+    simd_ss_finish("]", "]", res, c);
     #endif
     return res;
 }
 
-uint32_t core::alu_c_dot8(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot8(uint32_t a, uint32_t b, uint32_t c) {
     // multiply 4 byte chunks and sum the results
     constexpr size_t e = 4;
     int32_t res = 0;
@@ -1030,14 +1031,15 @@ uint32_t core::alu_c_dot8(uint32_t a, uint32_t b) {
         a >>= 8;
         b >>= 8;
     }
+    res += c;
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", res);
+    simd_ss_finish("]", "]", res, c);
     #endif
     return res;
 }
 
-uint32_t core::alu_c_dot4(uint32_t a, uint32_t b) {
+uint32_t core::alu_c_dot4(uint32_t a, uint32_t b, uint32_t c) {
     // multiply 8 nibble chunks and sum the results
     constexpr size_t e = 8;
     int32_t res = 0;
@@ -1053,9 +1055,10 @@ uint32_t core::alu_c_dot4(uint32_t a, uint32_t b) {
         a >>= 4;
         b >>= 4;
     }
+    res += c;
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", res);
+    simd_ss_finish("]", "]", res, c);
     #endif
     return res;
 }
@@ -1371,6 +1374,17 @@ void core::simd_ss_finish(std::string a, std::string b, int32_t res) {
     dasm.simd_ss << "RD = " << res
                  << ", RS1 = " << dasm.simd_a.str()
                  << ", RS2 = " << dasm.simd_b.str() << "; ";
+}
+
+void core::simd_ss_finish(
+    std::string a, std::string b, int32_t res, int32_t rs3) {
+    if (!ip.rd()) return;
+    dasm.simd_a << a;
+    dasm.simd_b << b;
+    dasm.simd_ss << "RD = " << res
+                 << ", RS1 = " << dasm.simd_a.str()
+                 << ", RS2 = " << dasm.simd_b.str()
+                 << ", RS3 = " << rs3 << "; ";
 }
 
 void core::simd_ss_finish(std::string c, std::string a, std::string b) {

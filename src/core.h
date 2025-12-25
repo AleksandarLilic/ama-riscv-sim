@@ -59,6 +59,8 @@ class core {
         void simd_ss_append(int32_t c, int32_t a, int32_t b);
         void simd_ss_finish(std::string a);
         void simd_ss_finish(std::string a, std::string b, int32_t res);
+        void simd_ss_finish(
+            std::string a, std::string b, int32_t res, int32_t rs3);
         void simd_ss_finish(std::string c, std::string a, std::string b);
         #endif
 
@@ -311,9 +313,9 @@ class core {
         reg_pair alu_c_mul16u(uint32_t a, uint32_t b);
         reg_pair alu_c_mul8(uint32_t a, uint32_t b);
         reg_pair alu_c_mul8u(uint32_t a, uint32_t b);
-        uint32_t alu_c_dot16(uint32_t a, uint32_t b);
-        uint32_t alu_c_dot8(uint32_t a, uint32_t b);
-        uint32_t alu_c_dot4(uint32_t a, uint32_t b);
+        uint32_t alu_c_dot16(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot8(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot4(uint32_t a, uint32_t b, uint32_t c);
 
         // custom extension - memory operations
         reg_pair data_fmt_c_widen16(uint32_t a);

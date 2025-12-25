@@ -331,6 +331,17 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(t) \
         break;
 
+// TODO: rs3 is now also added... to add in profiling reg_use as well, maybe others?
+#define CASE_ALU_CUSTOM_DOT(op, t) \
+    case TO_U8(alu_custom_op_t::op_##op): \
+        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()], rf[ip.rd()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(t) \
+        break;
+
 #define CASE_ALU_CUSTOM_OP_PAIR(op, t) \
     case TO_U8(alu_custom_op_t::op_##op): \
         rp = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \

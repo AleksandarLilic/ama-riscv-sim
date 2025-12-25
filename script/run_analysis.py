@@ -120,12 +120,12 @@ class icfg:
     OPS_PER_INST = {
         1: INST_T[ALU]+INST_T[MEM]+INST_T[MUL]+INST_T[DIV]+INST_T[BITMANIP],
         2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
-        3: ['dot16'], # 2x mul, 1x sum
-        4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)],
-        7: ['dot8'], # 4x mul, 3x sum
-        8: [s for s in INST_T_SIMD_Z if ("4" in s and 'dot' not in s)],
-        15: ['dot4'], # 8x mul, 7x sum
-        16: [s for s in INST_T_SIMD_Z if ("2" in s and 'dot' not in s)],
+        4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)] +
+           ['dot16'], # 2x mul, 1x sum, 1x acc
+        8: [s for s in INST_T_SIMD_Z if ("4" in s and 'dot' not in s)] +
+           ['dot8'], # 4x mul, 3x sum, 1x acc
+        16: [s for s in INST_T_SIMD_Z if ("2" in s and 'dot' not in s)] +
+            ['dot4'], # 8x mul, 7x sum, 1x acc
     }
 
     BRANCH_DENSITY = { 1: INST_T[BRANCH] + INST_T[JUMP] }
