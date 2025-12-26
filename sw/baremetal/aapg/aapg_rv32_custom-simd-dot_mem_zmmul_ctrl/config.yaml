@@ -16,6 +16,7 @@ isa-instruction-distribution:
   rel_rv32i.data: 20
   rel_rv32zmmul: 20
   rel_rv32simd.dot: 20
+  rel_rv32simd.widen: 0
 
 # Compressed instructions
   rel_rvc.ctrl: 0

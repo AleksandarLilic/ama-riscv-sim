@@ -13,10 +13,10 @@ isa-instruction-distribution:
   rel_sys.csr: 0
   rel_rv32i.ctrl: 0
   rel_rv32i.compute: 10
-  rel_rv32i.data: 20
+  rel_rv32i.data: 0
   rel_rv32zmmul: 0
-  rel_rv32simd.dot: 20
-  rel_rv32simd.widen: 0
+  rel_rv32simd.dot: 0
+  rel_rv32simd.widen: 10
 
 # Compressed instructions
   rel_rvc.ctrl: 0
@@ -65,7 +65,7 @@ csr-sections:
   sections: 0x340:0x340 # mscratch
 
 user-functions:
-  randomize: '{32: "nop"}' # dc about function, new one is provided
+  randomize: '{256: "nop"}' # dc about function, new one is provided
 
 switch-priv-modes:
   switch_modes: false

@@ -182,6 +182,37 @@ rv32_custom-simd-dot_mem_zmmul_ctrl_short:
   user-functions:
     randomize: '{64: "nop"}'
 
+rv32_custom-simd-widen:
+  general:
+    total_instructions: 10000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32zmmul: 0
+    rel_rv32simd.widen: 10
+  user-functions:
+    randomize: '{256: "nop"}'
+
+rv32_custom-simd-widen_mem_zmmul_ctrl:
+  general:
+    total_instructions: 8200
+    regs_not_use: x2 # because x1 used in widen on x0
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.dot: 20
+    rel_rv32simd.widen: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 3
+  user-functions:
+    randomize: '{128: "nop"}'
+
 rv32_all:
   general:
     total_instructions: 7500
@@ -192,6 +223,7 @@ rv32_all:
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
     rel_rv32simd.dot: 20
+    rel_rv32simd.widen: 5
   branch-control:
     backward-probability: 0.6
     block-size: 3
@@ -208,6 +240,7 @@ rv32_all2:
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
     rel_rv32simd.dot: 20
+    rel_rv32simd.widen: 5
   branch-control:
     backward-probability: 0.6
     block-size: 4
