@@ -27,6 +27,7 @@ def parse_args():
     parser.add_argument("-t", "--testlist", required=True, type=file_exists, help="JSON file with tests to prepare")
     parser.add_argument("--isa_tests", default=False, action='store_true', help="Also prepare ISA tests")
     parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
+    parser.add_argument("--clean_first", default=False, action='store_true', help="Clean all targets before building. Otherwise, just run make to build")
     parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
     parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
     parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
@@ -50,7 +51,8 @@ def build_test(test):
     t_dir, t_entry = test
     test_list, test_opts = t_entry if len(t_entry) == 2 else (t_entry, [])
     test_dir = os.path.join(TEST_DIR, t_dir)
-    run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
+    if args.clean_first or args.clean_only:
+        run_make(["make", "cleanall"], cwd=test_dir) # cleans app and common
     if args.clean_only:
         return
 
@@ -67,7 +69,7 @@ def build_test(test):
 
     make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make", "-j", "-B", "build_common"] + test_opts
+    make_cmd = ["make", "-j", "build_common"] + test_opts
     run_make(make_cmd, cwd=test_dir)
     make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
 
