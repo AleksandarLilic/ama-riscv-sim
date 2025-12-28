@@ -14,6 +14,7 @@
 baremetal/*/test_array*h
 baremetal/*/test_matrices*h
 baremetal/aapg/*/main*.S
+baremetal/aapg/*/work/
 
 baremetal/mlp/model*.h
 
