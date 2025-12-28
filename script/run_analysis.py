@@ -67,6 +67,8 @@ class icfg:
     MEM = "MEM"
     MEM_HINTS = "MEM_HINTS"
     BRANCH = "BRANCH"
+    JUMP_DIRECT = "JUMP_DIRECT"
+    JUMP_INDIRECT = "JUMP_INDIRECT"
     JUMP = "JUMP"
     CSR = "CSR"
     ENV = "ENV"
@@ -84,6 +86,11 @@ class icfg:
         SIMD_ADD: ["add16", "add8", "sub16", "sub8"],
         SIMD_MUL: ["mul16", "mul16u", "mul8", "mul8u"],
         SIMD_DOT: ["dot16", "dot8", "dot4"],
+    }
+
+    INST_T_JUMP = {
+        JUMP_DIRECT: ["jal", "c.j", "c.jal"],
+        JUMP_INDIRECT: ["jalr", "c.jr", "c.jalr"],
     }
 
     INST_T = {
@@ -109,7 +116,7 @@ class icfg:
         MEM: INST_T_MEM[MEM_S] + INST_T_MEM[MEM_L],
         MEM_HINTS: ["scp.ld", "scp.rel"],
         BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu", "c.beqz","c.bnez"],
-        JUMP: ["jalr", "jal","c.j" ,"c.jal" ,"c.jr" ,"c.jalr"],
+        JUMP: INST_T_JUMP[JUMP_DIRECT] + INST_T_JUMP[JUMP_INDIRECT],
         CSR: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
         ENV: ["ecall", "ebreak", "c.ebreak"],
         NOP: ["nop", "c.nop"],
