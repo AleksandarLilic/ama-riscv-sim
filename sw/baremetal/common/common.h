@@ -69,6 +69,11 @@ typedef union {
     uint8_t u8[4];
 } sliced32_t;
 
+typedef union {
+    uint64_t d;
+    struct { uint32_t lo, hi; } w;
+} uint32x2_t;
+
 // mhpm events
 enum mhpmevent_t {
     mhpmevent_bad_spec = (1 << 0),
