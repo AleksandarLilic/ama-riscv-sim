@@ -342,14 +342,13 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(rp.b, t) \
         break;
 
-// TODO: rs3 is now also added... to add in profiling reg_use as well, maybe others?
 #define CASE_ALU_CUSTOM_DOT(op, t) \
     case TO_U8(alu_dot_custom_op_t::op_##op): \
         res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()], rf[ip.rd()]); \
         write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
-        PROF_RD_RS1_RS2 \
+        PROF_RD_RS1_RS2_RS3 \
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
@@ -553,10 +552,19 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RS2 \
     prof.log_reg_use(reg_use_t::rs2, ip.rs2());
 
+#define PROF_RS3 \
+    prof.log_reg_use(reg_use_t::rs3, ip.rd());
+
 #define PROF_RD_RS1_RS2 \
     PROF_RD \
     PROF_RS1 \
     PROF_RS2
+
+#define PROF_RD_RS1_RS2_RS3 \
+    PROF_RD \
+    PROF_RS1 \
+    PROF_RS2 \
+    PROF_RS3
 
 #define PROF_RD_RDP_RS1_RS2 \
     PROF_RD \
@@ -600,6 +608,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RDP
 #define PROF_RS1
 #define PROF_RS2
+#define PROF_RS3
 #define PROF_RD_RS1_RS2
 #define PROF_RD_RDP_RS1_RS2
 #define PROF_RD_RDP_RS1

@@ -7,12 +7,13 @@ import numpy as np
 import pandas as pd
 from utils import get_test_title, smarter_eng_formatter
 
-H = ['rd', 'rdp', 'rs1', 'rs2']
+H = ['rd', 'rdp', 'rs1', 'rs2', 'rs3']
 H_ALL_TYPE = ['rd_all', 'rs_all']
 H_TOTAL = ['total']
 COLUMNS = [H, H_ALL_TYPE, H_TOTAL]
 
-CLRS = ["tab:blue", "tab:green", "tab:orange", "tab:red"]
+CLRS = ["tab:blue", "tab:green", "tab:orange", "tab:red", "tab:purple"]
+CLRS_ALL = [CLRS[0], CLRS[2]]
 
 parser = argparse.ArgumentParser(description="Plot register file usage")
 parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
@@ -31,16 +32,17 @@ rf_names = [
 ]
 
 dtype = np.dtype([
-    (H[0], np.uint64),
-    (H[1], np.uint64),
-    (H[2], np.uint64),
-    (H[3], np.uint64),
+    (H[0], np.uint64), # rd
+    (H[1], np.uint64), # rdp
+    (H[2], np.uint64), # rs1
+    (H[3], np.uint64), # rs2
+    (H[4], np.uint64), # rs3
 ])
 data = np.fromfile(args.prof, dtype=dtype)
 df = pd.DataFrame(data)
 df[H_TOTAL[0]] = df.sum(axis=1)
 df[H_ALL_TYPE[0]] = df['rd'] + df['rdp']
-df[H_ALL_TYPE[1]] = df['rs1'] + df['rs2']
+df[H_ALL_TYPE[1]] = df['rs1'] + df['rs2'] + df['rs3']
 
 # add first column named 'reg' as 'x' concat with index, e.g. x0, x1, x2, ...
 df.insert(0, 'reg', 'x' + df.index.astype(str))
@@ -66,7 +68,7 @@ for col_set in columns:
     for idx, col in enumerate(col_set):
         # replace 0 with np.nan to avoid plotting & labeling zero-height bars
         d = df[col].replace(0, np.nan)
-        clr = CLRS[idx%2 + 2] if "rs" in col else CLRS[idx]
+        clr = CLRS_ALL[idx] if "_all" in col else CLRS[idx]
         if idx == 0:
             bars.append(ax.barh(y_ax_num, d, BW, label=col, color=clr, alpha=A))
         else:

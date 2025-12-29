@@ -87,7 +87,7 @@ enum class opc_b {
     _count
 };
 
-enum class reg_use_t { rd, rdp, rs1, rs2, _count };
+enum class reg_use_t { rd, rdp, rs1, rs2, rs3, _count };
 
 struct stack_access_t {
     private:
