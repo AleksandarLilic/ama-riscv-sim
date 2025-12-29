@@ -328,7 +328,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_SPARSITY_SIMD(t) \
+        PROF_SPARSITY_SIMD(res, t) \
         break;
 
 // TODO: rs3 is now also added... to add in profiling reg_use as well, maybe others?
@@ -339,7 +339,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_SPARSITY_SIMD(t) \
+        PROF_SPARSITY_SIMD(res, t) \
         break;
 
 #define CASE_ALU_CUSTOM_OP_PAIR(op, t) \
@@ -349,7 +349,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1_RS2 \
-        PROF_SPARSITY_SIMD_PAIR(t) \
+        PROF_SPARSITY_SIMD(rp.a, t) \
+        PROF_SPARSITY_SIMD(rp.b, t) \
         break;
 
 #define CASE_DATA_FMT_CUSTOM_OP(op, t) \
@@ -359,7 +360,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1 \
-        PROF_SPARSITY_SIMD_PAIR(t) \
+        PROF_SPARSITY_SIMD(rp.a, t) \
+        PROF_SPARSITY_SIMD(rp.b, t) \
         break;
 
 #define CASE_SCP_CUSTOM(op) \
@@ -579,14 +581,12 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     prof.te.dmem_size = TO_U8(size); \
     prof.te.dmem = addr;
 
+#define PROF_SPARSITY_ANY(res) prof.log_sparsity((res == 0), sparsity_t::any);
 #define PROF_SPARSITY_ALU prof.log_sparsity((res == 0), sparsity_t::alu);
 #define PROF_SPARSITY_MEM_L prof.log_sparsity((loaded == 0), sparsity_t::mem_l);
 #define PROF_SPARSITY_MEM_S prof.log_sparsity((val == 0), sparsity_t::mem_s);
-#define PROF_SPARSITY_SIMD(t) \
+#define PROF_SPARSITY_SIMD(res, t) \
     prof.log_sparsity((res == 0), sparsity_t::simd_##t);
-#define PROF_SPARSITY_SIMD_PAIR(t) \
-    prof.log_sparsity((rp.a == 0), sparsity_t::simd_##t); \
-    prof.log_sparsity((rp.b == 0), sparsity_t::simd_##t);
 
 #else
 #define PROF_G(op)
@@ -603,11 +603,11 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)
+#define PROF_SPARSITY_ANY(res)
 #define PROF_SPARSITY_ALU
 #define PROF_SPARSITY_MEM_L
 #define PROF_SPARSITY_MEM_S
-#define PROF_SPARSITY_SIMD
-#define PROF_SPARSITY_SIMD_PAIR
+#define PROF_SPARSITY_SIMD(res, t)
 #endif
 
 #define INDENT "    "

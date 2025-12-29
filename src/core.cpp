@@ -3,10 +3,9 @@
 core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     running(false),
     mem(mem), pc(BASE_ADDR), next_pc(0), inst(0), inst_cnt(0),
-    tu(&csr, &pc, &inst),
-    prof_pc(cfg.prof_pc), prof_act(false),
-    inst_cnt_csr(0), cycle_cnt_csr(0)
+    tu(&csr, &pc, &inst)
     #ifdef PROFILERS_EN
+    , prof_pc(cfg.prof_pc), prof_act(false)
     , prof(cfg.out_dir, PROF_SRC)
     , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
@@ -63,6 +62,11 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #ifdef HW_MODELS_EN
     last_inst_branch = false;
     mem->set_cache_hws(&hwrs.ic_hm, &hwrs.dc_hm);
+    #ifndef PROFILERS_EN
+    prof_state(true); // start profiling from boot, no profilers
+    #else
+    mem->set_perf_profiler(&prof_perf);
+    #endif
     #endif
 
     // initialize CSRs
@@ -72,10 +76,6 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
     mem->set_mip(&csr.at(CSR_MIP).value);
-
-    #if defined(PROFILERS_EN) && defined(HW_MODELS_EN)
-    mem->set_perf_profiler(&prof_perf);
-    #endif
 }
 
 void core::exec() {
@@ -115,7 +115,6 @@ void core::prof_state([[maybe_unused]] bool enable) {
     #endif
 
     #ifdef HW_MODELS_EN
-    prof_act = enable;
     bp.profiling(enable);
     mem->cache_profiling(enable);
     hwrs.rst();
@@ -142,6 +141,7 @@ void core::exec_inst() {
     hwrs.rst();
     #endif
 
+    #ifdef PROFILERS_EN
     if (prof_pc.should_start(pc)) {
         prof_state(true);
     } else if (prof_pc.should_stop(pc)) {
@@ -151,6 +151,7 @@ void core::exec_inst() {
             return;
         }
     }
+    #endif
 
     // TODO: DPI needs to handle this separately based on the simulation time
     mem->update_mtime();
@@ -210,7 +211,7 @@ void core::exec_inst() {
     [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
     #endif
 
-    #if defined(PROFILERS_EN) || defined(HW_MODELS_EN)
+    #ifdef PROFILERS_EN
     if (!tu.is_trapped() && (prof_act)) prof_pc.inst_cnt++;
     #endif
 
@@ -324,7 +325,11 @@ void core::finish(bool dump_regs) {
     prof_fusion.finish(cfg.silent);
     #endif
     #ifdef HW_MODELS_EN
+    #ifdef PROFILERS_EN
     bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.silent);
+    #else
+    bp.finish(cfg.out_dir, inst_cnt, cfg.silent);
+    #endif
     mem->cache_finish(cfg.silent);
     log_hw_stats();
     #endif
@@ -2002,6 +2007,13 @@ void core::log_hw_stats() {
     ofs << "{\n";
     mem->log_cache_stats(ofs);
     bp.log_stats(ofs);
+    ofs << "\n\"profiled_inst\": "
+    #ifdef PROFILERS_EN
+    << prof_pc.inst_cnt // profiled inst, depending on settings/triggers
+    #else
+    << inst_cnt // app profiled from boot
+    #endif
+    << ",";
     ofs << "\n\"_done\": true"; // to avoid trailing comma
     ofs << "\n}\n";
     ofs.close();

@@ -68,7 +68,7 @@ class core {
         void write_rf(uint32_t reg, uint32_t data) {
             if (reg) {
                 rf[reg] = data;
-                prof.log_sparsity((data == 0), sparsity_t::any);
+                PROF_SPARSITY_ANY(data)
             }
         }
         void write_rf_pair(uint32_t reg, reg_pair rp) {
@@ -76,8 +76,8 @@ class core {
             if (reg) {
                 rf[reg] = rp.a;
                 rf[reg + 1] = rp.b;
-                prof.log_sparsity((rp.a == 0), sparsity_t::any);
-                prof.log_sparsity((rp.b == 0), sparsity_t::any);
+                PROF_SPARSITY_ANY(rp.a)
+                PROF_SPARSITY_ANY(rp.b)
             }
         }
         void write_csr(uint16_t addr, uint32_t data) {
@@ -216,6 +216,7 @@ class core {
         uint32_t alu_srli(uint32_t a, uint32_t b) { return alu_srl(a, b); };
         uint32_t alu_srai(uint32_t a, uint32_t b) { return alu_sra(a, b); };
         uint32_t alu_slti(uint32_t a, uint32_t b) {
+            #ifdef PROFILERS_EN
             if (inst == INST_HINT_LOG_START) {
                 prof_state(prof_pc.should_start());
                 return 0;
@@ -224,6 +225,7 @@ class core {
                 running = !prof_pc.should_exit();
                 return 0;
             }
+            #endif
             return alu_slt(a, b);
         };
         uint32_t alu_sltiu(uint32_t a, uint32_t b) { return alu_sltu(a, b); };
@@ -387,12 +389,14 @@ class core {
         uint8_t rf_names_w;
         uint8_t csr_names_w;
         bool end_dump_state;
+        #ifdef PROFILERS_EN
         prof_pc_t prof_pc;
-        bool prof_act; // used for both profiling and hw models
+        bool prof_act;
+        #endif
 
         bool csr_updated = false;
-        uint64_t inst_cnt_csr;
-        uint64_t cycle_cnt_csr;
+        uint64_t inst_cnt_csr = 0;
+        uint64_t cycle_cnt_csr = 0;
 
         std::map<uint16_t, CSR> csr;
         static constexpr std::array<CSR_entry, 43> supported_csrs = {{

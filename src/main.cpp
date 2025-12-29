@@ -119,7 +119,6 @@ const std::unordered_map<std::string, bp_pc_folds_t> bp_pc_folds_map = {
 
 // defaults
 struct defs_t {
-    static constexpr char rf_names[] = "abi";
     static constexpr char show_state[] = "false";
     static constexpr char exit_on_trap[] = "false";
     static constexpr char mem_dump_start[] = "0";
@@ -142,6 +141,7 @@ struct defs_t {
     static constexpr char log[] = "false";
     static constexpr char log_always[] = "false";
     static constexpr char log_state[] = "false";
+    static constexpr char rf_names[] = "abi";
     static constexpr char log_hw_models[] = "false";
     #endif
 };
@@ -202,10 +202,6 @@ int main(int argc, char* argv[]) {
 
     options.add_options()
         ("p,path", "Path to the ELF file to load", CXXOPTS_VAL_STR)
-        ("rf_names",
-         "Register file names used for output. Options: " +
-         gen_help_list(rf_names_map),
-         CXXOPTS_VAL_STR->default_value(defs_t::rf_names))
         ("show_state", "Show architectural state at the end of simulation",
          CXXOPTS_VAL_BOOL->default_value(defs_t::show_state))
         ("exit_on_trap",
@@ -262,6 +258,10 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_always))
         ("log_state", "Log state after each executed instruction",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_state))
+        ("rf_names",
+         "Register file names used for output. Options: " +
+         gen_help_list(rf_names_map),
+         CXXOPTS_VAL_STR->default_value(defs_t::rf_names))
         #ifdef HW_MODELS_EN
         ("log_hw_models", "Log HW model stats for each executed instruction",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_hw_models))
@@ -401,7 +401,6 @@ int main(int argc, char* argv[]) {
 
     try {
         test_elf = result["path"].as<std::string>();
-        cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         cfg.show_state = TO_BOOL(result["show_state"]);
         cfg.exit_on_trap = TO_BOOL(result["exit_on_trap"]);
         cfg.mem_dump_start = TO_HEX(result["mem_dump_start"]);
@@ -427,7 +426,10 @@ int main(int argc, char* argv[]) {
         cfg.log = TO_BOOL(result["log"]);
         cfg.log_always = TO_BOOL(result["log_always"]);
         cfg.log_state = TO_BOOL(result["log_state"]);
+        cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
+        #ifdef HW_MODELS_EN
         cfg.log_hw_models = TO_BOOL(result["log_hw_models"]);
+        #endif
         #endif
 
         #ifdef HW_MODELS_EN
