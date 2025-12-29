@@ -51,10 +51,10 @@ index f112a44..45a8f62 100644
      with open(output_file_path, "w") as outfile:
        outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..17eab31 100644
+index 6ff3c0e..dc41078 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
-@@ -453,6 +453,20 @@ inst_store_by_set = {
+@@ -453,6 +453,30 @@ inst_store_by_set = {
      ]
  }
  
@@ -65,16 +65,34 @@ index 6ff3c0e..17eab31 100644
 +# custom isa
 +inst_store_by_set.update({
 +    'rv32simd.dot' : [
-+        'dot16  rd rs1 rs2 31..25=0x06 14..12=0 6..2=0x02 1..0=3',
-+        'dot8   rd rs1 rs2 31..25=0x07 14..12=0 6..2=0x02 1..0=3',
-+        #'dot4   rd rs1 rs2 31..25=0x46 14..12=0 6..2=0x02 1..0=3',
-+        #'dot2   rd rs1 rs2 31..25=0x47 14..12=0 6..2=0x02 1..0=3',
++        'dot16  rd rs1 rs2 31..25=0x03 14..12=0x0 6..2=0x02 1..0=3',
++        'dot8   rd rs1 rs2 31..25=0x03 14..12=0x2 6..2=0x02 1..0=3',
++        #'dot4   rd rs1 rs2 31..25=0x03 14..12=0x4 6..2=0x02 1..0=3',
++        #'dot2   rd rs1 rs2 31..25=0x03 14..12=0x6 6..2=0x02 1..0=3',
 +    ],
++    'rv32simd.widen' : [
++        'widen16   rdp rs1 31..25=0x20 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
++        'widen16u  rdp rs1 31..25=0x20 24..20=0 14..12=0x1 6..2=0x02 1..0=3',
++        'widen8    rdp rs1 31..25=0x20 24..20=0 14..12=0x2 6..2=0x02 1..0=3',
++        'widen8u   rdp rs1 31..25=0x20 24..20=0 14..12=0x3 6..2=0x02 1..0=3',
++        'widen4    rdp rs1 31..25=0x20 24..20=0 14..12=0x4 6..2=0x02 1..0=3',
++        'widen4u   rdp rs1 31..25=0x20 24..20=0 14..12=0x5 6..2=0x02 1..0=3',
++        'widen2    rdp rs1 31..25=0x20 24..20=0 14..12=0x6 6..2=0x02 1..0=3',
++        'widen2u   rdp rs1 31..25=0x20 24..20=0 14..12=0x7 6..2=0x02 1..0=3',
++    ]
 +})
 +
  comp_insts_subs = {
      'addi4spn': 'addi',
      'c.fld': 'fld',
+@@ -543,6 +567,7 @@ ctrl_insts = [x.split(' ')[0] for x in inst_store_by_set['rv32i.ctrl']]
+ 
+ args_list = [
+     'rd', 'rdf', 'rdprime', 'rdprimef',
++    'rdp',
+     'rs1', 'rs1f','rsprime1', 'rsprime1f',
+     'rs2', 'rs2f','rsprime2', 'rsprime2f',
+     'rs3', 'rs3f',
 diff --git a/aapg/main.py b/aapg/main.py
 index 1c3303a..764194f 100644
 --- a/aapg/main.py

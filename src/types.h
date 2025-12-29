@@ -107,40 +107,53 @@ enum class csr_op_t {
     op_rci = 0b111
 };
 
-enum class custom_ext_t {
-    arith = 0b000,
-    memory = 0b001,
-    hints = 0b010,
+enum class custom_op_t {
+    type_alu = 0x00,
+    type_mul = 0x02,
+    type_dot = 0x03,
+    type_data_fmt_widen = 0x20,
+    type_hints = 0x7f,
 };
 
 enum class alu_custom_op_t {
     op_add16 = 0x0,
-    op_add8 = 0x1,
-    op_sub16 = 0x2,
-    op_sub8 = 0x3,
-    op_mul16 = 0x04,
-    op_mul16u = 0x24,
-    op_mul8 = 0x05,
-    op_mul8u = 0x25,
-    op_dot16 = 0x6,
-    op_dot8 = 0x7,
-    op_dot4 = 0x46,
+    op_add8 = 0x2,
+    op_sub16 = 0x4,
+    op_sub8 = 0x6,
+};
+
+enum class alu_mul_custom_op_t {
+    op_mul16 = 0x0,
+    op_mul16u = 0x1,
+    op_mul8 = 0x2,
+    op_mul8u = 0x3,
+};
+
+enum class alu_dot_custom_op_t {
+    op_dot16 = 0x0,
+    op_dot16u = 0x1,
+    op_dot8 = 0x2,
+    op_dot8u = 0x3,
+    op_dot4 = 0x4,
+    op_dot4u = 0x5,
+    op_dot2 = 0x6,
+    op_dot2u = 0x7,
 };
 
 enum class data_fmt_custom_op_t {
-    op_widen16 = 0x00,
-    op_widen16u = 0x20,
-    op_widen8 = 0x01,
-    op_widen8u = 0x21,
-    op_widen4 = 0x40,
-    op_widen4u = 0x60,
-    op_widen2 = 0x41,
-    op_widen2u = 0x61,
+    op_widen16 = 0x0,
+    op_widen16u = 0x1,
+    op_widen8 = 0x2,
+    op_widen8u = 0x3,
+    op_widen4 = 0x4,
+    op_widen4u = 0x5,
+    op_widen2 = 0x6,
+    op_widen2u = 0x7,
 };
 
 enum class scp_custom_op_t {
-    op_lcl = 0x10,
-    op_rel = 0x11,
+    op_lcl = 0x0,
+    op_rel = 0x1,
 };
 
 enum class csr_perm_t {

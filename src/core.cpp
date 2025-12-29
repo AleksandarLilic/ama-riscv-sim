@@ -358,7 +358,7 @@ void core::alu_reg() {
                 CASE_ALU_REG_OP(xor)
                 CASE_ALU_REG_OP(or)
                 CASE_ALU_REG_OP(and)
-                default: tu.e_unsupported_inst("al_reg_rv32i"); return;
+                default: tu.e_unsupported_inst("alu_reg_rv32i"); return;
             }
             break;
         case 0x01: // rv32m
@@ -371,7 +371,7 @@ void core::alu_reg() {
                 CASE_ALU_REG_MUL_OP(divu)
                 CASE_ALU_REG_MUL_OP(rem)
                 CASE_ALU_REG_MUL_OP(remu)
-                default: tu.e_unsupported_inst("al_reg_rv32m"); return;
+                default: tu.e_unsupported_inst("alu_reg_rv32m"); return;
             }
             break;
         case 0x05: // rv32 zbb
@@ -380,7 +380,7 @@ void core::alu_reg() {
                 CASE_ALU_REG_ZBB_OP(maxu)
                 CASE_ALU_REG_ZBB_OP(min)
                 CASE_ALU_REG_ZBB_OP(minu)
-                default: tu.e_unsupported_inst("al_reg_rv32_zbb"); return;
+                default: tu.e_unsupported_inst("alu_reg_rv32_zbb"); return;
             }
             break;
         default: tu.e_unsupported_inst("alu_reg"); return;
@@ -691,80 +691,83 @@ void core::misc_mem() {
 void core::custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
-    if (funct3 == TO_U8(custom_ext_t::arith)) {
-        uint32_t res;
-        reg_pair rp;
-        switch (funct7) {
-            CASE_ALU_CUSTOM_OP(add16, alu)
-            CASE_ALU_CUSTOM_OP(add8, alu)
-            CASE_ALU_CUSTOM_OP(sub16, alu)
-            CASE_ALU_CUSTOM_OP(sub8, alu)
-            CASE_ALU_CUSTOM_OP_PAIR(mul16, alu)
-            CASE_ALU_CUSTOM_OP_PAIR(mul16u, alu)
-            CASE_ALU_CUSTOM_OP_PAIR(mul8, alu)
-            CASE_ALU_CUSTOM_OP_PAIR(mul8u, alu)
-            CASE_ALU_CUSTOM_DOT(dot16, dot)
-            CASE_ALU_CUSTOM_DOT(dot8, dot)
-            CASE_ALU_CUSTOM_DOT(dot4, dot)
-            default : tu.e_unsupported_inst("custom extension - arith");
-        }
-
-        #ifdef PROFILERS_EN
-        prof_perf.set_perf_event_flag(perf_event_t::simd);
-        #endif
-
-        #ifdef DASM_EN
-        DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
-        DASM_RD_UPDATE;
-        bool paired_arith = (
-            (funct7 == TO_U8(alu_custom_op_t::op_mul16)) ||
-            (funct7 == TO_U8(alu_custom_op_t::op_mul16u)) ||
-            (funct7 == TO_U8(alu_custom_op_t::op_mul8)) ||
-            (funct7 == TO_U8(alu_custom_op_t::op_mul8u))
-        );
-        if (paired_arith) DASM_RD_UPDATE_PAIR;
-        #endif
-
-    } else if (funct3 == TO_U8(custom_ext_t::memory)) {
-        uint32_t rs1 = rf[ip.rs1()];
-        reg_pair rp;
-        switch (funct7) {
-            CASE_DATA_FMT_CUSTOM_OP(widen16, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen16u, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen8, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen8u, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen4, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen4u, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen2, data_fmt)
-            CASE_DATA_FMT_CUSTOM_OP(widen2u, data_fmt)
-            default: tu.e_unsupported_inst("custom extension - memory");
-        }
-
-        #ifdef PROFILERS_EN
-        prof_perf.set_perf_event_flag(perf_event_t::simd);
-        #endif
-
-        #ifdef DASM_EN
-        DASM_OP_RD << "," << DASM_OP_RS1;
-        DASM_RD_UPDATE;
-        DASM_RD_UPDATE_PAIR;
-        #endif
-
-    } else if (funct3 == TO_U8(custom_ext_t::hints)) {
-        switch (funct7) {
-            CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
-            CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
-            default : tu.e_unsupported_inst("custom extension - hint");
-        }
-
-        #ifdef DASM_EN
-        DASM_OP_RD << "," << DASM_OP_RS1;
-        DASM_RD_UPDATE;
-        #endif
-
-    } else {
-        tu.e_unsupported_inst("custom extension");
+    uint32_t res;
+    reg_pair rp;
+    switch(funct7) {
+        case TO_U8(custom_op_t::type_alu):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_ALU_CUSTOM_OP(add16, alu)
+                CASE_ALU_CUSTOM_OP(add8, alu)
+                CASE_ALU_CUSTOM_OP(sub16, alu)
+                CASE_ALU_CUSTOM_OP(sub8, alu)
+                default: tu.e_unsupported_inst("alu_custom"); return;
+            }
+            break;
+        case TO_U8(custom_op_t::type_mul):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_ALU_MUL_CUSTOM_OP(mul16, alu)
+                CASE_ALU_MUL_CUSTOM_OP(mul16u, alu)
+                CASE_ALU_MUL_CUSTOM_OP(mul8, alu)
+                CASE_ALU_MUL_CUSTOM_OP(mul8u, alu)
+                default: tu.e_unsupported_inst("alu_mul_custom"); return;
+            }
+            break;
+        case TO_U8(custom_op_t::type_dot):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_ALU_CUSTOM_DOT(dot16, dot)
+                CASE_ALU_CUSTOM_DOT(dot8, dot)
+                CASE_ALU_CUSTOM_DOT(dot4, dot)
+                default : tu.e_unsupported_inst("alu_dot_custom");
+            }
+            break;
+        case TO_U8(custom_op_t::type_data_fmt_widen):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_DATA_FMT_CUSTOM_OP(widen16, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen16u, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen8, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen8u, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen4, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen4u, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen2, data_fmt)
+                CASE_DATA_FMT_CUSTOM_OP(widen2u, data_fmt)
+                default: tu.e_unsupported_inst("data_fmt_custom");
+            }
+            break;
+        case TO_U8(custom_op_t::type_hints):
+            switch (funct3) {
+                CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
+                CASE_SCP_CUSTOM(rel); DASM_OP(scp.rel); break;
+                default : tu.e_unsupported_inst("hint_custom");
+            }
+            break;
+        default: tu.e_unsupported_inst("custom_isa");
     }
+
+    #ifdef DASM_EN
+    bool paired_arith = (funct7 == TO_U8(custom_op_t::type_mul));
+    switch(funct7) {
+        case TO_U8(custom_op_t::type_alu):
+        case TO_U8(custom_op_t::type_mul):
+        case TO_U8(custom_op_t::type_dot):
+            DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
+            DASM_RD_UPDATE;
+            if (paired_arith) DASM_RD_UPDATE_PAIR;
+            break;
+        case TO_U8(custom_op_t::type_data_fmt_widen):
+            DASM_OP_RD << "," << DASM_OP_RS1;
+            DASM_RD_UPDATE;
+            DASM_RD_UPDATE_PAIR;
+            break;
+        case TO_U8(custom_op_t::type_hints):
+            DASM_OP_RD << "," << DASM_OP_RS1;
+            DASM_RD_UPDATE;
+            break;
+    }
+    #endif
     next_pc = pc + 4;
 }
 
@@ -888,7 +891,7 @@ reg_pair core::alu_c_mul16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     int32_t words[2];
     #ifdef DASM_EN
-    simd_ss_init("", "[ ", "[ ");
+    simd_ss_init("[ ", "[ ", "[ ");
     #endif
 
     for (auto &word : words) {
@@ -902,7 +905,7 @@ reg_pair core::alu_c_mul16(uint32_t a, uint32_t b) {
 
     #ifdef DASM_EN
     dasm.simd_c << TO_I32(words[0]) << ", " << TO_I32(words[1]);
-    simd_ss_finish("", "]", "]");
+    simd_ss_finish(" ]", "]", "]");
     #endif
 
     return {TO_U32(words[0]), TO_U32(words[1])};
@@ -912,7 +915,7 @@ reg_pair core::alu_c_mul16u(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     uint32_t words[2];
     #ifdef DASM_EN
-    simd_ss_init("", "[ ", "[ ");
+    simd_ss_init("[ ", "[ ", "[ ");
     #endif
 
     for (auto &word : words) {
@@ -926,7 +929,7 @@ reg_pair core::alu_c_mul16u(uint32_t a, uint32_t b) {
 
     #ifdef DASM_EN
     dasm.simd_c << TO_U32(words[0]) << ", " << TO_U32(words[1]);
-    simd_ss_finish("", "]", "]");
+    simd_ss_finish(" ]", "]", "]");
     #endif
 
     return {words[0], words[1]};

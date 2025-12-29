@@ -331,19 +331,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
-// TODO: rs3 is now also added... to add in profiling reg_use as well, maybe others?
-#define CASE_ALU_CUSTOM_DOT(op, t) \
-    case TO_U8(alu_custom_op_t::op_##op): \
-        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()], rf[ip.rd()]); \
-        write_rf(ip.rd(), res); \
-        DASM_OP(op) \
-        PROF_G(op) \
-        PROF_RD_RS1_RS2 \
-        PROF_SPARSITY_SIMD(res, t) \
-        break;
-
-#define CASE_ALU_CUSTOM_OP_PAIR(op, t) \
-    case TO_U8(alu_custom_op_t::op_##op): \
+#define CASE_ALU_MUL_CUSTOM_OP(op, t) \
+    case TO_U8(alu_mul_custom_op_t::op_##op): \
         rp = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
         write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \
@@ -353,9 +342,20 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(rp.b, t) \
         break;
 
+// TODO: rs3 is now also added... to add in profiling reg_use as well, maybe others?
+#define CASE_ALU_CUSTOM_DOT(op, t) \
+    case TO_U8(alu_dot_custom_op_t::op_##op): \
+        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()], rf[ip.rd()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(res, t) \
+        break;
+
 #define CASE_DATA_FMT_CUSTOM_OP(op, t) \
     case TO_U8(data_fmt_custom_op_t::op_##op): \
-        rp = data_fmt_c_##op(rs1); \
+        rp = data_fmt_c_##op(rf[ip.rs1()]); \
         write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \
         PROF_G(op) \
@@ -581,6 +581,9 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
     prof.te.dmem_size = TO_U8(size); \
     prof.te.dmem = addr;
 
+#define PROF_SET_PERF_EVENT_SIMD \
+    prof_perf.set_perf_event_flag(perf_event_t::simd);
+
 #define PROF_SPARSITY_ANY(res) prof.log_sparsity((res == 0), sparsity_t::any);
 #define PROF_SPARSITY_ALU prof.log_sparsity((res == 0), sparsity_t::alu);
 #define PROF_SPARSITY_MEM_L prof.log_sparsity((loaded == 0), sparsity_t::mem_l);
@@ -603,6 +606,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)
+#define PROF_SET_PERF_EVENT_SIMD
 #define PROF_SPARSITY_ANY(res)
 #define PROF_SPARSITY_ALU
 #define PROF_SPARSITY_MEM_L
