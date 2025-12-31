@@ -253,10 +253,10 @@ int32_t _simd_dot_product_int8(
             b_arr[i] = *(const int32_t*)(b + k + i * 4);
         }
         asm volatile (
-            "dot8 %[c], %[a0], %[b0]\n\t"
             "dot8 %[c], %[a1], %[b1]\n\t"
             "dot8 %[c], %[a2], %[b2]\n\t"
             "dot8 %[c], %[a3], %[b3]\n\t"
+            "dot8 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
             : [c] "+r" (c)
             : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
               [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
