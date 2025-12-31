@@ -8,11 +8,6 @@
         fail(); \
     }
 
-#define LEN 512
-uint32_t arr[LEN] = {0};
-uint8_t arr_dot[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-#define STEP 128
-
 int32_t sum_up(uint32_t* array, uint32_t length) {
     int32_t sum = 0;
     for (uint32_t i = 0; i < length; i++) sum += array[i];
@@ -20,6 +15,11 @@ int32_t sum_up(uint32_t* array, uint32_t length) {
 }
 
 void main() {
+    #define LEN 512
+    uint32_t arr[LEN];
+    uint8_t arr_dot[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+    #define STEP 128
+
     uint32_t expected, rval;
 
     // mscratch
@@ -91,6 +91,7 @@ void main() {
     read_csr(CSR_MHPMEVENT8, rval);
     CHECK(rval, expected, CSR_MHPMEVENT8);
 
+    GLOBAL_SYMBOL("test_start");
     // generate some branch misses for mhpmcounter3
     uint32_t random = 0x74321239;
     bool check;
