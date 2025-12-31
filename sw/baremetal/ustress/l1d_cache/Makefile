@@ -1,4 +1,4 @@
-TARGET := workload
+TARGET := ustress
 CFLAGS += -DLOOPS=800
 
 LIBS += -lc
