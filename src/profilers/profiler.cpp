@@ -55,10 +55,10 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_g_arr[TO_U32(opc_g::i_add8)] = {"add8", 0};
     prof_g_arr[TO_U32(opc_g::i_sub16)] = {"sub16", 0};
     prof_g_arr[TO_U32(opc_g::i_sub8)] = {"sub8", 0};
-    prof_g_arr[TO_U32(opc_g::i_mul16)] = {"mul16", 0};
-    prof_g_arr[TO_U32(opc_g::i_mul16u)] = {"mul16u", 0};
-    prof_g_arr[TO_U32(opc_g::i_mul8)] = {"mul8", 0};
-    prof_g_arr[TO_U32(opc_g::i_mul8u)] = {"mul8u", 0};
+    prof_g_arr[TO_U32(opc_g::i_wmul16)] = {"wmul16", 0};
+    prof_g_arr[TO_U32(opc_g::i_wmul16u)] = {"wmul16u", 0};
+    prof_g_arr[TO_U32(opc_g::i_wmul8)] = {"wmul8", 0};
+    prof_g_arr[TO_U32(opc_g::i_wmul8u)] = {"wmul8u", 0};
     prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
     prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
     prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};

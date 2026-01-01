@@ -73,53 +73,53 @@ op_sub8n:
     sub8 x26, x11, x12
     OP_END(0x04070b20)
 
-op_mul16:
+op_wmul16:
     li x11, -55
     sll x11, x11, 16
     ori x11, x11, 10
     li x12, 2
     sll x12, x12, 16
     ori x12, x12, 3
-    mul16 RD, x11, x12
+    wmul16 RD, x11, x12
     mv x26, RD
     OP_END(30)
     mv x26, RDP
     OP_END(-110)
 
-op_mul16u:
+op_wmul16u:
     li x11, 32768
     sll x11, x11, 16
     ori x11, x11, 11
     li x12, 2
     sll x12, x12, 16
     ori x12, x12, 7
-    mul16u RD, x11, x12
+    wmul16u RD, x11, x12
     mv x26, RD
     OP_END(77)
     mv x26, RDP
     OP_END(65536)
 
-op_mul8:
+op_wmul8:
     li x11, -55
     sll x11, x11, 16
     ori x11, x11, 10
     li x12, 2
     sll x12, x12, 16
     ori x12, x12, 3
-    mul8 RD, x11, x12
+    wmul8 RD, x11, x12
     mv x26, RD
     OP_END(30)
     mv x26, RDP
     OP_END(0xff92) # 0x0000ffff & -110
 
-op_mul8u:
+op_wmul8u:
     li x11, 32768
     sll x11, x11, 16
     ori x11, x11, 11
     li x12, 1
     sll x12, x12, 24
     ori x12, x12, 7
-    mul8u RD, x11, x12
+    wmul8u RD, x11, x12
     mv x26, RD
     OP_END(77)
     mv x26, RDP

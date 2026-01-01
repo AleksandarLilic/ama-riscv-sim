@@ -311,10 +311,10 @@ class core {
         uint32_t alu_c_add8(uint32_t a, uint32_t b);
         uint32_t alu_c_sub16(uint32_t a, uint32_t b);
         uint32_t alu_c_sub8(uint32_t a, uint32_t b);
-        reg_pair alu_c_mul16(uint32_t a, uint32_t b);
-        reg_pair alu_c_mul16u(uint32_t a, uint32_t b);
-        reg_pair alu_c_mul8(uint32_t a, uint32_t b);
-        reg_pair alu_c_mul8u(uint32_t a, uint32_t b);
+        reg_pair alu_c_wmul16(uint32_t a, uint32_t b);
+        reg_pair alu_c_wmul16u(uint32_t a, uint32_t b);
+        reg_pair alu_c_wmul8(uint32_t a, uint32_t b);
+        reg_pair alu_c_wmul8u(uint32_t a, uint32_t b);
         uint32_t alu_c_dot16(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot8(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot4(uint32_t a, uint32_t b, uint32_t c);

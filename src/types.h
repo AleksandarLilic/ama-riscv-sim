@@ -123,10 +123,10 @@ enum class alu_custom_op_t {
 };
 
 enum class alu_mul_custom_op_t {
-    op_mul16 = 0x0,
-    op_mul16u = 0x1,
-    op_mul8 = 0x2,
-    op_mul8u = 0x3,
+    op_wmul16 = 0x0,
+    op_wmul16u = 0x1,
+    op_wmul8 = 0x2,
+    op_wmul8u = 0x3,
 };
 
 enum class alu_dot_custom_op_t {

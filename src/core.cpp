@@ -707,10 +707,10 @@ void core::custom_ext() {
         case TO_U8(custom_op_t::type_mul):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_ALU_MUL_CUSTOM_OP(mul16, alu)
-                CASE_ALU_MUL_CUSTOM_OP(mul16u, alu)
-                CASE_ALU_MUL_CUSTOM_OP(mul8, alu)
-                CASE_ALU_MUL_CUSTOM_OP(mul8u, alu)
+                CASE_ALU_MUL_CUSTOM_OP(wmul16, alu)
+                CASE_ALU_MUL_CUSTOM_OP(wmul16u, alu)
+                CASE_ALU_MUL_CUSTOM_OP(wmul8, alu)
+                CASE_ALU_MUL_CUSTOM_OP(wmul8u, alu)
                 default: tu.e_unsupported_inst("alu_mul_custom"); return;
             }
             break;
@@ -887,7 +887,7 @@ uint32_t core::alu_c_sub8(uint32_t a, uint32_t b) {
     return res;
 }
 
-reg_pair core::alu_c_mul16(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_wmul16(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     int32_t words[2];
     #ifdef DASM_EN
@@ -911,7 +911,7 @@ reg_pair core::alu_c_mul16(uint32_t a, uint32_t b) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::alu_c_mul16u(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_wmul16u(uint32_t a, uint32_t b) {
     // multiply 2 halfword chunks into 2 32-bit results
     uint32_t words[2];
     #ifdef DASM_EN
@@ -935,7 +935,7 @@ reg_pair core::alu_c_mul16u(uint32_t a, uint32_t b) {
     return {words[0], words[1]};
 }
 
-reg_pair core::alu_c_mul8(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_wmul8(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     int16_t halves[4];
     #ifdef DASM_EN
@@ -967,7 +967,7 @@ reg_pair core::alu_c_mul8(uint32_t a, uint32_t b) {
     return {TO_U32(words[0]), TO_U32(words[1])};
 }
 
-reg_pair core::alu_c_mul8u(uint32_t a, uint32_t b) {
+reg_pair core::alu_c_wmul8u(uint32_t a, uint32_t b) {
     // multiply 4 byte chunks into 2 32-bit results
     uint16_t halves[4];
     #ifdef DASM_EN

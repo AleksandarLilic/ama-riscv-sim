@@ -84,7 +84,7 @@ class icfg:
 
     INST_T_SIMD = {
         SIMD_ADD: ["add16", "add8", "sub16", "sub8"],
-        SIMD_MUL: ["mul16", "mul16u", "mul8", "mul8u"],
+        SIMD_MUL: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
         SIMD_DOT: ["dot16", "dot8", "dot4"],
     }
 

@@ -43,7 +43,7 @@ enum class opc_g {
 
     // custom alu
     i_add16, i_add8, i_sub16, i_sub8,
-    i_mul16, i_mul16u, i_mul8, i_mul8u,
+    i_wmul16, i_wmul16u, i_wmul8, i_wmul8u,
     i_dot16, i_dot8, i_dot4,
     // custom data fmt
     i_widen16, i_widen16u, i_widen8, i_widen8u,
@@ -391,7 +391,7 @@ class profiler {
         };
 
         static constexpr std::array<opc_g, 4> mul_c_opcs = {
-            opc_g::i_mul16, opc_g::i_mul16u, opc_g::i_mul8, opc_g::i_mul8u,
+            opc_g::i_wmul16, opc_g::i_wmul16u, opc_g::i_wmul8, opc_g::i_wmul8u,
         };
 
         static constexpr std::array<opc_g, 8> widen_c_opcs = {

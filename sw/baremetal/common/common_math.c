@@ -137,7 +137,7 @@ void _simd_mul_int16(
         const int32_t b_slice = *(const int32_t*)(b + k);
         uint32x2_t c_slice;
         asm volatile(
-            "mul16 %[c], %[a], %[b]\n\t"
+            "wmul16 %[c], %[a], %[b]\n\t"
             : [c] "=r" (c_slice)
             : [a] "r" (a_slice), [b] "r" (b_slice)
             :
@@ -160,7 +160,7 @@ void _simd_mul_int8(
         const int32_t b_slice = *(const int32_t*)(b + k);
         uint32x2_t c_slice;
         asm volatile(
-            "mul8 %[c], %[a], %[b]\n\t"
+            "wmul8 %[c], %[a], %[b]\n\t"
             : [c] "=r" (c_slice)
             : [a] "r" (a_slice), [b] "r" (b_slice)
             :
@@ -183,7 +183,7 @@ void _simd_mul_uint16(
         const uint32_t b_slice = *(const uint32_t*)(b + k);
         uint32x2_t c_slice;
         asm volatile(
-            "mul16u %[c], %[a], %[b]\n\t"
+            "wmul16u %[c], %[a], %[b]\n\t"
             : [c] "=r" (c_slice)
             : [a] "r" (a_slice), [b] "r" (b_slice)
             :
@@ -206,7 +206,7 @@ void _simd_mul_uint8(
         const uint32_t b_slice = *(const uint32_t*)(b + k);
         uint32x2_t c_slice;
         asm volatile(
-            "mul8u %[c], %[a], %[b]\n\t"
+            "wmul8u %[c], %[a], %[b]\n\t"
             : [c] "=r" (c_slice)
             : [a] "r" (a_slice), [b] "r" (b_slice)
             :

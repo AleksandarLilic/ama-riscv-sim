@@ -1,5 +1,5 @@
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..ef40dce949b 100644
+index e77b49a6298..3e51c6785b3 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
 @@ -3473,6 +3473,42 @@
@@ -16,10 +16,10 @@ index e77b49a6298..ef40dce949b 100644
 +#define MATCH_SUB16   0x400b
 +#define MATCH_SUB8    0x600b
 +
-+#define MATCH_MUL16   0x400000b
-+#define MATCH_MUL16U  0x400100b
-+#define MATCH_MUL8    0x400200b
-+#define MATCH_MUL8U   0x400300b
++#define MATCH_WMUL16   0x400000b
++#define MATCH_WMUL16U  0x400100b
++#define MATCH_WMUL8    0x400200b
++#define MATCH_WMUL8U   0x400300b
 +
 +#define MATCH_DOT16   0x600000b
 +#define MATCH_DOT16U  0x600100b
@@ -46,7 +46,7 @@ index e77b49a6298..ef40dce949b 100644
  #ifdef DECLARE_INSN
  DECLARE_INSN(slli_rv32, MATCH_SLLI_RV32, MASK_SLLI_RV32)
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..85532bb717a 100644
+index fdd05ac75dc..8e025c6db4c 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
 @@ -347,6 +347,38 @@ const struct riscv_opcode riscv_opcodes[] =
@@ -59,10 +59,10 @@ index fdd05ac75dc..85532bb717a 100644
 +{"sub16",       0, INSN_CLASS_I, "d,s,t",     MATCH_SUB16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"sub8",        0, INSN_CLASS_I, "d,s,t",     MATCH_SUB8, MASK_CUSTOM_REG, match_opcode, 0 },
 +
-+{"mul16",       0, INSN_CLASS_I, "d,s,t",     MATCH_MUL16, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"mul16u",      0, INSN_CLASS_I, "d,s,t",     MATCH_MUL16U, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"mul8",        0, INSN_CLASS_I, "d,s,t",     MATCH_MUL8, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"mul8u",       0, INSN_CLASS_I, "d,s,t",     MATCH_MUL8U, MASK_CUSTOM_REG, match_opcode, 0 },
++{"wmul16",      0, INSN_CLASS_I, "d,s,t",     MATCH_WMUL16, MASK_CUSTOM_REG, match_opcode, 0 },
++{"wmul16u",     0, INSN_CLASS_I, "d,s,t",     MATCH_WMUL16U, MASK_CUSTOM_REG, match_opcode, 0 },
++{"wmul8",       0, INSN_CLASS_I, "d,s,t",     MATCH_WMUL8, MASK_CUSTOM_REG, match_opcode, 0 },
++{"wmul8u",      0, INSN_CLASS_I, "d,s,t",     MATCH_WMUL8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
 +{"dot16",       0, INSN_CLASS_I, "d,s,t",     MATCH_DOT16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"dot16u",      0, INSN_CLASS_I, "d,s,t",     MATCH_DOT16U, MASK_CUSTOM_REG, match_opcode, 0 },
