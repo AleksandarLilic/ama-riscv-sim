@@ -47,7 +47,7 @@ def check_make_status(make_status, msg: str):
             print(make_status.stderr.decode('utf-8'))
         raise RuntimeError(f"Error: Makefile failed to {msg}.")
 
-def build_test(test):
+def build_test(test, common_args=[]):
     t_dir, t_entry = test
     test_list, test_opts = t_entry if len(t_entry) == 2 else (t_entry, [])
     test_dir = os.path.join(TEST_DIR, t_dir)
@@ -69,9 +69,9 @@ def build_test(test):
 
     make_all = (test_list == ["all"])
     all_targets = test_list if make_all else [f"{t}.elf" for t in test_list]
-    make_cmd = ["make", "-j", "build_common"] + test_opts
+    make_cmd = ["make", "-j", "build_common"] + test_opts + common_args
     run_make(make_cmd, cwd=test_dir)
-    make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts
+    make_cmd = ["make", "-j"] + hex_gen + all_targets + test_opts + common_args
 
     if not aapg_run:
         run_make(make_cmd, cwd=test_dir)
@@ -90,12 +90,18 @@ with open(args.testlist, 'r') as f:
 
 print(f"Tests directories in json input config: {len(tests)}")
 
+# get "_common_args" if present
+common_args = tests.get("_common_args", [])
+
 out_txt = []
 hex_gen = ["HEX=1"] if args.hex else ["HEX=0"]
 # spawning processes is currently slower than threads; 'make' is called with -j
 #with concurrent.futures.ProcessPoolExecutor() as executor:
 with concurrent.futures.ThreadPoolExecutor() as executor:
-    futures = {executor.submit(build_test,item): item for item in tests.items()}
+    futures = {
+        executor.submit(build_test, item, common_args):
+        item for item in tests.items() if not item[0].startswith('_')
+    }
     print(f"Building RISC-V tests with {executor._max_workers} threads")
     for future in concurrent.futures.as_completed(futures):
         test_item = futures[future]
