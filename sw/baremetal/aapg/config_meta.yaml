@@ -114,6 +114,39 @@ rv32_zmmul_mem_ctrl_short:
   user-functions:
     randomize: '{64: "nop"}'
 
+rv32_custom-simd-alu_mem:
+  general:
+    total_instructions: 11000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 10
+    rel_rv32zmmul: 0
+    rel_rv32simd.add: 10
+    rel_rv32simd.wmul: 10
+    rel_rv32simd.dot: 0
+  user-functions:
+    randomize: '{256: "nop"}'
+
+rv32_custom-simd-alu-dot_mem_zmmul_ctrl:
+  general:
+    total_instructions: 8000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 2
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 10
+    rel_rv32zmmul: 10
+    rel_rv32simd.add: 10
+    rel_rv32simd.wmul: 10
+    rel_rv32simd.dot: 10
+  branch-control:
+    backward-probability: 0.5
+    block-size: 9
+  user-functions:
+    randomize: '{128: "nop"}'
+
 rv32_custom-simd-dot:
   general:
     total_instructions: 14000
@@ -222,6 +255,8 @@ rv32_all:
     rel_rv32i.compute: 20
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
+    # rel_rv32simd.add: 10 # to be added once RTL supports it
+    # rel_rv32simd.wmul: 10 # to be added once RTL supports it
     rel_rv32simd.dot: 20
     rel_rv32simd.widen: 5
   branch-control:
@@ -239,6 +274,8 @@ rv32_all2:
     rel_rv32i.compute: 20
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
+    # rel_rv32simd.add: 10
+    # rel_rv32simd.wmul: 10
     rel_rv32simd.dot: 20
     rel_rv32simd.widen: 5
   branch-control:

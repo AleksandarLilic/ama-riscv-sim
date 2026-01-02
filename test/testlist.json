@@ -89,6 +89,8 @@
     "aapg/aapg_rv32_zmmul_mem_ctrl": ["all"],
     "aapg/aapg_rv32_zmmul_mem_ctrl2": ["all"],
     "aapg/aapg_rv32_zmmul_mem_ctrl_short": ["all"],
+    "aapg/aapg_rv32_custom-simd-alu_mem": ["all"],
+    "aapg/aapg_rv32_custom-simd-alu-dot_mem_zmmul_ctrl": ["all"],
     "aapg/aapg_rv32_custom-simd-dot": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul": ["all"],
