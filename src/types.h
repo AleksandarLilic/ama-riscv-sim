@@ -18,18 +18,18 @@
 
 // Decoder types
 enum class opcode {
-    alu_reg = 0b011'0011, // R type
-    alu_imm = 0b001'0011, // I type
-    load = 0b000'0011, // I type
-    store = 0b010'0011, // S type
-    branch = 0b110'0011, // B type
-    jalr = 0b110'0111, // I type
-    jal = 0b110'1111, // J type
-    lui = 0b011'0111, // U type
-    auipc = 0b001'0111, // U type
-    system = 0b111'0011, // I type
-    misc_mem = 0b000'1111, // I type
-    custom_ext = 0b0000'1011
+    d_alu_reg = 0b011'0011, // R type
+    d_alu_imm = 0b001'0011, // I type
+    d_load = 0b000'0011, // I type
+    d_store = 0b010'0011, // S type
+    d_branch = 0b110'0011, // B type
+    d_jalr = 0b110'0111, // I type
+    d_jal = 0b110'1111, // J type
+    d_lui = 0b011'0111, // U type
+    d_auipc = 0b001'0111, // U type
+    d_system = 0b111'0011, // I type
+    d_misc_mem = 0b000'1111, // I type
+    d_custom_ext = 0b0000'1011
 };
 
 enum class alu_r_op_t {

@@ -29,6 +29,7 @@ class core {
         void dump();
         std::string print_state(bool dump_csr);
         void finish(bool dump_regs);
+
         #ifdef DPI
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
@@ -38,12 +39,14 @@ class core {
         void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
         #endif
+
         #ifdef PROFILERS_EN
         uint8_t inst_w = 8;
         std::string get_callstack_top_str() {
             return prof_perf.get_callstack_top_str();
         }
         #endif
+
         #ifdef DASM_EN
         std::string get_inst_asm() { return dasm.asm_str; }
         std::string get_rd_val_str() {
@@ -71,6 +74,7 @@ class core {
                 PROF_SPARSITY_ANY(data)
             }
         }
+
         void write_rf_pair(uint32_t reg, reg_pair rp) {
             if (reg & 1) tu.e_hardware_error("RDP Write to odd register");
             if (reg) {
@@ -80,6 +84,7 @@ class core {
                 PROF_SPARSITY_ANY(rp.b)
             }
         }
+
         void write_csr(uint16_t addr, uint32_t data) {
             if (csr.at(addr).perm == csr_perm_t::ro) {
                 tu.e_illegal_inst("CSR write attempt to RO CSR", 4);
@@ -90,27 +95,17 @@ class core {
             // MPP always in machine mode (0x3)
             if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
         }
-        void csr_cnt_update(uint16_t csr_addr);
-        void csr_wide_assign(uint32_t addr, uint64_t val);
+
+        void csr_wide_assign(uint32_t addr, uint64_t val) {
+            csr.at(addr).value = TO_U32(val);
+            csr.at(addr+CSR_LOW_TO_HIGH_OFF).value = TO_U32(val >> 32);
+        }
+
         void prof_state(bool enable);
+
         #ifndef DPI
         void save_trace_entry();
         #endif
-
-        // instruction decoders
-        void alu_reg();
-        void alu_imm();
-        void load();
-        void store();
-        void branch();
-        void jalr();
-        void jal();
-        void lui();
-        void auipc();
-        void system();
-        void misc_mem();
-        void custom_ext();
-        // void reset();
 
         // instruction parsing
         inst_parser ip;
@@ -132,179 +127,88 @@ class core {
             ip.set(inst);
         }
 
+        // instruction decoders
+        void d_alu_reg();
+        void d_alu_imm();
+        void d_load();
+        void d_store();
+        void d_branch();
+        void d_jalr();
+        void d_jal();
+        void d_lui();
+        void d_auipc();
+        void d_system();
+        void d_misc_mem();
+        void d_custom_ext();
+        void d_csr_access();
+
         // arithmetic and logic operations
-        uint32_t alu_add(uint32_t a, uint32_t b) { return a + b; };
-        uint32_t alu_sub(uint32_t a, uint32_t b) { return a - b; };
-        uint32_t alu_sll(uint32_t a, uint32_t b) { return a << b; };
-        uint32_t alu_srl(uint32_t a, uint32_t b) { return a >> b; };
-        uint32_t alu_sra(uint32_t a, uint32_t b) {
-            b &= 0x1f;
-            return TO_I32(a) >> b;
-        };
-        uint32_t alu_slt(uint32_t a, uint32_t b) {
-            return TO_I32(a) < TO_I32(b);
-        };
-        uint32_t alu_sltu(uint32_t a, uint32_t b) { return a < b; };
-        uint32_t alu_xor(uint32_t a, uint32_t b) { return a ^ b; };
-        uint32_t alu_or(uint32_t a, uint32_t b) { return a | b; };
-        uint32_t alu_and(uint32_t a, uint32_t b) { return a & b; };
-
+        uint32_t alu_add(uint32_t a, uint32_t b);
+        uint32_t alu_sub(uint32_t a, uint32_t b);
+        uint32_t alu_sll(uint32_t a, uint32_t b);
+        uint32_t alu_srl(uint32_t a, uint32_t b);
+        uint32_t alu_sra(uint32_t a, uint32_t b);
+        uint32_t alu_slt(uint32_t a, uint32_t b);
+        uint32_t alu_sltu(uint32_t a, uint32_t b);
+        uint32_t alu_xor(uint32_t a, uint32_t b);
+        uint32_t alu_or(uint32_t a, uint32_t b);
+        uint32_t alu_and(uint32_t a, uint32_t b);
+        // upper
+        void lui();
+        void auipc();
         // arithmetic and logic operations - M extension
-        uint32_t alu_mul(uint32_t a, uint32_t b) {
-            return TO_I32(a) * TO_I32(b);
-        };
-        uint32_t alu_mulh(uint32_t a, uint32_t b) {
-            int64_t res = TO_I64(TO_I32(a)) * TO_I64(TO_I32(b));
-            return res >> 32;
-        };
-        uint32_t alu_mulhsu(uint32_t a, uint32_t b) {
-            int64_t res = TO_I64(TO_I32(a)) * TO_I64(b);
-            return res >> 32;
-        };
-        uint32_t alu_mulhu(uint32_t a, uint32_t b) {
-            uint64_t res = TO_U64(a) * TO_U64(b);
-            return res >> 32;
-        };
-        uint32_t alu_div(uint32_t a, uint32_t b) {
-            // division by zero
-            if (b == 0) return -1;
-            // overflow (most negative int divided by -1)
-            if (a == 0x80000000 && b == 0xffffffff) return a;
-            return TO_I32(a) / TO_I32(b);
-        };
-        uint32_t alu_divu(uint32_t a, uint32_t b) {
-            if (b == 0) return 0xffffffff;
-            return a / b;
-        };
-        uint32_t alu_rem(uint32_t a, uint32_t b) {
-            if (b == 0) return a;
-            if (a == 0x80000000 && b == 0xffffffff) return 0;
-            return TO_I32(a) % TO_I32(b);
-        };
-        uint32_t alu_remu(uint32_t a, uint32_t b) {
-            if (b == 0) return a;
-            return a % b;
-        };
-
+        uint32_t alu_mul(uint32_t a, uint32_t b);
+        uint32_t alu_mulh(uint32_t a, uint32_t b);
+        uint32_t alu_mulhsu(uint32_t a, uint32_t b);
+        uint32_t alu_mulhu(uint32_t a, uint32_t b);
+        uint32_t alu_div(uint32_t a, uint32_t b);
+        uint32_t alu_divu(uint32_t a, uint32_t b);
+        uint32_t alu_rem(uint32_t a, uint32_t b);
+        uint32_t alu_remu(uint32_t a, uint32_t b);
         // arithmetic and logic operations - Zbb extension partial
-        uint32_t alu_max(uint32_t a, uint32_t b) {
-            return TO_I32(a) > TO_I32(b) ? a : b;
-        };
-
-        uint32_t alu_maxu(uint32_t a, uint32_t b) {
-            return a > b ? a : b;
-        };
-
-        uint32_t alu_min(uint32_t a, uint32_t b) {
-            return TO_I32(a) < TO_I32(b) ? a : b;
-        };
-
-        uint32_t alu_minu(uint32_t a, uint32_t b) {
-            return a < b ? a : b;
-        };
-
+        uint32_t alu_max(uint32_t a, uint32_t b);
+        uint32_t alu_maxu(uint32_t a, uint32_t b);
+        uint32_t alu_min(uint32_t a, uint32_t b);
+        uint32_t alu_minu(uint32_t a, uint32_t b);
         // arithmetic and logic immediate operations
-        uint32_t alu_addi(uint32_t a, uint32_t b) { return alu_add(a, b); };
-        uint32_t alu_slli(uint32_t a, uint32_t b) {
-            #ifdef PROFILERS_EN
-            prof_fusion.attack(
-                {trigger::slli_lea, inst, mem->just_inst(pc + 4), false}
-            );
-            #endif
-            return alu_sll(a, b);
-        };
-        uint32_t alu_srli(uint32_t a, uint32_t b) { return alu_srl(a, b); };
-        uint32_t alu_srai(uint32_t a, uint32_t b) { return alu_sra(a, b); };
-        uint32_t alu_slti(uint32_t a, uint32_t b) {
-            #ifdef PROFILERS_EN
-            if (inst == INST_HINT_LOG_START) {
-                prof_state(prof_pc.should_start());
-                return 0;
-            } else if (inst == INST_HINT_LOG_END) {
-                prof_state(false);
-                running = !prof_pc.should_exit();
-                return 0;
-            }
-            #endif
-            return alu_slt(a, b);
-        };
-        uint32_t alu_sltiu(uint32_t a, uint32_t b) { return alu_sltu(a, b); };
-        uint32_t alu_xori(uint32_t a, uint32_t b) { return alu_xor(a, b); };
-        uint32_t alu_ori(uint32_t a, uint32_t b) { return alu_or(a, b); };
-        uint32_t alu_andi(uint32_t a, uint32_t b) { return alu_and(a, b); };
-
+        uint32_t alu_addi(uint32_t a, uint32_t b);
+        uint32_t alu_slli(uint32_t a, uint32_t b);
+        uint32_t alu_srli(uint32_t a, uint32_t b);
+        uint32_t alu_srai(uint32_t a, uint32_t b);
+        uint32_t alu_slti(uint32_t a, uint32_t b);
+        uint32_t alu_sltiu(uint32_t a, uint32_t b);
+        uint32_t alu_xori(uint32_t a, uint32_t b);
+        uint32_t alu_ori(uint32_t a, uint32_t b);
+        uint32_t alu_andi(uint32_t a, uint32_t b);
         // load operations
-        uint32_t load_lb(uint32_t addr) {
-            PROF_DMEM(dmem_size_t::lb)
-            return TO_U32(TO_I8(mem->rd(addr, 1u)));
-        }
-        uint32_t load_lh(uint32_t addr) {
-            PROF_DMEM(dmem_size_t::lh)
-            return TO_U32(TO_I16(mem->rd(addr, 2u)));
-        }
-        uint32_t load_lw(uint32_t addr) {
-            PROF_DMEM(dmem_size_t::lw)
-            return mem->rd(addr, 4u);
-        }
-        uint32_t load_lbu(uint32_t addr) {
-            PROF_DMEM(dmem_size_t::lb)
-            return mem->rd(addr, 1u);
-        }
-        uint32_t load_lhu(uint32_t addr) {
-            PROF_DMEM(dmem_size_t::lh)
-            return mem->rd(addr, 2u);
-        }
-
+        uint32_t load_lb(uint32_t addr);
+        uint32_t load_lh(uint32_t addr);
+        uint32_t load_lw(uint32_t addr);
+        uint32_t load_lbu(uint32_t addr);
+        uint32_t load_lhu(uint32_t addr);
         // store operations
-        void store_sb(uint32_t addr, uint32_t data) {
-            PROF_DMEM(dmem_size_t::sb)
-            mem->wr(addr, data, 1u);
-        }
-        void store_sh(uint32_t addr, uint32_t data) {
-            PROF_DMEM(dmem_size_t::sh)
-            mem->wr(addr, data, 2u);
-        }
-        void store_sw(uint32_t addr, uint32_t data) {
-            PROF_DMEM(dmem_size_t::sw)
-            mem->wr(addr, data, 4u);
-        }
-
+        void store_sb(uint32_t addr, uint32_t data);
+        void store_sh(uint32_t addr, uint32_t data);
+        void store_sw(uint32_t addr, uint32_t data);
         // branch operations
-        bool branch_beq() { return rf[ip.rs1()] == rf[ip.rs2()]; }
-        bool branch_bne() { return rf[ip.rs1()] != rf[ip.rs2()]; }
-        bool branch_blt() {
-            return TO_I32(rf[ip.rs1()]) < TO_I32(rf[ip.rs2()]);
-        }
-        bool branch_bge() {
-            return TO_I32(rf[ip.rs1()]) >= TO_I32(rf[ip.rs2()]);
-        }
-        bool branch_bltu() {
-            return TO_U32(rf[ip.rs1()]) < TO_U32(rf[ip.rs2()]);
-        }
-        bool branch_bgeu() {
-            return TO_U32(rf[ip.rs1()]) >= TO_U32(rf[ip.rs2()]);
-        }
+        bool branch_beq();
+        bool branch_bne();
+        bool branch_blt();
+        bool branch_bge();
+        bool branch_bltu();
+        bool branch_bgeu();
+        // jump
+        void jalr();
+        void jal();
 
-        // csr operations
-        void csr_access();
-        void csr_rw(uint32_t init_val_rs1) { W_CSR(init_val_rs1); }
-        void csr_rs(uint32_t init_val_rs1) {
-            if (ip.rs1() == 0) return;
-            W_CSR(csr.at(ip.csr_addr()).value | init_val_rs1);
-        }
-        void csr_rc(uint32_t init_val_rs1) {
-            if (ip.rs1() == 0) return;
-            W_CSR(csr.at(ip.csr_addr()).value & ~init_val_rs1);
-        }
-        void csr_rwi() { W_CSR(ip.uimm_csr()); }
-        void csr_rsi() {
-            if (ip.rs1() == 0) return;
-            W_CSR(csr.at(ip.csr_addr()).value | ip.uimm_csr());
-        }
-        void csr_rci() {
-            if (ip.rs1() == 0) return;
-            W_CSR(csr.at(ip.csr_addr()).value & ~ip.uimm_csr());
-        }
+        // zicsr
+        void csr_rw(uint32_t init_val_rs1);
+        void csr_rs(uint32_t init_val_rs1);
+        void csr_rc(uint32_t init_val_rs1);
+        void csr_rwi();
+        void csr_rsi();
+        void csr_rci();
+        void csr_cnt_update(uint16_t csr_addr);
 
         // custom extension - arithmetic and logic operations
         uint32_t alu_c_add16(uint32_t a, uint32_t b);
@@ -330,11 +234,12 @@ class core {
         reg_pair data_fmt_c_widen2u(uint32_t a);
 
         // C extension
-        void c0();
-        void c1();
-        void c2();
+        void d_compressed_0();
+        void d_compressed_1();
+        void d_compressed_2();
 
-        // C extension - arithmetic and logic operations
+        // C extension
+        // arithmetic and logic operations
         void c_addi();
         void c_li();
         void c_lui();
@@ -351,19 +256,19 @@ class core {
         void c_slli();
         void c_mv();
         void c_add();
-        // C extension - memory operations
+        // memory operations
         void c_lw();
         void c_lwsp();
         void c_sw();
         void c_swsp();
-        // C extension - control transfer operations
+        // control transfer operations
         void c_beqz();
         void c_bnez();
         void c_j();
         void c_jal();
         void c_jr();
         void c_jalr();
-        // C extension - system
+        // system
         void c_ebreak();
 
         // interrupts

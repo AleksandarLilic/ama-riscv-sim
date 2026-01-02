@@ -509,10 +509,10 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #endif
 
 #if defined(DASM_EN) || defined(PROFILERS_EN)
-#define INST_W(x) \
+#define INST_HEX_W(x) \
     inst_w = x;
 #else
-#define INST_W(x)
+#define INST_HEX_W(x)
 #endif
 
 #ifdef PROFILERS_EN
