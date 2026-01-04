@@ -64,14 +64,14 @@ INLINE_OPTION
 void _simd_add_int16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
     size_t len_s2 = ((len >> 1) << 1);
-    int32_t c_slice;
+    int16x2_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int16x2_t a_slice = v_load_int16x2(a + k);
+        const int16x2_t b_slice = v_load_int16x2(b + k);
         c_slice = _add16(a_slice, b_slice);
-        *(int32_t*)(c + k) = c_slice;
+        v_store_int16x2(c + k, c_slice);
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
     }
@@ -81,14 +81,14 @@ INLINE_OPTION
 void _simd_add_int8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
     size_t len_s4 = ((len >> 2) << 2);
-    int32_t c_slice;
+    int8x4_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int8x4_t a_slice = v_load_int8x4(a + k);
+        const int8x4_t b_slice = v_load_int8x4(b + k);
         c_slice = _add8(a_slice, b_slice);
-        *(int32_t*)(c + k) = c_slice;
+        v_store_int8x4(c + k, c_slice);
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
     }
@@ -98,14 +98,14 @@ INLINE_OPTION
 void _simd_sub_int16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
     size_t len_s2 = ((len >> 1) << 1);
-    int32_t c_slice;
+    int16x2_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int16x2_t a_slice = v_load_int16x2(a + k);
+        const int16x2_t b_slice = v_load_int16x2(b + k);
         c_slice = _sub16(a_slice, b_slice);
-        *(int32_t*)(c + k) = c_slice;
+        v_store_int16x2(c + k, c_slice);
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
     }
@@ -115,14 +115,14 @@ INLINE_OPTION
 void _simd_sub_int8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
     size_t len_s4 = ((len >> 2) << 2);
-    int32_t c_slice;
+    int8x4_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int8x4_t a_slice = v_load_int8x4(a + k);
+        const int8x4_t b_slice = v_load_int8x4(b + k);
         c_slice = _sub8(a_slice, b_slice);
-        *(int32_t*)(c + k) = c_slice;
+        v_store_int8x4(c + k, c_slice);
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
     }
@@ -133,19 +133,30 @@ void _simd_mul_int16(
     const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
-        uint32x2_t c_slice;
-        asm volatile(
-            "wmul16 %[c], %[a], %[b]\n\t"
-            : [c] "=r" (c_slice)
-            : [a] "r" (a_slice), [b] "r" (b_slice)
-            :
-        );
+        const int16x2_t a_slice = v_load_int16x2(a + k);
+        const int16x2_t b_slice = v_load_int16x2(b + k);
+        int32x2_t c_slice = _wmul16(a_slice, b_slice);
         *(c + k) = c_slice.w.lo;
         *(c + k + 1) = c_slice.w.hi;
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
+    if (rem > 0) {
+        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
+    }
+}
+
+INLINE_OPTION
+void _simd_mul_uint16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
+    size_t len_s2 = ((len >> 1) << 1);
+    for (size_t k = 0; k < len_s2; k += 2) {
+        const uint16x2_t a_slice = v_load_uint16x2(a + k);
+        const uint16x2_t b_slice = v_load_uint16x2(b + k);
+        uint32x2_t c_slice = _wmul16u(a_slice, b_slice);
+        *(c + k) = c_slice.w.lo;
+        *(c + k + 1) = c_slice.w.hi;
+    }
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
     }
@@ -156,44 +167,15 @@ void _simd_mul_int8(
     const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
-        uint32x2_t c_slice;
-        asm volatile(
-            "wmul8 %[c], %[a], %[b]\n\t"
-            : [c] "=r" (c_slice)
-            : [a] "r" (a_slice), [b] "r" (b_slice)
-            :
-        );
-        *(int32_t*)(c + k) = c_slice.w.lo;
-        *(int32_t*)(c + k + 2) = c_slice.w.hi;
+        const int8x4_t a_slice = v_load_int8x4(a + k);
+        const int8x4_t b_slice = v_load_int8x4(b + k);
+        int16x4_t c_slice = _wmul8(a_slice, b_slice);
+        v_store_int16x2(c + k, c_slice.w.lo);
+        v_store_int16x2(c + k + 2, c_slice.w.hi);
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
-    }
-}
-
-INLINE_OPTION
-void _simd_mul_uint16(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
-    size_t len_s2 = ((len >> 1) << 1);
-    for (size_t k = 0; k < len_s2; k += 2) {
-        const uint32_t a_slice = *(const uint32_t*)(a + k);
-        const uint32_t b_slice = *(const uint32_t*)(b + k);
-        uint32x2_t c_slice;
-        asm volatile(
-            "wmul16u %[c], %[a], %[b]\n\t"
-            : [c] "=r" (c_slice)
-            : [a] "r" (a_slice), [b] "r" (b_slice)
-            :
-        );
-        *(c + k) = c_slice.w.lo;
-        *(c + k + 1) = c_slice.w.hi;
-    }
-    size_t rem = len - len_s2;
-    if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
     }
 }
 
@@ -202,19 +184,13 @@ void _simd_mul_uint8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
-        const uint32_t a_slice = *(const uint32_t*)(a + k);
-        const uint32_t b_slice = *(const uint32_t*)(b + k);
-        uint32x2_t c_slice;
-        asm volatile(
-            "wmul8u %[c], %[a], %[b]\n\t"
-            : [c] "=r" (c_slice)
-            : [a] "r" (a_slice), [b] "r" (b_slice)
-            :
-        );
-        *(int32_t*)(c + k) = c_slice.w.lo;
-        *(int32_t*)(c + k + 2) = c_slice.w.hi;
+        const uint8x4_t a_slice = v_load_uint8x4(a + k);
+        const uint8x4_t b_slice = v_load_uint8x4(b + k);
+        uint16x4_t c_slice = _wmul8u(a_slice, b_slice);
+        v_store_uint16x2(c + k, c_slice.w.lo);
+        v_store_uint16x2(c + k + 2, c_slice.w.hi);
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
     }
@@ -226,18 +202,18 @@ int32_t _simd_dot_product_int16(
     int32_t c = 0;
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int16x2_t a_slice = v_load_int16x2(a + k);
+        const int16x2_t b_slice = v_load_int16x2(b + k);
         _dot16(a_slice, b_slice, &c);
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c += a[i] * b[i];
     }
     return c;
 }
 
-#ifdef STREAMING // optimized for pipeline utilization, 4x unrolling
+#ifdef SIMD_UNROLL // optimized for pipeline utilization, 4x unrolling
 
 INLINE_OPTION
 int32_t _simd_dot_product_int8(
@@ -245,12 +221,12 @@ int32_t _simd_dot_product_int8(
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);
     for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t a_arr[4], b_arr[4];
+        int8x4_t a_arr[4], b_arr[4];
 
         #pragma GCC unroll 4
         for (size_t i = 0; i < 4; i++) {
-            a_arr[i] = *(const int32_t*)(a + k + i * 4);
-            b_arr[i] = *(const int32_t*)(b + k + i * 4);
+            a_arr[i] = v_load_int8x4(a + k + i * 4);
+            b_arr[i] = v_load_int8x4(b + k + i * 4);
         }
         asm volatile (
             "dot8 %[c], %[a1], %[b1]\n\t"
@@ -269,14 +245,14 @@ int32_t _simd_dot_product_int8(
     size_t len_s4 = ((len - len_s16) >> 2) << 2;
     if (len_s4 > 0) {
         size_t start = len_s16;
-        size_t end = len_s16 + len_s4;
+        size_t end = (len_s16 + len_s4);
         for (size_t i = start; i < end; i += 4) {
-            const int32_t a_slice = *(const int32_t*)(a + i);
-            const int32_t b_slice = *(const int32_t*)(b + i);
+            const int8x4_t a_slice = v_load_int8x4(a + i);
+            const int8x4_t b_slice = v_load_int8x4(b + i);
             _dot8(a_slice, b_slice, &c);
         }
     }
-    size_t rem = len - (len_s16 + len_s4);
+    size_t rem = (len - (len_s16 + len_s4));
     if (rem > 0) {
         for (size_t i = (len_s16 + len_s4); i < len; i++) c += a[i] * b[i];
     }
@@ -291,17 +267,17 @@ int32_t _simd_dot_product_int8(
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int8x4_t a_slice = v_load_int8x4(a + k);
+        const int8x4_t b_slice = v_load_int8x4(b + k);
         _dot8(a_slice, b_slice, &c);
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] * b[i];
     }
     return c;
 }
-#endif // STREAMING
+#endif // SIMD_UNROLL
 
 INLINE_OPTION
 int32_t _simd_dot_product_int4(
@@ -310,8 +286,8 @@ int32_t _simd_dot_product_int4(
     size_t len_bytes = (len >> 1); // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t a_slice = *(const int32_t*)(a + k);
-        const int32_t b_slice = *(const int32_t*)(b + k);
+        const int4x8_t a_slice = v_load_int4x8(a + k);
+        const int4x8_t b_slice = v_load_int4x8(b + k);
         _dot4(a_slice, b_slice, &c);
     }
     size_t rem = len_bytes - len_s4;
@@ -335,10 +311,10 @@ int32_t _simd_dot_product_int16_int8(
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
-        const int32_t b_slice = *(const int32_t*)(b + k);
-        const int32_t a_slice_1 = *(const int32_t*)(a + k);
-        const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
-        uint32x2_t b_slice_wide;
+        const int8x4_t b_slice = v_load_int8x4(b + k);
+        const int16x2_t a_slice_1 = v_load_int16x2(a + k);
+        const int16x2_t a_slice_2 = v_load_int16x2(a + k + 2);
+        int16x4_t b_slice_wide;
         asm volatile (
             "widen8 %[bw], %[b]\n\t"
             // bw.w.lo = 2 lower halves, bw.w.hi = 2 upper halves
@@ -353,7 +329,7 @@ int32_t _simd_dot_product_int16_int8(
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] * (int16_t)b[i];
     }
@@ -366,12 +342,13 @@ int32_t _simd_dot_product_int16_int4(
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
-        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
-        const int32_t a_slice_1 = *(const int32_t*)(a + k);
-        const int32_t a_slice_2 = *(const int32_t*)(a + k + 2);
-        const int32_t a_slice_3 = *(const int32_t*)(a + k + 4);
-        const int32_t a_slice_4 = *(const int32_t*)(a + k + 6);
-        uint32x2_t b_slice_wide_b, b_slice_wide_h;
+        const int4x8_t b_slice = v_load_int4x8(b + (k >> 1));
+        const int16x2_t a_slice_1 = v_load_int16x2(a + k);
+        const int16x2_t a_slice_2 = v_load_int16x2(a + k + 2);
+        const int16x2_t a_slice_3 = v_load_int16x2(a + k + 4);
+        const int16x2_t a_slice_4 = v_load_int16x2(a + k + 6);
+        int8x8_t b_slice_wide_b;
+        int16x4_t b_slice_wide_h;
         asm volatile (
             "widen4 %[bw], %[b]\n\t"
             : [bw] "=r" (b_slice_wide_b.d)
@@ -404,7 +381,7 @@ int32_t _simd_dot_product_int16_int4(
               [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
         );
     }
-    size_t rem = len - len_s8;
+    size_t rem = (len - len_s8);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s8; i < len; i += 2) {
@@ -423,10 +400,10 @@ int32_t _simd_dot_product_int8_int4(
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
-        const int32_t b_slice = *(const int32_t*)(b + (k >> 1));
-        const int32_t a_slice_1 = *(const int32_t*)(a + k);
-        const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
-        uint32x2_t b_slice_wide;
+        const int4x8_t b_slice = v_load_int4x8(b + (k >> 1));
+        const int8x4_t a_slice_1 = v_load_int8x4(a + k);
+        const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
+        int8x8_t b_slice_wide;
         asm volatile (
             "widen4 %[bw], %[b]\n\t"
             : [bw] "=r" (b_slice_wide.d)
@@ -440,7 +417,7 @@ int32_t _simd_dot_product_int8_int4(
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
     }
-    size_t rem = len - len_s8;
+    size_t rem = (len - len_s8);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s8; i < len; i += 2) {
@@ -459,12 +436,13 @@ int32_t _simd_dot_product_int8_int2(
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);
     for (size_t k = 0; k < len_s16; k += 16) {
-        const int32_t b_slice = *(const int32_t*)(b + (k >> 2));
-        const int32_t a_slice_1 = *(const int32_t*)(a + k);
-        const int32_t a_slice_2 = *(const int32_t*)(a + k + 4);
-        const int32_t a_slice_3 = *(const int32_t*)(a + k + 8);
-        const int32_t a_slice_4 = *(const int32_t*)(a + k + 12);
-        uint32x2_t b_slice_wide_n, b_slice_wide_b;
+        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
+        const int8x4_t a_slice_1 = v_load_int8x4(a + k);
+        const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
+        const int8x4_t a_slice_3 = v_load_int8x4(a + k + 8);
+        const int8x4_t a_slice_4 = v_load_int8x4(a + k + 12);
+        int4x16_t b_slice_wide_n;
+        int8x8_t b_slice_wide_b;
         asm volatile (
             "widen2 %[bw], %[b]\n\t"
             : [bw] "=r" (b_slice_wide_n.d)
@@ -497,7 +475,7 @@ int32_t _simd_dot_product_int8_int2(
               [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
         );
     }
-    size_t rem = len - len_s16;
+    size_t rem = (len - len_s16);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s16; i < len; i += 4) {
@@ -538,7 +516,7 @@ void add_int16(
         c_slice = (c_halves[1] & 0xFFFF) << 16 | (c_halves[0] & 0xFFFF);
         *(int32_t*)(c + k) = c_slice;
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
     }
@@ -566,7 +544,7 @@ void add_int8(
                   (c_bytes[1] & 0xFF) << 8 | (c_bytes[0] & 0xFF);
         *(int32_t*)(c + k) = c_slice;
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] + b[i];
     }
@@ -593,7 +571,7 @@ void sub_int16(
         c_slice = (c_halves[1] & 0xFFFF) << 16 | (c_halves[0] & 0xFFFF);
         *(int32_t*)(c + k) = c_slice;
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c[i] = a[i] - b[i];
     }
@@ -621,7 +599,7 @@ void sub_int8(
                   (c_bytes[1] & 0xFF) << 8 | (c_bytes[0] & 0xFF);
         *(int32_t*)(c + k) = c_slice;
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] - b[i];
     }
@@ -644,7 +622,7 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
             b_slice <<= 16;
         }
     }
-    size_t rem = len - len_s2;
+    size_t rem = (len - len_s2);
     if (rem > 0) {
         for (size_t i = len_s2; i < len; i++) c += a[i] * b[i];
     }
@@ -668,7 +646,7 @@ int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
             b_slice <<= 8;
         }
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] * b[i];
     }
@@ -728,7 +706,7 @@ int32_t dot_product_int16_int8(
             }
         }
     }
-    size_t rem = len - len_s4;
+    size_t rem = (len - len_s4);
     if (rem > 0) {
         for (size_t i = len_s4; i < len; i++) c += a[i] * (int16_t)b[i];
     }
@@ -755,7 +733,7 @@ int32_t dot_product_int16_int4(
             }
         }
     }
-    size_t rem = len - len_s8;
+    size_t rem = (len - len_s8);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s8; i < len; i += 2) {
@@ -788,7 +766,7 @@ int32_t dot_product_int8_int4(
             }
         }
     }
-    size_t rem = len - len_s8;
+    size_t rem = (len - len_s8);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s8; i < len; i += 2) {
@@ -821,7 +799,7 @@ int32_t dot_product_int8_int2(
             }
         }
     }
-    size_t rem = len - len_s16;
+    size_t rem = (len - len_s16);
     if (rem > 0) {
         int8_t bl;
         for (size_t i = len_s16; i < len; i += 4) {

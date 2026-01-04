@@ -69,10 +69,29 @@ typedef union {
     uint8_t u8[4];
 } sliced32_t;
 
-typedef union {
-    uint64_t d;
-    struct { uint32_t lo, hi; } w;
-} uint32x2_t;
+#ifdef CUSTOM_ISA
+// simd data types
+typedef struct { uint32_t v; } uint16x2_t;
+typedef struct { uint32_t v; } int16x2_t;
+typedef struct { uint32_t v; } uint8x4_t;
+typedef struct { uint32_t v; } int8x4_t;
+typedef struct { uint32_t v; } uint4x8_t;
+typedef struct { uint32_t v; } int4x8_t;
+typedef struct { uint32_t v; } uint2x16_t;
+typedef struct { uint32_t v; } int2x16_t;
+
+// simd wide data types
+typedef union { uint64_t d; struct { uint32_t lo, hi; } w; } uint32x2_t;
+typedef union { uint64_t d; struct { uint32_t lo, hi; } w; } int32x2_t;
+typedef union { uint64_t d; struct { uint16x2_t lo, hi; } w; } uint16x4_t;
+typedef union { uint64_t d; struct { int16x2_t lo, hi; } w; } int16x4_t;
+typedef union { uint64_t d; struct { uint8x4_t lo, hi; } w; } uint8x8_t;
+typedef union { uint64_t d; struct { int8x4_t lo, hi; } w; } int8x8_t;
+typedef union { uint64_t d; struct { uint4x8_t lo, hi; } w; } uint4x16_t;
+typedef union { uint64_t d; struct { int4x8_t lo, hi; } w; } int4x16_t;
+typedef union { uint64_t d; struct { uint2x16_t lo, hi; } w; } uint2x32_t;
+typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
+#endif
 
 // mhpm events
 enum mhpmevent_t {
