@@ -611,6 +611,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RS3
 #define PROF_RD_RS1_RS2
 #define PROF_RD_RDP_RS1_RS2
+#define PROF_RD_RS1_RS2_RS3
 #define PROF_RD_RDP_RS1
 #define PROF_RD_RS1
 #define PROF_RS1_RS2
