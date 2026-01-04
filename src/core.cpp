@@ -31,14 +31,13 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
 
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
-    if (prof_pc.start == BASE_ADDR) {
-        // profiling active from the beginning
-        prof_act = true;
-        prof.active = true;
-        prof_perf.active = true;
-        prof_fusion.active = true;
-        cosim_prof(true);
-    }
+    // profiling active from the beginning instead of waiting for first PC exec
+    bool prof_on_boot = (prof_pc.start == BASE_ADDR);
+    prof_act = prof_on_boot;
+    prof.active = prof_on_boot;
+    prof_perf.active = prof_on_boot;
+    prof_fusion.active = prof_on_boot;
+    cosim_prof(prof_on_boot);
 
     #endif // DPI
     #endif // PROFILERS_EN
@@ -285,6 +284,9 @@ void core::prof_state([[maybe_unused]] bool enable) {
     prof.active = enable;
     prof_perf.active = enable;
     prof_fusion.active = enable;
+    #ifdef DPI
+    cosim_prof(enable); // updates bp, cache, core stats
+    #endif
     #endif
 
     #ifdef DASM_EN
@@ -296,11 +298,6 @@ void core::prof_state([[maybe_unused]] bool enable) {
     bp.profiling(enable);
     mem->cache_profiling(enable);
     hwrs.rst();
-    #endif
-
-    #ifdef DPI
-    prof_act = enable;
-    cosim_prof(enable); // updates bp, cache, core stats
     #endif
 }
 
