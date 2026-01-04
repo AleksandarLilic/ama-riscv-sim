@@ -51,8 +51,13 @@ main (int argc __attribute__ ((unused)),
 
   correct = verify_benchmark (result);
 
-  if (correct) pass();
-  else fail();
+  if (correct) {
+    pass();
+  } else {
+    // correct value unavailable here from verify_benchmark
+    write_mismatch(result, 0, 1);
+    fail();
+  }
 
 }				/* main () */
 
