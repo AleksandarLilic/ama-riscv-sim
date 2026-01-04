@@ -61,7 +61,7 @@ cleantestruns:
 	rm -rf testrun_*
 
 clean: cleanlogs cleanbins
-	rm -rf $(TEST) $(COV_DIR) *.gc* gtest_testlist.txt
+	rm -rf $(TEST_DIR) $(TEST) $(COV_DIR) *.gc* gtest_testlist.txt
 
 cleansim:
 	make -C ../src --no-print-directory BDIR=$(BDIR) clean

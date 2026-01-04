@@ -10,6 +10,8 @@
 
 #define CHECK_PASS "0x051e tohost       : 0x00000001"
 #define SIM_BIN "../../src/build_gtest/ama-riscv-sim " // runs from test subdir
+#define SIM_ARGS "--bp_run_all "
+#define SIM_EXEC SIM_BIN SIM_ARGS
 
 struct cmd_setup {
     std::string log_name;
@@ -21,7 +23,7 @@ class sim_test : public ::testing::TestWithParam<std::string> {
         cmd_setup setup(const std::string &test_path) {
             cmd_setup cs;
             cs.log_name = gen_log_name(test_path) + "_dump.log";
-            cs.sim_cmd = SIM_BIN + test_path + " > " + cs.log_name + " 2>&1";
+            cs.sim_cmd = SIM_EXEC + test_path + " > " + cs.log_name + " 2>&1";
             return cs;
         }
 
