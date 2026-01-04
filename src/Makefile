@@ -5,12 +5,29 @@ CXXFLAGS += -Wunreachable-code -Wnull-dereference
 CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
 CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
-CXXFLAGS += -Ofast -s -flto=auto -march=native -mtune=native # release build
-#CXXFLAGS += -g -fno-omit-frame-pointer # for perf profiling, but drop -s above
+CXXFLAGS += -Ofast -flto=auto # release build
+#CXXFLAGS += -g -fno-omit-frame-pointer # perf profiling, but drop -s below
 #CXXFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 #CXXFLAGS += -ftime-report
-LDFLAGS :=
+
+TUNE ?= native
+ifeq ($(TUNE), generic)
+CXXFLAGS += -march=x86-64 -mtune=generic
+else ifeq ($(TUNE), native)
+CXXFLAGS += -march=native -mtune=native
+endif
+
+LDFLAGS := -s
+
+STATIC_LINKING ?= 0 # default: dynamic linking
+ifeq ($(STATIC_LINKING), 1) # static linking of C++ runtime only
+LDFLAGS += -static-libstdc++ -static-libgcc
+else ifeq ($(STATIC_LINKING), 2) # full static linking
+LDFLAGS += -static
+endif
+
+LDLIBS :=
 
 BDIR ?= build
 $(shell mkdir -p $(BDIR))
@@ -47,7 +64,7 @@ include Makefile.autogen
 
 NO_SYMLINK ?= 0 # to skip symlinking into the parent directory, e.g. for test build
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 	@if [ "$(NO_SYMLINK)" = "0" ]; then \
 		ln -sf $@ $(BIN); \
 	fi
