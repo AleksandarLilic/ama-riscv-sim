@@ -149,12 +149,12 @@ struct defs_t {
 #ifdef HW_MODELS_EN
 struct hw_defs_t {
     // icache
-    static constexpr char icache_sets[] = "4";
-    static constexpr char icache_ways[] = "4";
+    static constexpr char icache_sets[] = "32";
+    static constexpr char icache_ways[] = "2";
     static constexpr char icache_re_policy[] = "lru";
     static constexpr char icache_in_policy[] = "update";
     // dcache
-    static constexpr char dcache_sets[] = "8";
+    static constexpr char dcache_sets[] = "16";
     static constexpr char dcache_ways[] = "4";
     static constexpr char dcache_re_policy[] = "lru";
     static constexpr char dcache_in_policy[] = "update";
@@ -528,7 +528,7 @@ int main(int argc, char* argv[]) {
     TRY_CATCH({
         memory mem(test_elf, cfg, hw_cfg);
         core rv32(&mem, cfg, hw_cfg);
-        rv32.exec();
+        rv32.run();
     });
 
     return 0;

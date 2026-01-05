@@ -24,8 +24,10 @@ class core {
     public:
         core() = delete;
         core(memory* mem, cfg_t cfg, hw_cfg_t hw_cfg);
+        void run();
+        void single_step();
+        void fetch();
         void exec();
-        void exec_inst();
         void dump();
         std::string print_state(bool dump_csr);
         void finish(bool dump_regs);
@@ -109,23 +111,6 @@ class core {
 
         // instruction parsing
         inst_parser ip;
-        void inst_fetch() {
-            #ifdef HW_MODELS_EN
-            // if previous inst was branch, use that instead of fetching
-            // this prevents cache from logging the same access twice
-            if (!last_inst_branch) {
-                inst = mem->rd_inst(pc);
-            } else {
-                inst = inst_resolved;
-                hwrs.ic_hm = next_ic_hm;
-                next_ic_hm = hw_status_t::none;
-            }
-            last_inst_branch = false;
-            #else // !HW_MODELS_EN
-            inst = mem->rd_inst(pc);
-            #endif
-            ip.set(inst);
-        }
 
         // instruction decoders
         void d_alu_reg();

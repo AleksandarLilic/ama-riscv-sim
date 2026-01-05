@@ -77,7 +77,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     mem->set_mip(&csr.at(CSR_MIP).value);
 }
 
-void core::exec() {
+void core::run() {
     std::cout << std::dec << "SIMULATION STARTED\n";
     #ifdef PROFILERS_EN
     prof_act = false;
@@ -92,7 +92,7 @@ void core::exec() {
 
     // start the core
     running = true;
-    while (running) exec_inst();
+    while (running) single_step();
 
     // wrap up
     csr_cnt_update(0u); // so all instructions since last CSR access are counted
@@ -100,7 +100,7 @@ void core::exec() {
     return;
 }
 
-void core::exec_inst() {
+void core::single_step() {
     tu.clear_trap();
 
     // clear everything from previous instruction
@@ -140,45 +140,12 @@ void core::exec_inst() {
     }
 
     if (!tu.is_trapped()) {
-        inst_fetch();
+        fetch();
         #ifdef PROFILERS_EN
         prof.new_inst(inst);
         branch_taken = false;
         #endif
-
-        uint32_t op_c = ip.copcode();
-        if (op_c != 0x3) { // d_d_compressed ISA
-            #ifdef RV32C
-            INST_HEX_W(4);
-            inst = ip.to_rvc(inst);
-            switch (op_c) {
-                case 0x0: d_compressed_0(); break;
-                case 0x1: d_compressed_1(); break;
-                case 0x2: d_compressed_2(); break;
-                default: tu.e_unsupported_inst("op_c unreachable");
-            }
-            #else // !RV32C
-            tu.e_unsupported_inst("RV32C unsupported");
-            #endif
-
-        } else { // 32-bit ISA
-            INST_HEX_W(8);
-            switch (ip.opcode()) {
-                CASE_DECODER(d_alu_reg)
-                CASE_DECODER(d_alu_imm)
-                CASE_DECODER(d_load)
-                CASE_DECODER(d_store)
-                CASE_DECODER(d_branch)
-                CASE_DECODER(d_jalr)
-                CASE_DECODER(d_jal)
-                CASE_DECODER(d_lui)
-                CASE_DECODER(d_auipc)
-                CASE_DECODER(d_system)
-                CASE_DECODER(d_misc_mem)
-                CASE_DECODER(d_custom_ext)
-                default: tu.e_unsupported_inst("opcode");
-            }
-        }
+        exec();
     }
 
     #ifdef PROFILERS_EN
@@ -251,6 +218,60 @@ void core::exec_inst() {
     inst_cnt++;
 
     if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
+}
+
+void core::fetch() {
+    #ifdef HW_MODELS_EN
+    // if previous inst was branch, use that instead of fetching
+    // this prevents cache from logging the same access twice
+    if (!last_inst_branch) {
+        inst = mem->rd_inst(pc);
+    } else {
+        inst = inst_resolved;
+        hwrs.ic_hm = next_ic_hm;
+        next_ic_hm = hw_status_t::none;
+    }
+    last_inst_branch = false;
+    #else // !HW_MODELS_EN
+    inst = mem->rd_inst(pc);
+    #endif
+    ip.set(inst);
+}
+
+void core::exec() {
+    uint32_t op_c = ip.copcode();
+    if (op_c != 0x3) { // d_d_compressed ISA
+        #ifdef RV32C
+        INST_HEX_W(4);
+        inst = ip.to_rvc(inst);
+        switch (op_c) {
+            case 0x0: d_compressed_0(); break;
+            case 0x1: d_compressed_1(); break;
+            case 0x2: d_compressed_2(); break;
+            default: tu.e_unsupported_inst("op_c unreachable");
+        }
+        #else // !RV32C
+        tu.e_unsupported_inst("RV32C unsupported");
+        #endif
+
+    } else { // 32-bit ISA
+        INST_HEX_W(8);
+        switch (ip.opcode()) {
+            CASE_DECODER(d_alu_reg)
+            CASE_DECODER(d_alu_imm)
+            CASE_DECODER(d_load)
+            CASE_DECODER(d_store)
+            CASE_DECODER(d_branch)
+            CASE_DECODER(d_jalr)
+            CASE_DECODER(d_jal)
+            CASE_DECODER(d_lui)
+            CASE_DECODER(d_auipc)
+            CASE_DECODER(d_system)
+            CASE_DECODER(d_misc_mem)
+            CASE_DECODER(d_custom_ext)
+            default: tu.e_unsupported_inst("opcode");
+        }
+    }
 }
 
 void core::finish(bool dump_regs) {
