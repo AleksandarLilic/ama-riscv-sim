@@ -213,18 +213,20 @@ int32_t _simd_dot_product_int16(
     return c;
 }
 
-#ifdef SIMD_UNROLL // optimized for pipeline utilization, 4x unrolling
-
+#ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        int8x4_t a_arr[4], b_arr[4];
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for bytes to words
+    size_t tile = ((len >> deg) << deg); // +2 to words, +3 for 8x unroll
 
-        #pragma GCC unroll 4
-        for (size_t i = 0; i < 4; i++) {
+    for (size_t k = 0; k < tile; k += (1 << deg)) {
+        int8x4_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
+
+        #pragma GCC unroll 8
+        for (size_t i = 0; i < 8; i++) {
             a_arr[i] = v_load_int8x4(a + k + i * 4);
             b_arr[i] = v_load_int8x4(b + k + i * 4);
         }
@@ -240,29 +242,42 @@ int32_t _simd_dot_product_int8(
               [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
             :
         );
+        // let compiler schedule loads in between to reduce rf pressure
+        asm volatile (
+            "dot8 %[c], %[a5], %[b5]\n\t"
+            "dot8 %[c], %[a6], %[b6]\n\t"
+            "dot8 %[c], %[a7], %[b7]\n\t"
+            "dot8 %[c], %[a4], %[b4]\n\t"
+            : [c] "+r" (c)
+            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
+              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
+              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
+              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
+            :
+        );
     }
-    // can't stream 16 bytes at a time anymore, do 4 bytes instead, if any
-    size_t len_s4 = ((len - len_s16) >> 2) << 2;
-    if (len_s4 > 0) {
-        size_t start = len_s16;
-        size_t end = (len_s16 + len_s4);
-        for (size_t i = start; i < end; i += 4) {
-            const int8x4_t a_slice = v_load_int8x4(a + i);
-            const int8x4_t b_slice = v_load_int8x4(b + i);
-            _dot8(a_slice, b_slice, &c);
-        }
-    }
-    size_t rem = (len - (len_s16 + len_s4));
-    if (rem > 0) {
-        for (size_t i = (len_s16 + len_s4); i < len; i++) c += a[i] * b[i];
+
+    // large tiles exhausted, do 4 bytes instead, if any
+    size_t tile_single = (((len - tile) >> 2) << 2);
+    if (tile_single > 0) {
+        size_t start = tile;
+        size_t end = (tile + tile_single);
+        c += _simd_dot_product_int8_core((a + start), (b + start), end);
     }
     return c;
 }
 
-#else // one SIMD inst at a time
-
+#else
 INLINE_OPTION
 int32_t _simd_dot_product_int8(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    return _simd_dot_product_int8_core(a, b, len);
+}
+
+#endif // SIMD_UNROLL
+
+INLINE_OPTION
+int32_t _simd_dot_product_int8_core(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
@@ -277,7 +292,6 @@ int32_t _simd_dot_product_int8(
     }
     return c;
 }
-#endif // SIMD_UNROLL
 
 INLINE_OPTION
 int32_t _simd_dot_product_int4(
@@ -394,8 +408,65 @@ int32_t _simd_dot_product_int16_int4(
     return c;
 }
 
+#ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int4(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (2 + 1 + udeg); // +2 for bytes to words, +1 widen
+    size_t tile = ((len >> deg) << deg);
+
+    for (size_t k = 0; k < tile; k += (1 << deg)) {
+        int8x4_t a_slice_1, a_slice_2;
+        int4x8_t b_slice;
+        int8x8_t b_slice_wide;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {                  // 0,  1,  2,  3
+            b_slice = v_load_int4x8(b + ((k + i * 8) >> 1)); // 0,  4,  8, 12
+            a_slice_1 = v_load_int8x4(a + k     + i * 8);    // 0,  8, 16, 24
+            a_slice_2 = v_load_int8x4(a + k + 4 + i * 8);    // 4, 12, 20, 28
+
+            asm volatile (
+                "widen4 %[bw], %[b]\n\t"
+                : [bw] "=r" (b_slice_wide.d)
+                : [b] "r" (b_slice)
+            );
+            asm volatile (
+                "dot8 %[c], %[a1], %[bw_lo]\n\t"
+                "dot8 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide.w.lo),
+                  [bw_hi] "r" (b_slice_wide.w.hi),
+                  [a1] "r" (a_slice_1),
+                  [a2] "r" (a_slice_2)
+            );
+        }
+    }
+
+    // large tiles exhausted, do 4 bytes instead, if any
+    size_t tile_single = (((len - tile) >> 3) << 3);
+    if (tile_single > 0) {
+        size_t start = tile;
+        size_t end = (tile + tile_single);
+        c += _simd_dot_product_int8_int4_core((a + start), (b + start), end);
+    }
+    return c;
+}
+
+#else
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int4(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    return _simd_dot_product_int8_int4_core(a, b, len);
+}
+
+#endif // SIMD_UNROLL
+
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int4_core(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
@@ -430,8 +501,85 @@ int32_t _simd_dot_product_int8_int4(
     return c;
 }
 
+#ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 2; // unroll degree
+    static const size_t deg = (2 + 2 + udeg); // +2 for bytes to words, +2 widen
+    size_t tile = ((len >> deg) << deg);
+
+    for (size_t k = 0; k < tile; k += (1 << deg)) {
+        int8x4_t a_slice_1, a_slice_2, a_slice_3, a_slice_4;
+        int2x16_t b_slice;
+        int4x16_t b_slice_wide_n;
+        int8x8_t b_slice_wide_b;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {                    // 0,   1,  2
+            b_slice = v_load_int2x16(b + ((k + i * 16) >> 2)); // 0,   4,  8
+            a_slice_1 = v_load_int8x4(a + k      + i * 16);    // 0,  16, 32
+            a_slice_2 = v_load_int8x4(a + k +  4 + i * 16);    // 4,  20, 36
+            a_slice_3 = v_load_int8x4(a + k +  8 + i * 16);    // 8,  24, 40
+            a_slice_4 = v_load_int8x4(a + k + 12 + i * 16);    // 12, 28, 44
+
+            asm volatile (
+                "widen2 %[bw], %[b]\n\t"
+                : [bw] "=r" (b_slice_wide_n.d)
+                : [b] "r" (b_slice) // crumbs to nibbles
+            );
+            asm volatile (
+                "widen4 %[bw], %[b]\n\t"
+                : [bw] "=r" (b_slice_wide_b.d)
+                : [b] "r" (b_slice_wide_n.w.lo) // low nibbles to bytes
+            );
+            asm volatile (
+                "dot8 %[c], %[a1], %[bw_lo]\n\t"
+                "dot8 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide_b.w.lo),
+                  [bw_hi] "r" (b_slice_wide_b.w.hi),
+                  [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
+            );
+            asm volatile (
+                "widen4 %[bw], %[b]\n\t"
+                : [bw] "=r" (b_slice_wide_b.d)
+                : [b] "r" (b_slice_wide_n.w.hi) // high nibbles to bytes
+            );
+            asm volatile (
+                "dot8 %[c], %[a3], %[bw_lo]\n\t"
+                "dot8 %[c], %[a4], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide_b.w.lo),
+                  [bw_hi] "r" (b_slice_wide_b.w.hi),
+                  [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
+            );
+        }
+    }
+
+    // large tiles exhausted, do 4 bytes instead, if any
+    size_t tile_single = (((len - tile) >> 3) << 3);
+    if (tile_single > 0) {
+        size_t start = tile;
+        size_t end = (tile + tile_single);
+        c += _simd_dot_product_int8_int2_core((a + start), (b + start), end);
+    }
+    return c;
+}
+
+#else
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len) {
+    return _simd_dot_product_int8_int2_core(a, b, len);
+}
+
+#endif // SIMD_UNROLL
+
+INLINE_OPTION
+int32_t _simd_dot_product_int8_int2_core(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);

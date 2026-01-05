@@ -64,6 +64,16 @@ int32_t _simd_dot_product_int8_int2(
 //int32_t _simd_dot_product_int4_int2(
 //    const int8_t* a, const int8_t* b, const size_t len);
 
+// these have the 'unrolled' optimized option, so '_core' is provided for
+// 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
+// 2. (#else) indirection in the regular version
+int32_t _simd_dot_product_int8_core(
+    const int8_t* a, const int8_t* b, const size_t len);
+int32_t _simd_dot_product_int8_int4_core(
+    const int8_t* a, const int8_t* b, const size_t len);
+int32_t _simd_dot_product_int8_int2_core(
+    const int8_t* a, const int8_t* b, const size_t len);
+
 // low-level SIMD functions
 
 // 16-bit elements (2 lanes)

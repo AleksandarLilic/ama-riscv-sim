@@ -38,34 +38,33 @@ static uint32_t relu_norm(
     return max_pos;
 }
 
-static void fc_layer(int8_t* activations, const int8_t* weights,
-                     int32_t* output, uint32_t n_input, uint32_t n_output) {
+static void fc_layer(
+    int8_t* activations, const int8_t* weights,
+    int32_t* output, uint32_t n_input, uint32_t n_output) {
 
     for (uint32_t i = 0; i < n_output; i++) {
-        // pointer to the weights of the current neuron
-
         #ifdef W8A8
-        const int8_t* weightidx = weights + i * n_input;
+        const int8_t* weight_idx = (weights + i * n_input);
         #ifdef CUSTOM_ISA
-        output[i] = _simd_dot_product_int8(activations, weightidx, n_input);
+        output[i] = _simd_dot_product_int8(activations, weight_idx, n_input);
         #else
-        output[i] = dot_product_int8(activations, weightidx, n_input);
+        output[i] = dot_product_int8(activations, weight_idx, n_input);
         #endif
 
         #elif defined(W4A8)
-        const int8_t* weightidx = weights + (i * (n_input >> 1));
+        const int8_t* weight_idx = (weights + (i * (n_input >> 1)));
         #ifdef CUSTOM_ISA
-        output[i] = _simd_dot_product_int8_int4(activations, weightidx,n_input);
+        output[i] = _simd_dot_product_int8_int4(activations, weight_idx,n_input);
         #else
-        output[i] = dot_product_int8_int4(activations, weightidx, n_input);
+        output[i] = dot_product_int8_int4(activations, weight_idx, n_input);
         #endif
 
         #elif defined(W2A8)
-        const int8_t* weightidx = weights + (i * (n_input >> 2));
+        const int8_t* weight_idx = (weights + (i * (n_input >> 2)));
         #ifdef CUSTOM_ISA
-        output[i] = _simd_dot_product_int8_int2(activations, weightidx,n_input);
+        output[i] = _simd_dot_product_int8_int2(activations, weight_idx,n_input);
         #else
-        output[i] = dot_product_int8_int2(activations, weightidx, n_input);
+        output[i] = dot_product_int8_int2(activations, weight_idx, n_input);
         #endif
 
         #endif
