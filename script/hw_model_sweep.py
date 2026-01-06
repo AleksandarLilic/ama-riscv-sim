@@ -18,14 +18,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
-from utils import INDENT, get_reporoot, is_headless, is_notebook
+from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
+                   get_reporoot, is_headless, is_notebook,
+                   smarter_eng_formatter)
 
 # globals
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "build", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
-SIM_PASS_STRING = "    0x051e tohost    : 0x00000001"
-SIM_EARLY_EXIT_STRING = "    0x051e tohost    : 0xf0000000"
 FIG_SIZE = (8, 8)
 MK = "o"
 LW = .5
@@ -124,17 +124,19 @@ def create_plot(
     sweep_name: str,
     ncols=2,
     nrows=1,
-    title_2: str = "") \
-    -> Tuple:
+    title_s: str = "",
+    prof_inst: str = ""
+) -> Tuple:
 
     fs = [FIG_SIZE[0]*ncols, FIG_SIZE[1]*nrows]
     fig, axs = plt.subplots(
         ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True,
-        num=sweep_name)
+        num=sweep_name # set window title, but 'num', seriously?
+    )
 
-    suptitle = f"{title} sweep for {sweep_name}"
-    if title_2 != "":
-        suptitle = f"{suptitle}: {title_2}"
+    suptitle = f"{title} sweep for {sweep_name}{prof_inst}"
+    if title_s != "":
+        suptitle = f"{suptitle}: {title_s}"
     fig.suptitle(suptitle)
 
     if ncols == 1 and nrows == 1:
@@ -173,7 +175,9 @@ def run_workloads(wp: workload_params):
 
     if bp_sweep:
         bp_agg = {"acc": [], "mpki": []} # aggregate across all workloads
-        bp_per_app = {"acc": {}, "mpki": {}}
+        bp_per_app = {
+            "acc": {}, "mpki": {}, "prof_inst": {}, "prof_branches": {}
+        }
         bp_size = None
         violated_thr = False
     elif cache_sweep:
@@ -207,6 +211,7 @@ def run_workloads(wp: workload_params):
 
         with open(json_hw_stats, "r") as f:
             hw_stats = json.load(f)
+        prof_inst = hw_stats["profiled_inst"]
 
         branches_csv = os.path.join(out_dir, "branches.csv")
         if os.path.exists(branches_csv):
@@ -219,7 +224,8 @@ def run_workloads(wp: workload_params):
             subprocess.run(["rm", "-r", out_dir])
 
         if bp_sweep:
-            if hw_stats[wp.sweep]["branches"] == 0:
+            prof_branches = hw_stats[wp.sweep]["branches"]
+            if prof_branches == 0:
                 raise RuntimeError(f"No branches logged for {app}")
             if bp_size is None: # bp, and therefore size, is constant
                 bp_size = hw_stats[wp.sweep]["size"]
@@ -234,16 +240,19 @@ def run_workloads(wp: workload_params):
                 violated_thr = True
                 if not wp.ignore_thr:
                     # skip rest of workloads if acc/mpki is violated on any
-                    bp_agg = []
+                    bp_agg = {k: [] for k in bp_agg.keys()}
                     break
 
             bp_agg['acc'].append(acc)
             bp_agg['mpki'].append(mpki)
-            bp_per_app['acc'][get_test_name(app)] = acc
-            bp_per_app['mpki'][get_test_name(app)] = mpki
+            testname = get_test_name(app)
+            bp_per_app['acc'][testname] = acc
+            bp_per_app['mpki'][testname] = mpki
+            bp_per_app['prof_inst'][testname] = prof_inst
+            bp_per_app['prof_branches'][testname] = prof_branches
 
         elif cache_sweep:
-            if cache_size is None:
+            if cache_size is None: # populate on first workload
                 cache_size = hw_stats[wp.sweep]["size"]["data"]
             app_thr_hr = 0
             if "thr" in workload:
@@ -277,7 +286,9 @@ def run_workloads(wp: workload_params):
         avg_hr = None
         if len(agg_hr) > 0:
             avg_hr = round(sum(agg_hr)/len(agg_hr), 2)
-        return cache_size, avg_hr, per_app_hr, cache_ct, wp.ret_list, msg_out
+        prof_info = (prof_inst, references)
+        return cache_size, avg_hr, per_app_hr, cache_ct, prof_info, \
+            wp.ret_list, msg_out
 
 def run_cache_sweep(
     args: argparse.Namespace,
@@ -288,7 +299,8 @@ def run_cache_sweep(
 
     running_best = (best_params != None)
     multi_wl = len(workloads) > 1
-    running_single_best = running_best and not multi_wl
+    running_single = (not multi_wl)
+    running_single_best = (running_best and running_single)
     sweep_name, sweep_log = gen_sweep_log_name(
         args.sweep, args.work_dir, workloads, not running_best)
     if os.path.exists(sweep_log):
@@ -340,7 +352,7 @@ def run_cache_sweep(
             # get results as they come in
             cnt = 0
             for future in as_completed(futures):
-                size, hr, per_app_hr, ct, cp, msg = future.result()
+                size, hr, per_app_hr, ct, prof_info, cp, msg = future.result()
 
                 cnt += 1
                 if args.track and cnt % idx_c == 0 and not running_single_best:
@@ -374,6 +386,11 @@ def run_cache_sweep(
                     sorted(se.items(), key=lambda x: x[0]))
             sr[cpolicy] = dict(sorted(sr[cpolicy].items(), key=lambda x: x[0]))
 
+        if running_single:
+            sr['_profiled_inst'] = prof_info[0]
+            if ck == "dcache":
+                sr['_profiled_inst_mem'] = prof_info[1]
+
     sweep_results = sweep_log.replace(".log", "_best.json")
     if args.load_stats:
         with open(sweep_results, "r") as f:
@@ -385,12 +402,32 @@ def run_cache_sweep(
     if args.load_stats and args.plot_skip_searched and not running_best:
         return sr
 
+    prof_inst = sr.get('_profiled_inst', None)
+    prof_inst_str = ""
+    if prof_inst != None:
+        fmt = smarter_eng_formatter()
+        if ck == "icache":
+            prof_inst_str = f" (inst: {fmt(prof_inst)})"
+        else: # dcache
+            prof_inst_mem = sr.get('_profiled_inst_mem', None)
+            mem_perc = (prof_inst_mem / prof_inst * 100)
+            prof_inst_str = \
+                f" (inst/mem: {fmt(prof_inst)}/{fmt(prof_inst_mem)}, " + \
+                f" {mem_perc:.1f}% mem)"
+
+    sr = {k: v for k, v in sr.items() if not k.startswith('_')}
+
     # plot HR wrt num of ways
     lbl = lambda x, y: f"{x}, sets: {y}"
     max_nrows = 3 if ck == "dcache" else 2
     nrows = max_nrows if len(workloads) == 1 else 1
     fig, axs = create_plot(
-        ck.capitalize(), f"{sweep_name}", nrows=nrows, title_2=args.chart_title)
+        ck.capitalize(),
+        sweep_name,
+        nrows=nrows,
+        title_s=args.chart_title,
+        prof_inst=prof_inst_str
+    )
 
     axs_hr = axs[0] if len(workloads) == 1 else axs
     ax = axs_hr[0]
@@ -964,7 +1001,7 @@ def run_bp_sweep(
 
     running_best = (best_params != None)
     multi_wl = len(workloads) > 1
-    running_single_best = running_best and not multi_wl
+    running_single_best = (running_best and (not multi_wl))
     sweep_name, sweep_log = gen_sweep_log_name(
         args.sweep, args.work_dir, workloads, not running_best)
     if os.path.exists(sweep_log) and not args.load_stats:
@@ -1100,7 +1137,7 @@ def run_bp_sweep(
             # get results as they come in
             cnt = 0
             for future in as_completed(futures):
-                bp_size, avg, per_app, bpp, violated_thr, msg = future.result()
+                bp_size, avg, per_app, bpp, viol_thr, msg = future.result()
                 acc = avg['acc']
 
                 cnt += 1
@@ -1113,7 +1150,7 @@ def run_bp_sweep(
                     save_bpp_all[bp_handle].append([acc, bp_size, bpp])
                 if acc == None:
                     continue
-                if violated_thr and bp != "bp_static":
+                if viol_thr and bp != "bp_static":
                     # 2a. from above, part 2
                     # special case when thr is ignored for component predictors
                     # but now once collected for save_bpp_all, remove if needed
@@ -1131,6 +1168,11 @@ def run_bp_sweep(
                     best_bps[bp_size]["mpki"] = avg['mpki']
                     best_bps[bp_size]["per_app_acc"] = per_app['acc']
                     best_bps[bp_size]["per_app_mpki"] = per_app['mpki']
+                    best_bps[bp_size]["per_app_prof_inst"] = \
+                        per_app['prof_inst']
+                    best_bps[bp_size]["per_app_prof_branches"] = \
+                        per_app['prof_branches']
+
                     if bp != "bp_combined" and not running_best:
                         save_bpp_best[bp_handle][bp_size] = bpp
 
@@ -1277,7 +1319,7 @@ def run_bp_sweep(
             else 2
     nrows = 2 # top acc, bottom mpki
     fig, axs = create_plot(
-        bpk.capitalize(), sweep_name, ncols, nrows, title_2=args.chart_title)
+        bpk.capitalize(), sweep_name, ncols, nrows, title_s=args.chart_title)
     plot_bp_results(axs, sweep_results, sweep_params)
 
     if args.save_png:
@@ -1322,6 +1364,8 @@ def plot_bp_results(axs, sweep_results, sweep_params):
         for idx,(sr,ax) in enumerate(zip(sweep_results, axs_slice)):
             title_add = ""
             for bp_h,entry in sr.items():
+                if bp_h.startswith("_"): # skip info entries
+                    continue
                 if args.plot_name_filter:
                     match = bool(re.search(args.plot_name_filter, bp_h))
                     if not match:
@@ -1456,10 +1500,14 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             # move this app's results to the main results
             cr_bp_d[bpsz]['acc'] = v_bpsz['per_app_acc'][app]
             cr_bp_d[bpsz]['mpki'] = v_bpsz['per_app_mpki'][app]
+            prof_inst = v_bpsz['per_app_prof_inst'][app]
+            prof_branches = v_bpsz['per_app_prof_branches'][app]
             # finally, drop the entire dict with per app results
             del cr_bp_d[bpsz]['per_app_acc']
             del cr_bp_d[bpsz]['per_app_mpki']
-        return cr_bp_d
+            del cr_bp_d[bpsz]['per_app_prof_inst']
+            del cr_bp_d[bpsz]['per_app_prof_branches']
+        return cr_bp_d, (prof_inst, prof_branches)
 
     for wl in workloads_all:
         app, log = gen_sweep_log_name(
@@ -1468,7 +1516,9 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
         per_app_sr = {}
 
         for bpn,v_bpn in sr_bin_all.items(): # bp name, bp per size dict
-            per_app_bin_sr[bpn] = reformat_per_app(v_bpn)
+            per_app_bin_sr[bpn], prof_info = reformat_per_app(v_bpn)
+        per_app_bin_sr['_profiled_inst'] = prof_info[0]
+        per_app_bin_sr['_branches'] = prof_info[1]
 
         for bpn,v_bpn in sr_best_all.items(): # bp name, bp per size dict
             # need to add size as entry to fit the parser below
@@ -1476,11 +1526,25 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             v_entry = dict(sorted(
                 ((k, {**v, "size": k}) for k, v in v_bpn.items())
             ))
-            per_app_sr[bpn] = reformat_per_app(v_entry)
+            per_app_sr[bpn], prof_info = reformat_per_app(v_entry)
+        per_app_sr['_profiled_inst'] = prof_info[0]
+        per_app_sr['_branches'] = prof_info[1]
+
+        fmt = smarter_eng_formatter()
+        branch_perc = (prof_info[1] / prof_info[0]) * 100
+        prof_inst_str = \
+            f" (inst/branches: " + \
+            f"{fmt(prof_info[0])}/{fmt(prof_info[1])}, {branch_perc:.1f}%)"
 
         ncols = 2 if args.bp_run_best_for_all_workloads else 1
         _, axs = create_plot(
-            args.sweep.capitalize(), app, ncols, 2, title_2=args.chart_title)
+            args.sweep.capitalize(),
+            sweep_name=app,
+            ncols=ncols,
+            nrows=2,
+            title_s=args.chart_title,
+            prof_inst=prof_inst_str
+        )
         plot_bp_results(axs, [per_app_bin_sr, per_app_sr], sweep_params)
 
         if args.save_stats and not args.load_stats:
@@ -1581,16 +1645,16 @@ def run_main(args: argparse.Namespace) -> None:
         # as these are the same results, just plotted differently
         # ideally, save from 'all' run, and plot for 'per workload'
         # but, CT is not collected when more than 1 workload is run
-        params = gen_cache_final_params(args.sweep, sr_best)
+        best_params = gen_cache_final_params(args.sweep, sr_best)
         if args.add_all_workloads and workloads_all != workloads_sweep:
             sweep_best_wrapper_start(args.sweep, "\n")
-            run_cache_sweep(args, workloads_all, sweep_params, params)
+            run_cache_sweep(args, workloads_all, sweep_params, best_params)
             sweep_wrapper_end(args, tt)
 
         if args.plot_per_workload:
             add_charts_wrapper_start(args.sweep, "\n")
             for wl in workloads_all:
-                run_cache_sweep(args, [wl], sweep_params, params)
+                run_cache_sweep(args, [wl], sweep_params, best_params)
             sweep_wrapper_end(args, tt)
 
         return # only one sweep type at a time
@@ -1607,9 +1671,9 @@ def run_main(args: argparse.Namespace) -> None:
                 sweep_best_wrapper_start(args.sweep, "\n")
                 sr_to_use = sr_best if args.bp_run_best_for_all_workloads \
                             else sr_bin
-                params = gen_bp_final_params(sr_to_use)
+                best_params = gen_bp_final_params(sr_to_use)
                 sr_bin_all, sr_best_all = run_bp_sweep(
-                    args, workloads_all, sweep_params, params)
+                    args, workloads_all, sweep_params, best_params)
                 sweep_wrapper_end(args, tt, "\n")
             else:
                 # 'sweep' and 'all' are the same set of workloads

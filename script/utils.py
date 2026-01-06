@@ -7,6 +7,8 @@ from matplotlib.ticker import EngFormatter, FuncFormatter
 
 INDENT = " " * 4
 DELIM = f"\n{INDENT}"
+SIM_PASS_STRING = "    0x051e tohost       : 0x00000001"
+SIM_EARLY_EXIT_STRING = SIM_PASS_STRING.replace("0x00000001", "0xf0000000")
 
 def is_notebook():
     try:
