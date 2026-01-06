@@ -1,8 +1,9 @@
-CXX := g++
+CXX ?= g++
 CXXFLAGS := -g -std=gnu++17
 GTEST_LIBS := -lgtest -lgtest_main -pthread
 LDFLAGS := -lgcov
-SIM_FLAGS := DEFINES="-DTEST_BUILD -DRV32C"
+SIM_FLAGS := CXX=$(CXX) # use the same compiler as for tests
+SIM_FLAGS += DEFINES="-DTEST_BUILD -DRV32C"
 SIM_FLAGS += USER_DEFINES=--coverage LDFLAGS=-lgcov
 
 TIMESTAMP := $(shell date +"%Y-%m-%d_%H-%M-%S")
@@ -61,11 +62,12 @@ cleantestruns:
 	rm -rf testrun_*
 
 clean: cleanlogs cleanbins
-	rm -rf $(TEST_DIR) $(TEST) $(COV_DIR) *.gc* gtest_testlist.txt
+	rm -rf $(TEST_DIR) $(TEST) $(COV_DIR) *.gc*
 
 cleansim:
 	make -C ../src --no-print-directory BDIR=$(BDIR) clean
 
 cleanall: clean cleansim
+	rm -rf gtest_testlist.txt
 
 .PHONY: all run_gtest coverage run_valgrind prepare_tests clean_tests build_sim cleanlogs cleanbins clean cleanall

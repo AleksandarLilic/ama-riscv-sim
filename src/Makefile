@@ -1,4 +1,11 @@
-CXX := g++
+CXX ?= g++
+
+CXX_REQ := 10 # 9 may also work, but 10+ is preferred for gnu++17 support
+CXX_VERSION := $(shell $(CXX) -dumpversion | cut -d. -f1)
+ifeq ($(shell [ $(CXX_VERSION) -ge $(CXX_REQ) ] && echo ok),)
+$(error "GCC >= $(CXX_REQ) required")
+endif
+
 CXXFLAGS := -Wall -Wextra
 CXXFLAGS += -Wcast-qual -Wold-style-cast
 CXXFLAGS += -Wunreachable-code -Wnull-dereference
