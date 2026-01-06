@@ -61,8 +61,8 @@
         "embench/md5sum": [["embench"],         {"thr_bpred_acc": 96, "thr_bpred_mpki":  4}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
         "embench/crc32": [["embench"],          {"thr_bpred_acc": 99, "thr_bpred_mpki":  1}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}],
 
-        "coremark": [["coremark"],            {"thr_bpred_acc": 90, "thr_bpred_mpki": 17}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 2 --prof_pc_start 415ac --prof_pc_stop 415e8 --bp_dump_csv"}, {"skip_search": false}],
-        "dhrystone": [["dhrystone"],          {"thr_bpred_acc": 92, "thr_bpred_mpki":  8}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 10 --prof_pc_start 415a4 --prof_pc_stop 4167c --bp_dump_csv"}, {"skip_search": false}],
+        "coremark": [["coremark"],            {"thr_bpred_acc": 90, "thr_bpred_mpki": 17}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 2 --prof_pc_start 4149c --prof_pc_stop 414d8 --bp_dump_csv"}, {"skip_search": false}],
+        "dhrystone": [["dhrystone"],          {"thr_bpred_acc": 92, "thr_bpred_mpki":  8}, {"sim_args": "--exit_on_prof_stop --prof_pc_single_match 10 --prof_pc_start 41490 --prof_pc_stop 41564 --bp_dump_csv"}, {"skip_search": false}],
 
         "mlp": [["w8a8"],                     {"thr_bpred_acc": 97, "thr_bpred_mpki":  3}, {"sim_args": "--exit_on_prof_stop"}, {"skip_search": true}]
     }

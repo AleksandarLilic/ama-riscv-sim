@@ -442,22 +442,26 @@ def run_cache_sweep(
 
     # plot HR wrt cache size (excl tag & metadata)
     ax = axs_hr[1]
+    min_size = 2**32-1 # large number
     for cpolicy, pe in sr.items():
         for cset, se in pe.items():
             hit_rate = np.array([se[way]["hr"] for way in se.keys()])
             sizes = np.array([se[way]["size"] for way in se.keys()])
             ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset),
                     marker=MK, lw=LW)
+            min_size = min(min_size, min(sizes))
+    xticks_filtered = [x if x >= min_size else np.nan for x in XTICKS]
     ax.set_xlabel("Size [B]")
-    ax.set_xticks(XTICKS)
-    ax.set_xticklabels(XLABELS, rotation=45)
+    ax.set_xticks(xticks_filtered)
+    ax.set_xticklabels(XLABELS, rotation=90)
     ax.set_title(f"Hit Rate vs Size")
+    ax.legend(loc="lower right", ncol=1)
 
     axs_ct = []
     # ct meaningless for workload sweeps
     if len(workloads) == 1:
-        ctmt = "Cache to Memory Traffic"
-        ctct = "Core to Cache Traffic"
+        c2mt = "Cache to Memory Traffic"
+        c2ct = "Core to Cache Traffic"
         for axs_d,direction in zip(axs[1:], ["reads", "writes"]):
             if ck == "icache" and direction == "writes":
                 continue # icache has no writes
@@ -481,12 +485,12 @@ def run_cache_sweep(
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
             y_ct = ct_core
-            if args.plot_no_ct_thr and ax.get_ylim()[1] < ct_core:
+            if args.plot_no_ct_thr and ax.get_ylim()[1] < (y_ct * .95):
                 y_ct = np.nan
-            ax.axhline(y=y_ct, color="r", linestyle="--",
-                       label=f"{ctct} = {ct_core_str}")
+            ax.axhline(y=y_ct, color="r", linestyle="--", label=ct_core_str)
             scale_ax_for_ct(ax)
-            ax.set_title(f"{ctmt} {direction.capitalize()} vs Number of Ways")
+            ax.set_title(f"{c2mt} {direction.capitalize()} vs Number of Ways\n"\
+                         f"({c2ct} = {ct_core_str})")
             axs_ct.append(ax)
 
             # plot CT mem wrt cache size (excl tag & metadata)
@@ -499,18 +503,18 @@ def run_cache_sweep(
                     ax.plot(sizes, ct_mem_read,
                             label=lbl(cpolicy, cset), marker=MK, lw=LW)
             ax.set_xlabel("Size [B]")
-            ax.set_xticks(XTICKS)
-            ax.set_xticklabels(XLABELS, rotation=45)
-            ax.axhline(y=y_ct, color="r", linestyle="--",
-                       label=f"{ctct} = {ct_core_str}")
+            ax.set_xticks(xticks_filtered)
+            ax.set_xticklabels(XLABELS, rotation=90)
+            ax.axhline(y=y_ct, color="r", linestyle="--", label=ct_core_str)
             scale_ax_for_ct(ax)
-            ax.set_title(f"{ctmt} {direction.capitalize()} vs Size")
+            ax.set_title(f"{c2mt} {direction.capitalize()} vs Size\n" \
+                         f"({c2ct} = {ct_core_str})")
+            ax.legend(loc="upper right", ncol=1)
             axs_ct.append(ax)
 
     # common for HR
     for a in axs_hr:
         a.set_ylabel("Hit Rate [%]")
-        a.legend(loc="lower right")
         ymin = min(a.get_ylim()[0], 99)
         if args.plot_hr_thr:
             ymin = max(args.plot_hr_thr, ymin)
@@ -518,7 +522,6 @@ def run_cache_sweep(
 
     # common for CT
     for a in axs_ct:
-        a.legend(loc="upper right")
         a.set_ylabel(f"Traffic [B]")
         if args.plot_ct_thr:
             ymax = min(args.plot_ct_thr, a.get_ylim()[1])
