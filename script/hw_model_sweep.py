@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator
 from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
                    get_reporoot, is_headless, is_notebook,
@@ -26,7 +27,7 @@ from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "build", "ama-riscv-sim")
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
-FIG_SIZE = (8, 8)
+FIG_SIZE = (7, 7)
 MK = "o"
 LW = .5
 
@@ -128,16 +129,24 @@ def create_plot(
     prof_inst: str = ""
 ) -> Tuple:
 
-    fs = [FIG_SIZE[0]*ncols, FIG_SIZE[1]*nrows]
+    ax_w, ax_h = FIG_SIZE
+    pad = 1
+    gap = 1
+    W = 2*pad + ncols*ax_w + (ncols-1)*gap
+    H = 2*pad + nrows*ax_h + (nrows-1)*gap
     fig, axs = plt.subplots(
-        ncols=ncols, nrows=nrows, figsize=fs, constrained_layout=True,
-        num=sweep_name # set window title, but 'num', seriously?
+        ncols=ncols, nrows=nrows, figsize=(W, H),
+        num=sweep_name, # set window title, but 'num', seriously?
+    )
+    fig.subplots_adjust(
+        left=pad/W, right=1-pad/W, bottom=pad/H, top=1-pad/H,
+        wspace=gap/ax_w, hspace=(gap*1.1)/ax_h
     )
 
     suptitle = f"{title} sweep for {sweep_name}{prof_inst}"
     if title_s != "":
         suptitle = f"{suptitle}: {title_s}"
-    fig.suptitle(suptitle)
+    fig.suptitle(suptitle, fontsize=14)
 
     if ncols == 1 and nrows == 1:
         axs = [axs]
@@ -295,7 +304,7 @@ def run_cache_sweep(
     workloads: List[str],
     sweep_params: Dict[str, Any],
     best_params: List[List[Tuple[str, Any]]] = None) \
-    -> None:
+    -> Tuple[Dict, plt.Figure]:
 
     running_best = (best_params != None)
     multi_wl = len(workloads) > 1
@@ -518,14 +527,19 @@ def run_cache_sweep(
         ymin = min(a.get_ylim()[0], 99)
         if args.plot_hr_thr:
             ymin = max(args.plot_hr_thr, ymin)
-        a.set_ylim(ymin, 100.1) # make room for 100% markers to be fully visible
+        # make room for 100% markers to be fully visible
+        yrange = a.get_ylim()[1] - ymin
+        a.set_ylim(ymin, 100 + yrange*0.02)
 
     # common for CT
     for a in axs_ct:
         a.set_ylabel(f"Traffic [B]")
+        ymin, ymax = a.get_ylim()
         if args.plot_ct_thr:
             ymax = min(args.plot_ct_thr, a.get_ylim()[1])
-            a.set_ylim(0, ymax)
+        ymin = max(0, ymin)
+        yrange = ymax - ymin
+        a.set_ylim(ymin - yrange*0.02, ymax)
 
     # common for all plots
     for a in list(axs_hr) + axs_ct:
@@ -535,7 +549,7 @@ def run_cache_sweep(
     if args.save_png:
         fig.savefig(sweep_log.replace(".log", ".png"))
 
-    return sr
+    return sr, fig
 
 def scale_ax_for_ct(ax):
     yticks = ax.get_yticks()
@@ -1579,6 +1593,7 @@ def parse_args() -> argparse.Namespace:
     # plotting-only switches
     parser.add_argument("--chart_title", type=str, default="", help="Adds this string to each chart's title")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
+    parser.add_argument("--save_pdf", action="store_true", help="Save all charts as a single PDF")
     parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
     parser.add_argument("--plot_skip_searched", action="store_true", help="Don't plot searched workloads. Applicable only when stats are loaded with --load_stats")
     # plot - caches
@@ -1595,7 +1610,7 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
-def run_main(args: argparse.Namespace) -> None:
+def run_main(args: argparse.Namespace) -> List[plt.Figure]:
     if not os.path.exists(args.params):
         raise FileNotFoundError(f"Params file not found at: {args.params}")
 
@@ -1637,12 +1652,14 @@ def run_main(args: argparse.Namespace) -> None:
         print(f"with {len(workloads_sweep)} workload(s)")
 
     sweep_params = sweep_dict["hw_params"][args.sweep]
+    figs = []
     if "cache" in args.sweep:
         tt = track_time()
-        sr_best = run_cache_sweep(args, workloads_sweep, sweep_params)
+        sr_best, fig = run_cache_sweep(args, workloads_sweep, sweep_params)
+        figs.append(fig)
         sweep_wrapper_end(args, tt, "\n")
         if single_wl_sweep:
-            return
+            return figs
 
         # FIXME: sort of redundant to run 'all workloads' and 'per workload'
         # as these are the same results, just plotted differently
@@ -1651,23 +1668,26 @@ def run_main(args: argparse.Namespace) -> None:
         best_params = gen_cache_final_params(args.sweep, sr_best)
         if args.add_all_workloads and workloads_all != workloads_sweep:
             sweep_best_wrapper_start(args.sweep, "\n")
-            run_cache_sweep(args, workloads_all, sweep_params, best_params)
+            _, fig = run_cache_sweep(
+                args, workloads_all, sweep_params, best_params)
+            figs.append(fig)
             sweep_wrapper_end(args, tt)
 
         if args.plot_per_workload:
             add_charts_wrapper_start(args.sweep, "\n")
             for wl in workloads_all:
-                run_cache_sweep(args, [wl], sweep_params, best_params)
+                _, fig = run_cache_sweep(args, [wl], sweep_params, best_params)
+                figs.append(fig)
             sweep_wrapper_end(args, tt)
 
-        return # only one sweep type at a time
+        return figs # only one sweep type at a time
 
     if "bp" in args.sweep:
         tt = track_time()
         sr_bin, sr_best = run_bp_sweep(args, workloads_sweep, sweep_params)
         sweep_wrapper_end(args, tt, "\n")
         if single_wl_sweep:
-            return
+            return figs
 
         if args.add_all_workloads:
             if (workloads_all != workloads_sweep): # need to run them all first
@@ -1690,7 +1710,7 @@ def run_main(args: argparse.Namespace) -> None:
                 args, sweep_params, workloads_all, [sr_bin_all, sr_best_all])
             sweep_wrapper_end(args, tt, "\n")
 
-        return # only one sweep type at a time
+        return figs # only one sweep type at a time
 
     raise ValueError("Unknown sweep type and impossible to reach")
 
@@ -1718,7 +1738,23 @@ if __name__ == "__main__":
         mw_str = f" with {args.max_workers} workers"
 
     print(f"Running with config '{args.params}' in '{args.work_dir}'" + mw_str)
-    run_main(args)
+    figs = run_main(args)
+    if args.save_pdf and len(figs) > 0:
+        pdf_path = os.path.join(
+            args.work_dir,
+            f"sweep_{args.sweep}_results.pdf"
+        )
+        print(pdf_path)
+        n = len(figs)
+        with PdfPages(pdf_path) as pdf:
+            for i,fig in enumerate(figs, start=1):
+                fig.text(
+                    0.99, 0.01, f"Page {i} / {n}",
+                    ha="right", va="bottom",
+                    fontsize=10
+                )
+                pdf.savefig(fig)
+        print(f"\nAll charts saved to: {pdf_path}")
     print("\nAll sweeps completed. ", end="")
     sweep_wrapper_end(args, tt, "\n")
 
