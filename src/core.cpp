@@ -604,6 +604,7 @@ void core::d_jal() {
 
 void core::d_lui() {
     lui();
+    next_pc = (pc + 4);
     DASM_OP(lui)
     PROF_G(lui)
     PROF_RD
@@ -615,6 +616,7 @@ void core::d_lui() {
 
 void core::d_auipc() {
     auipc();
+    next_pc = (pc + 4);
     DASM_OP(auipc)
     PROF_G(auipc)
     PROF_RD
