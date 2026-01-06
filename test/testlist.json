@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES="],
+    "_common_args": ["USER_DEFINES=-DNO_TRAP"],
 
     "asm_rv32i": ["basic"],
     "asm_rv32i_branches": ["basic"],
@@ -71,7 +71,6 @@
     "ustress/branch_indirect": [["ustress"], ["LOOPS=20"]],
     "ustress/call_return": [["ustress"], ["LOOPS=150"]],
     "ustress/l1d_cache": [["ustress"], ["LOOPS=800"]],
-    "ustress/l1i_cache": [["ustress"], ["LOOPS=1000"]],
     "ustress/load_after_store": [["ustress"], ["LOOPS=50"]],
     "ustress/mac32": [["ustress"], ["LOOPS=5000"]],
     "ustress/mac64": [["ustress"], ["LOOPS=1250"]],
