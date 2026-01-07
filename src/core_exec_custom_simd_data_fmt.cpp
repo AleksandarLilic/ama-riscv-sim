@@ -19,7 +19,8 @@ reg_pair core::data_fmt_c_widen16(uint32_t a) {
 
     #ifdef DASM_EN
     dasm.simd_a << "] ";
-    dasm.simd_c << TO_I32(halves[0]) << ", " << TO_I32(halves[1]);
+    dasm.simd_c << "[ " << TO_I32(halves[0]) << ", "
+                << TO_I32(halves[1]) << " ]";
     simd_ss_finish("");
     #endif
 
@@ -44,8 +45,8 @@ reg_pair core::data_fmt_c_widen16u(uint32_t a) {
 
     #ifdef DASM_EN
     dasm.simd_a << "] ";
-    dasm.simd_c << TO_U32(TO_U16(halves[0])) << ", "
-                << TO_U32(TO_U16(halves[1]));
+    dasm.simd_c << "[ " << TO_U32(TO_U16(halves[0])) << ", "
+                << TO_U32(TO_U16(halves[1])) << " ]";
     simd_ss_finish("");
     #endif
 
