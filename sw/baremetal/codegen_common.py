@@ -7,13 +7,14 @@ def np2c_type(nf):
         return FP_C_MAP[nf]
     return nf.__name__ + "_t"
 
-def np2c_1d_arr(var, arr, nf="NF", dim="ARR_LEN", suffix="", str_type=False):
+def np2c_1d_arr(
+    var, arr, nf="NF", dim="ARR_LEN", align="", suffix="", str_type=False):
     if str_type:
         arr_out = [f"\"{x}\"" for x in arr]
     else:
         arr_out = [f"{x}" for x in arr]
 
-    return f"{nf} " + var + f"[{dim}]" + " = {" + \
+    return f"{nf} " + var + f"[{dim}]{align}" + " = {" + \
         f"{suffix}, ".join(arr_out) + suffix + "};"
 
 def np2c_2d_arr(var, arr, nf="NF", dim=["A", "B"], suffix=""):

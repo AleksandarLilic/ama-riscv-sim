@@ -18,6 +18,7 @@
 
     "dcache_set_thrashing": ["basic"],
     "dcache_peak": ["all"],
+    "memcpy": ["all"],
 
     "factorial": [["n_20"], ["LOOPS=10"]],
     "fibonacci": [["n_18"], ["LOOPS=10"]],
