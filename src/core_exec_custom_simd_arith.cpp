@@ -134,7 +134,7 @@ reg_pair core::alu_c_wmul16(uint32_t a, uint32_t b) {
     }
 
     #ifdef DASM_EN
-    dasm.simd_c << TO_I32(words[0]) << ", " << TO_I32(words[1]);
+    dasm.simd_c << TO_I32(words[0]) << " ], [ " << TO_I32(words[1]);
     simd_ss_finish(" ]", "]", "]");
     #endif
 
@@ -158,7 +158,7 @@ reg_pair core::alu_c_wmul16u(uint32_t a, uint32_t b) {
     }
 
     #ifdef DASM_EN
-    dasm.simd_c << TO_U32(words[0]) << ", " << TO_U32(words[1]);
+    dasm.simd_c << TO_U32(words[0]) << " ], [ " << TO_U32(words[1]);
     simd_ss_finish(" ]", "]", "]");
     #endif
 
