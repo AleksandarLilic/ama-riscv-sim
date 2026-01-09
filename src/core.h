@@ -78,7 +78,7 @@ class core {
         }
 
         void write_rf_pair(uint32_t reg, reg_pair rp) {
-            if (reg & 1) tu.e_hardware_error("RDP Write to odd register");
+            if (reg == 31) tu.e_hardware_error("RDP Write to x31");
             if (reg) {
                 rf[reg] = rp.a;
                 rf[reg + 1] = rp.b;

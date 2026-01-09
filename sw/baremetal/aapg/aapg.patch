@@ -1,12 +1,12 @@
 diff --git a/aapg/args_generator.py b/aapg/args_generator.py
-index 777ed3b..a2fe130 100644
+index 777ed3b..e5e2c16 100644
 --- a/aapg/args_generator.py
 +++ b/aapg/args_generator.py
-@@ -292,6 +292,16 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
+@@ -292,6 +292,27 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
              x for x in a if x in b
      ]
  
-+    def get_rd_pair(reg_set):
++    def get_rdp_even(reg_set):
 +        branch_reg = 28 # 29 used for branch checks, skip source pair
 +        # if even and next register exists, return even
 +        ret_list = []
@@ -15,23 +15,57 @@ index 777ed3b..a2fe130 100644
 +                if tuple([reg_set[i][0], reg_set[i][1]+1]) in reg_set:
 +                    ret_list.append(reg_set[i])
 +        return ret_list
++    
++    def get_rdp(reg_set):
++        branch_reg = 28 # 29 used for branch checks, skip source pair
++        illegal_reg = 31 # there's no x32
++        # if next register exists, return reg
++        ret_list = []
++        for i,_ in enumerate(reg_set[:-1]):
++            if (reg_set[i][1] not in [branch_reg, illegal_reg]):
++                if tuple([reg_set[i][0], reg_set[i][1]+1]) in reg_set:
++                    ret_list.append(reg_set[i])
++        return ret_list
 +
      max_read_int_thresh = sorted(reg_reads('x', regfile))[-num_regs] 
      max_read_flt_thresh = sorted(reg_reads('f', regfile))[-num_regs]
      max_read_regs_int = reg_reads_filt('x', regfile, max_read_int_thresh)
-@@ -377,6 +387,17 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
+@@ -377,6 +398,40 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
              regfile[register] = incr_rw(regfile[register], False, True)
              final_inst.append(register_mapping[register])
              continue
 +        
 +        if arg == 'rdp':
-+            registers_dst_even = get_rd_pair(registers_dst)
-+            registers_int_even = get_rd_pair(registers_int)
++            registers_dst_rdp = get_rdp(registers_dst)
++            registers_int_rdp = get_rdp(registers_int)
 +            try:
-+                register = random.choice(registers_dst_even)
++                register = random.choice(registers_dst_rdp)
 +            except IndexError as e:
-+                register = random.choice(registers_int_even)
++                register = random.choice(registers_int_rdp)
++            
 +            regfile[register] = incr_rw(regfile[register], False, True)
++            try:
++                regfile[(register[0], register[1]+1)] = incr_rw(regfile[(register[0], register[1]+1)], False, True)
++            except KeyError as e:
++                raise e
++            
++            final_inst.append(register_mapping[register])
++            continue
++
++        if arg == 'rdpeven':
++            registers_dst_rdpeven = get_rdp_even(registers_dst)
++            registers_int_rdpeven = get_rdp_even(registers_int)
++            try:
++                register = random.choice(registers_dst_rdpeven)
++            except IndexError as e:
++                register = random.choice(registers_int_rdpeven)
++            
++            regfile[register] = incr_rw(regfile[register], False, True)
++            try:
++                regfile[(register[0], register[1]+1)] = incr_rw(regfile[(register[0], register[1]+1)], False, True)
++            except KeyError as e:
++                raise e
++            
 +            final_inst.append(register_mapping[register])
 +            continue
  
