@@ -1,0 +1,38 @@
+diff --git a/gcc/common/config/riscv/riscv-common.cc b/gcc/common/config/riscv/riscv-common.cc
+index 1c71ea43f..707e0c38a 100644
+--- a/gcc/common/config/riscv/riscv-common.cc
++++ b/gcc/common/config/riscv/riscv-common.cc
+@@ -384,6 +384,8 @@ static const struct riscv_ext_version riscv_ext_version_table[] =
+ 
+   {"xventanacondops", ISA_SPEC_CLASS_NONE, 1, 0},
+ 
++  {"xsimd", ISA_SPEC_CLASS_NONE, 1, 0},
++
+   /* Terminate the list.  */
+   {NULL, ISA_SPEC_CLASS_NONE, 0, 0}
+ };
+@@ -1672,6 +1674,8 @@ static const riscv_ext_flag_table_t riscv_ext_flag_table[] =
+ 
+   {"xventanacondops", &gcc_options::x_riscv_xventana_subext, MASK_XVENTANACONDOPS},
+ 
++  {"xsimd",  &gcc_options::x_riscv_xsimd_subext, MASK_XSIMD},
++
+   {NULL, NULL, 0}
+ };
+ 
+diff --git a/gcc/config/riscv/riscv.opt b/gcc/config/riscv/riscv.opt
+index 085dd616b..505d872e8 100644
+--- a/gcc/config/riscv/riscv.opt
++++ b/gcc/config/riscv/riscv.opt
+@@ -489,6 +489,11 @@ int riscv_xventana_subext
+ 
+ Mask(XVENTANACONDOPS) Var(riscv_xventana_subext)
+ 
++TargetVariable
++int riscv_xsimd_subext
++
++Mask(XSIMD) Var(riscv_xsimd_subext)
++
+ Enum
+ Name(isa_spec_class) Type(enum riscv_isa_spec_class)
+ Supported ISA specs (for use with the -misa-spec= option):

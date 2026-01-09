@@ -59,7 +59,7 @@ uint32_t minu(uint32_t a, uint32_t b) {
 }
 #endif
 
-#ifdef CUSTOM_ISA
+#ifdef __riscv_xsimd
 INLINE_OPTION
 void _simd_add_int16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
@@ -640,7 +640,7 @@ int32_t _simd_dot_product_int8_int2_core(
     return c;
 }
 
-#else // no custom ISA
+#else // no __riscv_xsimd
 
 #ifdef LOAD_OPT
 INLINE_OPTION
@@ -1098,4 +1098,4 @@ int32_t dot_product_int8_int2(
 }
 
 #endif // LOAD_OPT
-#endif // CUSTOM_ISA
+#endif // __riscv_xsimd

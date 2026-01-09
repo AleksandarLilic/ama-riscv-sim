@@ -38,7 +38,7 @@ asm(                        \
     #sym ":"                \
 )
 
-#ifdef CUSTOM_ISA
+#ifdef __riscv_xsimd
 #define SCP_LCL(addr) asm volatile("scp.lcl x0, %0" : : "r"(addr))
 // TODO: can reserve with rd!=0 if success/fail status is needed
 #define SCP_REL(addr) asm volatile("scp.rel x0, %0" : : "r"(addr))
@@ -69,7 +69,7 @@ typedef union {
     uint8_t u8[4];
 } sliced32_t;
 
-#ifdef CUSTOM_ISA
+#ifdef __riscv_xsimd
 // simd data types
 typedef struct { uint32_t v; } uint16x2_t;
 typedef struct { uint32_t v; } int16x2_t;

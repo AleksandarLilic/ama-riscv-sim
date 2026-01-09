@@ -4,8 +4,8 @@ TARGETS := $(addsuffix .elf, $(TYPES))
 
 TEST_DEFINES := $(foreach t,$(TYPES), $(t):-DNF_$(shell echo $(t) | tr a-z A-Z))
 
-#MATH_LIB_FLAGS ?= -DLOAD_OPT
-MATH_LIB_FLAGS ?= -DCUSTOM_ISA
+#MATH_LIB_FLAGS := -DLOAD_OPT
+MATH_LIB_FLAGS :=
 MATH_LIB_FLAGS += -DFORCE_INLINE
 MATH_LIB_FLAGS += -DSIMD_UNROLL
 

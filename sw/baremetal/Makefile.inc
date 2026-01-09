@@ -43,10 +43,12 @@ LIBS += -lgcc
 USER_DEFINES ?=
 
 # if not set in test's Makefile, default to all supported ISA extensions
-#MARCH ?= rv32imc_zicsr_zifencei_zicntr
-MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr
+#MARCH ?= rv32imc_zicsr_zifencei_zicntr_xsimd
+MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr_xsimd
 MABI ?= ilp32
-GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany -static -fno-pic
+GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany
+GCC_OPTS += -mstrict-align -mcsr-check
+GCC_OPTS += -static -fno-pic
 GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
 
 # aligning code and data
@@ -62,6 +64,7 @@ GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
 GCC_OPTS += -T $(LD_SRC) -Wl,--build-id=none
 GCC_OPTS += -Wl,--gc-sections
 GCC_OPTS += -Wl,--no-warn-rwx-segments
+#GCC_OPTS += -Wa,-march=rv32i_zicsr_xsimd
 #GCC_OPTS += -Wp,-w # disable preprocessor warnings
 #GCC_OPTS += -Wl,--noinhibit-exec
 #GCC_OPTS += -Wl,-Map=$(TARGET).map

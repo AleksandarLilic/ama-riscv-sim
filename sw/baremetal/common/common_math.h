@@ -16,9 +16,11 @@ uint32_t maxu(uint32_t a, uint32_t b);
 int32_t min(int32_t a, int32_t b);
 uint32_t minu(uint32_t a, uint32_t b);
 
-#ifdef CUSTOM_ISA
+#ifdef __riscv_xsimd
 
+// -----------------------------------------------------------------------------
 // high level SIMD functions
+// -----------------------------------------------------------------------------
 
 // add & sub
 void _simd_add_int16(
@@ -48,7 +50,7 @@ int32_t _simd_dot_product_int8(
 int32_t _simd_dot_product_int4(
     const int8_t* a, const int8_t* b, const size_t len);
 
-// dot product w/ unpacking
+// dot product w/ widening
 int32_t _simd_dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len);
 int32_t _simd_dot_product_int16_int4(
@@ -74,7 +76,9 @@ int32_t _simd_dot_product_int8_int4_core(
 int32_t _simd_dot_product_int8_int2_core(
     const int8_t* a, const int8_t* b, const size_t len);
 
+// -----------------------------------------------------------------------------
 // low-level SIMD functions
+// -----------------------------------------------------------------------------
 
 // 16-bit elements (2 lanes)
 static INLINE uint16x2_t v_load_uint16x2(const uint16_t* p) {
@@ -179,7 +183,11 @@ static INLINE void v_store_uint2x16(uint8_t* p, uint2x16_t x) {
     __builtin_memcpy(p, &x.v, 4);
 }
 
-// asm wrapper functions (aka intrinsics lite)
+// -----------------------------------------------------------------------------
+// SIMD asm wrapper functions (aka intrinsics lite)
+// -----------------------------------------------------------------------------
+
+// add & sub
 INLINE
 int16x2_t _add16(const int16x2_t a, const int16x2_t b) {
     int16x2_t c;
@@ -208,6 +216,7 @@ int8x4_t _sub8(const int8x4_t a, const int8x4_t b) {
     return c;
 }
 
+// mul and mul unsigned
 INLINE
 int32x2_t _wmul16(const int16x2_t a, const int16x2_t b) {
     int32x2_t c;
@@ -236,6 +245,7 @@ uint16x4_t _wmul8u(const uint8x4_t a, const uint8x4_t b) {
     return c;
 }
 
+// dot product
 INLINE
 void _dot16(const int16x2_t a, const int16x2_t b, int32_t* c) {
     asm volatile("dot16 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
@@ -251,7 +261,7 @@ void _dot4(const int4x8_t a, const int4x8_t b, int32_t* c) {
     asm volatile("dot4 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
-#else // non-SIMD implementations
+#else // non __riscv_xsimd implementations
 
 void add_int16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len);
@@ -286,6 +296,6 @@ int32_t dot_product_int8_int4(
 int32_t dot_product_int8_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
-#endif
+#endif // __riscv_xsimd
 
-#endif
+#endif // COMMON_MATH_H

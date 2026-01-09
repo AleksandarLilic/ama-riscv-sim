@@ -54,7 +54,7 @@ _Static_assert(0, "Unsupported number format");
 #endif
 
 // function
-#ifdef CUSTOM_ISA
+#ifdef __riscv_xsimd
 #define FUNC_PREFIX _simd_
 #else
 #define FUNC_PREFIX
