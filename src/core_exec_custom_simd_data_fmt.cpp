@@ -2,8 +2,9 @@
 #include "core.h"
 
 reg_pair core::data_fmt_c_widen16(uint32_t a) {
-    // unpack 2 16-bit values to 2 32-bit values
+    // widen 2 16-bit values to 2 32-bit values
     constexpr size_t e = 2;
+    constexpr size_t s = (32 / e);
     int16_t halves[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
@@ -12,9 +13,9 @@ reg_pair core::data_fmt_c_widen16(uint32_t a) {
     for (size_t i = 0; i < e; i++) {
         halves[i] = TO_I16(a & 0xffff);
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_I16(a & 0xffff)));
+        simd_ss_append(TO_I32(halves[i]));
         #endif
-        a >>= 16;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -28,8 +29,9 @@ reg_pair core::data_fmt_c_widen16(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen16u(uint32_t a) {
-    // unpack 2 16-bit values to 2 32-bit values unsigned
+    // widen 2 16-bit values to 2 32-bit values unsigned
     constexpr size_t e = 2;
+    constexpr size_t s = (32 / e);
     uint16_t halves[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
@@ -38,9 +40,9 @@ reg_pair core::data_fmt_c_widen16u(uint32_t a) {
     for (size_t i = 0; i < e; i++) {
         halves[i] = TO_U16(a & 0xffff);
         #ifdef DASM_EN
-        simd_ss_append(TO_U32(TO_U16(a & 0xffff)));
+        simd_ss_append(TO_U32(halves[i]));
         #endif
-        a >>= 16;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -54,8 +56,9 @@ reg_pair core::data_fmt_c_widen16u(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen8(uint32_t a) {
-    // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values)
+    // widen 4 8-bit values to 4 16-bit values (as 2 32-bit values)
     constexpr size_t e = 4;
+    constexpr size_t s = (32 / e);
     int8_t bytes[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
@@ -64,9 +67,9 @@ reg_pair core::data_fmt_c_widen8(uint32_t a) {
     for (size_t i = 0; i < e; i++) {
         bytes[i] = TO_I8(a & 0xff);
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_I8(a & 0xff)));
+        simd_ss_append(TO_I32(bytes[i]));
         #endif
-        a >>= 8;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -87,8 +90,9 @@ reg_pair core::data_fmt_c_widen8(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen8u(uint32_t a) {
-    // unpack 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
+    // widen 4 8-bit values to 4 16-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 4;
+    constexpr size_t s = (32 / e);
     uint8_t bytes[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
@@ -97,9 +101,9 @@ reg_pair core::data_fmt_c_widen8u(uint32_t a) {
     for (size_t i = 0; i < e; i++) {
         bytes[i] = TO_U8(a & 0xff);
         #ifdef DASM_EN
-        simd_ss_append(TO_U32(TO_U8(a & 0xff)));
+        simd_ss_append(TO_U32(bytes[i]));
         #endif
-        a >>= 8;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -120,19 +124,20 @@ reg_pair core::data_fmt_c_widen8u(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen4(uint32_t a) {
-    // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values)
+    // widen 8 4-bit values to 8 8-bit values (as 2 32-bit values)
     constexpr size_t e = 8;
+    constexpr size_t s = (32 / e);
     int8_t nibbles[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
     #endif
 
     for (size_t i = 0; i < e; i++) {
-        nibbles[i] = TO_I4(a & 0xf);
+        nibbles[i] = extract_val<4, true>(a);
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_I4(a & 0xf)));
+        simd_ss_append(TO_I32(nibbles[i]));
         #endif
-        a >>= 4;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -155,19 +160,20 @@ reg_pair core::data_fmt_c_widen4(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen4u(uint32_t a) {
-    // unpack 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
+    // widen 8 4-bit values to 8 8-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 8;
+    constexpr size_t s = (32 / e);
     uint8_t nibbles[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
     #endif
 
     for (size_t i = 0; i < e; i++) {
-        nibbles[i] = TO_U4(a & 0xf);
+        nibbles[i] = extract_val<4, false>(a);
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_U4(a & 0xf)));
+        simd_ss_append(TO_I32(nibbles[i]));
         #endif
-        a >>= 4;
+        a >>= s;
     }
 
     #ifdef DASM_EN
@@ -190,26 +196,27 @@ reg_pair core::data_fmt_c_widen4u(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen2(uint32_t a) {
-    // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values)
+    // widen 16 2-bit values to 16 4-bit values (as 2 32-bit values)
     constexpr size_t e = 16;
+    constexpr size_t s = (32 / e);
     int8_t crumbs[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
     #endif
 
     for (size_t i = 0; i < e; i++) {
-        crumbs[i] = TO_I2(a & 0x3);
+        crumbs[i] = extract_val<2, true>(a);
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_I2(a & 0x3)));
+        simd_ss_append(TO_I32(crumbs[i]));
         #endif
-        a >>= 2;
+        a >>= s;
     }
 
     #ifdef DASM_EN
     dasm.simd_a << "] ";
     dasm.simd_c << "[ ";
     for (size_t i = 0; i < e; i++) {
-        dasm.simd_c << TO_I32(TO_I4(crumbs[i])) << " ";
+        dasm.simd_c << TO_I32(TO_I8(crumbs[i])) << " ";
         if (i==7) dasm.simd_c << "], [ ";
         if (i==15) dasm.simd_c << "]";
     }
@@ -225,26 +232,27 @@ reg_pair core::data_fmt_c_widen2(uint32_t a) {
 }
 
 reg_pair core::data_fmt_c_widen2u(uint32_t a) {
-    // unpack 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
+    // widen 16 2-bit values to 16 4-bit values (as 2 32-bit values) unsigned
     constexpr size_t e = 16;
+    constexpr size_t s = (32 / e);
     uint8_t crumbs[e];
     #ifdef DASM_EN
     simd_ss_init("[ ");
     #endif
 
     for (size_t i = 0; i < e; i++) {
-        crumbs[i] = TO_U2(a & 0x3);
+        crumbs[i] = extract_val<2, false>(a);
         #ifdef DASM_EN
-        simd_ss_append(TO_U32(TO_U2(a & 0x3)));
+        simd_ss_append(TO_U32(crumbs[i]));
         #endif
-        a >>= 2;
+        a >>= s;
     }
 
     #ifdef DASM_EN
     dasm.simd_a << "] ";
     dasm.simd_c << "[ ";
     for (size_t i = 0; i < e; i++) {
-        dasm.simd_c << TO_U32(TO_U4(crumbs[i])) << " ";
+        dasm.simd_c << TO_U32(TO_U8(crumbs[i])) << " ";
         if (i==7) dasm.simd_c << "], [ ";
         if (i==15) dasm.simd_c << "]";
     }

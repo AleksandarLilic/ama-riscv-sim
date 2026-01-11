@@ -39,10 +39,10 @@ static_assert(0, "DPI requires profilers");
 #define TO_I16(x) static_cast<int16_t>((x))
 #define TO_U8(x) static_cast<uint8_t>((x))
 #define TO_I8(x) static_cast<int8_t>((x))
-#define TO_U4(x) static_cast<uint8_t>((x) & 0xF)
-#define TO_I4(x) static_cast<int8_t>(((x) & 0xF) | (((x) & 0x8) ? 0xF0 : 0x00))
-#define TO_U2(x) static_cast<uint8_t>((x) & 0x3)
-#define TO_I2(x) static_cast<int8_t>(((x) & 0x3) | (((x) & 0x2) ? 0xFC : 0x00))
+//#define TO_U4(x) static_cast<uint8_t>((x) & 0xF)
+//#define TO_I4(x) static_cast<int8_t>(((x) & 0xF) | (((x) & 0x8) ? 0xF0 :0x00))
+//#define TO_U2(x) static_cast<uint8_t>((x) & 0x3)
+//#define TO_I2(x) static_cast<int8_t>(((x) & 0x3) | (((x) & 0x2) ? 0xFC :0x00))
 
 constexpr int const_log2(int n, int p = 0) {
     return (n <= 1) ? p : const_log2(n >> 1, p + 1);
