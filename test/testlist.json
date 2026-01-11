@@ -15,6 +15,7 @@
     "asm_rv32i_custom-scp": ["basic"],
 
     "rv32i_custom-simd-widen": ["basic"],
+    "rv32i_custom-simd-dot": ["basic"],
 
     "rd_pairing": ["basic"],
 
