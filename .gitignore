@@ -15,6 +15,7 @@ workdir*
 *.svg
 sweep_*_best*.json
 sweep_*_binned*.json
+sweep_*.pdf
 script/**/out_*/
 script/**/*pkl.gz
 script/*.out
@@ -36,10 +37,8 @@ gmon.out
 analysis.gprof.ipynb
 *.nm
 *.grep
-script/analysis.ipynb
 script/analysis_all.py
-script/bp.ipynb
-script/hw_analysis.ipynb
+script/*.ipynb
 
 # python files
 __pycache__/
