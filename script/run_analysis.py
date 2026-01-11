@@ -85,7 +85,9 @@ class icfg:
     INST_T_SIMD = {
         SIMD_ADD: ["add16", "add8", "sub16", "sub8"],
         SIMD_MUL: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
-        SIMD_DOT: ["dot16", "dot8", "dot4"],
+        SIMD_DOT: [
+            "dot16", "dot16u", "dot8", "dot8u", "dot4", "dot4u", "dot2", "dot2u"
+        ],
     }
 
     INST_T_JUMP = {
@@ -125,7 +127,8 @@ class icfg:
 
     INST_T_SIMD_Z = INST_T[SIMD] + INST_T[WIDEN]
     OPS_PER_INST = {
-        1: INST_T[ALU]+INST_T[MEM]+INST_T[MUL]+INST_T[DIV]+INST_T[BITMANIP],
+        1: INST_T[ALU] + INST_T[MEM] +
+           INST_T[MUL] + INST_T[DIV] + INST_T[BITMANIP],
         2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
         4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)] +
            ['dot16'], # 2x mul, 1x sum, 1x acc
@@ -133,6 +136,7 @@ class icfg:
            ['dot8'], # 4x mul, 3x sum, 1x acc
         16: [s for s in INST_T_SIMD_Z if ("2" in s and 'dot' not in s)] +
             ['dot4'], # 8x mul, 7x sum, 1x acc
+        32: ['dot2'], # 16x mul, 15x sum, 1x acc
     }
 
     BRANCH_DENSITY = { 1: INST_T[BRANCH] + INST_T[JUMP] }

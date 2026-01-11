@@ -44,7 +44,7 @@ enum class opc_g {
     // custom alu
     i_add16, i_add8, i_sub16, i_sub8,
     i_wmul16, i_wmul16u, i_wmul8, i_wmul8u,
-    i_dot16, i_dot8, i_dot4,
+    i_dot16, i_dot16u, i_dot8, i_dot8u, i_dot4, i_dot4u, i_dot2, i_dot2u,
     // custom data fmt
     i_widen16, i_widen16u, i_widen8, i_widen8u,
     i_widen4, i_widen4u, i_widen2, i_widen2u,
@@ -382,8 +382,9 @@ class profiler {
             opc_g::i_max, opc_g::i_maxu, opc_g::i_min, opc_g::i_minu,
         };
 
-        static constexpr std::array<opc_g, 3> dot_c_opcs = {
-            opc_g::i_dot16, opc_g::i_dot8, opc_g::i_dot4,
+        static constexpr std::array<opc_g, 8> dot_c_opcs = {
+            opc_g::i_dot16, opc_g::i_dot8, opc_g::i_dot4, opc_g::i_dot2,
+            opc_g::i_dot16u, opc_g::i_dot8u, opc_g::i_dot4u, opc_g::i_dot2u,
         };
 
         static constexpr std::array<opc_g, 4> alu_c_opcs = {

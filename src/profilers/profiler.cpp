@@ -60,8 +60,13 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     prof_g_arr[TO_U32(opc_g::i_wmul8)] = {"wmul8", 0};
     prof_g_arr[TO_U32(opc_g::i_wmul8u)] = {"wmul8u", 0};
     prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot16u)] = {"dot16u", 0};
     prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot8u)] = {"dot8u", 0};
     prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot4u)] = {"dot4u", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot2)] = {"dot2", 0};
+    prof_g_arr[TO_U32(opc_g::i_dot2u)] = {"dot2u", 0};
 
     prof_g_arr[TO_U32(opc_g::i_widen16)] = {"widen16", 0};
     prof_g_arr[TO_U32(opc_g::i_widen16u)] = {"widen16u", 0};

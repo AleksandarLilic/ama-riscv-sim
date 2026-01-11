@@ -709,8 +709,13 @@ void core::d_custom_ext() {
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
                 CASE_ALU_CUSTOM_DOT(dot16, dot)
+                CASE_ALU_CUSTOM_DOT(dot16u, dot)
                 CASE_ALU_CUSTOM_DOT(dot8, dot)
+                CASE_ALU_CUSTOM_DOT(dot8u, dot)
                 CASE_ALU_CUSTOM_DOT(dot4, dot)
+                CASE_ALU_CUSTOM_DOT(dot4u, dot)
+                CASE_ALU_CUSTOM_DOT(dot2, dot)
+                CASE_ALU_CUSTOM_DOT(dot2u, dot)
                 default : tu.e_unsupported_inst("alu_dot_custom");
             }
             break;

@@ -376,3 +376,29 @@ struct logging_flags_t {
     bool state;
     void activate(bool in) { act = en && (in || always); }
 };
+
+// templates
+
+// handle the "sub-byte" casting logic generically
+// 'if' optimized away since 'vbits' and 'vsigned' are compile-time constants
+template <int vbits, bool vsigned>
+inline int32_t extract_val(uint32_t val) {
+    // Handle Standard Types (Native Casting)
+    if constexpr (vbits == 8) {
+        return vsigned ? static_cast<int8_t>(val) : static_cast<uint8_t>(val);
+    } else if constexpr (vbits == 16) {
+        return vsigned ? static_cast<int16_t>(val) : static_cast<uint16_t>(val);
+    } else {
+        // Handle Sub-Byte Types (Manual Bit-Twiddling)
+        constexpr uint32_t mask = ((1U << vbits) - 1);
+        uint32_t masked = (val & mask);
+        if (vsigned) {
+            constexpr uint32_t sign_bit = (1U << (vbits - 1)); // generic s ext
+            // if sign bit is set, OR with all upper bits set (using ~mask)
+            if (masked & sign_bit) return static_cast<uint32_t>(masked | ~mask);
+            return static_cast<uint32_t>(masked);
+        } else {
+            return static_cast<uint32_t>(masked); // unsigned is simple masking
+        }
+    }
+}

@@ -268,13 +268,38 @@ void _dot16(const int16x2_t a, const int16x2_t b, int32_t* c) {
 }
 
 static INLINE
+void _dot16u(const uint16x2_t a, const uint16x2_t b, uint32_t* c) {
+    asm volatile("dot16u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+static INLINE
 void _dot8(const int8x4_t a, const int8x4_t b, int32_t* c) {
     asm volatile("dot8 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
 static INLINE
+void _dot8u(const uint8x4_t a, const uint8x4_t b, int32_t* c) {
+    asm volatile("dot8u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+static INLINE
 void _dot4(const int4x8_t a, const int4x8_t b, int32_t* c) {
     asm volatile("dot4 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+static INLINE
+void _dot4u(const uint4x8_t a, const uint4x8_t b, int32_t* c) {
+    asm volatile("dot4u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+static INLINE
+void _dot2(const int2x16_t a, const int2x16_t b, int32_t* c) {
+    asm volatile("dot2 %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+static INLINE
+void _dot2u(const uint2x16_t a, const uint2x16_t b, int32_t* c) {
+    asm volatile("dot2u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
 // data formatting - widen

@@ -195,18 +195,25 @@ class core {
         void csr_rci();
         void csr_cnt_update(uint16_t csr_addr);
 
-        // custom extension - arithmetic and logic operations
+        // custom extension - arithmetic add & sub
         uint32_t alu_c_add16(uint32_t a, uint32_t b);
         uint32_t alu_c_add8(uint32_t a, uint32_t b);
         uint32_t alu_c_sub16(uint32_t a, uint32_t b);
         uint32_t alu_c_sub8(uint32_t a, uint32_t b);
+        // custom extension - arithmetic wmul
         reg_pair alu_c_wmul16(uint32_t a, uint32_t b);
         reg_pair alu_c_wmul16u(uint32_t a, uint32_t b);
         reg_pair alu_c_wmul8(uint32_t a, uint32_t b);
         reg_pair alu_c_wmul8u(uint32_t a, uint32_t b);
+        // custom extension - arithmetic dot
         uint32_t alu_c_dot16(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot16u(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot8(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot8u(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot4(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot4u(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot2(uint32_t a, uint32_t b, uint32_t c);
+        uint32_t alu_c_dot2u(uint32_t a, uint32_t b, uint32_t c);
 
         // custom extension - memory operations
         reg_pair data_fmt_c_widen16(uint32_t a);
@@ -255,6 +262,10 @@ class core {
         void c_jalr();
         // system
         void c_ebreak();
+
+        // templates
+        template <int vbits, bool vsigned>
+            uint32_t alu_c_dot_template(uint32_t a, uint32_t b, uint32_t c);
 
         // interrupts
         // TODO

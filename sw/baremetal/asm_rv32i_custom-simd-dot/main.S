@@ -95,6 +95,16 @@ op_dot16_max_neg_pos:
     dot16 x26, x11, x12
     OP_END(-2147352578) # 2 * (-32767 * 32767)
 
+op_dot16u:
+    li x26, 101
+    nop
+    nop
+    nop
+    lw x11, dat1
+    lw x12, dat2
+    dot16u x26, x11, x12
+    OP_END(1719842 + 101)
+
 # dot8
 op_dot8:
     li x26, 55
@@ -162,12 +172,57 @@ op_dot8_max_neg_pos:
     dot8 x26, x11, x12
     OP_END(-64516) # 4 * (-127 * 127)
 
-#op_dot4:
-#    lw x11, dat3
-#    lw x12, dat4
-#    dot4 x26, x11, x12
-#    OP_END(14)
+op_dot8u:
+    li x26, 55
+    nop # add some nops so bypass isn't used for the first test
+    nop
+    nop
+    lw x11, dat1
+    lw x12, dat2
+    dot8u x26, x11, x12
+    OP_END(60 + 55)
 
+op_dot4:
+    li x26, -99
+    nop
+    nop
+    nop
+    lw x11, dat3
+    lw x12, dat4
+    dot4 x26, x11, x12
+    OP_END(14 - 99)
+
+op_dot4u:
+    li x26, 612
+    nop
+    nop
+    nop
+    lw x11, dat3
+    lw x12, dat4
+    dot4 x26, x11, x12
+    OP_END(14 + 612)
+
+op_dot2:
+    li x26, -2
+    nop
+    nop
+    nop
+    lw x11, dat3
+    lw x12, dat5
+    dot2 x26, x11, x12
+    OP_END(-5 + -2)
+
+op_dot2u:
+    li x26, 1092
+    nop
+    nop
+    nop
+    lw x11, dat3
+    lw x12, dat4
+    dot4 x26, x11, x12
+    OP_END(14 + 1092)
+
+loop_check:
     li x24, 0x123456
     bne x4, x5, loop
     j pass
@@ -183,6 +238,7 @@ dat1: .word 0x08070605
 dat2: .word 0x01020304
 dat3: .word 0x02020201
 dat4: .word 0x01020302
+dat5: .word 0x01010101
 
 dat_zero1: .word 0x00000000
 dat_zero2: .word 0x00000000
