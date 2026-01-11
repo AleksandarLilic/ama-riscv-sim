@@ -12,6 +12,11 @@
     "asm_rv32i_custom-simd-dot": ["basic"],
     "asm_rv32i_custom-simd-widen": ["basic"],
 
+    "rv32i_zihpm": ["basic"],
+    "rv32i_custom-simd-widen": ["basic"],
+
+    "rd_pairing": ["basic"],
+
     "dcache_set_thrashing": ["basic"],
     "dcache_peak": ["all"],
     "memcpy": ["all"],

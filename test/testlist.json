@@ -14,6 +14,8 @@
     "asm_rv32i_custom-simd-alu": ["basic"],
     "asm_rv32i_custom-scp": ["basic"],
 
+    "rv32i_custom-simd-widen": ["basic"],
+
     "rd_pairing": ["basic"],
 
     "dcache_set_thrashing": ["basic"],

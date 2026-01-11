@@ -22,11 +22,11 @@ int8_t a[ARR_LEN] = {
 #elif defined(NF_INT4)
 // packed data type, has to be a multiple of 2 (or padded with 0 at the end)
 int8_t a[ARR_LEN>>1] = { 61, 4, 23, -45, -121, -104, -12, 69, 30, -54, -42 };
-/* actual values
-{ -3, 3, 4, 0, 7, 1, 3, -3,
-   7, -8, -8, -7, 4, -1, 5, 4,
-   -2, 1, -6, -4, 6, -3 };
-*/
+/* actual values {
+    (-3, 3), (4, 0), (7, 1), (3, -3),
+    (7, -8), (-8, -7), (4, -1), (5, 4),
+    (-2, 1), (-6, -4), (6, -3)
+}; */
 #else
 _Static_assert(0, "Unsupported number format");
 #endif
@@ -44,11 +44,11 @@ int8_t b[ARR_LEN] = {
     -32, -42, 13, 105, 9, -121 };
 #elif defined(NF_INT16_INT4) || defined(NF_INT8_INT4) || defined(NF_INT4)
 int8_t b[ARR_LEN>>1] = { -54, 67, 66, 101, -54, -1, -111, 111, -24, 21, -15 };
-/* actual values
-{ -6, -4, 3, 4, 2, 4, 5, 6,
-  -6, -4, -1, -1, 1, -7, -1, 6,
-  -8, -2, 5, 1, 1, -1 };
-*/
+/* actual values {
+    (-6, -4), (3, 4), (2, 4), (5, 6),
+    (-6, -4), (-1, -1), (1, -7), (-1, 6),
+    (-8, -2), (5, 1), (1, -1)
+}; */
 #else
 _Static_assert(0, "Unsupported number format");
 #endif
