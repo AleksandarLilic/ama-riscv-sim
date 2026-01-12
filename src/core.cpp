@@ -695,7 +695,21 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("alu_custom"); return;
             }
             break;
-        case TO_U8(custom_op_t::type_mul):
+        case TO_U8(custom_op_t::type_aluq):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_ALUQ_CUSTOM_OP(qadd16, alu)
+                CASE_ALUQ_CUSTOM_OP(qadd8, alu)
+                CASE_ALUQ_CUSTOM_OP(qadd16u, alu)
+                CASE_ALUQ_CUSTOM_OP(qadd8u, alu)
+                CASE_ALUQ_CUSTOM_OP(qsub16, alu)
+                CASE_ALUQ_CUSTOM_OP(qsub8, alu)
+                CASE_ALUQ_CUSTOM_OP(qsub16u, alu)
+                CASE_ALUQ_CUSTOM_OP(qsub8u, alu)
+                default: tu.e_unsupported_inst("aluq_custom"); return;
+            }
+            break;
+        case TO_U8(custom_op_t::type_wmul):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
                 CASE_ALU_MUL_CUSTOM_OP(wmul16, alu)
@@ -744,10 +758,11 @@ void core::d_custom_ext() {
     }
 
     #ifdef DASM_EN
-    bool paired_arith = (funct7 == TO_U8(custom_op_t::type_mul));
+    bool paired_arith = (funct7 == TO_U8(custom_op_t::type_wmul));
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
-        case TO_U8(custom_op_t::type_mul):
+        case TO_U8(custom_op_t::type_aluq):
+        case TO_U8(custom_op_t::type_wmul):
         case TO_U8(custom_op_t::type_dot):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;

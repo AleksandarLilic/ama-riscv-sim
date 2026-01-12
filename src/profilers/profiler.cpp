@@ -8,142 +8,171 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     this->out_dir = out_dir;
     this->prof_src = prof_src;
 
-    prof_g_arr[TO_U32(opc_g::i_add)] = {"add", 0};
-    prof_g_arr[TO_U32(opc_g::i_sub)] = {"sub", 0};
-    prof_g_arr[TO_U32(opc_g::i_sll)] = {"sll", 0};
-    prof_g_arr[TO_U32(opc_g::i_srl)] = {"srl", 0};
-    prof_g_arr[TO_U32(opc_g::i_sra)] = {"sra", 0};
-    prof_g_arr[TO_U32(opc_g::i_slt)] = {"slt", 0};
-    prof_g_arr[TO_U32(opc_g::i_sltu)] = {"sltu", 0};
-    prof_g_arr[TO_U32(opc_g::i_xor)] = {"xor", 0};
-    prof_g_arr[TO_U32(opc_g::i_or)] = {"or", 0};
-    prof_g_arr[TO_U32(opc_g::i_and)] = {"and", 0};
+    #define P_INIT(s) \
+        prof_g_arr[TO_U32(opc_g::i_##s)] = {#s, 0}
 
-    prof_g_arr[TO_U32(opc_g::i_nop)] = {"nop", 0};
-    prof_g_arr[TO_U32(opc_g::i_addi)] = {"addi", 0};
-    prof_g_arr[TO_U32(opc_g::i_slli)] = {"slli", 0};
-    prof_g_arr[TO_U32(opc_g::i_srli)] = {"srli", 0};
-    prof_g_arr[TO_U32(opc_g::i_srai)] = {"srai", 0};
-    prof_g_arr[TO_U32(opc_g::i_slti)] = {"slti", 0};
-    prof_g_arr[TO_U32(opc_g::i_sltiu)] = {"sltiu", 0};
-    prof_g_arr[TO_U32(opc_g::i_xori)] = {"xori", 0};
-    prof_g_arr[TO_U32(opc_g::i_ori)] = {"ori", 0};
-    prof_g_arr[TO_U32(opc_g::i_andi)] = {"andi", 0};
-    prof_g_arr[TO_U32(opc_g::i_hint)] = {"hint", 0};
-    prof_g_arr[TO_U32(opc_g::i_mret)] = {"mret", 0};
-    prof_g_arr[TO_U32(opc_g::i_wfi)] = {"wfi", 0};
+    #define P_INIT_D(s1, s2) \
+        prof_g_arr[TO_U32(opc_g::i_##s1##_##s2)] = {#s1"."#s2, 0}
 
-    prof_g_arr[TO_U32(opc_g::i_lb)] = {"lb", 0};
-    prof_g_arr[TO_U32(opc_g::i_lh)] = {"lh", 0};
-    prof_g_arr[TO_U32(opc_g::i_lw)] = {"lw", 0};
-    prof_g_arr[TO_U32(opc_g::i_lbu)] = {"lbu", 0};
-    prof_g_arr[TO_U32(opc_g::i_lhu)] = {"lhu", 0};
-    prof_g_arr[TO_U32(opc_g::i_sb)] = {"sb", 0};
-    prof_g_arr[TO_U32(opc_g::i_sh)] = {"sh", 0};
-    prof_g_arr[TO_U32(opc_g::i_sw)] = {"sw", 0};
-    prof_g_arr[TO_U32(opc_g::i_fence_i)] = {"fence.i", 0};
-    prof_g_arr[TO_U32(opc_g::i_fence)] = {"fence", 0};
+    P_INIT(add);
+    P_INIT(sub);
+    P_INIT(sll);
+    P_INIT(srl);
+    P_INIT(sra);
+    P_INIT(slt);
+    P_INIT(sltu);
+    P_INIT(xor);
+    P_INIT(or);
+    P_INIT(and);
 
-    prof_g_arr[TO_U32(opc_g::i_lui)] = {"lui", 0};
-    prof_g_arr[TO_U32(opc_g::i_auipc)] = {"auipc", 0};
+    P_INIT(nop);
+    P_INIT(addi);
+    P_INIT(slli);
+    P_INIT(srli);
+    P_INIT(srai);
+    P_INIT(slti);
+    P_INIT(sltiu);
+    P_INIT(xori);
+    P_INIT(ori);
+    P_INIT(andi);
+    P_INIT(hint);
+    P_INIT(mret);
+    P_INIT(wfi);
 
-    prof_g_arr[TO_U32(opc_g::i_ecall)] = {"ecall", 0};
-    prof_g_arr[TO_U32(opc_g::i_ebreak)] = {"ebreak", 0};
+    P_INIT(lb);
+    P_INIT(lh);
+    P_INIT(lw);
+    P_INIT(lbu);
+    P_INIT(lhu);
+    P_INIT(sb);
+    P_INIT(sh);
+    P_INIT(sw);
+    P_INIT(fence_i);
+    P_INIT(fence);
+
+    P_INIT(lui);
+    P_INIT(auipc);
+
+    P_INIT(ecall);
+    P_INIT(ebreak);
 
     // Custom instructions
-    prof_g_arr[TO_U32(opc_g::i_add16)] = {"add16", 0};
-    prof_g_arr[TO_U32(opc_g::i_add8)] = {"add8", 0};
-    prof_g_arr[TO_U32(opc_g::i_sub16)] = {"sub16", 0};
-    prof_g_arr[TO_U32(opc_g::i_sub8)] = {"sub8", 0};
-    prof_g_arr[TO_U32(opc_g::i_wmul16)] = {"wmul16", 0};
-    prof_g_arr[TO_U32(opc_g::i_wmul16u)] = {"wmul16u", 0};
-    prof_g_arr[TO_U32(opc_g::i_wmul8)] = {"wmul8", 0};
-    prof_g_arr[TO_U32(opc_g::i_wmul8u)] = {"wmul8u", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot16)] = {"dot16", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot16u)] = {"dot16u", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot8)] = {"dot8", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot8u)] = {"dot8u", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot4)] = {"dot4", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot4u)] = {"dot4u", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot2)] = {"dot2", 0};
-    prof_g_arr[TO_U32(opc_g::i_dot2u)] = {"dot2u", 0};
+    P_INIT(add16);
+    P_INIT(add8);
+    P_INIT(sub16);
+    P_INIT(sub8);
 
-    prof_g_arr[TO_U32(opc_g::i_widen16)] = {"widen16", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen16u)] = {"widen16u", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen8)] = {"widen8", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen8u)] = {"widen8u", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen4)] = {"widen4", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen4u)] = {"widen4u", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen2)] = {"widen2", 0};
-    prof_g_arr[TO_U32(opc_g::i_widen2u)] = {"widen2u", 0};
+    P_INIT(qadd16);
+    P_INIT(qadd8);
+    P_INIT(qadd16u);
+    P_INIT(qadd8u);
+    P_INIT(qsub16);
+    P_INIT(qsub8);
+    P_INIT(qsub16u);
+    P_INIT(qsub8u);
 
-    prof_g_arr[TO_U32(opc_g::i_scp_lcl)] = {"scp.lcl", 0};
-    prof_g_arr[TO_U32(opc_g::i_scp_rel)] = {"scp.rel", 0};
+    P_INIT(wmul16);
+    P_INIT(wmul16u);
+    P_INIT(wmul8);
+    P_INIT(wmul8u);
+
+    P_INIT(dot16);
+    P_INIT(dot16u);
+    P_INIT(dot8);
+    P_INIT(dot8u);
+    P_INIT(dot4);
+    P_INIT(dot4u);
+    P_INIT(dot2);
+    P_INIT(dot2u);
+
+    P_INIT(widen16);
+    P_INIT(widen16u);
+    P_INIT(widen8);
+    P_INIT(widen8u);
+    P_INIT(widen4);
+    P_INIT(widen4u);
+    P_INIT(widen2);
+    P_INIT(widen2u);
+
+    P_INIT_D(scp, lcl);
+    P_INIT_D(scp, rel);
 
     // Zicsr extension
-    prof_g_arr[TO_U32(opc_g::i_csrrw)] = {"csrrw", 0};
-    prof_g_arr[TO_U32(opc_g::i_csrrs)] = {"csrrs", 0};
-    prof_g_arr[TO_U32(opc_g::i_csrrc)] = {"csrrc", 0};
-    prof_g_arr[TO_U32(opc_g::i_csrrwi)] = {"csrrwi", 0};
-    prof_g_arr[TO_U32(opc_g::i_csrrsi)] = {"csrrsi", 0};
-    prof_g_arr[TO_U32(opc_g::i_csrrci)] = {"csrrci", 0};
+    P_INIT(csrrw);
+    P_INIT(csrrs);
+    P_INIT(csrrc);
+    P_INIT(csrrwi);
+    P_INIT(csrrsi);
+    P_INIT(csrrci);
 
     // M extension
-    prof_g_arr[TO_U32(opc_g::i_mul)] = {"mul", 0};
-    prof_g_arr[TO_U32(opc_g::i_mulh)] = {"mulh", 0};
-    prof_g_arr[TO_U32(opc_g::i_mulhsu)] = {"mulsu", 0};
-    prof_g_arr[TO_U32(opc_g::i_mulhu)] = {"mulu", 0};
-    prof_g_arr[TO_U32(opc_g::i_div)] = {"div", 0};
-    prof_g_arr[TO_U32(opc_g::i_divu)] = {"divu", 0};
-    prof_g_arr[TO_U32(opc_g::i_rem)] = {"rem", 0};
-    prof_g_arr[TO_U32(opc_g::i_remu)] = {"remu", 0};
+    P_INIT(mul);
+    P_INIT(mulh);
+    P_INIT(mulhsu);
+    P_INIT(mulhu);
+    P_INIT(div);
+    P_INIT(divu);
+    P_INIT(rem);
+    P_INIT(remu);
 
     // Zbb extension
-    prof_g_arr[TO_U32(opc_g::i_max)] = {"max", 0};
-    prof_g_arr[TO_U32(opc_g::i_maxu)] = {"maxu", 0};
-    prof_g_arr[TO_U32(opc_g::i_min)] = {"min", 0};
-    prof_g_arr[TO_U32(opc_g::i_minu)] = {"minu", 0};
+    P_INIT(max);
+    P_INIT(maxu);
+    P_INIT(min);
+    P_INIT(minu);
 
     // C extension
-    prof_g_arr[TO_U32(opc_g::i_c_add)] = {"c.add", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_mv)] = {"c.mv", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_and)] = {"c.and", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_or)] = {"c.or", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_xor)] = {"c.xor", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_sub)] = {"c.sub", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_addi)] = {"c.addi", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_addi16sp)] = {"c.addi16sp", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_addi4spn)] = {"c.addi4spn", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_andi)] = {"c.andi", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_srli)] = {"c.srli", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_slli)] = {"c.slli", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_srai)] = {"c.srai", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_nop)] = {"c.nop", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_lwsp)] = {"c.lwsp", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_swsp)] = {"c.swsp", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_lw)] = {"c.lw", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_sw)] = {"c.sw", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_li)] = {"c.li", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_lui)] = {"c.lui", 0};
-    prof_g_arr[TO_U32(opc_g::i_c_ebreak)] = {"c.ebreak", 0};
+    P_INIT_D(c, add);
+    P_INIT_D(c, mv);
+    P_INIT_D(c, and);
+    P_INIT_D(c, or);
+    P_INIT_D(c, xor);
+    P_INIT_D(c, sub);
+    P_INIT_D(c, addi);
+    P_INIT_D(c, addi16sp);
+    P_INIT_D(c, addi4spn);
+    P_INIT_D(c, andi);
+    P_INIT_D(c, srli);
+    P_INIT_D(c, slli);
+    P_INIT_D(c, srai);
+    P_INIT_D(c, nop);
+    P_INIT_D(c, lwsp);
+    P_INIT_D(c, swsp);
+    P_INIT_D(c, lw);
+    P_INIT_D(c, sw);
+    P_INIT_D(c, li);
+    P_INIT_D(c, lui);
+    P_INIT_D(c, ebreak);
+
+    #undef P_INIT
+    #undef P_INIT_D
 
     // ctrl
-    prof_b_arr[TO_U32(opc_b::i_beq)] = {"beq", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_bne)] = {"bne", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_blt)] = {"blt", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_bge)] = {"bge", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_bltu)] = {"bltu", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_bgeu)] = {"bgeu", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_jalr)] = {"jalr", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_jal)] = {"jal", 0, 0, 0, 0};
+    #define P_INIT(s) \
+        prof_b_arr[TO_U32(opc_b::i_##s)] = {#s, 0, 0, 0, 0}
+
+    #define P_INIT_D(s1, s2) \
+        prof_b_arr[TO_U32(opc_b::i_##s1##_##s2)] = {#s1"."#s2, 0, 0, 0, 0}
+
+    P_INIT(beq);
+    P_INIT(bne);
+    P_INIT(blt);
+    P_INIT(bge);
+    P_INIT(bltu);
+    P_INIT(bgeu);
+    P_INIT(jalr);
+    P_INIT(jal);
 
     // C extension ctrl
-    prof_b_arr[TO_U32(opc_b::i_c_j)] = {"c.j", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_c_jal)] = {"c.jal", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_c_jr)] = {"c.jr", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_c_jalr)] = {"c.jalr", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_c_beqz)] = {"c.beqz", 0, 0, 0, 0};
-    prof_b_arr[TO_U32(opc_b::i_c_bnez)] = {"c.bnez", 0, 0, 0, 0};
+    P_INIT_D(c, j);
+    P_INIT_D(c, jal);
+    P_INIT_D(c, jr);
+    P_INIT_D(c, jalr);
+    P_INIT_D(c, beqz);
+    P_INIT_D(c, bnez);
+
+    #undef P_INIT
+    #undef P_INIT_D
 }
 
 void profiler::add_te() {

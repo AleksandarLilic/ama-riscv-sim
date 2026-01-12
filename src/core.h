@@ -200,6 +200,14 @@ class core {
         uint32_t alu_c_add8(uint32_t a, uint32_t b);
         uint32_t alu_c_sub16(uint32_t a, uint32_t b);
         uint32_t alu_c_sub8(uint32_t a, uint32_t b);
+        uint32_t alu_c_qadd16(uint32_t a, uint32_t b);
+        uint32_t alu_c_qadd16u(uint32_t a, uint32_t b);
+        uint32_t alu_c_qadd8(uint32_t a, uint32_t b);
+        uint32_t alu_c_qadd8u(uint32_t a, uint32_t b);
+        uint32_t alu_c_qsub16(uint32_t a, uint32_t b);
+        uint32_t alu_c_qsub16u(uint32_t a, uint32_t b);
+        uint32_t alu_c_qsub8(uint32_t a, uint32_t b);
+        uint32_t alu_c_qsub8u(uint32_t a, uint32_t b);
         // custom extension - arithmetic wmul
         reg_pair alu_c_wmul16(uint32_t a, uint32_t b);
         reg_pair alu_c_wmul16u(uint32_t a, uint32_t b);
@@ -265,7 +273,9 @@ class core {
 
         // templates
         template <int vbits, bool vsigned>
-            uint32_t alu_c_dot_template(uint32_t a, uint32_t b, uint32_t c);
+            uint32_t alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c);
+        template <int vbits, bool vsigned, alu_custom_op_g_t op, bool sat>
+            uint32_t alu_c_add_sub_op(uint32_t a, uint32_t b);
 
         // interrupts
         // TODO

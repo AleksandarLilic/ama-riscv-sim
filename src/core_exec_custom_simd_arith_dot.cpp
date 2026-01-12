@@ -1,8 +1,9 @@
 #include "defines.h"
 #include "core.h"
+#include "core_exec_custom_simd.h"
 
 template <int vbits, bool vsigned>
-uint32_t core::alu_c_dot_template(uint32_t a, uint32_t b, uint32_t c) {
+uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
     constexpr int e = (32 / vbits);
     int32_t res = 0;
     #ifdef DASM_EN
@@ -32,33 +33,33 @@ uint32_t core::alu_c_dot_template(uint32_t a, uint32_t b, uint32_t c) {
 }
 
 uint32_t core::alu_c_dot16(uint32_t a, uint32_t b, uint32_t c)  {
-    return alu_c_dot_template<16, true>(a, b, c);
+    return alu_c_dot_op<16, true>(a, b, c);
 }
 
 uint32_t core::alu_c_dot16u(uint32_t a, uint32_t b, uint32_t c) {
-    return alu_c_dot_template<16, false>(a, b, c);
+    return alu_c_dot_op<16, false>(a, b, c);
 }
 
 uint32_t core::alu_c_dot8(uint32_t a, uint32_t b, uint32_t c)   {
-    return alu_c_dot_template<8, true>(a, b, c);
+    return alu_c_dot_op<8, true>(a, b, c);
 }
 
 uint32_t core::alu_c_dot8u(uint32_t a, uint32_t b, uint32_t c)  {
-    return alu_c_dot_template<8, false>(a, b, c);
+    return alu_c_dot_op<8, false>(a, b, c);
 }
 
 uint32_t core::alu_c_dot4(uint32_t a, uint32_t b, uint32_t c)   {
-    return alu_c_dot_template<4, true>(a, b, c);
+    return alu_c_dot_op<4, true>(a, b, c);
 }
 
 uint32_t core::alu_c_dot4u(uint32_t a, uint32_t b, uint32_t c)  {
-    return alu_c_dot_template<4, false>(a, b, c);
+    return alu_c_dot_op<4, false>(a, b, c);
 }
 
 uint32_t core::alu_c_dot2(uint32_t a, uint32_t b, uint32_t c)   {
-    return alu_c_dot_template<2, true>(a, b, c);
+    return alu_c_dot_op<2, true>(a, b, c);
 }
 
 uint32_t core::alu_c_dot2u(uint32_t a, uint32_t b, uint32_t c)  {
-    return alu_c_dot_template<2, false>(a, b, c);
+    return alu_c_dot_op<2, false>(a, b, c);
 }

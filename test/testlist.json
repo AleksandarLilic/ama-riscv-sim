@@ -9,13 +9,15 @@
     "asm_rv32ic": ["basic"],
     "asm_rv32i_zbb_min-max": ["basic"],
 
+    "asm_rv32i_custom-simd-add-sub": ["basic"],
+    "asm_rv32i_custom-simd-wmul": ["basic"],
     "asm_rv32i_custom-simd-dot": ["basic"],
     "asm_rv32i_custom-simd-widen": ["basic"],
-    "asm_rv32i_custom-simd-alu": ["basic"],
     "asm_rv32i_custom-scp": ["basic"],
 
-    "rv32i_custom-simd-widen": ["basic"],
+    "rv32i_custom-simd-add-sub": ["basic"],
     "rv32i_custom-simd-dot": ["basic"],
+    "rv32i_custom-simd-widen": ["basic"],
 
     "rd_pairing": ["basic"],
 

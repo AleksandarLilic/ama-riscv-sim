@@ -109,7 +109,8 @@ enum class csr_op_t {
 
 enum class custom_op_t {
     type_alu = 0x00,
-    type_mul = 0x02,
+    type_aluq = 0x01,
+    type_wmul = 0x02,
     type_dot = 0x03,
     type_data_fmt_widen = 0x20,
     type_hints = 0x7f,
@@ -121,6 +122,19 @@ enum class alu_custom_op_t {
     op_sub16 = 0x4,
     op_sub8 = 0x6,
 };
+
+enum class aluq_custom_op_t {
+    op_qadd16 = 0x0,
+    op_qadd16u = 0x1,
+    op_qadd8 = 0x2,
+    op_qadd8u = 0x3,
+    op_qsub16 = 0x4,
+    op_qsub16u = 0x5,
+    op_qsub8 = 0x6,
+    op_qsub8u = 0x7,
+};
+
+enum class alu_custom_op_g_t { add, sub };
 
 enum class alu_mul_custom_op_t {
     op_wmul16 = 0x0,
@@ -376,29 +390,3 @@ struct logging_flags_t {
     bool state;
     void activate(bool in) { act = en && (in || always); }
 };
-
-// templates
-
-// handle the "sub-byte" casting logic generically
-// 'if' optimized away since 'vbits' and 'vsigned' are compile-time constants
-template <int vbits, bool vsigned>
-inline int32_t extract_val(uint32_t val) {
-    // Handle Standard Types (Native Casting)
-    if constexpr (vbits == 8) {
-        return vsigned ? static_cast<int8_t>(val) : static_cast<uint8_t>(val);
-    } else if constexpr (vbits == 16) {
-        return vsigned ? static_cast<int16_t>(val) : static_cast<uint16_t>(val);
-    } else {
-        // Handle Sub-Byte Types (Manual Bit-Twiddling)
-        constexpr uint32_t mask = ((1U << vbits) - 1);
-        uint32_t masked = (val & mask);
-        if (vsigned) {
-            constexpr uint32_t sign_bit = (1U << (vbits - 1)); // generic s ext
-            // if sign bit is set, OR with all upper bits set (using ~mask)
-            if (masked & sign_bit) return static_cast<uint32_t>(masked | ~mask);
-            return static_cast<uint32_t>(masked);
-        } else {
-            return static_cast<uint32_t>(masked); // unsigned is simple masking
-        }
-    }
-}

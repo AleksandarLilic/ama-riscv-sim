@@ -1,5 +1,6 @@
 #include "defines.h"
 #include "core.h"
+#include "core_exec_custom_simd.h"
 
 reg_pair core::data_fmt_c_widen16(uint32_t a) {
     // widen 2 16-bit values to 2 32-bit values

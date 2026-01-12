@@ -204,6 +204,7 @@ void v_store_uint2x16(uint8_t* p, uint2x16_t x) {
 // -----------------------------------------------------------------------------
 
 // add & sub
+// wrap-around
 static INLINE
 int16x2_t _add16(const int16x2_t a, const int16x2_t b) {
     int16x2_t c;
@@ -229,6 +230,63 @@ static INLINE
 int8x4_t _sub8(const int8x4_t a, const int8x4_t b) {
     int8x4_t c;
     asm volatile("sub8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+// saturating
+static INLINE
+int16x2_t _qadd16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("qadd16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _qadd8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("qadd8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _qadd16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("qadd16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _qadd8u(const uint8x4_t a, const uint8x4_t b) {
+    uint8x4_t c;
+    asm volatile("qadd8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int16x2_t _qsub16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("qsub16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _qsub8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("qsub8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _qsub16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("qsub16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _qsub8u(const uint8x4_t a, const uint8x4_t b) {
+    uint8x4_t c;
+    asm volatile("qsub8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 

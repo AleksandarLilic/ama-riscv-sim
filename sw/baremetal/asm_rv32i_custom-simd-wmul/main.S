@@ -25,54 +25,6 @@ op_add:
     add x26, x11, x12
     OP_END(100)
 
-op_add16:
-    lw x11, dat1
-    lw x12, dat2
-    add16 x26, x11, x12
-    OP_END(0x09090909)
-
-op_add16n:
-    lw x11, dat1n
-    lw x12, dat3
-    add16 x26, x11, x12
-    OP_END(0x01fd01e8)
-
-op_add8:
-    lw x11, dat2
-    lw x12, dat3
-    add8 x26, x11, x12
-    OP_END(0x03040505)
-
-op_add8n:
-    lw x11, dat1n
-    lw x12, dat2
-    add8 x26, x11, x12
-    OP_END(0x00fd02eb)
-
-op_sub16:
-    lw x11, dat1
-    lw x12, dat2
-    sub16 x26, x11, x12
-    OP_END(0x07050301)
-
-op_sub16n:
-    lw x11, dat1
-    lw x12, dat1n
-    sub16 x26, x11, x12
-    OP_END(0x080C061E)
-
-op_sub8:
-    lw x11, dat4
-    lw x12, dat3
-    sub8 x26, x11, x12
-    OP_END(0x01000806)
-
-op_sub8n:
-    lw x11, dat4
-    lw x12, dat1n
-    sub8 x26, x11, x12
-    OP_END(0x04070b20)
-
 op_wmul16:
     li x11, -55
     sll x11, x11, 16

@@ -61,8 +61,8 @@ class icfg:
     BITMANIP = "BITMANIP"
     SIMD = "SIMD"
     SIMD_DOT = "SIMD_DOT"
-    SIMD_ADD = "SIMD_ADD"
-    SIMD_MUL = "SIMD_MUL"
+    SIMD_ADD_SUB = "SIMD_ADD_SUB"
+    SIMD_WMUL = "SIMD_WMUL"
     WIDEN = "WIDEN"
     MEM = "MEM"
     MEM_HINTS = "MEM_HINTS"
@@ -83,8 +83,12 @@ class icfg:
     }
 
     INST_T_SIMD = {
-        SIMD_ADD: ["add16", "add8", "sub16", "sub8"],
-        SIMD_MUL: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
+        SIMD_ADD_SUB: [
+            "add16", "add8", "sub16", "sub8",
+            "qadd16", "qadd16u", "qadd8", "qadd8u",
+            "qsub16", "qsub16u", "qsub8", "qsub8u",
+        ],
+        SIMD_WMUL: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
         SIMD_DOT: [
             "dot16", "dot16u", "dot8", "dot8u", "dot4", "dot4u", "dot2", "dot2u"
         ],
@@ -108,8 +112,8 @@ class icfg:
         MUL: ["mul", "mulh", "mulsu", "mulu"],
         DIV: ["div", "divu", "rem", "remu"],
         BITMANIP: ["max", "maxu", "min", "minu"],
-        SIMD: INST_T_SIMD[SIMD_ADD] + \
-                INST_T_SIMD[SIMD_MUL] + \
+        SIMD: INST_T_SIMD[SIMD_ADD_SUB] + \
+                INST_T_SIMD[SIMD_WMUL] + \
                 INST_T_SIMD[SIMD_DOT],
         WIDEN: [
             "widen16", "widen16u", "widen8", "widen8u",

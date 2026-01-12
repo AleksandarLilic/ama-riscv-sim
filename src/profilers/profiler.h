@@ -41,11 +41,18 @@ enum class opc_g {
     // trap
     i_mret, i_wfi,
 
-    // custom alu
+    // custom
+    // add/sub
     i_add16, i_add8, i_sub16, i_sub8,
+    // add/sub sat
+    i_qadd16, i_qadd16u, i_qadd8, i_qadd8u,
+    i_qsub16, i_qsub16u, i_qsub8, i_qsub8u,
+    // widening mul
     i_wmul16, i_wmul16u, i_wmul8, i_wmul8u,
+    // dot
     i_dot16, i_dot16u, i_dot8, i_dot8u, i_dot4, i_dot4u, i_dot2, i_dot2u,
     // custom data fmt
+    // widening
     i_widen16, i_widen16u, i_widen8, i_widen8u,
     i_widen4, i_widen4u, i_widen2, i_widen2u,
     // custom hints
@@ -300,7 +307,7 @@ class profiler {
 
     private:
         // all compressed instructions
-        static constexpr std::array<opc_g, 21> comp_opcs_alu = {
+        static constexpr std::array comp_opcs_alu = {
             opc_g::i_c_add, opc_g::i_c_mv, opc_g::i_c_and, opc_g::i_c_or,
             opc_g::i_c_xor, opc_g::i_c_sub,
             opc_g::i_c_addi, opc_g::i_c_addi16sp, opc_g::i_c_addi4spn,
@@ -311,14 +318,14 @@ class profiler {
             opc_g::i_c_ebreak
         };
 
-        static constexpr std::array<opc_b, 6> comp_opcs_b = {
+        static constexpr std::array comp_opcs_b = {
             opc_b::i_c_j, opc_b::i_c_jal, opc_b::i_c_jr, opc_b::i_c_jalr,
             opc_b::i_c_beqz, opc_b::i_c_bnez,
         };
 
         // per type breakdowns
         // direct, conditinal branches
-        static constexpr std::array<opc_b, 8> branch_opcs = {
+        static constexpr std::array branch_opcs = {
             opc_b::i_beq, opc_b::i_bne, opc_b::i_blt,
             opc_b::i_bge, opc_b::i_bltu, opc_b::i_bgeu,
             // compressed
@@ -326,40 +333,40 @@ class profiler {
         };
 
         // direct, unconditional branches
-        static constexpr std::array<opc_b, 3> jal_opcs = {
+        static constexpr std::array jal_opcs = {
             opc_b::i_jal,
             // compressed
             opc_b::i_c_j, opc_b::i_c_jal,
         };
 
         // indirect, unconditional branches
-        static constexpr std::array<opc_b, 3> jalr_opcs = {
+        static constexpr std::array jalr_opcs = {
             opc_b::i_jalr,
             // compressed
             opc_b::i_c_jr, opc_b::i_c_jalr,
         };
 
-        static constexpr std::array<opc_g, 7> load_opcs = {
+        static constexpr std::array load_opcs = {
             opc_g::i_lb, opc_g::i_lh, opc_g::i_lw, opc_g::i_lbu, opc_g::i_lhu,
             // compressed
             opc_g::i_c_lw, opc_g::i_c_lwsp
         };
 
-        static constexpr std::array<opc_g, 5> store_opcs = {
+        static constexpr std::array store_opcs = {
             opc_g::i_sb, opc_g::i_sh, opc_g::i_sw,
             // compressed
             opc_g::i_c_sw, opc_g::i_c_swsp
         };
 
-        static constexpr std::array<opc_g, 4> mul_opcs = {
+        static constexpr std::array mul_opcs = {
             opc_g::i_mul, opc_g::i_mulh, opc_g::i_mulhsu, opc_g::i_mulhu,
         };
 
-        static constexpr std::array<opc_g, 4> div_opcs = {
+        static constexpr std::array div_opcs = {
             opc_g::i_div, opc_g::i_divu, opc_g::i_rem, opc_g::i_remu,
         };
 
-        static constexpr std::array<opc_g, 36> alu_opcs = {
+        static constexpr std::array alu_opcs = {
             opc_g::i_add, opc_g::i_sub,
             opc_g::i_sll, opc_g::i_srl, opc_g::i_sra,
             opc_g::i_slt, opc_g::i_sltu,
@@ -378,31 +385,33 @@ class profiler {
             opc_g::i_c_li, opc_g::i_c_lui
         };
 
-        static constexpr std::array<opc_g, 4> zbb_opcs = {
+        static constexpr std::array zbb_opcs = {
             opc_g::i_max, opc_g::i_maxu, opc_g::i_min, opc_g::i_minu,
         };
 
-        static constexpr std::array<opc_g, 8> dot_c_opcs = {
+        static constexpr std::array dot_c_opcs = {
             opc_g::i_dot16, opc_g::i_dot8, opc_g::i_dot4, opc_g::i_dot2,
             opc_g::i_dot16u, opc_g::i_dot8u, opc_g::i_dot4u, opc_g::i_dot2u,
         };
 
-        static constexpr std::array<opc_g, 4> alu_c_opcs = {
+        static constexpr std::array alu_c_opcs = {
             opc_g::i_add16, opc_g::i_add8, opc_g::i_sub16, opc_g::i_sub8,
+            opc_g::i_qadd16, opc_g::i_qadd16u, opc_g::i_qadd8, opc_g::i_qadd8u,
+            opc_g::i_qsub16, opc_g::i_qsub16u, opc_g::i_qsub8, opc_g::i_qsub8u,
         };
 
-        static constexpr std::array<opc_g, 4> mul_c_opcs = {
+        static constexpr std::array mul_c_opcs = {
             opc_g::i_wmul16, opc_g::i_wmul16u, opc_g::i_wmul8, opc_g::i_wmul8u,
         };
 
-        static constexpr std::array<opc_g, 8> widen_c_opcs = {
+        static constexpr std::array widen_c_opcs = {
             opc_g::i_widen16, opc_g::i_widen16u,
             opc_g::i_widen8, opc_g::i_widen8u,
             opc_g::i_widen4, opc_g::i_widen4u,
             opc_g::i_widen2, opc_g::i_widen2u,
         };
 
-        static constexpr std::array<opc_g, 2> scp_c_opcs = {
+        static constexpr std::array scp_c_opcs = {
             opc_g::i_scp_lcl, opc_g::i_scp_rel,
         };
 };
