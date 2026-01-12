@@ -189,7 +189,7 @@ struct cnt_t {
         uint32_t zbb = 0;
         uint32_t dot_c = 0;
         uint32_t alu_c = 0;
-        uint32_t mul_c = 0;
+        uint32_t wmul_c = 0;
         uint32_t widen_c = 0;
         uint32_t scp_c = 0;
 
@@ -199,7 +199,7 @@ struct cnt_t {
             rest = (
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
-                dot_c - alu_c - mul_c - widen_c - scp_c
+                dot_c - alu_c - wmul_c - widen_c - scp_c
             );
         }
         float_t get_perc(uint32_t count) {
@@ -225,7 +225,7 @@ struct perc_t {
         float_t zbb = 0.0;
         float_t dot_c = 0.0;
         float_t alu_c = 0.0;
-        float_t mul_c = 0.0;
+        float_t wmul_c = 0.0;
         float_t widen_c = 0.0;
         float_t scp_c = 0.0;
 };

@@ -313,7 +313,7 @@ void profiler::log_to_file_and_print(bool silent) {
     for (auto &d: div_opcs) cnt.div += prof_g_arr[TO_U32(d)].count;
     for (auto &f: dot_c_opcs) cnt.dot_c += prof_g_arr[TO_U32(f)].count;
     for (auto &a: alu_c_opcs) cnt.alu_c += prof_g_arr[TO_U32(a)].count;
-    for (auto &m: mul_c_opcs) cnt.mul_c += prof_g_arr[TO_U32(m)].count;
+    for (auto &m: mul_c_opcs) cnt.wmul_c += prof_g_arr[TO_U32(m)].count;
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: widen_c_opcs) cnt.widen_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
@@ -333,7 +333,7 @@ void profiler::log_to_file_and_print(bool silent) {
     perc.div = cnt.get_perc(cnt.div);
     perc.dot_c = cnt.get_perc(cnt.dot_c);
     perc.alu_c = cnt.get_perc(cnt.alu_c);
-    perc.mul_c = cnt.get_perc(cnt.mul_c);
+    perc.wmul_c = cnt.get_perc(cnt.wmul_c);
     perc.zbb = cnt.get_perc(cnt.zbb);
     perc.widen_c = cnt.get_perc(cnt.widen_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
@@ -379,7 +379,7 @@ void profiler::log_to_file_and_print(bool silent) {
 
     std::cout << INDENT << "SIMD:"
               << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
-              << " MUL: " << cnt.mul_c << "(" << perc.mul_c << "%),"
+              << " WMUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%)"
               << "\n";

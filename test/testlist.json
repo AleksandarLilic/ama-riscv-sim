@@ -16,6 +16,7 @@
     "asm_rv32i_custom-scp": ["basic"],
 
     "rv32i_custom-simd-add-sub": ["basic"],
+    "rv32i_custom-simd-wmul": ["basic"],
     "rv32i_custom-simd-dot": ["basic"],
     "rv32i_custom-simd-widen": ["basic"],
 
