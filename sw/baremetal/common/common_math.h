@@ -242,16 +242,16 @@ int16x2_t _qadd16(const int16x2_t a, const int16x2_t b) {
 }
 
 static INLINE
-int8x4_t _qadd8(const int8x4_t a, const int8x4_t b) {
-    int8x4_t c;
-    asm volatile("qadd8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+uint16x2_t _qadd16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("qadd16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 static INLINE
-uint16x2_t _qadd16u(const uint16x2_t a, const uint16x2_t b) {
-    uint16x2_t c;
-    asm volatile("qadd16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+int8x4_t _qadd8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("qadd8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
@@ -270,16 +270,16 @@ int16x2_t _qsub16(const int16x2_t a, const int16x2_t b) {
 }
 
 static INLINE
-int8x4_t _qsub8(const int8x4_t a, const int8x4_t b) {
-    int8x4_t c;
-    asm volatile("qsub8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+uint16x2_t _qsub16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("qsub16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
 static INLINE
-uint16x2_t _qsub16u(const uint16x2_t a, const uint16x2_t b) {
-    uint16x2_t c;
-    asm volatile("qsub16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+int8x4_t _qsub8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("qsub8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
     return c;
 }
 
@@ -358,6 +358,63 @@ void _dot2(const int2x16_t a, const int2x16_t b, int32_t* c) {
 static INLINE
 void _dot2u(const uint2x16_t a, const uint2x16_t b, int32_t* c) {
     asm volatile("dot2u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
+}
+
+// compare
+static INLINE
+int16x2_t _min16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("min16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _min16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("min16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _min8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("min8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _min8u(const uint8x4_t a, const uint8x4_t b) {
+    uint8x4_t c;
+    asm volatile("min8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int16x2_t _max16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("max16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _max16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("max16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _max8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("max8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _max8u(const uint8x4_t a, const uint8x4_t b) {
+    uint8x4_t c;
+    asm volatile("max8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
 }
 
 // data formatting - widen

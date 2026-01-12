@@ -85,6 +85,15 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(dot2);
     P_INIT(dot2u);
 
+    P_INIT(min16);
+    P_INIT(min8);
+    P_INIT(min16u);
+    P_INIT(min8u);
+    P_INIT(max16);
+    P_INIT(max8);
+    P_INIT(max16u);
+    P_INIT(max8u);
+
     P_INIT(widen16);
     P_INIT(widen16u);
     P_INIT(widen8);

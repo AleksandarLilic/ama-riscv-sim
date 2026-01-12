@@ -15,7 +15,7 @@ constexpr int32_t get_limit(bool max) {
 }
 
 // covers: add/sub, signed/unsigned, saturating/wrapping, any bit width
-template <int vbits, bool vsigned, alu_custom_op_g_t op, bool sat>
+template <int vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
 uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
     constexpr int e = (32 / vbits);
     constexpr uint32_t mask = ((1U << vbits) - 1);
@@ -33,7 +33,7 @@ uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
 
         // in 32-bit wide space to catch overflows
         int32_t raw_res;
-        if constexpr (op == alu_custom_op_g_t::add) raw_res = (val_a + val_b);
+        if constexpr (op == alu_add_sub_op_t::add) raw_res = (val_a + val_b);
         else raw_res = (val_a - val_b);
 
         // saturation or wrapping
@@ -66,50 +66,50 @@ uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
 
 // wrap
 uint32_t core::alu_c_add16(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, true, alu_custom_op_g_t::add, false>(a, b);
+    return alu_c_add_sub_op<16, true, alu_add_sub_op_t::add, false>(a, b);
 }
 
 uint32_t core::alu_c_add8(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, true, alu_custom_op_g_t::add, false>(a, b);
+    return alu_c_add_sub_op<8, true, alu_add_sub_op_t::add, false>(a, b);
 }
 
 uint32_t core::alu_c_sub16(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, true, alu_custom_op_g_t::sub, false>(a, b);
+    return alu_c_add_sub_op<16, true, alu_add_sub_op_t::sub, false>(a, b);
 }
 
 uint32_t core::alu_c_sub8(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, true, alu_custom_op_g_t::sub, false>(a, b);
+    return alu_c_add_sub_op<8, true, alu_add_sub_op_t::sub, false>(a, b);
 }
 
 // saturating
 uint32_t core::alu_c_qadd16(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, true, alu_custom_op_g_t::add, true>(a, b);
+    return alu_c_add_sub_op<16, true, alu_add_sub_op_t::add, true>(a, b);
 }
 
 uint32_t core::alu_c_qadd16u(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, false, alu_custom_op_g_t::add, true>(a, b);
+    return alu_c_add_sub_op<16, false, alu_add_sub_op_t::add, true>(a, b);
 }
 
 uint32_t core::alu_c_qadd8(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, true, alu_custom_op_g_t::add, true>(a, b);
+    return alu_c_add_sub_op<8, true, alu_add_sub_op_t::add, true>(a, b);
 }
 
 uint32_t core::alu_c_qadd8u(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, false, alu_custom_op_g_t::add, true>(a, b);
+    return alu_c_add_sub_op<8, false, alu_add_sub_op_t::add, true>(a, b);
 }
 
 uint32_t core::alu_c_qsub16(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, true, alu_custom_op_g_t::sub, true>(a, b);
+    return alu_c_add_sub_op<16, true, alu_add_sub_op_t::sub, true>(a, b);
 }
 
 uint32_t core::alu_c_qsub16u(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<16, false, alu_custom_op_g_t::sub, true>(a, b);
+    return alu_c_add_sub_op<16, false, alu_add_sub_op_t::sub, true>(a, b);
 }
 
 uint32_t core::alu_c_qsub8(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, true, alu_custom_op_g_t::sub, true>(a, b);
+    return alu_c_add_sub_op<8, true, alu_add_sub_op_t::sub, true>(a, b);
 }
 
 uint32_t core::alu_c_qsub8u(uint32_t a, uint32_t b) {
-    return alu_c_add_sub_op<8, false, alu_custom_op_g_t::sub, true>(a, b);
+    return alu_c_add_sub_op<8, false, alu_add_sub_op_t::sub, true>(a, b);
 }

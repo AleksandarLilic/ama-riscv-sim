@@ -51,6 +51,10 @@ enum class opc_g {
     i_wmul16, i_wmul16u, i_wmul8, i_wmul8u,
     // dot
     i_dot16, i_dot16u, i_dot8, i_dot8u, i_dot4, i_dot4u, i_dot2, i_dot2u,
+    // min/max
+    i_min16, i_min16u, i_min8, i_min8u,
+    i_max16, i_max16u, i_max8, i_max8u,
+
     // custom data fmt
     // widening
     i_widen16, i_widen16u, i_widen8, i_widen8u,
@@ -398,6 +402,8 @@ class profiler {
             opc_g::i_add16, opc_g::i_add8, opc_g::i_sub16, opc_g::i_sub8,
             opc_g::i_qadd16, opc_g::i_qadd16u, opc_g::i_qadd8, opc_g::i_qadd8u,
             opc_g::i_qsub16, opc_g::i_qsub16u, opc_g::i_qsub8, opc_g::i_qsub8u,
+            opc_g::i_min16, opc_g::i_min16u, opc_g::i_min8, opc_g::i_min8u,
+            opc_g::i_max16, opc_g::i_max16u, opc_g::i_max8, opc_g::i_max8u,
         };
 
         static constexpr std::array mul_c_opcs = {

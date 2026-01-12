@@ -733,6 +733,20 @@ void core::d_custom_ext() {
                 default : tu.e_unsupported_inst("alu_dot_custom");
             }
             break;
+        case TO_U8(custom_op_t::type_min_max):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_MIN_MAX_CUSTOM_OP(min16, alu)
+                CASE_MIN_MAX_CUSTOM_OP(min16u, alu)
+                CASE_MIN_MAX_CUSTOM_OP(min8, alu)
+                CASE_MIN_MAX_CUSTOM_OP(min8u, alu)
+                CASE_MIN_MAX_CUSTOM_OP(max16, alu)
+                CASE_MIN_MAX_CUSTOM_OP(max16u, alu)
+                CASE_MIN_MAX_CUSTOM_OP(max8, alu)
+                CASE_MIN_MAX_CUSTOM_OP(max8u, alu)
+                default: tu.e_unsupported_inst("alu_min_max_custom"); return;
+            }
+            break;
         case TO_U8(custom_op_t::type_data_fmt_widen):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
@@ -764,6 +778,7 @@ void core::d_custom_ext() {
         case TO_U8(custom_op_t::type_aluq):
         case TO_U8(custom_op_t::type_wmul):
         case TO_U8(custom_op_t::type_dot):
+        case TO_U8(custom_op_t::type_min_max):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;
             if (paired_arith) DASM_RD_UPDATE_PAIR;

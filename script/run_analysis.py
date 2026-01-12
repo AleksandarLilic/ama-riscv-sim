@@ -62,6 +62,7 @@ class icfg:
     SIMD = "SIMD"
     SIMD_DOT = "SIMD_DOT"
     SIMD_ADD_SUB = "SIMD_ADD_SUB"
+    SIMD_MIN_MAX = "SIMD_MIN_MAX"
     SIMD_WMUL = "SIMD_WMUL"
     WIDEN = "WIDEN"
     MEM = "MEM"
@@ -92,6 +93,10 @@ class icfg:
         SIMD_DOT: [
             "dot16", "dot16u", "dot8", "dot8u", "dot4", "dot4u", "dot2", "dot2u"
         ],
+        SIMD_MIN_MAX: [
+            "min16", "min16u", "min8", "min8u",
+            "max16", "max16u", "max8", "max8u",
+        ],
     }
 
     INST_T_JUMP = {
@@ -114,7 +119,8 @@ class icfg:
         BITMANIP: ["max", "maxu", "min", "minu"],
         SIMD: INST_T_SIMD[SIMD_ADD_SUB] + \
                 INST_T_SIMD[SIMD_WMUL] + \
-                INST_T_SIMD[SIMD_DOT],
+                INST_T_SIMD[SIMD_DOT] + \
+                INST_T_SIMD[SIMD_MIN_MAX],
         WIDEN: [
             "widen16", "widen16u", "widen8", "widen8u",
             "widen4", "widen4u", "widen2", "widen2u",

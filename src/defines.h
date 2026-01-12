@@ -362,6 +362,16 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
+#define CASE_MIN_MAX_CUSTOM_OP(op, t) \
+    case TO_U8(alu_min_max_custom_op_t::op_##op): \
+        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(res, t) \
+        break;
+
 #define CASE_DATA_FMT_CUSTOM_OP(op, t) \
     case TO_U8(data_fmt_custom_op_t::op_##op): \
         rp = data_fmt_c_##op(rf[ip.rs1()]); \

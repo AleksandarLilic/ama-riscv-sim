@@ -222,6 +222,15 @@ class core {
         uint32_t alu_c_dot4u(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot2(uint32_t a, uint32_t b, uint32_t c);
         uint32_t alu_c_dot2u(uint32_t a, uint32_t b, uint32_t c);
+        // custom extension - min & max
+        uint32_t alu_c_min16(uint32_t a, uint32_t b);
+        uint32_t alu_c_min16u(uint32_t a, uint32_t b);
+        uint32_t alu_c_min8(uint32_t a, uint32_t b);
+        uint32_t alu_c_min8u(uint32_t a, uint32_t b);
+        uint32_t alu_c_max16(uint32_t a, uint32_t b);
+        uint32_t alu_c_max16u(uint32_t a, uint32_t b);
+        uint32_t alu_c_max8(uint32_t a, uint32_t b);
+        uint32_t alu_c_max8u(uint32_t a, uint32_t b);
 
         // custom extension - memory operations
         reg_pair data_fmt_c_widen16(uint32_t a);
@@ -274,8 +283,10 @@ class core {
         // templates
         template <int vbits, bool vsigned>
             uint32_t alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c);
-        template <int vbits, bool vsigned, alu_custom_op_g_t op, bool sat>
+        template <int vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
             uint32_t alu_c_add_sub_op(uint32_t a, uint32_t b);
+        template <int vbits, bool vsigned, alu_min_max_op_t op>
+            uint32_t alu_c_min_max_op(uint32_t a, uint32_t b);
 
         // interrupts
         // TODO

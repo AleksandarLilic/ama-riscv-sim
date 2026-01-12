@@ -1,5 +1,5 @@
 diff --git a/bfd/elfxx-riscv.c b/bfd/elfxx-riscv.c
-index 9a121b47121..74dd79cf97b 100644
+index 9a121b47121..c7af5984640 100644
 --- a/bfd/elfxx-riscv.c
 +++ b/bfd/elfxx-riscv.c
 @@ -1385,6 +1385,7 @@ static struct riscv_supported_ext riscv_supported_vendor_x_ext[] =
@@ -19,15 +19,6 @@ index 9a121b47121..74dd79cf97b 100644
      default:
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
-@@ -2674,7 +2677,7 @@ riscv_multi_subset_supports_ext (riscv_parse_subset_t *rps,
- 	{
- 	  if (!riscv_subset_supports (rps, "c")
- 	      && !riscv_subset_supports (rps, "zcf"))
--	    return _("f' and `c', or `f' and `zcf"); 
-+	    return _("f' and `c', or `f' and `zcf");
- 	  else
- 	    return "f";
- 	}
 @@ -2856,6 +2859,8 @@ riscv_multi_subset_supports_ext (riscv_parse_subset_t *rps,
        return "xtheadvector";
      case INSN_CLASS_XTHEADZVAMO:
@@ -38,7 +29,7 @@ index 9a121b47121..74dd79cf97b 100644
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..7627530276d 100644
+index e77b49a6298..4f7c7cef164 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
 @@ -3473,6 +3473,108 @@
@@ -81,14 +72,14 @@ index e77b49a6298..7627530276d 100644
 +#define MATCH_DOT2   0x600600b
 +#define MATCH_DOT2U  0x600700b
 +
-+#define MATCH_MAX16  0x800000b
-+#define MATCH_MAX16U 0x800100b
-+#define MATCH_MAX8   0x800200b
-+#define MATCH_MAX8U  0x800300b
-+#define MATCH_MIN16  0x800400b
-+#define MATCH_MIN16U 0x800500b
-+#define MATCH_MIN8   0x800600b
-+#define MATCH_MIN8U  0x800700b
++#define MATCH_MIN16  0x800000b
++#define MATCH_MIN16U 0x800100b
++#define MATCH_MIN8   0x800200b
++#define MATCH_MIN8U  0x800300b
++#define MATCH_MAX16  0x800400b
++#define MATCH_MAX16U 0x800500b
++#define MATCH_MAX8   0x800600b
++#define MATCH_MAX8U  0x800700b
 +
 +#define MATCH_SLLI16 0xc00000b
 +#define MATCH_SLLI8  0xc00200b
@@ -163,7 +154,7 @@ index adea7dbc794..81e557c95f8 100644
  
  /* This structure holds information for a particular instruction.  */
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..04168ed2e28 100644
+index fdd05ac75dc..c20707c7e20 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
 @@ -347,6 +347,113 @@ const struct riscv_opcode riscv_opcodes[] =
@@ -199,14 +190,14 @@ index fdd05ac75dc..04168ed2e28 100644
 +{"dot2",        0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_DOT2, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"dot2u",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_DOT2U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
-+{"max16",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX16, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"max16u",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX16U, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"max8",        0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX8, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"max8u",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"min16",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MIN16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"min16u",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MIN16U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"min8",        0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MIN8, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"min8u",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MIN8U, MASK_CUSTOM_REG, match_opcode, 0 },
++{"max16",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX16, MASK_CUSTOM_REG, match_opcode, 0 },
++{"max16u",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX16U, MASK_CUSTOM_REG, match_opcode, 0 },
++{"max8",        0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX8, MASK_CUSTOM_REG, match_opcode, 0 },
++{"max8u",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MAX8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
 +{"slli16",      0, INSN_CLASS_XSIMD, "d,s,<",     MATCH_SLLI16, MASK_CUSTOM_SHIFT, match_opcode, 0 },
 +{"slli8",       0, INSN_CLASS_XSIMD, "d,s,<",     MATCH_SLLI8, MASK_CUSTOM_SHIFT, match_opcode, 0 },
