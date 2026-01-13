@@ -2,15 +2,14 @@
 #include "core.h"
 #include "core_exec_custom_simd.h"
 
-// helper to calculate limits at compile time
 template <int vbits, bool vsigned>
 constexpr int32_t get_limit(bool max) {
     if constexpr (vsigned) {
         // e.g. 8-bit signed: max 127, min -128
-        return max ? (1 << (vbits - 1)) - 1 : -(1 << (vbits - 1));
+        return max ? ((1 << (vbits - 1)) - 1) : -(1 << (vbits - 1));
     } else {
         // e.g. 8-bit unsigned: max 255, min 0
-        return max ? (1 << vbits) - 1 : 0;
+        return max ? ((1 << vbits) - 1) : 0;
     }
 }
 
