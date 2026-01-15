@@ -31,10 +31,37 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
         update_callstack(next_pc);
         st.idx_callstack.back() = symbol_map.at(next_pc).idx;
     }
+
+    if (!match_top(next_pc)) {
+        diverged_cnt += 1;
+        // try to fix diverged callstack
+
+        //std::cout << "diverged at next_pc: " << MEM_ADDR_FORMAT(next_pc)
+        //          << std::flush;
+
+        // tail calls can be missed, try to pop back and match the current top
+        auto temp_cs = st.idx_callstack;
+        while (!match_top(next_pc) && !temp_cs.empty()) temp_cs.pop_back();
+
+        // if pop_back resolves the diverged callstack, use it
+        // else, symbol change likely due to assembly labels, just replace top
+        if (!temp_cs.empty()) {
+            st.idx_callstack = temp_cs;
+        } else {
+            auto found_sym = find_symbol_in_range(next_pc);
+            st.idx_callstack.back() = symbol_map.at(found_sym.first).idx;
+        }
+
+        //if (temp_cs.empty()) {
+        //    std::cout << "    was empty\n" << std::flush;
+        //}
+    }
+
     // handle counter
     if (st.updated) callstack_cnt = 0;
     else inc_callstack_cnt();
     st.updated = false;
+
     // ret
     if (st.idx_callstack != st.idx_callstack_prev) {
         st.idx_callstack_prev = st.idx_callstack;
@@ -45,11 +72,11 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
 
 void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
     if (!taken) return;
-    auto found = find_symbol_in_range(next_pc);
-    bool sym_chg = (found.second.idx != st.idx_callstack.back());
+    auto found_sym = find_symbol_in_range(next_pc);
+    bool sym_chg = (found_sym.second.idx != st.idx_callstack.back());
     if (sym_chg) {
-        update_callstack(found.first);
-        st.idx_callstack.back() = symbol_map.at(found.first).idx;
+        update_callstack(found_sym.first);
+        st.idx_callstack.back() = symbol_map.at(found_sym.first).idx;
     }
 }
 
@@ -123,12 +150,12 @@ void profiler_perf::catch_empty_callstack(
     }
 }
 
-void profiler_perf::update_callstack(uint32_t pc) {
+void profiler_perf::update_callstack(uint32_t next_pc) {
     // finish the current callstack
     inc_callstack_cnt();
     save_callstack_cnt();
     // start new callstack
-    set_fallthrough_symbol(pc);
+    set_fallthrough_symbol(next_pc);
     st.updated = true;
 }
 
@@ -150,12 +177,12 @@ void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
 }
 
 bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
-    auto found = find_symbol_in_range(next_pc);
-    return (found.second.idx != st.idx_callstack.back());
+    auto found_sym = find_symbol_in_range(next_pc);
+    return (found_sym.second.idx != st.idx_callstack.back());
 }
 
 std::pair<uint32_t, symbol_map_entry_t>
-profiler_perf::find_symbol_in_range(uint32_t next_pc) {
+    profiler_perf::find_symbol_in_range(uint32_t next_pc) {
     // find to which range does the next_pc belong
     std::pair<uint32_t, symbol_map_entry_t> found;
     for (const auto &sym : symbol_map) {
@@ -210,15 +237,18 @@ void profiler_perf::log_to_file_and_print(bool silent) {
     std::cout << "Profiler - Perf:\n"
               << INDENT << "Event: " << perf_event_names[TO_U32(perf_event)]
               << ", Samples: " << total_cnt << "\n";
+    if (diverged_cnt) {
+            std::cout << INDENT << "Warning: Stacktop divergence detected "
+                      << diverged_cnt << " times\n";
+    }
 }
 
-bool profiler_perf::dbg_check_top(uint32_t next_pc) {
-    std::string name;
+bool profiler_perf::match_top(uint32_t next_pc) {
+    uint16_t idx = 0;
     for (const auto &sym : symbol_map) {
-        if (next_pc >= sym.first) name = sym.second.name;
+        if (next_pc >= sym.first) idx = sym.second.idx;
         else break;
     }
-    name += ";";
-    std::string top = get_callstack_top_str();
-    return (name == top);
+    uint16_t top = {st.idx_callstack.back()};
+    return (idx == top);
 }

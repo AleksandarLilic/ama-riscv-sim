@@ -19,6 +19,7 @@ class profiler_perf {
         #ifdef DPI
         clock_source_t* clk_src;
         #endif
+        uint32_t diverged_cnt = 0;
 
     public:
         profiler_perf() = delete;
@@ -45,16 +46,13 @@ class profiler_perf {
             perf_event_flags[TO_U32(perf_event)] += 1;
         }
         void finish(bool silent) { log_to_file_and_print(silent); }
-
-        // debug helpers
-        bool dbg_check_top(uint32_t next_pc);
-        void dbg_pop_back() { st.idx_callstack.pop_back(); }
+        bool match_top(uint32_t next_pc);
 
     private:
         void inc_callstack_cnt();
         void save_callstack_cnt();
         void catch_empty_callstack(const std::string& inst, uint32_t next_pc);
-        void update_callstack(uint32_t pc);
+        void update_callstack(uint32_t next_pc);
         void set_fallthrough_symbol(uint32_t pc);
         bool symbol_change_on_jump(uint32_t next_pc);
         std::pair<uint32_t, symbol_map_entry_t>

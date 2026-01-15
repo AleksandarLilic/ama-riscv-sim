@@ -196,21 +196,12 @@ void core::single_step() {
     #ifdef PROFILERS_EN
     // rf changes only on retired instructions, no need to oversample from dpi
     prof.track_sp(rf[2]);
-    #ifndef DPI
-    // dpi calls its own save_trace_entry on every cycle
+    #ifndef DPI // dpi calls its own save_trace_entry on every cycle
     save_trace_entry();
     #endif
     #endif
 
     #ifdef DASM_EN
-    if (log_symbol && logf.act && !prof_perf.dbg_check_top(next_pc)) {
-        //log_ofstream << "would'be been mismatched callstack" << "\n";
-        // risky but very likely to work since tail calls can be missed
-        // TODO: should really be done on a callstack copy,
-        // this will crash the sim if it pops all functions from callstack
-        //std::cout << next_pc << "\n" << std::flush;
-        while (!prof_perf.dbg_check_top(next_pc)) prof_perf.dbg_pop_back();
-    }
     if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
