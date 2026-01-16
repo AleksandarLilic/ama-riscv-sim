@@ -49,7 +49,8 @@ MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany
 GCC_OPTS += -mstrict-align -mcsr-check
 GCC_OPTS += -static -fno-pic
-GCC_OPTS += -nostdlib -nostartfiles -ffreestanding -g
+GCC_OPTS += -nostdlib -nostartfiles -ffreestanding
+GCC_OPTS += -g
 
 # aligning code and data
 CACHE_LINE_BYTES := 64

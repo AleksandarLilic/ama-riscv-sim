@@ -7,6 +7,7 @@ CFLAGS += -DDHRY_ITERS=$(DHRY_ITERS)
 CFLAGS += -D_USE_NEWLIB
 CFLAGS += -DTIME -DNOENUM -Wno-implicit -fno-builtin-printf
 CFLAGS += -fno-common -falign-functions=4 -fno-inline
+CFLAGS += -mexplicit-relocs
 
 all: $(TARGET).elf
 
