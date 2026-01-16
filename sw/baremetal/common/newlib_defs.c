@@ -12,9 +12,13 @@ extern int errno;
 
 // subroutines as per https://sourceware.org/newlib/libc.html#Syscalls
 
-void _exit(int i) {
-    (void)i;
+void _exit(int status) {
+    asm volatile("add x30, x0, %0" : : "r"(status)); // store status in x30
+    pass();
+    //for (;;) asm volatile ("wfi");
+    //asm volatile ("ebreak");
     asm volatile ("ecall");
+    while(1);
 }
 
 int _close(int file) {
