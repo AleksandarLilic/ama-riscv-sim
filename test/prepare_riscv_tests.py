@@ -2,6 +2,7 @@
 
 import argparse
 import concurrent.futures
+import datetime
 import glob
 import json
 import os
@@ -32,6 +33,21 @@ def parse_args():
     parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
     parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
     return parser.parse_args()
+
+def print_runtime(start_time, process_name=''):
+    end_time = datetime.datetime.now()
+    elapsed_time = end_time - start_time
+    hours, remainder = divmod(elapsed_time.seconds, 3600)
+    minutes, seconds = divmod(remainder+1, 60) # rounds down, correct +1 for sec
+    print(
+        f"{process_name} runtime: " if process_name else "(",
+        f"{hours}h" if hours else "",
+        f"{minutes}m" if minutes else "",
+        f"{seconds}s",
+        "" if process_name else ")",
+        end="\n",
+        sep=''
+    )
 
 def run_make(make_cmd, cwd=None):
     make_status = subprocess.run(
@@ -88,12 +104,15 @@ args = parse_args()
 with open(args.testlist, 'r') as f:
     tests = json.load(f)
 
-print(f"Tests directories in json input config: {len(tests)}")
+print(f"Number of directories in the input config: {len(tests)}")
 
 # get "_common_args" if present
 common_args = tests.get("_common_args", [])
 
-out_txt = []
+start_time = datetime.datetime.now()
+print("Building tests...", end="", flush=True)
+
+test_paths = []
 hex_gen = ["HEX=1"] if args.hex else ["HEX=0"]
 # spawning processes is currently slower than threads; 'make' is called with -j
 #with concurrent.futures.ProcessPoolExecutor() as executor:
@@ -102,14 +121,15 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
         executor.submit(build_test, item, common_args):
         item for item in tests.items() if not item[0].startswith('_')
     }
-    print(f"Building RISC-V tests with {executor._max_workers} threads")
     for future in concurrent.futures.as_completed(futures):
         test_item = futures[future]
-        out_txt.extend(future.result()) # aggregate all elf files
+        test_paths.extend(future.result()) # aggregate all elf files
 
-isa_out_txt = []
+print(" Done")
+
+test_paths_isa = []
 if args.isa_tests:
-    print("Preparing ISA tests also")
+    print("Building ISA tests...", end="", flush=True)
     os.chdir(ISA_TEST_DIR)
     run_make(["make", "clean"])
     make_cmd = ["make", "-j"] + hex_gen
@@ -120,14 +140,18 @@ if args.isa_tests:
                              "MARCH=rv32im_zicsr_zifencei"]) # RV32M
         run_make(make_cmd + ["DIR=riscv-tests/isa/rv32uc/",
                              "MARCH=rv32ic_zicsr_zifencei"]) # RV32C
-        isa_out_txt = glob.glob(f"{ISA_TEST_DIR}/*.elf")
+        test_paths_isa = glob.glob(f"{ISA_TEST_DIR}/*.elf")
+    print(" Done")
 
 if args.clean_only:
     print("Cleaning done. Exiting.")
+    print_runtime(start_time, "Clean")
     exit(0)
 
 os.chdir(WORK_DIR)
-all_out_txt = isa_out_txt + out_txt
-print(f"Total RISC-V tests prepared: {len(all_out_txt)}")
+paths = test_paths_isa + test_paths
+print(f"Number of RISC-V tests built: {len(paths)}")
 with open("gtest_testlist.txt", 'w') as f:
-    f.write("\n".join(all_out_txt))
+    f.write("\n".join(paths))
+
+print_runtime(start_time, "Build")
