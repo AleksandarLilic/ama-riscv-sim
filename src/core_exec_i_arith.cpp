@@ -6,7 +6,7 @@ uint32_t core::alu_add(uint32_t a, uint32_t b) { return a + b; }
 uint32_t core::alu_sub(uint32_t a, uint32_t b) { return a - b; }
 uint32_t core::alu_sll(uint32_t a, uint32_t b) { return a << b; }
 uint32_t core::alu_srl(uint32_t a, uint32_t b) { return a >> b; }
-uint32_t core::alu_sra(uint32_t a, uint32_t b) { return TO_I32(a) >> (b&0x1f); }
+uint32_t core::alu_sra(uint32_t a, uint32_t b) { return TO_I32(a) >> b; }
 uint32_t core::alu_slt(uint32_t a, uint32_t b) { return TO_I32(a) < TO_I32(b); }
 uint32_t core::alu_sltu(uint32_t a, uint32_t b) { return a < b; }
 uint32_t core::alu_xor(uint32_t a, uint32_t b) { return a ^ b; }
