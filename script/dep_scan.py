@@ -8,12 +8,12 @@ from matplotlib.ticker import EngFormatter
 from run_analysis import icfg, rolling_mean
 from utils import INDENT, get_test_title, smarter_eng_formatter
 
-BRANCH_MNM = icfg.INST_T[icfg.BRANCH]
-STORE_MNM = icfg.INST_T_MEM[icfg.MEM_S]
-FENCE_MNM = icfg.INST_T[icfg.FENCE]
+BRANCH_MNM = icfg.INST_T[icfg.k_branch]
+STORE_MNM = icfg.INST_T_MEM[icfg.k_mem_s]
+FENCE_MNM = icfg.INST_T[icfg.k_fence]
 ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
 
-RDP_MNM = icfg.INST_T[icfg.WIDEN]
+RDP_MNM = icfg.INST_T[icfg.k_simd_widen] + icfg.INST_T[icfg.k_simd_wmul]
 
 MNM_ANY = "_any_"
 

@@ -52,9 +52,9 @@ pca = pca % IC_SIZE
 df_im = pd.DataFrame(inst_map, columns=['pc', 'inst', 'mnm', 'full_asm'])
 df_im['CL'] = (df_im.pc - BASE_ADDR) // IC_SIZE
 # create a boolean column indicating whether the mnm is in given array
-df_im['is_branch'] = df_im['mnm'].isin(icfg.INST_T[icfg.BRANCH])
-df_im['is_jump_d'] = df_im['mnm'].isin(icfg.INST_T_JUMP[icfg.JUMP_DIRECT])
-df_im['is_jump_i'] = df_im['mnm'].isin(icfg.INST_T_JUMP[icfg.JUMP_INDIRECT])
+df_im['is_branch'] = df_im['mnm'].isin(icfg.INST_T[icfg.k_branch])
+df_im['is_jump_d'] = df_im['mnm'].isin(icfg.INST_T_JUMP[icfg.k_jump_direct])
+df_im['is_jump_i'] = df_im['mnm'].isin(icfg.INST_T_JUMP[icfg.k_jump_indirect])
 
 branch_dist = df_im.groupby('CL').agg({'is_branch': 'sum'}).reset_index()
 branch_dist = branch_dist.rename(columns={'is_branch': 'num_branches'})

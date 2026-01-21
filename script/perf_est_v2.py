@@ -19,15 +19,15 @@ from utils import DELIM, INDENT, smarter_eng_formatter
 # | >0  | >0  | 1RW     | - as above, and contention with IMEM read
 
 class perf:
-    b_inst_a = icfg.INST_T[icfg.BRANCH]
-    j_inst_a = icfg.INST_T[icfg.JUMP]
-    ld_inst_a = icfg.INST_T_MEM[icfg.MEM_L]
-    st_inst_a = icfg.INST_T_MEM[icfg.MEM_S]
-    scp_inst_a = icfg.INST_T[icfg.MEM_HINTS]
-    mul_inst_a = icfg.INST_T[icfg.MUL]
-    div_inst_a = icfg.INST_T[icfg.DIV]
-    dot_inst_a = icfg.INST_T_SIMD[icfg.SIMD_DOT]
-    csr_inst_a = icfg.INST_T[icfg.CSR]
+    b_inst_a = icfg.INST_T[icfg.k_branch]
+    j_inst_a = icfg.INST_T[icfg.k_jump]
+    ld_inst_a = icfg.INST_T_MEM[icfg.k_mem_l]
+    st_inst_a = icfg.INST_T_MEM[icfg.k_mem_s]
+    scp_inst_a = icfg.INST_T[icfg.k_mem_hint]
+    mul_inst_a = icfg.INST_T[icfg.k_mul]
+    div_inst_a = icfg.INST_T[icfg.k_div]
+    dot_inst_a = icfg.INST_T_SIMD[icfg.k_simd_dot]
+    csr_inst_a = icfg.INST_T[icfg.k_csr]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
         "bpred", "icache", "dcache",
@@ -179,13 +179,13 @@ class perf:
         # that uses rd of that instruction as its rs1/2
         if (use_dep_analysis):
             self.hazards["dmem"] = find_hazards(
-                fmt(icfg.INST_T_MEM[icfg.MEM_L]), hazard_penalty['dmem'])
+                fmt(icfg.INST_T_MEM[icfg.k_mem_l]), hazard_penalty['dmem'])
             self.hazards["mul"] = find_hazards(
-                fmt(icfg.INST_T[icfg.MUL]), hazard_penalty['mul'])
+                fmt(icfg.INST_T[icfg.k_mul]), hazard_penalty['mul'])
             self.hazards["div"] = find_hazards(
-                fmt(icfg.INST_T[icfg.DIV]), hazard_penalty['div'])
+                fmt(icfg.INST_T[icfg.k_div]), hazard_penalty['div'])
             self.hazards["dot"] = find_hazards(
-                fmt(icfg.INST_T_SIMD[icfg.SIMD_DOT]), hazard_penalty['dot'])
+                fmt(icfg.INST_T_SIMD[icfg.k_simd_dot]), hazard_penalty['dot'])
 
         else: # otherwise, estimate based on instruction count (pessimistic)
             self.hazards["dmem"] = \

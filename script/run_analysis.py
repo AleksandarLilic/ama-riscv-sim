@@ -55,61 +55,63 @@ CLR_HL = [
 CLR_TAB_BLUE = "tab:blue"
 
 class icfg:
-    ALU = "ALU"
-    MUL = "MUL"
-    DIV = "DIV/REM"
-    BITMANIP = "BITMANIP"
-    SIMD = "SIMD"
-    SIMD_DOT = "SIMD_DOT"
-    SIMD_ADD_SUB = "SIMD_ADD_SUB"
-    SIMD_MIN_MAX = "SIMD_MIN_MAX"
-    SIMD_SHIFT = "SIMD_SHIFT"
-    SIMD_WMUL = "SIMD_WMUL"
-    WIDEN = "WIDEN"
-    MEM = "MEM"
-    MEM_HINTS = "MEM_HINTS"
-    BRANCH = "BRANCH"
-    JUMP_DIRECT = "JUMP_DIRECT"
-    JUMP_INDIRECT = "JUMP_INDIRECT"
-    JUMP = "JUMP"
-    CSR = "CSR"
-    ENV = "ENV"
-    NOP = "NOP"
-    FENCE = "FENCE"
-    MEM_S = "MEM_S"
-    MEM_L = "MEM_L"
+    # keys for instruction types
+    k_alu = "ALU"
+    k_mul = "MUL"
+    k_div = "DIV/REM"
+    k_bitmanip = "BITMANIP"
+    k_simd = "SIMD"
+    k_simd_dot = "SIMD_DOT"
+    k_simd_add_sub = "SIMD_ADD_SUB"
+    k_simd_min_max = "SIMD_MIN_MAX"
+    k_simd_shift = "SIMD_SHIFT"
+    k_simd_wmul = "SIMD_WMUL"
+    k_simd_widen = "SIMD_WIDEN"
+    k_mem = "MEM"
+    k_mem_hint = "MEM_HINTS"
+    k_branch = "BRANCH"
+    k_jump_direct = "JUMP_DIRECT"
+    k_jump_indirect = "JUMP_INDIRECT"
+    k_jump = "JUMP"
+    k_csr = "CSR"
+    k_env = "ENV"
+    k_nop = "NOP"
+    k_fence = "FENCE"
+    k_mem_s = "MEM_S"
+    k_mem_l = "MEM_L"
 
+    # instruction groupings
     INST_T_MEM = {
-        MEM_S: ["sb", "sh", "sw", "c.swsp", "c.sw"],
-        MEM_L: ["lb", "lh", "lw", "lbu", "lhu", "c.lwsp", "c.lw", "c.li"],
+        k_mem_s: ["sb", "sh", "sw", "c.swsp", "c.sw"],
+        k_mem_l: ["lb", "lh", "lw", "lbu", "lhu", "c.lwsp", "c.lw", "c.li"],
     }
 
     INST_T_SIMD = {
-        SIMD_ADD_SUB: [
+        k_simd_add_sub: [
             "add16", "add8", "sub16", "sub8",
             "qadd16", "qadd16u", "qadd8", "qadd8u",
             "qsub16", "qsub16u", "qsub8", "qsub8u",
         ],
-        SIMD_WMUL: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
-        SIMD_DOT: [
+        k_simd_wmul: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
+        k_simd_dot: [
             "dot16", "dot16u", "dot8", "dot8u", "dot4", "dot4u", "dot2", "dot2u"
         ],
-        SIMD_MIN_MAX: [
+        k_simd_min_max: [
             "min16", "min16u", "min8", "min8u",
             "max16", "max16u", "max8", "max8u",
         ],
-        SIMD_SHIFT: [
+        k_simd_shift: [
             "slli16", "slli8", "srli16", "srli8", "srai16", "srai8",
         ],
     }
 
     INST_T_JUMP = {
-        JUMP_DIRECT: ["jal", "c.j", "c.jal"],
-        JUMP_INDIRECT: ["jalr", "c.jr", "c.jalr"],
+        k_jump_direct: ["jal", "c.j", "c.jal"],
+        k_jump_indirect: ["jalr", "c.jr", "c.jalr"],
     }
 
     INST_T = {
-        ALU: [
+        k_alu: [
             "add", "sub", "sll", "srl", "sra", "slt", "sltu", "xor", "or","and",
             "addi", "slli", "srli", "srai", "slti", "sltiu","xori","ori","andi",
             "lui", "auipc",
@@ -118,32 +120,35 @@ class icfg:
             "c.mv",
             "c.lui",
         ],
-        MUL: ["mul", "mulh", "mulsu", "mulu"],
-        DIV: ["div", "divu", "rem", "remu"],
-        BITMANIP: ["max", "maxu", "min", "minu"],
-        SIMD: INST_T_SIMD[SIMD_ADD_SUB] + \
-              INST_T_SIMD[SIMD_WMUL] + \
-              INST_T_SIMD[SIMD_DOT] + \
-              INST_T_SIMD[SIMD_MIN_MAX] + \
-              INST_T_SIMD[SIMD_SHIFT],
-        WIDEN: [
+        k_mul: ["mul", "mulh", "mulsu", "mulu"],
+        k_div: ["div", "divu", "rem", "remu"],
+        k_bitmanip: ["max", "maxu", "min", "minu"],
+        k_simd: INST_T_SIMD[k_simd_add_sub] + \
+              INST_T_SIMD[k_simd_wmul] + \
+              INST_T_SIMD[k_simd_dot] + \
+              INST_T_SIMD[k_simd_min_max] + \
+              INST_T_SIMD[k_simd_shift],
+        k_simd_widen: [
             "widen16", "widen16u", "widen8", "widen8u",
             "widen4", "widen4u", "widen2", "widen2u",
         ],
-        MEM: INST_T_MEM[MEM_S] + INST_T_MEM[MEM_L],
-        MEM_HINTS: ["scp.ld", "scp.rel"],
-        BRANCH: ["beq", "bne", "blt", "bge", "bltu", "bgeu", "c.beqz","c.bnez"],
-        JUMP: INST_T_JUMP[JUMP_DIRECT] + INST_T_JUMP[JUMP_INDIRECT],
-        CSR: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
-        ENV: ["ecall", "ebreak", "c.ebreak"],
-        NOP: ["nop", "c.nop"],
-        FENCE: ["fence", "fence.i"],
+        k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
+        k_mem_hint: ["scp.ld", "scp.rel"],
+        k_branch: [
+            "beq", "bne", "blt", "bge", "bltu", "bgeu",
+            "c.beqz", "c.bnez"
+        ],
+        k_jump: INST_T_JUMP[k_jump_direct] + INST_T_JUMP[k_jump_indirect],
+        k_csr: ["csrrw", "csrrs", "csrrc", "csrrwi", "csrrsi", "csrrci"],
+        k_env: ["ecall", "ebreak", "c.ebreak"],
+        k_nop: ["nop", "c.nop"],
+        k_fence: ["fence", "fence.i"],
     }
 
-    INST_T_SIMD_Z = INST_T[SIMD] + INST_T[WIDEN]
+    INST_T_SIMD_Z = INST_T[k_simd] + INST_T[k_simd_widen]
     OPS_PER_INST = {
-        1: INST_T[ALU] + INST_T[MEM] +
-           INST_T[MUL] + INST_T[DIV] + INST_T[BITMANIP],
+        1: INST_T[k_alu] + INST_T[k_mem] +
+           INST_T[k_mul] + INST_T[k_div] + INST_T[k_bitmanip],
         2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
         4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)] +
            ['dot16'], # 2x mul, 1x sum, 1x acc
@@ -154,7 +159,7 @@ class icfg:
         32: ['dot2'], # 16x mul, 15x sum, 1x acc
     }
 
-    BRANCH_DENSITY = { 1: INST_T[BRANCH] + INST_T[JUMP] }
+    BRANCH_DENSITY = { 1: INST_T[k_branch] + INST_T[k_jump] }
 
     ALL_INST = np.concatenate(list(INST_T.values())).tolist()
     ALL_INST_TYPES = list(INST_T.keys())
@@ -183,41 +188,41 @@ class icfg:
 
     # groups of instructions to highlight by default
     HL_DEFAULT = [
-        INST_T[MEM],
-        INST_T[BRANCH],
-        INST_T[JUMP],
-        INST_T[MUL] + INST_T[DIV],
-        INST_T[SIMD],
-        INST_T[WIDEN]
+        INST_T[k_mem],
+        INST_T[k_branch],
+        INST_T[k_jump],
+        INST_T[k_mul] + INST_T[k_div],
+        INST_T[k_simd],
+        INST_T[k_simd_widen]
     ]
 
     HL_COLORS_OPS = {
-        ALU: CLR_TAB_BLUE,
-        MEM: CLR_HL[0], # turquoise
-        MUL: CLR_HL[3], # persian red
-        DIV: CLR_HL[2], # sandy brown
-        SIMD: CLR_HL[4], # myrtle green
-        WIDEN: CLR_HL[5], # lavander (floral)
+        k_alu: CLR_TAB_BLUE,
+        k_mem: CLR_HL[0], # turquoise
+        k_mul: CLR_HL[3], # persian red
+        k_div: CLR_HL[2], # sandy brown
+        k_simd: CLR_HL[4], # myrtle green
+        k_simd_widen: CLR_HL[5], # lavander (floral)
         # separate chart
-        BRANCH: CLR_HL[0], # peach yellow
-        JUMP: CLR_HL[3], # persian red
+        k_branch: CLR_HL[0], # peach yellow
+        k_jump: CLR_HL[3], # persian red
     }
 
     HL_COLORS_OPS_U = { # unified for single chart
-        ALU: CLR_TAB_BLUE,
-        MEM: CLR_HL[0], # turquoise
-        BRANCH: CLR_HL[1], # peach yellow
-        JUMP: CLR_HL[2], # sandy brown
-        MUL: CLR_HL[3], # persian red
+        k_alu: CLR_TAB_BLUE,
+        k_mem: CLR_HL[0], # turquoise
+        k_branch: CLR_HL[1], # peach yellow
+        k_jump: CLR_HL[2], # sandy brown
+        k_mul: CLR_HL[3], # persian red
         #DIV: CLR_HL[2], # sandy brown
-        SIMD: CLR_HL[4], # myrtle green
-        WIDEN: CLR_HL[5], # lavander (floral)
+        k_simd: CLR_HL[4], # myrtle green
+        k_simd_widen: CLR_HL[5], # lavander (floral)
     }
 
     # memory instructions breakdown store vs load
     INST_MEM_BD = {
-        MEM_L : ["Load", CLR["blue_l1"]],
-        MEM_S : ["Store", CLR["blue_l2"]],
+        k_mem_l : ["Load", CLR["blue_l1"]],
+        k_mem_s : ["Store", CLR["blue_l2"]],
     }
 
 # common functions
@@ -956,7 +961,7 @@ def plot_ipc(ax, df) -> None:
 
 def plot_stat(
     ax, x, y, unit, win_size, metric, agg='sum',
-    clr=CLR_TAB_BLUE, yscale=1, allow_zero=False) -> None:
+    clr="def", yscale=1, allow_zero=False) -> None:
 
     LW_OFF = .65
     lw = progressive_lw(len(y)) * LW_OFF
@@ -977,8 +982,11 @@ def plot_stat(
     if agg != '': # label it
         label += f": {fmt.format_eng(x_agg)}"
 
-    line, = ax.plot(y, xr, lw=lw, color=clr)
-    plot_dummy_line(ax, clr, 1.5, label)
+    if clr == "def": color = CLR_TAB_BLUE
+    elif clr == "lut": color=icfg.HL_COLORS_OPS[metric]
+    else: color=clr
+    line, = ax.plot(y, xr, lw=lw, color=color)
+    plot_dummy_line(ax, color, 1.5, label)
     on_xlim_changed_default(ax, line, LW_OFF)
 
     ax.yaxis.set_major_locator(MaxNLocator(nbins=4, integer=True, prune=None))
@@ -1526,18 +1534,18 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     win_s = args.win_size_stats
     win_hw = args.win_size_hw
     y = df.smp
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.ALU, 0), y,
-              'ops', win_s, 'ALU', clr=icfg.HL_COLORS_OPS[icfg.ALU])
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.MUL, 0), y,
-              'ops', win_s, 'MUL', clr=icfg.HL_COLORS_OPS[icfg.MUL])
-    #plot_stat(ax_ops, df.ops.where(df.i_type==icfg.DIV, 0), y,
-    #          'ops', win_s, 'DIV', clr=icfg.HL_COLORS_OPS[icfg.DIV])
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.MEM, 0), y,
-              'ops', win_s, 'MEM', clr=icfg.HL_COLORS_OPS[icfg.MEM])
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.SIMD, 0), y,
-              'ops', win_s, 'SIMD', clr=icfg.HL_COLORS_OPS[icfg.SIMD])
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.WIDEN, 0), y,
-              'ops', win_s, 'WIDEN', clr=icfg.HL_COLORS_OPS[icfg.WIDEN])
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_alu, 0), y,
+              'ops', win_s, icfg.k_alu, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mul, 0), y,
+              'ops', win_s, icfg.k_mul, clr="lut")
+    #plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_div, 0), y,
+    #          'ops', win_s, icfg.k_div, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mem, 0), y,
+              'ops', win_s, icfg.k_mem, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd, 0), y,
+              'ops', win_s, icfg.k_simd, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_widen, 0), y,
+              'ops', win_s, icfg.k_simd_widen, clr="lut")
 
     plot_hw_hm(ax_bp, df, 'bp', win_hw)
     plot_hw_hm(ax_ic, df, 'ic', win_hw)
@@ -1565,10 +1573,10 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         plot_stat(ax_ct_d2m, df.ct_dmem_mem_w, y, 'B/s', win_s,
                   'Write', agg=agg_ct, clr=w_clr, yscale=s, allow_zero=True)
     else:
-        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.BRANCH, 0), y,
-                  'ops', win_s, 'BRANCH', clr=icfg.HL_COLORS_OPS[icfg.BRANCH])
-        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.JUMP, 0), y,
-                  'ops', win_s, 'JUMP', clr=icfg.HL_COLORS_OPS[icfg.JUMP])
+        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.k_branch, 0), y,
+                  'ops', win_s, icfg.k_branch, clr="lut")
+        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.k_jump, 0), y,
+                  'ops', win_s, icfg.k_jump, clr="lut")
 
     # update axis
     # x
