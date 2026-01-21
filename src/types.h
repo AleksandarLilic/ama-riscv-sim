@@ -113,6 +113,7 @@ enum class custom_op_t {
     type_wmul = 0x02,
     type_dot = 0x03,
     type_min_max = 0x04,
+    type_shift = 0x06,
     type_data_fmt_widen = 0x20,
     type_hints = 0x7f,
 };
@@ -137,6 +138,7 @@ enum class aluq_custom_op_t {
 
 enum class alu_add_sub_op_t { add, sub };
 enum class alu_min_max_op_t { min, max };
+enum class alu_shift_op_t { left, right };
 
 enum class alu_mul_custom_op_t {
     op_wmul16 = 0x0,
@@ -165,6 +167,15 @@ enum class alu_min_max_custom_op_t {
     op_max16u = 0x5,
     op_max8 = 0x6,
     op_max8u = 0x7,
+};
+
+enum class alu_shift_custom_op_t {
+    op_slli16 = 0x0,
+    op_slli8 = 0x2,
+    op_srli16 = 0x4,
+    op_srli8 = 0x6,
+    op_srai16 = 0x5,
+    op_srai8 = 0x7,
 };
 
 enum class data_fmt_custom_op_t {

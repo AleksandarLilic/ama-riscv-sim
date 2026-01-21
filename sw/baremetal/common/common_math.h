@@ -203,8 +203,8 @@ void v_store_uint2x16(uint8_t* p, uint2x16_t x) {
 // SIMD asm wrapper functions (aka intrinsics lite)
 // -----------------------------------------------------------------------------
 
-// add & sub
-// wrap-around
+// -----------------------------------------------------------------------------
+// add & sub: wrap-around
 static INLINE
 int16x2_t _add16(const int16x2_t a, const int16x2_t b) {
     int16x2_t c;
@@ -233,7 +233,8 @@ int8x4_t _sub8(const int8x4_t a, const int8x4_t b) {
     return c;
 }
 
-// saturating
+// -----------------------------------------------------------------------------
+// add & sub: saturating
 static INLINE
 int16x2_t _qadd16(const int16x2_t a, const int16x2_t b) {
     int16x2_t c;
@@ -290,6 +291,7 @@ uint8x4_t _qsub8u(const uint8x4_t a, const uint8x4_t b) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
 // mul and mul unsigned
 static INLINE
 int32x2_t _wmul16(const int16x2_t a, const int16x2_t b) {
@@ -319,6 +321,7 @@ uint16x4_t _wmul8u(const uint8x4_t a, const uint8x4_t b) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
 // dot product
 static INLINE
 void _dot16(const int16x2_t a, const int16x2_t b, int32_t* c) {
@@ -360,6 +363,7 @@ void _dot2u(const uint2x16_t a, const uint2x16_t b, int32_t* c) {
     asm volatile("dot2u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
+// -----------------------------------------------------------------------------
 // compare
 static INLINE
 int16x2_t _min16(const int16x2_t a, const int16x2_t b) {
@@ -417,6 +421,51 @@ uint8x4_t _max8u(const uint8x4_t a, const uint8x4_t b) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
+// shift
+static INLINE
+int16x2_t _slli16(const int16x2_t a, const int32_t imm) {
+    int16x2_t c;
+    asm volatile("slli16 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+static INLINE
+int8x4_t _slli8(const int8x4_t a, const int32_t imm) {
+    int8x4_t c;
+    asm volatile("slli8 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+static INLINE
+int16x2_t _srli16(const int16x2_t a, const int32_t imm) {
+    int16x2_t c;
+    asm volatile("srli16 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+static INLINE
+int8x4_t _srli8(const int8x4_t a, const int32_t imm) {
+    int8x4_t c;
+    asm volatile("srli8 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+static INLINE
+int16x2_t _srai16(const int16x2_t a, const int32_t imm) {
+    int16x2_t c;
+    asm volatile("srai16 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+static INLINE
+int8x4_t _srai8(const int8x4_t a, const int32_t imm) {
+    int8x4_t c;
+    asm volatile("srai8 %0, %1, %2" : "=r"(c) : "r"(a), "i"(imm));
+    return c;
+}
+
+// -----------------------------------------------------------------------------
 // data formatting - widen
 static INLINE
 int32x2_t _widen16(const int16x2_t a) {

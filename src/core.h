@@ -62,6 +62,7 @@ class core {
         void simd_ss_append(int32_t a);
         void simd_ss_append(int32_t a, int32_t b);
         void simd_ss_append(int32_t c, int32_t a, int32_t b);
+        void simd_ss_append_imm(int32_t c, int32_t a, size_t w);
         void simd_ss_finish(std::string a);
         void simd_ss_finish(std::string a, std::string b, int32_t res);
         void simd_ss_finish(
@@ -231,6 +232,13 @@ class core {
         uint32_t alu_c_max16u(uint32_t a, uint32_t b);
         uint32_t alu_c_max8(uint32_t a, uint32_t b);
         uint32_t alu_c_max8u(uint32_t a, uint32_t b);
+        // custom extension - shift
+        uint32_t alu_c_slli16(uint32_t a, uint32_t shamt);
+        uint32_t alu_c_slli8(uint32_t a, uint32_t shamt);
+        uint32_t alu_c_srli16(uint32_t a, uint32_t shamt);
+        uint32_t alu_c_srli8(uint32_t a, uint32_t shamt);
+        uint32_t alu_c_srai16(uint32_t a, uint32_t shamt);
+        uint32_t alu_c_srai8(uint32_t a, uint32_t shamt);
 
         // custom extension - memory operations
         reg_pair data_fmt_c_widen16(uint32_t a);
@@ -287,6 +295,8 @@ class core {
             uint32_t alu_c_add_sub_op(uint32_t a, uint32_t b);
         template <int vbits, bool vsigned, alu_min_max_op_t op>
             uint32_t alu_c_min_max_op(uint32_t a, uint32_t b);
+        template <size_t vbits, bool arith, alu_shift_op_t op>
+            uint32_t alu_c_shift_op(uint32_t a, uint32_t shamt);
 
         // interrupts
         // TODO

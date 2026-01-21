@@ -738,6 +738,18 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("alu_min_max_custom"); return;
             }
             break;
+        case TO_U8(custom_op_t::type_shift):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_SHIFT_CUSTOM_OP(slli16, alu)
+                CASE_SHIFT_CUSTOM_OP(slli8, alu)
+                CASE_SHIFT_CUSTOM_OP(srli16, alu)
+                CASE_SHIFT_CUSTOM_OP(srli8, alu)
+                CASE_SHIFT_CUSTOM_OP(srai16, alu)
+                CASE_SHIFT_CUSTOM_OP(srai8, alu)
+                default: tu.e_unsupported_inst("alu_shift_custom"); return;
+            }
+            break;
         case TO_U8(custom_op_t::type_data_fmt_widen):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
@@ -773,6 +785,10 @@ void core::d_custom_ext() {
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;
             if (paired_arith) DASM_RD_UPDATE_PAIR;
+            break;
+        case TO_U8(custom_op_t::type_shift):
+            DASM_OP_RD << "," << DASM_OP_RS1 << "," FHEXN(ip.rs2(), 2);
+            DASM_RD_UPDATE;
             break;
         case TO_U8(custom_op_t::type_data_fmt_widen):
             DASM_OP_RD << "," << DASM_OP_RS1;

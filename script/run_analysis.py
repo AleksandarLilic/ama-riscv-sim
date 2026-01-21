@@ -63,6 +63,7 @@ class icfg:
     SIMD_DOT = "SIMD_DOT"
     SIMD_ADD_SUB = "SIMD_ADD_SUB"
     SIMD_MIN_MAX = "SIMD_MIN_MAX"
+    SIMD_SHIFT = "SIMD_SHIFT"
     SIMD_WMUL = "SIMD_WMUL"
     WIDEN = "WIDEN"
     MEM = "MEM"
@@ -97,6 +98,9 @@ class icfg:
             "min16", "min16u", "min8", "min8u",
             "max16", "max16u", "max8", "max8u",
         ],
+        SIMD_SHIFT: [
+            "slli16", "slli8", "srli16", "srli8", "srai16", "srai8",
+        ],
     }
 
     INST_T_JUMP = {
@@ -118,9 +122,10 @@ class icfg:
         DIV: ["div", "divu", "rem", "remu"],
         BITMANIP: ["max", "maxu", "min", "minu"],
         SIMD: INST_T_SIMD[SIMD_ADD_SUB] + \
-                INST_T_SIMD[SIMD_WMUL] + \
-                INST_T_SIMD[SIMD_DOT] + \
-                INST_T_SIMD[SIMD_MIN_MAX],
+              INST_T_SIMD[SIMD_WMUL] + \
+              INST_T_SIMD[SIMD_DOT] + \
+              INST_T_SIMD[SIMD_MIN_MAX] + \
+              INST_T_SIMD[SIMD_SHIFT],
         WIDEN: [
             "widen16", "widen16u", "widen8", "widen8u",
             "widen4", "widen4u", "widen2", "widen2u",

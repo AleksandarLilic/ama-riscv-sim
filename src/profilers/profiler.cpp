@@ -94,6 +94,13 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(max16u);
     P_INIT(max8u);
 
+    P_INIT(slli16);
+    P_INIT(slli8);
+    P_INIT(srli16);
+    P_INIT(srli8);
+    P_INIT(srai16);
+    P_INIT(srai8);
+
     P_INIT(widen16);
     P_INIT(widen16u);
     P_INIT(widen8);
