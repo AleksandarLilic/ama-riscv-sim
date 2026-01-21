@@ -2,15 +2,15 @@
 #include "core.h"
 #include "core_exec_custom_simd.h"
 
-template <int vbits, bool vsigned>
+template <size_t vbits, bool vsigned>
 uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
-    constexpr int e = (32 / vbits);
+    constexpr size_t e = (32 / vbits);
     int32_t res = 0;
     #ifdef DASM_EN
     simd_ss_init("[ ", "[ ");
     #endif
 
-    for (int i = 0; i < e; i++) {
+    for (size_t i = 0; i < e; i++) {
         int32_t val_a = extract_val<vbits, vsigned>(a);
         int32_t val_b = extract_val<vbits, vsigned>(b);
 

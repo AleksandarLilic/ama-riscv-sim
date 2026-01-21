@@ -289,11 +289,11 @@ class core {
         void c_ebreak();
 
         // templates
-        template <int vbits, bool vsigned>
+        template <size_t vbits, bool vsigned>
             uint32_t alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c);
-        template <int vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
+        template <size_t vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
             uint32_t alu_c_add_sub_op(uint32_t a, uint32_t b);
-        template <int vbits, bool vsigned, alu_min_max_op_t op>
+        template <size_t vbits, bool vsigned, alu_min_max_op_t op>
             uint32_t alu_c_min_max_op(uint32_t a, uint32_t b);
         template <size_t vbits, bool arith, alu_shift_op_t op>
             uint32_t alu_c_shift_op(uint32_t a, uint32_t shamt);

@@ -2,7 +2,7 @@
 #include "core.h"
 #include "core_exec_custom_simd.h"
 
-template <int vbits, bool vsigned>
+template <size_t vbits, bool vsigned>
 constexpr int32_t get_limit(bool max) {
     if constexpr (vsigned) {
         // e.g. 8-bit signed: max 127, min -128
@@ -14,9 +14,9 @@ constexpr int32_t get_limit(bool max) {
 }
 
 // covers: add/sub, signed/unsigned, saturating/wrapping, any bit width
-template <int vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
+template <size_t vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
 uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
-    constexpr int e = (32 / vbits);
+    constexpr size_t e = (32 / vbits);
     constexpr uint32_t mask = ((1U << vbits) - 1);
     constexpr int32_t max_val = get_limit<vbits, vsigned>(true);
     constexpr int32_t min_val = get_limit<vbits, vsigned>(false);
@@ -26,7 +26,7 @@ uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
     simd_ss_init("[ ", "[ ", "[ ");
     #endif
 
-    for (int i = 0; i < e; i++) {
+    for (size_t i = 0; i < e; i++) {
         int32_t val_a = extract_val<vbits, vsigned>(a);
         int32_t val_b = extract_val<vbits, vsigned>(b);
 

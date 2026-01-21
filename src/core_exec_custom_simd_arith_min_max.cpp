@@ -3,9 +3,9 @@
 #include "core_exec_custom_simd.h"
 
 // covers: min/max, signed/unsigned, any bit width
-template <int vbits, bool vsigned, alu_min_max_op_t op>
+template <size_t vbits, bool vsigned, alu_min_max_op_t op>
 uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
-    constexpr int e = (32 / vbits);
+    constexpr size_t e = (32 / vbits);
     constexpr uint32_t mask = ((1U << vbits) - 1);
     uint32_t res_packed = 0;
 
@@ -13,7 +13,7 @@ uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
     simd_ss_init("[ ", "[ ", "[ ");
     #endif
 
-    for (int i = 0; i < e; i++) {
+    for (size_t i = 0; i < e; i++) {
         int32_t val_a = extract_val<vbits, vsigned>(a);
         int32_t val_b = extract_val<vbits, vsigned>(b);
         int32_t res;
