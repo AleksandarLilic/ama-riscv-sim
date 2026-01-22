@@ -297,6 +297,8 @@ class core {
             uint32_t alu_c_min_max_op(uint32_t a, uint32_t b);
         template <size_t vbits, bool arith, alu_shift_op_t op>
             uint32_t alu_c_shift_op(uint32_t a, uint32_t shamt);
+        template <int vbits, bool vsigned>
+            reg_pair data_fmt_c_widen_t(uint32_t a);
 
         // interrupts
         // TODO
