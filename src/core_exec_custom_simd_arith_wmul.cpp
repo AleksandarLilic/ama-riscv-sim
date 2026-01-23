@@ -1,114 +1,80 @@
 #include "defines.h"
 #include "core.h"
+#include "core_exec_custom_simd.h"
 
-reg_pair core::alu_c_wmul16(uint32_t a, uint32_t b) {
-    // multiply 2 halfword chunks into 2 32-bit results
-    int32_t words[2];
+template <size_t vbits, bool vsigned>
+reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
+    // multiply n-bit elements to 2n-bit results
+    // e.g., 16-bit * 16-bit -> 32-bit result
+    constexpr size_t e = (32 / vbits);
+    constexpr size_t out_bits = (vbits * 2);
+    constexpr size_t half_e = (e / 2);
+    constexpr uint32_t mask = ((1ULL << out_bits) - 1);
+
+    int32_t results[e];
+
     #ifdef DASM_EN
     simd_ss_init("[ ", "[ ", "[ ");
     #endif
 
-    for (auto &word : words) {
-        word = TO_I32(TO_I16(a & 0xffff)) * TO_I32(TO_I16(b & 0xffff));
+    // extract inputs and multiply
+    for (size_t i = 0; i < e; i++) {
+        int32_t val_a = extract_val<vbits, vsigned>(a);
+        int32_t val_b = extract_val<vbits, vsigned>(b);
+
+        // standard 32-bit multiply is sufficient for max 16x16 case
+        results[i] = (val_a * val_b);
+
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(TO_I16(a & 0xffff)), TO_I32(TO_I16(b & 0xffff)));
+        simd_ss_append(val_a, val_b);
         #endif
-        a >>= 16;
-        b >>= 16;
+
+        a >>= vbits;
+        b >>= vbits;
     }
 
     #ifdef DASM_EN
-    dasm.simd_c << TO_I32(words[0]) << " ], [ " << TO_I32(words[1]);
-    simd_ss_finish(" ]", "]", "]");
+    // format the result string: [ r0 r1 ], [ r2 r3 ]
+    dasm.simd_a << "]";
+    dasm.simd_b << "]";
+
+    for (size_t i = 0; i < e; i++) {
+        dasm.simd_c << results[i];
+        // add separators at the split point (between reg words) and end
+        if (i == half_e - 1) dasm.simd_c << " ], [ ";
+        else if (i == e - 1) dasm.simd_c << " ]";
+        else dasm.simd_c << " ";
+    }
+    simd_ss_finish("", "", "");
     #endif
 
-    return {TO_U32(words[0]), TO_U32(words[1])};
+    //  pack results into two 32-bit words
+    uint32_t words[2] = {0, 0};
+    for (size_t i = 0; i < e; i++) {
+        // determine which output word (0 or 1) gets this element
+        size_t w_idx = (i / half_e);
+        // calculate bit offset within that word
+        size_t shift = ((i % half_e) * out_bits);
+        // mask result to output width and shift into place
+        words[w_idx] |= ((static_cast<uint32_t>(results[i]) & mask) << shift);
+    }
+
+    return {words[0], words[1]};
+}
+
+// instantiations
+reg_pair core::alu_c_wmul16(uint32_t a, uint32_t b) {
+    return alu_c_wmul_op<16, true>(a, b);
 }
 
 reg_pair core::alu_c_wmul16u(uint32_t a, uint32_t b) {
-    // multiply 2 halfword chunks into 2 32-bit results
-    uint32_t words[2];
-    #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", "[ ");
-    #endif
-
-    for (auto &word : words) {
-        word = TO_U32(TO_U16(a & 0xffff)) * TO_U32(TO_U16(b & 0xffff));
-        #ifdef DASM_EN
-        simd_ss_append(TO_U32(TO_U16(a & 0xffff)), TO_U32(TO_U16(b & 0xffff)));
-        #endif
-        a >>= 16;
-        b >>= 16;
-    }
-
-    #ifdef DASM_EN
-    dasm.simd_c << TO_U32(words[0]) << " ], [ " << TO_U32(words[1]);
-    simd_ss_finish(" ]", "]", "]");
-    #endif
-
-    return {words[0], words[1]};
+    return alu_c_wmul_op<16, false>(a, b);
 }
 
-reg_pair core::alu_c_wmul8(uint32_t a, uint32_t b) {
-    // multiply 4 byte chunks into 2 32-bit results
-    int16_t halves[4];
-    #ifdef DASM_EN
-    simd_ss_init("", "[ ", "[ ");
-    #endif
-
-    for (auto &half : halves) {
-        half = TO_I16(TO_I8(a & 0xff)) * TO_I16(TO_I8(b & 0xff));
-        #ifdef DASM_EN
-        simd_ss_append(TO_I16(TO_I8(a & 0xff)), TO_I16(TO_I8(b & 0xff)));
-        #endif
-        a >>= 8;
-        b >>= 8;
-    }
-
-    #ifdef DASM_EN
-    dasm.simd_c << "[ " << TO_I32(TO_I16(halves[0]) & 0xFFFF) << " "
-                << TO_I32(TO_I16(halves[1]) & 0xFFFF) << " ], "
-                << "[ " << TO_I32(TO_I16(halves[2]) & 0xFFFF) << " "
-                << TO_I32(TO_I16(halves[3]) & 0xFFFF) << " ]";
-    simd_ss_finish("", "]", "]");
-    #endif
-
-    int32_t words[2] = {0, 0};
-    words[0] = (TO_I32(halves[0]) & 0xFFFF) |
-               ((TO_I32(halves[1]) & 0xFFFF) << 16);
-    words[1] = (TO_I32(halves[2]) & 0xFFFF) |
-               ((TO_I32(halves[3]) & 0xFFFF) << 16);
-    return {TO_U32(words[0]), TO_U32(words[1])};
+reg_pair core::alu_c_wmul8(uint32_t a, uint32_t b)   {
+    return alu_c_wmul_op<8, true>(a, b);
 }
 
-reg_pair core::alu_c_wmul8u(uint32_t a, uint32_t b) {
-    // multiply 4 byte chunks into 2 32-bit results
-    uint16_t halves[4];
-    #ifdef DASM_EN
-    simd_ss_init("", "[ ", "[ ");
-    #endif
-
-    for (auto &half : halves) {
-        half = TO_U16(TO_U8(a & 0xff)) * TO_U16(TO_U8(b & 0xff));
-        #ifdef DASM_EN
-        simd_ss_append(TO_U16(TO_U8(a & 0xff)), TO_U16(TO_U8(b & 0xff)));
-        #endif
-        a >>= 8;
-        b >>= 8;
-    }
-
-    #ifdef DASM_EN
-    dasm.simd_c << "[ " << TO_U32(TO_U16(halves[0]) & 0xFFFF) << " "
-                << TO_U32(TO_U16(halves[1]) & 0xFFFF) << " ], "
-                << "[ " << TO_U32(TO_U16(halves[2]) & 0xFFFF) << " "
-                << TO_U32(TO_U16(halves[3]) & 0xFFFF) << " ]";
-    simd_ss_finish("", "]", "]");
-    #endif
-
-    uint32_t words[2] = {0, 0};
-    words[0] = (TO_U32(halves[0]) & 0xFFFF) |
-               ((TO_U32(halves[1]) & 0xFFFF) << 16);
-    words[1] = (TO_U32(halves[2]) & 0xFFFF) |
-               ((TO_U32(halves[3]) & 0xFFFF) << 16);
-    return {words[0], words[1]};
+reg_pair core::alu_c_wmul8u(uint32_t a, uint32_t b)  {
+    return alu_c_wmul_op<8, false>(a, b);
 }
