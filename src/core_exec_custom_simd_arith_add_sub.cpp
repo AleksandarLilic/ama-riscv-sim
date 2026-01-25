@@ -46,10 +46,10 @@ uint32_t core::alu_c_add_sub_op(uint32_t a, uint32_t b) {
         }
 
         #ifdef DASM_EN
-        simd_ss_append(static_cast<int32_t>(final_val), val_a, val_b);
+        simd_ss_append(TO_I32(final_val), val_a, val_b);
         #endif
 
-        res_packed |= (static_cast<uint32_t>(final_val) & mask) << (i * vbits);
+        res_packed |= (TO_U32(final_val) & mask) << (i * vbits);
 
         // shift inputs for next iteration
         a >>= vbits;

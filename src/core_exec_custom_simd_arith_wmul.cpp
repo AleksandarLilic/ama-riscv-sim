@@ -56,7 +56,7 @@ reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
         // calculate bit offset within that word
         size_t shift = ((i % half_e) * out_bits);
         // mask result to output width and shift into place
-        words[w_idx] |= ((static_cast<uint32_t>(results[i]) & mask) << shift);
+        words[w_idx] |= ((TO_U32(results[i]) & mask) << shift);
     }
 
     return {words[0], words[1]};
@@ -71,10 +71,10 @@ reg_pair core::alu_c_wmul16u(uint32_t a, uint32_t b) {
     return alu_c_wmul_op<16, false>(a, b);
 }
 
-reg_pair core::alu_c_wmul8(uint32_t a, uint32_t b)   {
+reg_pair core::alu_c_wmul8(uint32_t a, uint32_t b) {
     return alu_c_wmul_op<8, true>(a, b);
 }
 
-reg_pair core::alu_c_wmul8u(uint32_t a, uint32_t b)  {
+reg_pair core::alu_c_wmul8u(uint32_t a, uint32_t b) {
     return alu_c_wmul_op<8, false>(a, b);
 }

@@ -21,10 +21,10 @@ uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
         else res = std::max(val_a, val_b);
 
         #ifdef DASM_EN
-        simd_ss_append(static_cast<int32_t>(res), val_a, val_b);
+        simd_ss_append(TO_I32(res), val_a, val_b);
         #endif
 
-        res_packed |= (static_cast<uint32_t>(res) & mask) << (i * vbits);
+        res_packed |= (TO_U32(res) & mask) << (i * vbits);
 
         // shift inputs for next iteration
         a >>= vbits;

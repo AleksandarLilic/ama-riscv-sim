@@ -42,7 +42,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a) {
     for (size_t i = 0; i < e; i++) {
         size_t w_idx = (i / half_e);
         size_t shift = ((i % half_e) * out_bits);
-        words[w_idx] |= (static_cast<uint32_t>(vals[i]) & mask) << shift;
+        words[w_idx] |= (TO_U32(vals[i]) & mask) << shift;
     }
 
     return {words[0], words[1]};

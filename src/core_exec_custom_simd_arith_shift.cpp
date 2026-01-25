@@ -23,7 +23,7 @@ uint32_t core::alu_c_shift_op(uint32_t a, uint32_t shamt) {
         simd_ss_append_imm((res & mask), val_a, (vbits >> 2));
         #endif
 
-        res_packed |= (static_cast<uint32_t>(res) & mask) << (i * vbits);
+        res_packed |= (TO_U32(res) & mask) << (i * vbits);
 
         // shift inputs for next iteration
         a >>= vbits;
