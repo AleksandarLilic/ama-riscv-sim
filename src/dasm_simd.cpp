@@ -35,6 +35,12 @@ void core::simd_ss_append(int32_t a, int32_t b) {
     dasm.simd_b << b << " ";
 }
 
+void core::simd_ss_append_u(uint32_t a, uint32_t b) {
+    if (!ip.rd()) return;
+    dasm.simd_a << a << " ";
+    dasm.simd_b << b << " ";
+}
+
 void core::simd_ss_append(int32_t c, int32_t a, int32_t b) {
     if (!ip.rd()) return;
     simd_ss_append(a, b);

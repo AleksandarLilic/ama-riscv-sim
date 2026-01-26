@@ -180,7 +180,9 @@ void core::single_step() {
         if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
         #endif
         log_ofstream << "\n";
-        //log_ofstream << std::flush;
+        #ifdef DEBUG
+        log_ofstream << std::flush;
+        #endif
 
         if (logf.state) {
             log_ofstream << print_state(dasm_update_csr) << "\n";
@@ -753,14 +755,38 @@ void core::d_custom_ext() {
         case TO_U8(custom_op_t::type_data_fmt_widen):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_CUSTOM_OP(widen16, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen16u, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen8, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen8u, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen4, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen4u, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen2, data_fmt)
-                CASE_DATA_FMT_CUSTOM_OP(widen2u, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16u, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8u, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4u, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2, data_fmt)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2u, data_fmt)
+                default: tu.e_unsupported_inst("data_fmt_custom");
+            }
+            break;
+        case TO_U8(custom_op_t::type_data_fmt_narrow):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow32, data_fmt)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow16, data_fmt)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow8, data_fmt)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow4, data_fmt)
+                default: tu.e_unsupported_inst("data_fmt_custom");
+            }
+            break;
+        case TO_U8(custom_op_t::type_data_fmt_qnarrow):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32u, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16u, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8u, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4, data_fmt)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4u, data_fmt)
                 default: tu.e_unsupported_inst("data_fmt_custom");
             }
             break;
@@ -775,20 +801,24 @@ void core::d_custom_ext() {
     }
 
     #ifdef DASM_EN
-    bool paired_arith = (funct7 == TO_U8(custom_op_t::type_wmul));
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
         case TO_U8(custom_op_t::type_aluq):
-        case TO_U8(custom_op_t::type_wmul):
         case TO_U8(custom_op_t::type_dot):
         case TO_U8(custom_op_t::type_min_max):
+        case TO_U8(custom_op_t::type_data_fmt_narrow):
+        case TO_U8(custom_op_t::type_data_fmt_qnarrow):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;
-            if (paired_arith) DASM_RD_UPDATE_PAIR;
             break;
         case TO_U8(custom_op_t::type_shift):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," FHEXN(ip.rs2(), 2);
             DASM_RD_UPDATE;
+            break;
+        case TO_U8(custom_op_t::type_wmul):
+            DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
+            DASM_RD_UPDATE;
+            DASM_RD_UPDATE_PAIR;
             break;
         case TO_U8(custom_op_t::type_data_fmt_widen):
             DASM_OP_RD << "," << DASM_OP_RS1;

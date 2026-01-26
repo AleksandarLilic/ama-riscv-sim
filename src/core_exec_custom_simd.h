@@ -9,6 +9,8 @@ inline int32_t extract_val(uint32_t val) {
         return vsigned ? TO_I8(val) : TO_U8(val);
     } else if constexpr (vbits == 16) {
         return vsigned ? TO_I16(val) : TO_U16(val);
+    } else if constexpr (vbits == 32) {
+        return vsigned ? TO_I32(val) : TO_U32(val);
     } else {
         // handle sub-byte types (manual bit-twiddling)
         constexpr uint32_t mask = ((1U << vbits) - 1);

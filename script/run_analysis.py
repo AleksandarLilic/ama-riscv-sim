@@ -60,13 +60,15 @@ class icfg:
     k_mul = "MUL"
     k_div = "DIV/REM"
     k_bitmanip = "BITMANIP"
-    k_simd = "SIMD"
+    k_simd_arith = "SIMD_ARITH"
+    k_simd_data_fmt = "SIMD_DATA_FMT"
     k_simd_dot = "SIMD_DOT"
     k_simd_add_sub = "SIMD_ADD_SUB"
     k_simd_min_max = "SIMD_MIN_MAX"
     k_simd_shift = "SIMD_SHIFT"
     k_simd_wmul = "SIMD_WMUL"
     k_simd_widen = "SIMD_WIDEN"
+    k_simd_narrow = "SIMD_NARROW"
     k_mem = "MEM"
     k_mem_hint = "MEM_HINTS"
     k_branch = "BRANCH"
@@ -86,7 +88,7 @@ class icfg:
         k_mem_l: ["lb", "lh", "lw", "lbu", "lhu", "c.lwsp", "c.lw", "c.li"],
     }
 
-    INST_T_SIMD = {
+    INST_T_SIMD_ARITH = {
         k_simd_add_sub: [
             "add16", "add8", "sub16", "sub8",
             "qadd16", "qadd16u", "qadd8", "qadd8u",
@@ -102,6 +104,18 @@ class icfg:
         ],
         k_simd_shift: [
             "slli16", "slli8", "srli16", "srli8", "srai16", "srai8",
+        ],
+    }
+
+    INST_T_SIMD_DATA_FMT = {
+        k_simd_widen: [
+            "widen16", "widen16u", "widen8", "widen8u",
+            "widen4", "widen4u", "widen2", "widen2u",
+        ],
+        k_simd_narrow: [
+            "narrow32", "narrow16", "narrow8", "narrow4",
+            "qnarrow32", "qnarrow32u", "qnarrow16", "qnarrow16u",
+            "qnarrow8", "qnarrow8u", "qnarrow4", "qnarrow4u",
         ],
     }
 
@@ -123,15 +137,15 @@ class icfg:
         k_mul: ["mul", "mulh", "mulsu", "mulu"],
         k_div: ["div", "divu", "rem", "remu"],
         k_bitmanip: ["max", "maxu", "min", "minu"],
-        k_simd: INST_T_SIMD[k_simd_add_sub] + \
-              INST_T_SIMD[k_simd_wmul] + \
-              INST_T_SIMD[k_simd_dot] + \
-              INST_T_SIMD[k_simd_min_max] + \
-              INST_T_SIMD[k_simd_shift],
-        k_simd_widen: [
-            "widen16", "widen16u", "widen8", "widen8u",
-            "widen4", "widen4u", "widen2", "widen2u",
-        ],
+        k_simd_arith: INST_T_SIMD_ARITH[k_simd_add_sub] + \
+              INST_T_SIMD_ARITH[k_simd_wmul] + \
+              INST_T_SIMD_ARITH[k_simd_dot] + \
+              INST_T_SIMD_ARITH[k_simd_min_max] + \
+              INST_T_SIMD_ARITH[k_simd_shift],
+
+        k_simd_data_fmt: INST_T_SIMD_DATA_FMT[k_simd_widen] + \
+            INST_T_SIMD_DATA_FMT[k_simd_narrow],
+
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
         k_mem_hint: ["scp.ld", "scp.rel"],
         k_branch: [
@@ -145,17 +159,34 @@ class icfg:
         k_fence: ["fence", "fence.i"],
     }
 
-    INST_T_SIMD_Z = INST_T[k_simd] + INST_T[k_simd_widen]
+    INST_T_SIMD_A = INST_T[k_simd_arith] + INST_T[k_simd_data_fmt]
     OPS_PER_INST = {
         1: INST_T[k_alu] + INST_T[k_mem] +
            INST_T[k_mul] + INST_T[k_div] + INST_T[k_bitmanip],
-        2: [s for s in INST_T_SIMD_Z if ("16" in s and 'dot' not in s)],
-        4: [s for s in INST_T_SIMD_Z if ("8" in s and 'dot' not in s)] +
+
+        2: [s for s in INST_T_SIMD_A
+            if (("16" in s) and ('dot' not in s) and ("narrow" not in s))] +
+           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
+            if ("narrow32" in s)],
+
+        4: [s for s in INST_T_SIMD_A
+            if (("8" in s) and ('dot' not in s) and ("narrow" not in s))] +
+           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
+            if ("narrow16" in s)] +
            ['dot16'], # 2x mul, 1x sum, 1x acc
-        8: [s for s in INST_T_SIMD_Z if ("4" in s and 'dot' not in s)] +
+
+        8: [s for s in INST_T_SIMD_A
+            if (("4" in s) and ('dot' not in s) and ("narrow" not in s))] +
+           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
+            if ("narrow8" in s)] +
            ['dot8'], # 4x mul, 3x sum, 1x acc
-        16: [s for s in INST_T_SIMD_Z if ("2" in s and 'dot' not in s)] +
+
+        16: [s for s in INST_T_SIMD_A
+             if (("2" in s) and ('dot' not in s) and ("narrow" not in s))] +
+            [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
+             if ("narrow4" in s)] +
             ['dot4'], # 8x mul, 7x sum, 1x acc
+
         32: ['dot2'], # 16x mul, 15x sum, 1x acc
     }
 
@@ -192,8 +223,8 @@ class icfg:
         INST_T[k_branch],
         INST_T[k_jump],
         INST_T[k_mul] + INST_T[k_div],
-        INST_T[k_simd],
-        INST_T[k_simd_widen]
+        INST_T[k_simd_arith],
+        INST_T[k_simd_data_fmt]
     ]
 
     HL_COLORS_OPS = {
@@ -201,8 +232,8 @@ class icfg:
         k_mem: CLR_HL[0], # turquoise
         k_mul: CLR_HL[3], # persian red
         k_div: CLR_HL[2], # sandy brown
-        k_simd: CLR_HL[4], # myrtle green
-        k_simd_widen: CLR_HL[5], # lavander (floral)
+        k_simd_arith: CLR_HL[4], # myrtle green
+        k_simd_data_fmt: CLR_HL[5], # lavander (floral)
         # separate chart
         k_branch: CLR_HL[0], # peach yellow
         k_jump: CLR_HL[3], # persian red
@@ -215,8 +246,8 @@ class icfg:
         k_jump: CLR_HL[2], # sandy brown
         k_mul: CLR_HL[3], # persian red
         #DIV: CLR_HL[2], # sandy brown
-        k_simd: CLR_HL[4], # myrtle green
-        k_simd_widen: CLR_HL[5], # lavander (floral)
+        k_simd_arith: CLR_HL[4], # myrtle green
+        k_simd_data_fmt: CLR_HL[5], # lavander (floral)
     }
 
     # memory instructions breakdown store vs load
@@ -1068,6 +1099,11 @@ def draw_inst_breakdown(df, hl_inst_g, title, args) -> plt.Figure:
     if not args.allow_zero:
         df = df[df['count'] != 0]
 
+    df = df.sort_values(
+        by=['count', 'i_type', 'name'],
+        ascending=[True, False, True]
+    )
+
     # separate the instructions by type for count
     df_g = df[['i_type', 'count']].groupby('i_type').sum()
     df_g = df_g.sort_values(by='count', ascending=True)
@@ -1143,12 +1179,9 @@ def draw_inst_breakdown(df, hl_inst_g, title, args) -> plt.Figure:
             if df.iloc[i]['name'] in hl_g:
                 r.set_color(CLR_HL[hc])
                 if (CLR_HL[hc] not in added_hl):
-                    ax_inst.barh(0, 0, color=CLR_HL[hc], label=', '.join(hl_g))
+                    ax_inst.barh(0, 0, color=CLR_HL[hc])
                     added_hl.append(CLR_HL[hc])
         hc += 1
-
-    if len(hl_inst_g) > 0:
-        add_legend_for_hl_groups(ax_inst, "log")
 
     using_def_hl = (icfg.HL_DEFAULT == hl_inst_g)
     if using_def_hl: # also highlight ops and type charts
@@ -1542,10 +1575,10 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     #          'ops', win_s, icfg.k_div, clr="lut")
     plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mem, 0), y,
               'ops', win_s, icfg.k_mem, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd, 0), y,
-              'ops', win_s, icfg.k_simd, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_widen, 0), y,
-              'ops', win_s, icfg.k_simd_widen, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_arith, 0), y,
+              'ops', win_s, icfg.k_simd_arith, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_data_fmt, 0), y,
+              'ops', win_s, icfg.k_simd_data_fmt, clr="lut")
 
     plot_hw_hm(ax_bp, df, 'bp', win_hw)
     plot_hw_hm(ax_ic, df, 'ic', win_hw)

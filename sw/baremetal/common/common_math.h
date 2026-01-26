@@ -523,6 +523,94 @@ uint4x16_t _widen2u(const uint2x16_t a) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
+// data formatting - narrow truncating
+static INLINE
+uint16x2_t _narrow32(const uint32_t a, const uint32_t b) {
+    uint16x2_t c;
+    asm volatile("narrow32 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _narrow16(const uint16x2_t a, const uint16x2_t b) {
+    uint8x4_t c;
+    asm volatile("narrow16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint4x8_t _narrow8(const uint8x4_t a, const uint8x4_t b) {
+    uint4x8_t c;
+    asm volatile("narrow8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint2x16_t _narrow4(const uint4x8_t a, const uint4x8_t b) {
+    uint2x16_t c;
+    asm volatile("narrow4 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+// -----------------------------------------------------------------------------
+// data formatting - narrow saturating
+static INLINE
+int16x2_t _qnarrow32(const int32_t a, const int32_t b) {
+    int16x2_t c;
+    asm volatile("qnarrow32 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _qnarrow32u(const uint32_t a, const uint32_t b) {
+    uint16x2_t c;
+    asm volatile("qnarrow32u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _qnarrow16(const int16x2_t a, const int16x2_t b) {
+    int8x4_t c;
+    asm volatile("qnarrow16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _qnarrow16u(const uint16x2_t a, const uint16x2_t b) {
+    uint8x4_t c;
+    asm volatile("qnarrow16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int4x8_t _qnarrow8(const int8x4_t a, const int8x4_t b) {
+    int4x8_t c;
+    asm volatile("qnarrow8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint4x8_t _qnarrow8u(const uint8x4_t a, const uint8x4_t b) {
+    uint4x8_t c;
+    asm volatile("qnarrow8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int2x16_t _qnarrow4(const int4x8_t a, const int4x8_t b) {
+    int2x16_t c;
+    asm volatile("qnarrow4 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint2x16_t _qnarrow4u(const uint4x8_t a, const uint4x8_t b) {
+    uint2x16_t c;
+    asm volatile("qnarrow4u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
 #else // non __riscv_xsimd implementations
 
 void add_int16(

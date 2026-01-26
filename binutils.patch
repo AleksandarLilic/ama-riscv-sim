@@ -29,7 +29,7 @@ index 9a121b47121..c7af5984640 100644
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..4f7c7cef164 100644
+index e77b49a6298..e5c6c122955 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
 @@ -3473,6 +3473,108 @@
@@ -97,19 +97,19 @@ index e77b49a6298..4f7c7cef164 100644
 +#define MATCH_WIDEN2   0x4000600b
 +#define MATCH_WIDEN2U  0x4000700b
 +
-+#define MATCH_NARROW32 0x4200000b
-+#define MATCH_NARROW16 0x4200200b
-+#define MATCH_NARROW8  0x4200400b
-+#define MATCH_NARROW4  0x4200600b
++#define MATCH_NARROW32 0x4400000b
++#define MATCH_NARROW16 0x4400200b
++#define MATCH_NARROW8  0x4400400b
++#define MATCH_NARROW4  0x4400600b
 +
-+#define MATCH_QNARROW16  0x4600000b
-+#define MATCH_QNARROW16U 0x4600100b
-+#define MATCH_QNARROW8   0x4600200b
-+#define MATCH_QNARROW8U  0x4600300b
-+#define MATCH_QNARROW4   0x4600400b
-+#define MATCH_QNARROW4U  0x4600500b
-+#define MATCH_QNARROW2   0x4600600b
-+#define MATCH_QNARROW2U  0x4600700b
++#define MATCH_QNARROW32  0x4600000b
++#define MATCH_QNARROW32U 0x4600100b
++#define MATCH_QNARROW16  0x4600200b
++#define MATCH_QNARROW16U 0x4600300b
++#define MATCH_QNARROW8   0x4600400b
++#define MATCH_QNARROW8U  0x4600500b
++#define MATCH_QNARROW4   0x4600600b
++#define MATCH_QNARROW4U  0x4600700b
 +
 +#define MATCH_SWAPAD16 0x6000000b
 +#define MATCH_SWAPAD8  0x6000200b
@@ -154,7 +154,7 @@ index adea7dbc794..81e557c95f8 100644
  
  /* This structure holds information for a particular instruction.  */
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..c20707c7e20 100644
+index fdd05ac75dc..579957a828d 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
 @@ -347,6 +347,113 @@ const struct riscv_opcode riscv_opcodes[] =
@@ -232,14 +232,14 @@ index fdd05ac75dc..c20707c7e20 100644
 +{"narrow8",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_NARROW8, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"narrow4",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_NARROW4, MASK_CUSTOM_REG, match_opcode, 0 },
 +
++{"qnarrow32",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW32, MASK_CUSTOM_REG, match_opcode, 0 },
++{"qnarrow32u",  0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW32U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow16",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow16u",  0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW16U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow8",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW8, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow8u",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow4",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW4, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow4u",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW4U, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"qnarrow2",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW2, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"qnarrow2u",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW2U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
 +{"swapad16",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"swapad8",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD8, MASK_CUSTOM_REG, match_opcode, 0 },

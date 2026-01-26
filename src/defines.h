@@ -382,8 +382,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
-#define CASE_DATA_FMT_CUSTOM_OP(op, t) \
-    case TO_U8(data_fmt_custom_op_t::op_##op): \
+#define CASE_DATA_FMT_WIDEN_CUSTOM_OP(op, t) \
+    case TO_U8(data_fmt_widen_custom_op_t::op_##op): \
         rp = data_fmt_c_##op(rf[ip.rs1()]); \
         write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \
@@ -391,6 +391,26 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_RD_RDP_RS1 \
         PROF_SPARSITY_SIMD(rp.a, t) \
         PROF_SPARSITY_SIMD(rp.b, t) \
+        break;
+
+#define CASE_DATA_FMT_NARROW_CUSTOM_OP(op, t) \
+    case TO_U8(data_fmt_narrow_custom_op_t::op_##op): \
+        res = data_fmt_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(res, t) \
+        break;
+
+#define CASE_DATA_FMT_QNARROW_CUSTOM_OP(op, t) \
+    case TO_U8(data_fmt_qnarrow_custom_op_t::op_##op): \
+        res = data_fmt_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_SIMD(res, t) \
         break;
 
 #define CASE_SCP_CUSTOM(op) \

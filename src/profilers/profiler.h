@@ -58,9 +58,14 @@ enum class opc_g {
     i_slli16, i_slli8, i_srli16, i_srli8, i_srai16, i_srai8,
 
     // custom data fmt
-    // widening
+    // widen
     i_widen16, i_widen16u, i_widen8, i_widen8u,
     i_widen4, i_widen4u, i_widen2, i_widen2u,
+    // narrow truncating
+    i_narrow32, i_narrow16, i_narrow8, i_narrow4,
+    // narrow saturating
+    i_qnarrow32, i_qnarrow32u, i_qnarrow16, i_qnarrow16u,
+    i_qnarrow8, i_qnarrow8u, i_qnarrow4, i_qnarrow4u,
     // custom hints
     i_scp_lcl, i_scp_rel,
 
@@ -197,6 +202,7 @@ struct cnt_t {
         uint32_t alu_c = 0;
         uint32_t wmul_c = 0;
         uint32_t widen_c = 0;
+        uint32_t narrow_c = 0;
         uint32_t scp_c = 0;
 
     public:
@@ -205,7 +211,7 @@ struct cnt_t {
             rest = (
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
-                dot_c - alu_c - wmul_c - widen_c - scp_c
+                dot_c - alu_c - wmul_c - widen_c - narrow_c - scp_c
             );
         }
         float_t get_perc(uint32_t count) {
@@ -233,6 +239,7 @@ struct perc_t {
         float_t alu_c = 0.0;
         float_t wmul_c = 0.0;
         float_t widen_c = 0.0;
+        float_t narrow_c = 0.0;
         float_t scp_c = 0.0;
 };
 
@@ -419,6 +426,17 @@ class profiler {
             opc_g::i_widen8, opc_g::i_widen8u,
             opc_g::i_widen4, opc_g::i_widen4u,
             opc_g::i_widen2, opc_g::i_widen2u,
+        };
+
+        static constexpr std::array narrow_c_opcs = {
+            // truncating
+            opc_g::i_qnarrow32, opc_g::i_qnarrow16,
+            opc_g::i_qnarrow8, opc_g::i_qnarrow4,
+            // saturating
+            opc_g::i_qnarrow32, opc_g::i_qnarrow32u,
+            opc_g::i_qnarrow16, opc_g::i_qnarrow16u,
+            opc_g::i_qnarrow8, opc_g::i_qnarrow8u,
+            opc_g::i_qnarrow4, opc_g::i_qnarrow4u,
         };
 
         static constexpr std::array scp_c_opcs = {

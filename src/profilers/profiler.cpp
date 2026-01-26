@@ -110,6 +110,20 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(widen2);
     P_INIT(widen2u);
 
+    P_INIT(narrow32);
+    P_INIT(narrow16);
+    P_INIT(narrow8);
+    P_INIT(narrow4);
+
+    P_INIT(qnarrow32);
+    P_INIT(qnarrow32u);
+    P_INIT(qnarrow16);
+    P_INIT(qnarrow16u);
+    P_INIT(qnarrow8);
+    P_INIT(qnarrow8u);
+    P_INIT(qnarrow4);
+    P_INIT(qnarrow4u);
+
     P_INIT_D(scp, lcl);
     P_INIT_D(scp, rel);
 
@@ -332,6 +346,7 @@ void profiler::log_to_file_and_print(bool silent) {
     for (auto &m: mul_c_opcs) cnt.wmul_c += prof_g_arr[TO_U32(m)].count;
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: widen_c_opcs) cnt.widen_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &u: narrow_c_opcs) cnt.narrow_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.nop = prof_g_arr[TO_U32(opc_g::i_nop)].count;
     cnt.find_mem();
@@ -352,6 +367,7 @@ void profiler::log_to_file_and_print(bool silent) {
     perc.wmul_c = cnt.get_perc(cnt.wmul_c);
     perc.zbb = cnt.get_perc(cnt.zbb);
     perc.widen_c = cnt.get_perc(cnt.widen_c);
+    perc.narrow_c = cnt.get_perc(cnt.narrow_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
@@ -398,6 +414,7 @@ void profiler::log_to_file_and_print(bool silent) {
               << " WMUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%),"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%)"
+              << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%)"
               << "\n";
 
     std::cout << INDENT << "Hint:"

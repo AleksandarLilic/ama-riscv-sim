@@ -61,6 +61,7 @@ class core {
         void simd_ss_init(std::string c, std::string a, std::string b);
         void simd_ss_append(int32_t a);
         void simd_ss_append(int32_t a, int32_t b);
+        void simd_ss_append_u(uint32_t a, uint32_t b);
         void simd_ss_append(int32_t c, int32_t a, int32_t b);
         void simd_ss_append_imm(int32_t c, int32_t a, size_t w);
         void simd_ss_finish(std::string a);
@@ -240,7 +241,7 @@ class core {
         uint32_t alu_c_srai16(uint32_t a, uint32_t shamt);
         uint32_t alu_c_srai8(uint32_t a, uint32_t shamt);
 
-        // custom extension - memory operations
+        // custom extension - data formatting - widen
         reg_pair data_fmt_c_widen16(uint32_t a);
         reg_pair data_fmt_c_widen16u(uint32_t a);
         reg_pair data_fmt_c_widen8(uint32_t a);
@@ -249,6 +250,20 @@ class core {
         reg_pair data_fmt_c_widen4u(uint32_t a);
         reg_pair data_fmt_c_widen2(uint32_t a);
         reg_pair data_fmt_c_widen2u(uint32_t a);
+        // custom extension - data formatting - narrow
+        uint32_t data_fmt_c_narrow32(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_narrow16(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_narrow8(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_narrow4(uint32_t a, uint32_t b);
+        // custom extension - data formatting - narrow saturating
+        uint32_t data_fmt_c_qnarrow32(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow32u(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow16(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow16u(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow8(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow8u(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow4(uint32_t a, uint32_t b);
+        uint32_t data_fmt_c_qnarrow4u(uint32_t a, uint32_t b);
 
         // C extension
         void d_compressed_0();
@@ -301,8 +316,10 @@ class core {
         template <size_t vbits, bool arith, alu_shift_op_t op>
             uint32_t alu_c_shift_op(uint32_t a, uint32_t shamt);
         // data fmt
-        template <int vbits, bool vsigned>
+        template <size_t vbits, bool vsigned>
             reg_pair data_fmt_c_widen_t(uint32_t a);
+        template <size_t vbits, bool vsat, bool vsigned>
+            uint32_t data_fmt_c_narrow_t(uint32_t a, uint32_t b);
 
         // interrupts
         // TODO

@@ -26,7 +26,7 @@ class perf:
     scp_inst_a = icfg.INST_T[icfg.k_mem_hint]
     mul_inst_a = icfg.INST_T[icfg.k_mul]
     div_inst_a = icfg.INST_T[icfg.k_div]
-    dot_inst_a = icfg.INST_T_SIMD[icfg.k_simd_dot]
+    dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
     csr_inst_a = icfg.INST_T[icfg.k_csr]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
@@ -185,7 +185,7 @@ class perf:
             self.hazards["div"] = find_hazards(
                 fmt(icfg.INST_T[icfg.k_div]), hazard_penalty['div'])
             self.hazards["dot"] = find_hazards(
-                fmt(icfg.INST_T_SIMD[icfg.k_simd_dot]), hazard_penalty['dot'])
+                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]), hazard_penalty['dot'])
 
         else: # otherwise, estimate based on instruction count (pessimistic)
             self.hazards["dmem"] = \

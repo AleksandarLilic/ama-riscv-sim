@@ -2,7 +2,7 @@
 #include "core.h"
 #include "core_exec_custom_simd.h"
 
-template <int vbits, bool vsigned>
+template <size_t vbits, bool vsigned>
 reg_pair core::data_fmt_c_widen_t(uint32_t a) {
     // widen n-bit to 2n-bit elements
     constexpr size_t e = (32 / vbits);

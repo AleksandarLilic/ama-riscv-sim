@@ -115,6 +115,8 @@ enum class custom_op_t {
     type_min_max = 0x04,
     type_shift = 0x06,
     type_data_fmt_widen = 0x20,
+    type_data_fmt_narrow = 0x22,
+    type_data_fmt_qnarrow = 0x23,
     type_hints = 0x7f,
 };
 
@@ -178,7 +180,7 @@ enum class alu_shift_custom_op_t {
     op_srai8 = 0x7,
 };
 
-enum class data_fmt_custom_op_t {
+enum class data_fmt_widen_custom_op_t {
     op_widen16 = 0x0,
     op_widen16u = 0x1,
     op_widen8 = 0x2,
@@ -187,6 +189,24 @@ enum class data_fmt_custom_op_t {
     op_widen4u = 0x5,
     op_widen2 = 0x6,
     op_widen2u = 0x7,
+};
+
+enum class data_fmt_narrow_custom_op_t {
+    op_narrow32 = 0x0,
+    op_narrow16 = 0x2,
+    op_narrow8 = 0x4,
+    op_narrow4 = 0x6,
+};
+
+enum class data_fmt_qnarrow_custom_op_t {
+    op_qnarrow32 = 0x0,
+    op_qnarrow32u = 0x1,
+    op_qnarrow16 = 0x2,
+    op_qnarrow16u = 0x3,
+    op_qnarrow8 = 0x4,
+    op_qnarrow8u = 0x5,
+    op_qnarrow4 = 0x6,
+    op_qnarrow4u = 0x7,
 };
 
 enum class scp_custom_op_t {
