@@ -8,7 +8,9 @@ uint32_t core::data_fmt_c_narrow_t(uint32_t a, uint32_t b) {
     // supports both truncation (vsat=false) and saturation (vsat=true)
     constexpr size_t out_bits = (vbits / 2);
     constexpr size_t e = (32 / vbits); // elements per input reg
+    #ifdef DASM_EN
     constexpr size_t out_e = (e * 2); // total elements in output
+    #endif
     constexpr uint32_t out_mask = ((1ULL << out_bits) - 1);
 
     // saturation bounds, optimized out if unused
