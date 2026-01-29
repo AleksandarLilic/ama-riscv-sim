@@ -150,6 +150,7 @@ if args.clean_only:
 
 os.chdir(WORK_DIR)
 paths = test_paths_isa + test_paths
+paths.sort() # sort paths for consistency
 print(f"Number of RISC-V tests built: {len(paths)}")
 with open("gtest_testlist.txt", 'w') as f:
     f.write("\n".join(paths))
