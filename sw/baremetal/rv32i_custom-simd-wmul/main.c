@@ -2,6 +2,8 @@
 #include "common.h"
 #include "common_math.h"
 
+#include "c_test_common.h"
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -9,20 +11,6 @@
 #ifndef __riscv_xsimd
 _Static_assert(0, "SIMD isa required for the test");
 #endif
-
-// result, expected, index
-#define CHECK(r, e, i) \
-    if ((r) != (e)){ write_mismatch((r), (e), (i)); fail(); }
-
-// packing macro helpers
-#define PK(lo, hi) \
-    (int32_t)( (((hi) & 0xFFFF) << 16) | ((lo) & 0xFFFF) )
-
-#define PK2(l0, l1, l2, l3) \
-    (int32_t)( \
-        (((l3) & 0xFF) << 24) | (((l2) & 0xFF) << 16) | \
-        (((l1) & 0xFF) << 8) | ((l0) & 0xFF) \
-    )
 
 void main() {
     for (uint32_t i = 0; i < LOOPS; i++) {

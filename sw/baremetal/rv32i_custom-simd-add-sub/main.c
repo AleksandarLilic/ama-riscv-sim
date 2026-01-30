@@ -2,6 +2,8 @@
 #include "common.h"
 #include "common_math.h"
 
+#include "c_test_common.h"
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -9,20 +11,6 @@
 #ifndef __riscv_xsimd
 _Static_assert(0, "SIMD isa required for the test");
 #endif
-
-// result, expected, index
-#define CHECK(r, e, i) \
-    if ((r) != (e)){ write_mismatch((r), (e), (i)); fail(); }
-
-// packing macro helpers
-#define PK(lo, hi) \
-    (int32_t)( (((hi) & 0xFFFF) << 16) | ((lo) & 0xFFFF) )
-
-#define PK2(l0, l1, l2, l3) \
-    (int32_t)( \
-        (((l3) & 0xFF) << 24) | (((l2) & 0xFF) << 16) | \
-        (((l1) & 0xFF) << 8) | ((l0) & 0xFF) \
-    )
 
 void main() {
     for (uint32_t i = 0; i < LOOPS; i++) {
@@ -33,7 +21,7 @@ void main() {
                 int16_t a[] = {100, -50};
                 int16_t b[] = {200, -50};
                 int16x2_t c = _add16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(300, -100), 101);
+                CHECK(c.v, PK_I16(300, -100), 101);
             }
             {
                 GLOBAL_SYMBOL("op_add16_overflow");
@@ -42,7 +30,7 @@ void main() {
                 int16_t a[] = {32767, 0};
                 int16_t b[] = {1, 0};
                 int16x2_t c = _add16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK((int16_t)0x8000, 0), 102);
+                CHECK(c.v, PK_I16((int16_t)0x8000, 0), 102);
             }
             {
                 GLOBAL_SYMBOL("op_add16_underflow");
@@ -51,7 +39,7 @@ void main() {
                 int16_t a[] = {-32768, 0};
                 int16_t b[] = {-1, 0};
                 int16x2_t c = _add16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(32767, 0), 103);
+                CHECK(c.v, PK_I16(32767, 0), 103);
             }
         }
 
@@ -61,7 +49,7 @@ void main() {
                 int8_t a[] = {10, -20, 30, -40};
                 int8_t b[] = {5, 5, 5, 5};
                 int8x4_t c = _add8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(15, -15, 35, -35), 111);
+                CHECK(c.v, PK_I8(15, -15, 35, -35), 111);
             }
             {
                 GLOBAL_SYMBOL("op_add8_overflow");
@@ -69,7 +57,7 @@ void main() {
                 int8_t a[] = {127, 0, 0, 0};
                 int8_t b[] = {1, 0, 0, 0};
                 int8x4_t c = _add8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2((int8_t)0x80, 0, 0, 0), 112);
+                CHECK(c.v, PK_I8((int8_t)0x80, 0, 0, 0), 112);
             }
             {
                 GLOBAL_SYMBOL("op_add8_underflow");
@@ -77,7 +65,7 @@ void main() {
                 int8_t a[] = {-128, 0, 0, 0};
                 int8_t b[] = {-1, 0, 0, 0};
                 int8x4_t c = _add8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(127, 0, 0, 0), 113);
+                CHECK(c.v, PK_I8(127, 0, 0, 0), 113);
             }
         }
 
@@ -89,7 +77,7 @@ void main() {
                 // 300 - 200 = 100
                 // -100 - (-50) = -50
                 int16x2_t c = _sub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(100, -50), 121);
+                CHECK(c.v, PK_I16(100, -50), 121);
             }
             {
                 GLOBAL_SYMBOL("op_sub16_overflow_to_neg");
@@ -97,7 +85,7 @@ void main() {
                 int16_t a[] = {32767, 0};
                 int16_t b[] = {-1, 0};
                 int16x2_t c = _sub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK((int16_t)0x8000, 0), 122);
+                CHECK(c.v, PK_I16((int16_t)0x8000, 0), 122);
             }
             {
                 GLOBAL_SYMBOL("op_sub16_underflow_to_pos");
@@ -105,7 +93,7 @@ void main() {
                 int16_t a[] = {-32768, 0};
                 int16_t b[] = {1, 0};
                 int16x2_t c = _sub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(32767, 0), 123);
+                CHECK(c.v, PK_I16(32767, 0), 123);
             }
         }
 
@@ -115,7 +103,7 @@ void main() {
                 int8_t a[] = {50, -50, 10, -10};
                 int8_t b[] = {20, -20, 10, -10};
                 int8x4_t c = _sub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(30, -30, 0, 0), 131);
+                CHECK(c.v, PK_I8(30, -30, 0, 0), 131);
             }
             {
                 GLOBAL_SYMBOL("op_sub8_overflow_to_neg");
@@ -123,7 +111,7 @@ void main() {
                 int8_t a[] = {127, 0, 0, 0};
                 int8_t b[] = {-1, 0, 0, 0};
                 int8x4_t c = _sub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2((int8_t)0x80, 0, 0, 0), 132);
+                CHECK(c.v, PK_I8((int8_t)0x80, 0, 0, 0), 132);
             }
             {
                 GLOBAL_SYMBOL("op_sub8_underflow_to_pos");
@@ -131,7 +119,7 @@ void main() {
                 int8_t a[] = {-128, 0, 0, 0};
                 int8_t b[] = {1, 0, 0, 0};
                 int8x4_t c = _sub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(127, 0, 0, 0), 133);
+                CHECK(c.v, PK_I8(127, 0, 0, 0), 133);
             }
         }
 
@@ -141,7 +129,7 @@ void main() {
                 int16_t a[] = {1000, -1000};
                 int16_t b[] = {1000, -1000};
                 int16x2_t c = _qadd16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(2000, -2000), 301);
+                CHECK(c.v, PK_I16(2000, -2000), 301);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16_sat_max");
@@ -149,7 +137,7 @@ void main() {
                 int16_t a[] = {32767, 0};
                 int16_t b[] = {10, 0};
                 int16x2_t c = _qadd16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(32767, 0), 302);
+                CHECK(c.v, PK_I16(32767, 0), 302);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16_sat_min");
@@ -157,7 +145,7 @@ void main() {
                 int16_t a[] = {-32768, 0};
                 int16_t b[] = {-10, 0};
                 int16x2_t c = _qadd16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK((int16_t)0x8000, 0), 303);
+                CHECK(c.v, PK_I16((int16_t)0x8000, 0), 303);
             }
         }
 
@@ -167,7 +155,7 @@ void main() {
                 uint16_t a[] = {1000, 50000};
                 uint16_t b[] = {2000, 10000};
                 uint16x2_t c = _qadd16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(3000, 60000), 311);
+                CHECK(c.v, PK_I16(3000, 60000), 311);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16u_sat_max_boundary");
@@ -175,7 +163,7 @@ void main() {
                 uint16_t a[] = {65535, 0};
                 uint16_t b[] = {1, 0};
                 uint16x2_t c = _qadd16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(65535, 0), 312);
+                CHECK(c.v, PK_I16(65535, 0), 312);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16u_sat_max_heavy");
@@ -183,7 +171,7 @@ void main() {
                 uint16_t a[] = {40000, 0};
                 uint16_t b[] = {40000, 0};
                 uint16x2_t c = _qadd16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(65535, 0), 313);
+                CHECK(c.v, PK_I16(65535, 0), 313);
             }
         }
 
@@ -193,7 +181,7 @@ void main() {
                 int8_t a[] = {50, -50, 0, 0};
                 int8_t b[] = {50, -50, 0, 0};
                 int8x4_t c = _qadd8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(100, -100, 0, 0), 321);
+                CHECK(c.v, PK_I8(100, -100, 0, 0), 321);
             }
             {
                 GLOBAL_SYMBOL("op_qadd8_sat_max");
@@ -201,7 +189,7 @@ void main() {
                 int8_t a[] = {127, 0, 0, 0};
                 int8_t b[] = {5, 0, 0, 0};
                 int8x4_t c = _qadd8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(127, 0, 0, 0), 322);
+                CHECK(c.v, PK_I8(127, 0, 0, 0), 322);
             }
             {
                 GLOBAL_SYMBOL("op_qadd8_sat_min");
@@ -209,7 +197,7 @@ void main() {
                 int8_t a[] = {-128, 0, 0, 0};
                 int8_t b[] = {-5, 0, 0, 0};
                 int8x4_t c = _qadd8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2((int8_t)0x80, 0, 0, 0), 323);
+                CHECK(c.v, PK_I8((int8_t)0x80, 0, 0, 0), 323);
             }
         }
 
@@ -219,7 +207,7 @@ void main() {
                 uint8_t a[] = {10, 200, 50, 0};
                 uint8_t b[] = {10, 10, 50, 0};
                 uint8x4_t c = _qadd8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(20, 210, 100, 0), 331);
+                CHECK(c.v, PK_I8(20, 210, 100, 0), 331);
             }
             {
                 GLOBAL_SYMBOL("op_qadd8u_sat_max_boundary");
@@ -227,7 +215,7 @@ void main() {
                 uint8_t a[] = {255, 0, 0, 0};
                 uint8_t b[] = {1, 0, 0, 0};
                 uint8x4_t c = _qadd8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(255, 0, 0, 0), 332);
+                CHECK(c.v, PK_I8(255, 0, 0, 0), 332);
             }
             {
                 GLOBAL_SYMBOL("op_qadd8u_sat_max_heavy");
@@ -235,7 +223,7 @@ void main() {
                 uint8_t a[] = {150, 0, 0, 0};
                 uint8_t b[] = {150, 0, 0, 0};
                 uint8x4_t c = _qadd8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(255, 0, 0, 0), 333);
+                CHECK(c.v, PK_I8(255, 0, 0, 0), 333);
             }
         }
 
@@ -245,7 +233,7 @@ void main() {
                 int16_t a[] = {1000, -1000};
                 int16_t b[] = {1, -1};
                 int16x2_t c = _qsub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(999, -999), 341);
+                CHECK(c.v, PK_I16(999, -999), 341);
             }
             {
                 GLOBAL_SYMBOL("op_qsub16_sat_max");
@@ -253,7 +241,7 @@ void main() {
                 int16_t a[] = {32767, 0};
                 int16_t b[] = {-10, 0};
                 int16x2_t c = _qsub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK(32767, 0), 342);
+                CHECK(c.v, PK_I16(32767, 0), 342);
             }
             {
                 GLOBAL_SYMBOL("op_qsub16_sat_min");
@@ -261,7 +249,7 @@ void main() {
                 int16_t a[] = {-32768, 0};
                 int16_t b[] = {10, 0};
                 int16x2_t c = _qsub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK((int16_t)0x8000, 0), 343);
+                CHECK(c.v, PK_I16((int16_t)0x8000, 0), 343);
             }
         }
 
@@ -271,7 +259,7 @@ void main() {
                 uint16_t a[] = {5000, 100};
                 uint16_t b[] = {2000, 100};
                 uint16x2_t c = _qsub16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(3000, 0), 351);
+                CHECK(c.v, PK_I16(3000, 0), 351);
             }
             {
                 GLOBAL_SYMBOL("op_qsub16u_sat_floor_boundary");
@@ -279,7 +267,7 @@ void main() {
                 uint16_t a[] = {10, 0};
                 uint16_t b[] = {11, 0};
                 uint16x2_t c = _qsub16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(0, 0), 352);
+                CHECK(c.v, PK_I16(0, 0), 352);
             }
             {
                 GLOBAL_SYMBOL("op_qsub16u_sat_floor_heavy");
@@ -287,7 +275,7 @@ void main() {
                 uint16_t a[] = {0, 0};
                 uint16_t b[] = {65535, 0};
                 uint16x2_t c = _qsub16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK(0, 0), 353);
+                CHECK(c.v, PK_I16(0, 0), 353);
             }
         }
 
@@ -297,7 +285,7 @@ void main() {
                 int8_t a[] = {100, -100, 0, 0};
                 int8_t b[] = {50, -20, 0, 0};
                 int8x4_t c = _qsub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(50, -80, 0, 0), 361);
+                CHECK(c.v, PK_I8(50, -80, 0, 0), 361);
             }
             {
                 GLOBAL_SYMBOL("op_qsub8_sat_max");
@@ -305,7 +293,7 @@ void main() {
                 int8_t a[] = {127, 0, 0, 0};
                 int8_t b[] = {-5, 0, 0, 0};
                 int8x4_t c = _qsub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2(127, 0, 0, 0), 362);
+                CHECK(c.v, PK_I8(127, 0, 0, 0), 362);
             }
             {
                 GLOBAL_SYMBOL("op_qsub8_sat_min");
@@ -313,7 +301,7 @@ void main() {
                 int8_t a[] = {-128, 0, 0, 0};
                 int8_t b[] = {5, 0, 0, 0};
                 int8x4_t c = _qsub8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK2((int8_t)0x80, 0, 0, 0), 363);
+                CHECK(c.v, PK_I8((int8_t)0x80, 0, 0, 0), 363);
             }
         }
 
@@ -323,7 +311,7 @@ void main() {
                 uint8_t a[] = {255, 10, 5, 50};
                 uint8_t b[] = {5, 5, 5, 0};
                 uint8x4_t c = _qsub8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(250, 5, 0, 50), 371);
+                CHECK(c.v, PK_I8(250, 5, 0, 50), 371);
             }
             {
                 GLOBAL_SYMBOL("op_qsub8u_sat_floor_boundary");
@@ -331,7 +319,7 @@ void main() {
                 uint8_t a[] = {5, 0, 0, 0};
                 uint8_t b[] = {6, 0, 0, 0};
                 uint8x4_t c = _qsub8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(0, 0, 0, 0), 372);
+                CHECK(c.v, PK_I8(0, 0, 0, 0), 372);
             }
             {
                 GLOBAL_SYMBOL("op_qsub8u_sat_floor_heavy");
@@ -339,7 +327,7 @@ void main() {
                 uint8_t a[] = {0, 0, 0, 0};
                 uint8_t b[] = {255, 0, 0, 0};
                 uint8x4_t c = _qsub8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK2(0, 0, 0, 0), 373);
+                CHECK(c.v, PK_I8(0, 0, 0, 0), 373);
             }
         }
 

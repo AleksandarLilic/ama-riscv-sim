@@ -2,6 +2,8 @@
 #include "common.h"
 #include "common_math.h"
 
+#include "c_test_common.h"
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -9,23 +11,6 @@
 #ifndef __riscv_xsimd
 _Static_assert(0, "SIMD isa required for the test");
 #endif
-
-// result, expected, index
-#define CHECK(r, e, i) \
-    if ((r) != (e)){ write_mismatch((r), (e), (i)); fail(); }
-
-// packing macro helpers
-#define PK(lo, hi) \
-    (int8_t)( (((hi) & 0xF) << 4) | ((lo) & 0xF) )
-
-#define PK_U(lo, hi) \
-    (uint8_t)( (((hi) & 0xF) << 4) | ((lo) & 0xF) )
-
-#define PK2(l3, l2, l1, l0) \
-    (int8_t)( (((l3)&3)<<6) | (((l2)&3)<<4) | (((l1)&3)<<2) | ((l0)&3) )
-
-#define PK2_U(l3, l2, l1, l0) \
-    (uint8_t)( (((l3)&3)<<6) | (((l2)&3)<<4) | (((l1)&3)<<2) | ((l0)&3) )
 
 void main() {
     for (uint32_t i = 0; i < LOOPS; i++) {
@@ -528,8 +513,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4_single_lane_pos");
                 // Lane 0 = 7, Lane 1..7 = 0
-                int8_t a[] = {PK(7, 0), 0, 0, 0};
-                int8_t b[] = {PK(2, 0), 0, 0, 0};
+                int8_t a[] = {PK_SB_I4(7, 0), 0, 0, 0};
+                int8_t b[] = {PK_SB_I4(2, 0), 0, 0, 0};
                 int32_t c = 20;
                 _dot4(v_load_int4x8(a), v_load_int4x8(b), &c);
                 CHECK(c, (7 * 2 + 20), 503);
@@ -537,8 +522,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4_single_lane_neg");
                 // Lane 0 = -8, Lane 1..7 = 0
-                int8_t a[] = {PK(-8, 0), 0, 0, 0};
-                int8_t b[] = {PK(7, 0), 0, 0, 0};
+                int8_t a[] = {PK_SB_I4(-8, 0), 0, 0, 0};
+                int8_t b[] = {PK_SB_I4(7, 0), 0, 0, 0};
                 int32_t c = 100;
                 _dot4(v_load_int4x8(a), v_load_int4x8(b), &c);
                 CHECK(c, (-8 * 7 + 100), 504);
@@ -546,7 +531,7 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4_all_max_pos");
                 // All lanes = 7
-                // 0x77 = PK(7, 7)
+                // 0x77 = PK_SB_I4(7, 7)
                 int8_t a[] = {0x77, 0x77, 0x77, 0x77};
                 int8_t b[] = {0x77, 0x77, 0x77, 0x77};
                 int32_t c = 0;
@@ -556,7 +541,7 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4_all_max_neg");
                 // All lanes = -8
-                // 0x88 = PK(-8, -8)
+                // 0x88 = PK_SB_I4(-8, -8)
                 int8_t a[] = {(int8_t)0x88, (int8_t)0x88, (int8_t)0x88, (int8_t)0x88};
                 int8_t b[] = {(int8_t)0x88, (int8_t)0x88, (int8_t)0x88, (int8_t)0x88};
                 int32_t c = 0;
@@ -575,8 +560,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4_acc_overflow");
                 // 8 lanes of 1*1 = 8.
-                int8_t a[] = {PK(1,1), PK(1,1), PK(1,1), PK(1,1)};
-                int8_t b[] = {PK(1,1), PK(1,1), PK(1,1), PK(1,1)};
+                int8_t a[] = {PK_SB_I4(1,1), PK_SB_I4(1,1), PK_SB_I4(1,1), PK_SB_I4(1,1)};
+                int8_t b[] = {PK_SB_I4(1,1), PK_SB_I4(1,1), PK_SB_I4(1,1), PK_SB_I4(1,1)};
                 // Start at MAX - 7. Adding 8 should wrap to MIN.
                 int32_t c = 2147483640;
                 _dot4(v_load_int4x8(a), v_load_int4x8(b), &c);
@@ -587,8 +572,8 @@ void main() {
                 // First 4 lanes max pos product (7*7 = 49)
                 // Last 4 lanes max neg product (-8*7 = -56)
                 // Sum = (49*4) + (-56*4) = 196 - 224 = -28
-                int8_t a[] = {PK(7,7), PK(7,7), PK(-8,-8), PK(-8,-8)};
-                int8_t b[] = {PK(7,7), PK(7,7), PK(7,7),   PK(7,7)};
+                int8_t a[] = {PK_SB_I4(7,7), PK_SB_I4(7,7), PK_SB_I4(-8,-8), PK_SB_I4(-8,-8)};
+                int8_t b[] = {PK_SB_I4(7,7), PK_SB_I4(7,7), PK_SB_I4(7,7),   PK_SB_I4(7,7)};
                 int32_t c = 28;
                 _dot4(v_load_int4x8(a), v_load_int4x8(b), &c);
                 CHECK(c, 0, 509);
@@ -597,8 +582,8 @@ void main() {
                 GLOBAL_SYMBOL("op_dot4_high_nibble_isolation");
                 // ensure high nibble of 'a' doesn't bleed into low nibble res
                 // a: (0, -8), b: (0, 1) -> Low: 0*0=0, High: -8*1=-8. Sum=-8
-                int8_t a[] = {PK(0, -8), 0, 0, 0};
-                int8_t b[] = {PK(0, 1), 0, 0, 0};
+                int8_t a[] = {PK_SB_I4(0, -8), 0, 0, 0};
+                int8_t b[] = {PK_SB_I4(0, 1), 0, 0, 0};
                 int32_t c = 0;
                 _dot4(v_load_int4x8(a), v_load_int4x8(b), &c);
                 CHECK(c, -8, 510);
@@ -625,8 +610,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4u_single_lane");
                 // Lane 0 = 15 (0xF), others 0
-                uint8_t a[] = {PK_U(15, 0), 0, 0, 0};
-                uint8_t b[] = {PK_U(1, 0), 0, 0, 0};
+                uint8_t a[] = {PK_SB_U4(15, 0), 0, 0, 0};
+                uint8_t b[] = {PK_SB_U4(1, 0), 0, 0, 0};
                 int32_t c = 10;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, (15 * 1 + 10), 603);
@@ -634,7 +619,7 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4u_all_max");
                 // All lanes = 15 (0xF)
-                // 0xFF = PK_U(15, 15)
+                // 0xFF = PK_SB_U4(15, 15)
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 int32_t c = 0;
@@ -645,8 +630,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot4u_acc_overflow");
                 // All lanes = 1. Dot product = 8.
-                uint8_t a[] = {PK_U(1,1), PK_U(1,1), PK_U(1,1), PK_U(1,1)};
-                uint8_t b[] = {PK_U(1,1), PK_U(1,1), PK_U(1,1), PK_U(1,1)};
+                uint8_t a[] = {PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1)};
+                uint8_t b[] = {PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1)};
                 // Start at MAX - 7. Adding 8 should wrap to MIN.
                 int32_t c = 2147483640;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
@@ -668,8 +653,8 @@ void main() {
                 // Ensure high nibble of A doesn't interact with low nibble of B
                 // Lane 0: a=0, b=15. Lane 1: a=15, b=0.
                 // Result should be 0.
-                uint8_t a[] = {PK_U(0, 15), 0, 0, 0};
-                uint8_t b[] = {PK_U(15, 0), 0, 0, 0};
+                uint8_t a[] = {PK_SB_U4(0, 15), 0, 0, 0};
+                uint8_t b[] = {PK_SB_U4(15, 0), 0, 0, 0};
                 int32_t c = 100;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 100, 607);
@@ -698,8 +683,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot2_single_lane_pos");
                 // Lane 0 = 1, others 0
-                int8_t a[] = {PK2(0,0,0,1), 0, 0, 0};
-                int8_t b[] = {PK2(0,0,0,1), 0, 0, 0};
+                int8_t a[] = {PK_SB_I2(0,0,0,1), 0, 0, 0};
+                int8_t b[] = {PK_SB_I2(0,0,0,1), 0, 0, 0};
                 int32_t c = 50;
                 _dot2(v_load_int2x16(a), v_load_int2x16(b), &c);
                 CHECK(c, (1 * 1 + 50), 703);
@@ -707,8 +692,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot2_single_lane_neg");
                 // Lane 0 = -2, others 0
-                int8_t a[] = {PK2(0,0,0,-2), 0, 0, 0};
-                int8_t b[] = {PK2(0,0,0,1), 0, 0, 0};
+                int8_t a[] = {PK_SB_I2(0,0,0,-2), 0, 0, 0};
+                int8_t b[] = {PK_SB_I2(0,0,0,1), 0, 0, 0};
                 int32_t c = 100;
                 _dot2(v_load_int2x16(a), v_load_int2x16(b), &c);
                 CHECK(c, (-2 * 1 + 100), 704);
@@ -760,8 +745,8 @@ void main() {
                 // Lane 0 of 'a' is -2 (10), others 0.
                 // Lane 1 of 'b' is 1 (01), others 0.
                 // Result should be 0. If bits bleed/shift wrong, you get nonzero.
-                int8_t a[] = {PK2(0,0,0,-2), 0, 0, 0};
-                int8_t b[] = {PK2(0,0,1, 0), 0, 0, 0};
+                int8_t a[] = {PK_SB_I2(0,0,0,-2), 0, 0, 0};
+                int8_t b[] = {PK_SB_I2(0,0,1, 0), 0, 0, 0};
                 int32_t c = 7;
                 _dot2(v_load_int2x16(a), v_load_int2x16(b), &c);
                 CHECK(c, 7, 709);
@@ -790,8 +775,8 @@ void main() {
             {
                 GLOBAL_SYMBOL("op_dot2u_single_lane");
                 // Lane 0 = 3, others 0
-                uint8_t a[] = {PK2_U(0,0,0,3), 0, 0, 0};
-                uint8_t b[] = {PK2_U(0,0,0,2), 0, 0, 0};
+                uint8_t a[] = {PK_SB_U2(0,0,0,3), 0, 0, 0};
+                uint8_t b[] = {PK_SB_U2(0,0,0,2), 0, 0, 0};
                 int32_t c = 10;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, (3 * 2 + 10), 803);
@@ -834,8 +819,8 @@ void main() {
                 // A: Lane 0 = 3 (11), Lane 1 = 0
                 // B: Lane 0 = 0, Lane 1 = 3 (11)
                 // Product should be 0.
-                uint8_t a[] = {PK2_U(0,0,0,3), 0, 0, 0};
-                uint8_t b[] = {PK2_U(0,0,3,0), 0, 0, 0};
+                uint8_t a[] = {PK_SB_U2(0,0,0,3), 0, 0, 0};
+                uint8_t b[] = {PK_SB_U2(0,0,3,0), 0, 0, 0};
                 int32_t c = 77;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, 77, 807);
