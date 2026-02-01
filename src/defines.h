@@ -413,6 +413,17 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
+#define CASE_DATA_FMT_SWAPAD_CUSTOM_OP(op, t) \
+    case TO_U8(data_fmt_swapad_custom_op_t::op_##op): \
+        rp = data_fmt_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf_pair(ip.rd(), rp); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RDP_RS1_RS2 \
+        PROF_SPARSITY_SIMD(rp.a, t) \
+        PROF_SPARSITY_SIMD(rp.b, t) \
+        break;
+
 #define CASE_SCP_CUSTOM(op) \
     case TO_U8(scp_custom_op_t::op_##op): \
         write_rf(ip.rd(), \

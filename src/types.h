@@ -117,6 +117,7 @@ enum class custom_op_t {
     type_data_fmt_widen = 0x20,
     type_data_fmt_narrow = 0x22,
     type_data_fmt_qnarrow = 0x23,
+    type_data_fmt_swapad = 0x30,
     type_hints = 0x7f,
 };
 
@@ -207,6 +208,13 @@ enum class data_fmt_qnarrow_custom_op_t {
     op_qnarrow8u = 0x5,
     op_qnarrow4 = 0x6,
     op_qnarrow4u = 0x7,
+};
+
+enum class data_fmt_swapad_custom_op_t {
+    op_swapad16 = 0x0,
+    op_swapad8 = 0x2,
+    op_swapad4 = 0x4,
+    op_swapad2 = 0x6,
 };
 
 enum class scp_custom_op_t {

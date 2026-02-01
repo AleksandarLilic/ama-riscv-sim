@@ -611,6 +611,36 @@ uint2x16_t _qnarrow4u(const uint4x8_t a, const uint4x8_t b) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
+// data formatting - swap anti-diagonal
+static INLINE
+uint16x4_t _swapad16(uint16x2_t a, uint16x2_t b) {
+    uint16x4_t c;
+    asm volatile("swapad16 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x8_t _swapad8(uint8x4_t a, uint8x4_t b) {
+    uint8x8_t c;
+    asm volatile("swapad8 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint4x16_t _swapad4(uint4x8_t a, uint4x8_t b) {
+    uint4x16_t c;
+    asm volatile("swapad4 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint2x32_t _swapad2(uint2x16_t a, uint2x16_t b) {
+    uint2x32_t c;
+    asm volatile("swapad2 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
 #else // non __riscv_xsimd implementations
 
 void add_int16(

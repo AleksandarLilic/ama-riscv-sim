@@ -264,6 +264,11 @@ class core {
         uint32_t data_fmt_c_qnarrow8u(uint32_t a, uint32_t b);
         uint32_t data_fmt_c_qnarrow4(uint32_t a, uint32_t b);
         uint32_t data_fmt_c_qnarrow4u(uint32_t a, uint32_t b);
+        // custom extension - data formatting - swap anti-diagonal
+        reg_pair data_fmt_c_swapad16(uint32_t a, uint32_t b);
+        reg_pair data_fmt_c_swapad8(uint32_t a, uint32_t b);
+        reg_pair data_fmt_c_swapad4(uint32_t a, uint32_t b);
+        reg_pair data_fmt_c_swapad2(uint32_t a, uint32_t b);
 
         // C extension
         void d_compressed_0();
@@ -320,6 +325,8 @@ class core {
             reg_pair data_fmt_c_widen_t(uint32_t a, uint32_t shamt);
         template <size_t vbits, bool vsat, bool vsigned>
             uint32_t data_fmt_c_narrow_t(uint32_t a, uint32_t b);
+        template <size_t vbits>
+            reg_pair data_fmt_c_swapad_t(uint32_t a, uint32_t b);
 
         // interrupts
         // TODO
