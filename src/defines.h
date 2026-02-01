@@ -434,6 +434,17 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
+#define CASE_SV_VINS_CUSTOM_OP(op, t, lane_mask) \
+    case TO_U8(sv_vins_custom_op_t::op_##op): \
+        res = data_fmt_c_##op(rf[ip.rd()], rf[ip.rs1()], \
+                             TO_U8(ip.rs2() & (lane_mask))); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1 \
+        PROF_SPARSITY_SIMD(res, t) \
+        break;
+
 #define CASE_SCP_CUSTOM(op) \
     case TO_U8(scp_custom_op_t::op_##op): \
         write_rf(ip.rd(), \

@@ -671,6 +671,40 @@ uint2x16_t _dup2(uint8_t scalar) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
+// scalar-vector vins (insert scalar into one lane of vector, RMW)
+static INLINE
+uint16x2_t _vins16(uint16x2_t vec, uint16_t scalar, size_t lane_idx) {
+    uint16x2_t r = vec;
+    asm volatile("vins16 %0, %1, %2" : "+r"(r) :
+                 "r"((uint32_t)scalar), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint8x4_t _vins8(uint8x4_t vec, uint8_t scalar, size_t lane_idx) {
+    uint8x4_t r = vec;
+    asm volatile("vins8 %0, %1, %2" : "+r"(r) :
+                 "r"((uint32_t)scalar), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint4x8_t _vins4(uint4x8_t vec, uint8_t scalar, size_t lane_idx) {
+    uint4x8_t r = vec;
+    asm volatile("vins4 %0, %1, %2" : "+r"(r) :
+                 "r"((uint32_t)(scalar & 0xFu)), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint2x16_t _vins2(uint2x16_t vec, uint8_t scalar, size_t lane_idx) {
+    uint2x16_t r = vec;
+    asm volatile("vins2 %0, %1, %2" : "+r"(r) :
+                 "r"((uint32_t)(scalar & 0x3u)), "i"(lane_idx));
+    return r;
+}
+
 #else // non __riscv_xsimd implementations
 
 void add_int16(

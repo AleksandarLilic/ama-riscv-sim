@@ -118,7 +118,7 @@ enum class custom_op_t {
     type_data_fmt_narrow = 0x22,
     type_data_fmt_qnarrow = 0x23,
     type_data_fmt_swapad = 0x30,
-    type_sv_dup = 0x3c,
+    type_sv_dup_vins = 0x3c,
     type_hints = 0x7f,
 };
 
@@ -223,6 +223,13 @@ enum class sv_dup_custom_op_t {
     op_dup8 = 0x2,
     op_dup4 = 0x4,
     op_dup2 = 0x6,
+};
+
+enum class sv_vins_custom_op_t {
+    op_vins16 = 0x1,
+    op_vins8 = 0x3,
+    op_vins4 = 0x5,
+    op_vins2 = 0x7,
 };
 
 enum class scp_custom_op_t {

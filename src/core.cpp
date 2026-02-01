@@ -800,13 +800,17 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("data_fmt_swapad");
             }
             break;
-        case TO_U8(custom_op_t::type_sv_dup):
+        case TO_U8(custom_op_t::type_sv_dup_vins):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
                 CASE_SV_DUP_CUSTOM_OP(dup16, data_fmt)
+                CASE_SV_VINS_CUSTOM_OP(vins16, data_fmt, 0x1)
                 CASE_SV_DUP_CUSTOM_OP(dup8, data_fmt)
+                CASE_SV_VINS_CUSTOM_OP(vins8, data_fmt, 0x3)
                 CASE_SV_DUP_CUSTOM_OP(dup4, data_fmt)
+                CASE_SV_VINS_CUSTOM_OP(vins4, data_fmt, 0x7)
                 CASE_SV_DUP_CUSTOM_OP(dup2, data_fmt)
+                CASE_SV_VINS_CUSTOM_OP(vins2, data_fmt, 0xf)
                 default: tu.e_unsupported_inst("sv_dup");
             }
             break;
@@ -846,7 +850,17 @@ void core::d_custom_ext() {
             DASM_RD_UPDATE;
             DASM_RD_UPDATE_PAIR;
             break;
-        case TO_U8(custom_op_t::type_sv_dup):
+        case TO_U8(custom_op_t::type_sv_dup_vins):
+            DASM_OP_RD << "," << DASM_OP_RS1;
+            if (funct3 & 0x1) {
+                // lsb set, vins (fn3 1,3,5,7 -> 1,2,3,4 bit mask)
+                static const uint32_t vins_lane_mask[] = {
+                    0x1u, 0x3u, 0x7u, 0xfu };
+                uint32_t imm = (ip.rs2() & vins_lane_mask[funct3 >> 1]);
+                dasm.asm_ss << "," << FHEXN(imm, 1);
+            }
+            DASM_RD_UPDATE;
+            break;
         case TO_U8(custom_op_t::type_hints):
             DASM_OP_RD << "," << DASM_OP_RS1;
             DASM_RD_UPDATE;

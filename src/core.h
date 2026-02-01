@@ -71,6 +71,8 @@ class core {
         void simd_ss_finish_cai();
         void simd_ss_finish_cab();
         void simd_ss_finish_dot(int32_t res, int32_t rs3);
+        void simd_ss_init_vs_ab();
+        void simd_ss_finish_vs_ab(int32_t rs1_s, int32_t rs2_s);
         #endif
 
     private:
@@ -276,6 +278,11 @@ class core {
         uint32_t data_fmt_c_dup8(uint32_t rs1);
         uint32_t data_fmt_c_dup4(uint32_t rs1);
         uint32_t data_fmt_c_dup2(uint32_t rs1);
+        // custom extension - scalar-vector vins (insert scalar into lane)
+        uint32_t data_fmt_c_vins16(uint32_t rd_val, uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vins8(uint32_t rd_val, uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vins4(uint32_t rd_val, uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vins2(uint32_t rd_val, uint32_t rs1, uint8_t idx);
 
         // C extension
         void d_compressed_0();
@@ -336,6 +343,8 @@ class core {
             reg_pair data_fmt_c_swapad_t(uint32_t a, uint32_t b);
         template <size_t vbits>
             uint32_t data_fmt_c_dup_t(uint32_t rs1);
+        template <size_t vbits>
+            uint32_t data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx);
 
         // interrupts
         // TODO

@@ -91,4 +91,16 @@ void core::simd_ss_finish_dot(int32_t res, int32_t rs3) {
                  << ", RS3 = " << rs3 << "; ";
 }
 
+void core::simd_ss_init_vs_ab() {
+    simd_ss_clear();
+    dasm.simd_c << "[ ";
+}
+
+void core::simd_ss_finish_vs_ab(int32_t a, int32_t b) {
+    if (!ip.rd()) return;
+    dasm.simd_ss << "RD = " << dasm.simd_c.str() << "], "
+                 << "RS1 = " << a
+                 << ", RS2 = " << b << "; ";
+}
+
 #endif

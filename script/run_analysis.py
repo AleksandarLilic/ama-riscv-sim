@@ -71,6 +71,7 @@ class icfg:
     k_simd_narrow = "SIMD_NARROW"
     k_simd_swapad = "SIMD_SWAPAD"
     k_simd_dup = "SIMD_DUP"
+    k_simd_vins = "SIMD_VINS"
     k_mem = "MEM"
     k_mem_hint = "MEM_HINTS"
     k_branch = "BRANCH"
@@ -123,6 +124,7 @@ class icfg:
             "swapad16", "swapad8", "swapad4", "swapad2",
         ],
         k_simd_dup: ["dup16", "dup8", "dup4", "dup2"],
+        k_simd_vins: ["vins16", "vins8", "vins4", "vins2"],
     }
 
     INST_T_JUMP = {
@@ -154,7 +156,8 @@ class icfg:
             INST_T_SIMD_DATA_FMT[k_simd_widen] + \
             INST_T_SIMD_DATA_FMT[k_simd_narrow] + \
             INST_T_SIMD_DATA_FMT[k_simd_swapad] + \
-            INST_T_SIMD_DATA_FMT[k_simd_dup],
+            INST_T_SIMD_DATA_FMT[k_simd_dup] + \
+            INST_T_SIMD_DATA_FMT[k_simd_vins],
 
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
         k_mem_hint: ["scp.ld", "scp.rel"],
