@@ -7,7 +7,7 @@ uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
     constexpr size_t e = (32 / vbits);
     int32_t res = 0;
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ");
+    simd_ss_init_ab();
     #endif
 
     for (size_t i = 0; i < e; i++) {
@@ -15,7 +15,7 @@ uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
         int32_t val_b = extract_val<vbits, vsigned>(b);
 
         #ifdef DASM_EN
-        simd_ss_append(val_a, val_b);
+        simd_ss_append_ab(val_a, val_b);
         #endif
 
         res += (val_a * val_b);
@@ -26,7 +26,7 @@ uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
     res += c;
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", res, c);
+    simd_ss_finish_dot(res, c);
     #endif
 
     return TO_U32(res);

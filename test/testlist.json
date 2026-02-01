@@ -23,6 +23,7 @@
     "rv32i_custom-simd-widen": ["basic"],
     "rv32i_custom-simd-narrow": ["basic"],
     "rv32i_custom-simd-swapad": ["basic"],
+    "rv32i_custom-simd-dup": ["basic"],
 
     "rd_pairing": ["basic"],
 

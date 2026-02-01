@@ -10,7 +10,7 @@ uint32_t core::alu_c_shift_op(uint32_t a, uint32_t shamt) {
     uint32_t res_packed = 0;
 
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", std::to_string(shamt));
+    simd_ss_init_cab(std::to_string(shamt));
     #endif
 
     for (size_t i = 0; i < e; i++) {
@@ -30,7 +30,7 @@ uint32_t core::alu_c_shift_op(uint32_t a, uint32_t shamt) {
     }
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", "");
+    simd_ss_finish_cai();
     #endif
 
     return res_packed;

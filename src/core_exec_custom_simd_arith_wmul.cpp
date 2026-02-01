@@ -14,7 +14,7 @@ reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
     int32_t results[e];
 
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", "[ ");
+    simd_ss_init_cab();
     #endif
 
     // extract inputs and multiply
@@ -26,7 +26,7 @@ reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
         results[i] = (val_a * val_b);
 
         #ifdef DASM_EN
-        simd_ss_append(val_a, val_b);
+        simd_ss_append_ab(val_a, val_b);
         #endif
 
         a >>= vbits;
@@ -35,17 +35,14 @@ reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
 
     #ifdef DASM_EN
     // format the result string: [ r0 r1 ], [ r2 r3 ]
-    dasm.simd_a << "]";
-    dasm.simd_b << "]";
 
     for (size_t i = 0; i < e; i++) {
         dasm.simd_c << results[i];
         // add separators at the split point (between reg words) and end
         if (i == half_e - 1) dasm.simd_c << " ], [ ";
-        else if (i == e - 1) dasm.simd_c << " ]";
         else dasm.simd_c << " ";
     }
-    simd_ss_finish("", "", "");
+    simd_ss_finish_cab();
     #endif
 
     //  pack results into two 32-bit words

@@ -68,6 +68,8 @@ enum class opc_g {
     i_qnarrow8, i_qnarrow8u, i_qnarrow4, i_qnarrow4u,
     // swap anti-diagonal
     i_swapad16, i_swapad8, i_swapad4, i_swapad2,
+    // scalar-vector dup
+    i_dup16, i_dup8, i_dup4, i_dup2,
     // custom hints
     i_scp_lcl, i_scp_rel,
 
@@ -206,6 +208,7 @@ struct cnt_t {
         uint32_t widen_c = 0;
         uint32_t narrow_c = 0;
         uint32_t swapad_c = 0;
+        uint32_t dup_c = 0;
         uint32_t scp_c = 0;
 
     public:
@@ -214,7 +217,7 @@ struct cnt_t {
             rest = (
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
-                dot_c - alu_c - wmul_c - widen_c - narrow_c - swapad_c - scp_c
+                dot_c - alu_c - wmul_c - widen_c - narrow_c - swapad_c - dup_c - scp_c
             );
         }
         float_t get_perc(uint32_t count) {
@@ -244,6 +247,7 @@ struct perc_t {
         float_t widen_c = 0.0;
         float_t narrow_c = 0.0;
         float_t swapad_c = 0.0;
+        float_t dup_c = 0.0;
         float_t scp_c = 0.0;
 };
 
@@ -445,6 +449,10 @@ class profiler {
 
         static constexpr std::array swapad_c_opcs = {
             opc_g::i_swapad16, opc_g::i_swapad8, opc_g::i_swapad4, opc_g::i_swapad2,
+        };
+
+        static constexpr std::array dup_c_opcs = {
+            opc_g::i_dup16, opc_g::i_dup8, opc_g::i_dup4, opc_g::i_dup2,
         };
 
         static constexpr std::array scp_c_opcs = {

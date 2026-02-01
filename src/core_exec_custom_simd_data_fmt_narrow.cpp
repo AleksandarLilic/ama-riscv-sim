@@ -63,7 +63,7 @@ uint32_t core::data_fmt_c_narrow_t(uint32_t a, uint32_t b) {
     };
 
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", "[ ");
+    simd_ss_init_cab();
     #endif
 
     process_reg(a, 0);
@@ -72,12 +72,12 @@ uint32_t core::data_fmt_c_narrow_t(uint32_t a, uint32_t b) {
     #ifdef DASM_EN
     for (size_t i = 0; i < e; i++) {
         if constexpr (vsigned) {
-            simd_ss_append(
+            simd_ss_append_ab(
                 extract_val<vbits, vsigned>(a >> (i * vbits)),
                 extract_val<vbits, vsigned>(b >> (i * vbits))
             );
         } else {
-            simd_ss_append_u(
+            simd_ss_append_ab_u(
                 TO_U32((extract_val<vbits, vsigned>(a >> (i * vbits)))),
                 TO_U32((extract_val<vbits, vsigned>(b >> (i * vbits))))
             );
@@ -85,7 +85,7 @@ uint32_t core::data_fmt_c_narrow_t(uint32_t a, uint32_t b) {
     }
 
     for (size_t i = 0; i < out_e; i++) dasm.simd_c << out_vals[i] << " ";
-    simd_ss_finish("]", "]", "]");
+    simd_ss_finish_cab();
     #endif
 
     return res;

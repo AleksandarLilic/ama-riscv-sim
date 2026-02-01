@@ -10,7 +10,7 @@ uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
     uint32_t res_packed = 0;
 
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", "[ ");
+    simd_ss_init_cab();
     #endif
 
     for (size_t i = 0; i < e; i++) {
@@ -21,7 +21,7 @@ uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
         else res = std::max(val_a, val_b);
 
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(res), val_a, val_b);
+        simd_ss_append_cab(TO_I32(res), val_a, val_b);
         #endif
 
         res_packed |= (TO_U32(res) & mask) << (i * vbits);
@@ -32,7 +32,7 @@ uint32_t core::alu_c_min_max_op(uint32_t a, uint32_t b) {
     }
 
     #ifdef DASM_EN
-    simd_ss_finish("]", "]", "]");
+    simd_ss_finish_cab();
     #endif
 
     return res_packed;

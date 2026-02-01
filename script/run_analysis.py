@@ -70,6 +70,7 @@ class icfg:
     k_simd_widen = "SIMD_WIDEN"
     k_simd_narrow = "SIMD_NARROW"
     k_simd_swapad = "SIMD_SWAPAD"
+    k_simd_dup = "SIMD_DUP"
     k_mem = "MEM"
     k_mem_hint = "MEM_HINTS"
     k_branch = "BRANCH"
@@ -121,6 +122,7 @@ class icfg:
         k_simd_swapad: [
             "swapad16", "swapad8", "swapad4", "swapad2",
         ],
+        k_simd_dup: ["dup16", "dup8", "dup4", "dup2"],
     }
 
     INST_T_JUMP = {
@@ -151,7 +153,8 @@ class icfg:
         k_simd_data_fmt:
             INST_T_SIMD_DATA_FMT[k_simd_widen] + \
             INST_T_SIMD_DATA_FMT[k_simd_narrow] + \
-            INST_T_SIMD_DATA_FMT[k_simd_swapad],
+            INST_T_SIMD_DATA_FMT[k_simd_swapad] + \
+            INST_T_SIMD_DATA_FMT[k_simd_dup],
 
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
         k_mem_hint: ["scp.ld", "scp.rel"],
@@ -186,14 +189,14 @@ class icfg:
             simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow32"),
         4: simd_el_width(INST_T_SIMD_A, "8")  + \
             simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow16") + \
-            ["dot16"],
+            ["dot16"], # 2x mul, 1x sum, 1x acc
         8: simd_el_width(INST_T_SIMD_A, "4")  + \
             simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow8") + \
-            ["dot8"],
+            ["dot8"], # 4x mul, 3x sum, 1x acc
         16: simd_el_width(INST_T_SIMD_A, "2") + \
             simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow4") + \
-            ["dot4"],
-        32: ["dot2"],
+            ["dot4"], # 8x mul, 7x sum, 1x acc
+        32: ["dot2"], # 16x mul, 15x sum, 1x acc
     }
 
     BRANCH_DENSITY = { 1: INST_T[k_branch] + INST_T[k_jump] }

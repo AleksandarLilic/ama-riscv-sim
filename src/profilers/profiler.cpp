@@ -129,6 +129,11 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(swapad4);
     P_INIT(swapad2);
 
+    P_INIT(dup16);
+    P_INIT(dup8);
+    P_INIT(dup4);
+    P_INIT(dup2);
+
     P_INIT_D(scp, lcl);
     P_INIT_D(scp, rel);
 
@@ -353,6 +358,7 @@ void profiler::log_to_file_and_print(bool silent) {
     for (auto &u: widen_c_opcs) cnt.widen_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: narrow_c_opcs) cnt.narrow_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: swapad_c_opcs) cnt.swapad_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &u: dup_c_opcs) cnt.dup_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.nop = prof_g_arr[TO_U32(opc_g::i_nop)].count;
     cnt.find_mem();
@@ -375,6 +381,7 @@ void profiler::log_to_file_and_print(bool silent) {
     perc.widen_c = cnt.get_perc(cnt.widen_c);
     perc.narrow_c = cnt.get_perc(cnt.narrow_c);
     perc.swapad_c = cnt.get_perc(cnt.swapad_c);
+    perc.dup_c = cnt.get_perc(cnt.dup_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
@@ -425,7 +432,8 @@ void profiler::log_to_file_and_print(bool silent) {
     std::cout << INDENT << "SIMD DATA FMT:"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%),"
               << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%),"
-              << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%)"
+              << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%),"
+              << " DUP: " << cnt.dup_c << "(" << perc.dup_c << "%)"
               << "\n";
 
     std::cout << INDENT << "Hint:"

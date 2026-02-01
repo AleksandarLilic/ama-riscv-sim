@@ -800,6 +800,16 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("data_fmt_swapad");
             }
             break;
+        case TO_U8(custom_op_t::type_sv_dup):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_SV_DUP_CUSTOM_OP(dup16, data_fmt)
+                CASE_SV_DUP_CUSTOM_OP(dup8, data_fmt)
+                CASE_SV_DUP_CUSTOM_OP(dup4, data_fmt)
+                CASE_SV_DUP_CUSTOM_OP(dup2, data_fmt)
+                default: tu.e_unsupported_inst("sv_dup");
+            }
+            break;
         case TO_U8(custom_op_t::type_hints):
             switch (funct3) {
                 CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
@@ -826,6 +836,7 @@ void core::d_custom_ext() {
             DASM_RD_UPDATE;
             break;
         case TO_U8(custom_op_t::type_wmul):
+        case TO_U8(custom_op_t::type_data_fmt_swapad):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;
             DASM_RD_UPDATE_PAIR;
@@ -835,11 +846,7 @@ void core::d_custom_ext() {
             DASM_RD_UPDATE;
             DASM_RD_UPDATE_PAIR;
             break;
-        case TO_U8(custom_op_t::type_data_fmt_swapad):
-            DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
-            DASM_RD_UPDATE;
-            DASM_RD_UPDATE_PAIR;
-            break;
+        case TO_U8(custom_op_t::type_sv_dup):
         case TO_U8(custom_op_t::type_hints):
             DASM_OP_RD << "," << DASM_OP_RS1;
             DASM_RD_UPDATE;

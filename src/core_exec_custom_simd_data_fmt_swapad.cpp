@@ -16,7 +16,7 @@ reg_pair core::data_fmt_c_swapad_t(uint32_t a, uint32_t b) {
     uint32_t rdp_val = 0;
 
     #ifdef DASM_EN
-    simd_ss_init("[ ", "[ ", "[ ");
+    simd_ss_init_cab();
     #endif
 
     // one iteration per (even, odd) lane pair:
@@ -37,8 +37,8 @@ reg_pair core::data_fmt_c_swapad_t(uint32_t a, uint32_t b) {
         rdp_val |= ((a_odd << (i_even * vbits)) | (b_odd << (i_odd * vbits)));
 
         #ifdef DASM_EN
-        simd_ss_append(TO_I32(a_even), TO_I32(b_even));
-        simd_ss_append(TO_I32(a_odd), TO_I32(b_odd));
+        simd_ss_append_ab(TO_I32(a_even), TO_I32(b_even));
+        simd_ss_append_ab(TO_I32(a_odd), TO_I32(b_odd));
         #endif
     }
 
@@ -57,7 +57,7 @@ reg_pair core::data_fmt_c_swapad_t(uint32_t a, uint32_t b) {
         dasm.simd_c << TO_I32(a_odd) << " " << TO_I32(b_odd) << " ";
     }
 
-    simd_ss_finish("]", "]", "]");
+    simd_ss_finish_cab();
     #endif
 
     return {rd_val, rdp_val};

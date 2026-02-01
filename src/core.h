@@ -56,19 +56,21 @@ class core {
             ostr << "x" << ip.rd() << ": " << FHEXZ(rf[ip.rd()], 8);
             return ostr.str();
         }
-        void simd_ss_init(std::string a);
-        void simd_ss_init(std::string a, std::string b);
-        void simd_ss_init(std::string c, std::string a, std::string b);
-        void simd_ss_append(int32_t a);
-        void simd_ss_append(int32_t a, int32_t b);
-        void simd_ss_append_u(uint32_t a, uint32_t b);
-        void simd_ss_append(int32_t c, int32_t a, int32_t b);
+        void simd_ss_clear();
+        void simd_ss_init_ab();
+        void simd_ss_init_ca();
+        void simd_ss_init_cab();
+        void simd_ss_init_cab(std::string b);
+        void simd_ss_append_a(int32_t a);
+        void simd_ss_append_c(int32_t c);
+        void simd_ss_append_ab(int32_t a, int32_t b);
+        void simd_ss_append_ab_u(uint32_t a, uint32_t b);
+        void simd_ss_append_cab(int32_t c, int32_t a, int32_t b);
         void simd_ss_append_imm(int32_t c, int32_t a, size_t w);
-        void simd_ss_finish(std::string a);
-        void simd_ss_finish(std::string a, std::string b, int32_t res);
-        void simd_ss_finish(
-            std::string a, std::string b, int32_t res, int32_t rs3);
-        void simd_ss_finish(std::string c, std::string a, std::string b);
+        void simd_ss_finish_ca();
+        void simd_ss_finish_cai();
+        void simd_ss_finish_cab();
+        void simd_ss_finish_dot(int32_t res, int32_t rs3);
         #endif
 
     private:
@@ -269,6 +271,11 @@ class core {
         reg_pair data_fmt_c_swapad8(uint32_t a, uint32_t b);
         reg_pair data_fmt_c_swapad4(uint32_t a, uint32_t b);
         reg_pair data_fmt_c_swapad2(uint32_t a, uint32_t b);
+        // custom extension - scalar-vector dup
+        uint32_t data_fmt_c_dup16(uint32_t rs1);
+        uint32_t data_fmt_c_dup8(uint32_t rs1);
+        uint32_t data_fmt_c_dup4(uint32_t rs1);
+        uint32_t data_fmt_c_dup2(uint32_t rs1);
 
         // C extension
         void d_compressed_0();
@@ -327,6 +334,8 @@ class core {
             uint32_t data_fmt_c_narrow_t(uint32_t a, uint32_t b);
         template <size_t vbits>
             reg_pair data_fmt_c_swapad_t(uint32_t a, uint32_t b);
+        template <size_t vbits>
+            uint32_t data_fmt_c_dup_t(uint32_t rs1);
 
         // interrupts
         // TODO
