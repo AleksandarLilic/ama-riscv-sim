@@ -69,6 +69,7 @@ class icfg:
     k_simd_wmul = "SIMD_WMUL"
     k_simd_widen = "SIMD_WIDEN"
     k_simd_narrow = "SIMD_NARROW"
+    k_simd_swapad = "SIMD_SWAPAD"
     k_mem = "MEM"
     k_mem_hint = "MEM_HINTS"
     k_branch = "BRANCH"
@@ -117,6 +118,9 @@ class icfg:
             "qnarrow32", "qnarrow32u", "qnarrow16", "qnarrow16u",
             "qnarrow8", "qnarrow8u", "qnarrow4", "qnarrow4u",
         ],
+        k_simd_swapad: [
+            "swapad16", "swapad8", "swapad4", "swapad2",
+        ],
     }
 
     INST_T_JUMP = {
@@ -137,14 +141,17 @@ class icfg:
         k_mul: ["mul", "mulh", "mulsu", "mulu"],
         k_div: ["div", "divu", "rem", "remu"],
         k_bitmanip: ["max", "maxu", "min", "minu"],
-        k_simd_arith: INST_T_SIMD_ARITH[k_simd_add_sub] + \
-              INST_T_SIMD_ARITH[k_simd_wmul] + \
-              INST_T_SIMD_ARITH[k_simd_dot] + \
-              INST_T_SIMD_ARITH[k_simd_min_max] + \
-              INST_T_SIMD_ARITH[k_simd_shift],
+        k_simd_arith:
+            INST_T_SIMD_ARITH[k_simd_add_sub] + \
+            INST_T_SIMD_ARITH[k_simd_wmul] + \
+            INST_T_SIMD_ARITH[k_simd_dot] + \
+            INST_T_SIMD_ARITH[k_simd_min_max] + \
+            INST_T_SIMD_ARITH[k_simd_shift],
 
-        k_simd_data_fmt: INST_T_SIMD_DATA_FMT[k_simd_widen] + \
-            INST_T_SIMD_DATA_FMT[k_simd_narrow],
+        k_simd_data_fmt:
+            INST_T_SIMD_DATA_FMT[k_simd_widen] + \
+            INST_T_SIMD_DATA_FMT[k_simd_narrow] + \
+            INST_T_SIMD_DATA_FMT[k_simd_swapad],
 
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
         k_mem_hint: ["scp.ld", "scp.rel"],
@@ -160,34 +167,33 @@ class icfg:
     }
 
     INST_T_SIMD_A = INST_T[k_simd_arith] + INST_T[k_simd_data_fmt]
+
+    @staticmethod
+    def simd_el_width(seq, width: str):
+        excl = ("dot", "narrow")
+        return [s for s in seq
+                if (width in s and not any(b in s for b in excl))]
+
+    @staticmethod
+    def simd_has(seq, token: str):
+        return [s for s in seq if token in s]
+
     OPS_PER_INST = {
-        1: INST_T[k_alu] + INST_T[k_mem] +
-           INST_T[k_mul] + INST_T[k_div] + INST_T[k_bitmanip],
-
-        2: [s for s in INST_T_SIMD_A
-            if (("16" in s) and ('dot' not in s) and ("narrow" not in s))] +
-           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
-            if ("narrow32" in s)],
-
-        4: [s for s in INST_T_SIMD_A
-            if (("8" in s) and ('dot' not in s) and ("narrow" not in s))] +
-           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
-            if ("narrow16" in s)] +
-           ['dot16'], # 2x mul, 1x sum, 1x acc
-
-        8: [s for s in INST_T_SIMD_A
-            if (("4" in s) and ('dot' not in s) and ("narrow" not in s))] +
-           [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
-            if ("narrow8" in s)] +
-           ['dot8'], # 4x mul, 3x sum, 1x acc
-
-        16: [s for s in INST_T_SIMD_A
-             if (("2" in s) and ('dot' not in s) and ("narrow" not in s))] +
-            [s for s in INST_T_SIMD_DATA_FMT[k_simd_narrow]
-             if ("narrow4" in s)] +
-            ['dot4'], # 8x mul, 7x sum, 1x acc
-
-        32: ['dot2'], # 16x mul, 15x sum, 1x acc
+        1: INST_T[k_alu] + INST_T[k_mem] + \
+            INST_T[k_mul] + INST_T[k_div] + \
+            INST_T[k_bitmanip],
+        2: simd_el_width(INST_T_SIMD_A, "16") + \
+            simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow32"),
+        4: simd_el_width(INST_T_SIMD_A, "8")  + \
+            simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow16") + \
+            ["dot16"],
+        8: simd_el_width(INST_T_SIMD_A, "4")  + \
+            simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow8") + \
+            ["dot8"],
+        16: simd_el_width(INST_T_SIMD_A, "2") + \
+            simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow4") + \
+            ["dot4"],
+        32: ["dot2"],
     }
 
     BRANCH_DENSITY = { 1: INST_T[k_branch] + INST_T[k_jump] }
