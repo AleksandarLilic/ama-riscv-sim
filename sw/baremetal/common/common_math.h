@@ -641,6 +641,36 @@ uint2x32_t _swapad2(uint2x16_t a, uint2x16_t b) {
     return c;
 }
 
+// -----------------------------------------------------------------------------
+// scalar-vector dup (broadcast scalar into all lanes)
+static INLINE
+uint16x2_t _dup16(uint16_t scalar) {
+    uint16x2_t c;
+    asm volatile("dup16 %0, %1" : "=r"(c) : "r"((uint32_t)scalar));
+    return c;
+}
+
+static INLINE
+uint8x4_t _dup8(uint8_t scalar) {
+    uint8x4_t c;
+    asm volatile("dup8 %0, %1" : "=r"(c) : "r"((uint32_t)scalar));
+    return c;
+}
+
+static INLINE
+uint4x8_t _dup4(uint8_t scalar) {
+    uint4x8_t c;
+    asm volatile("dup4 %0, %1" : "=r"(c) : "r"((uint32_t)(scalar & 0xFu)));
+    return c;
+}
+
+static INLINE
+uint2x16_t _dup2(uint8_t scalar) {
+    uint2x16_t c;
+    asm volatile("dup2 %0, %1" : "=r"(c) : "r"((uint32_t)(scalar & 0x3u)));
+    return c;
+}
+
 #else // non __riscv_xsimd implementations
 
 void add_int16(
