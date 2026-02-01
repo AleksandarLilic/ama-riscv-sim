@@ -821,7 +821,7 @@ void core::d_custom_ext() {
             DASM_RD_UPDATE_PAIR;
             break;
         case TO_U8(custom_op_t::type_data_fmt_widen):
-            DASM_OP_RD << "," << DASM_OP_RS1;
+            DASM_OP_RD << "," << DASM_OP_RS1 << "," FHEXN(ip.rs2(), 2);
             DASM_RD_UPDATE;
             DASM_RD_UPDATE_PAIR;
             break;

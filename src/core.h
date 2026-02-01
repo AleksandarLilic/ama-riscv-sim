@@ -242,14 +242,14 @@ class core {
         uint32_t alu_c_srai8(uint32_t a, uint32_t shamt);
 
         // custom extension - data formatting - widen
-        reg_pair data_fmt_c_widen16(uint32_t a);
-        reg_pair data_fmt_c_widen16u(uint32_t a);
-        reg_pair data_fmt_c_widen8(uint32_t a);
-        reg_pair data_fmt_c_widen8u(uint32_t a);
-        reg_pair data_fmt_c_widen4(uint32_t a);
-        reg_pair data_fmt_c_widen4u(uint32_t a);
-        reg_pair data_fmt_c_widen2(uint32_t a);
-        reg_pair data_fmt_c_widen2u(uint32_t a);
+        reg_pair data_fmt_c_widen16(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen16u(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen8(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen8u(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen4(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen4u(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen2(uint32_t a, uint32_t shamt);
+        reg_pair data_fmt_c_widen2u(uint32_t a, uint32_t shamt);
         // custom extension - data formatting - narrow
         uint32_t data_fmt_c_narrow32(uint32_t a, uint32_t b);
         uint32_t data_fmt_c_narrow16(uint32_t a, uint32_t b);
@@ -317,7 +317,7 @@ class core {
             uint32_t alu_c_shift_op(uint32_t a, uint32_t shamt);
         // data fmt
         template <size_t vbits, bool vsigned>
-            reg_pair data_fmt_c_widen_t(uint32_t a);
+            reg_pair data_fmt_c_widen_t(uint32_t a, uint32_t shamt);
         template <size_t vbits, bool vsat, bool vsigned>
             uint32_t data_fmt_c_narrow_t(uint32_t a, uint32_t b);
 
