@@ -441,16 +441,19 @@ void profiler::log_to_file_and_print(bool silent) {
               << " Zbb: " << cnt.zbb << "(" << perc.zbb << "%)"
               << "\n";
 
-    std::cout << INDENT << "SIMD ARITH:"
+    std::cout << INDENT << "SIMD arith:"
               << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
               << " WMUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%)"
               << "\n";
 
-    std::cout << INDENT << "SIMD DATA FMT:"
+    std::cout << INDENT << "SIMD data fmt:"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%),"
               << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%),"
-              << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%),"
+              << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%)"
+              << "\n";
+
+    std::cout << INDENT << "SIMD vector-scalar:"
               << " DUP: " << cnt.dup_c << "(" << perc.dup_c << "%),"
               << " VINS: " << cnt.vins_c << "(" << perc.vins_c << "%),"
               << " VEXT: " << cnt.vext_c << "(" << perc.vext_c << "%)"
