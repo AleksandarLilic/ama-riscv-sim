@@ -13,7 +13,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
 
     int32_t vals[e];
     #ifdef DASM_EN
-    simd_ss_init_cab(std::to_string(shamt));
+    simd_ss_init_ca();
     #endif
 
     for (size_t i = 0; i < e; i++) {
@@ -31,7 +31,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
         if (i == (half_e - 1)) dasm.simd_c << " ], [ "; // separator at rd/rdp
         else dasm.simd_c << " ";
     }
-    simd_ss_finish_cai();
+    simd_ss_finish_cas(shamt);
     #endif
 
     uint32_t words[2] = {0, 0};

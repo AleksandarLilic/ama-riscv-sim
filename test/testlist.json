@@ -25,6 +25,7 @@
     "rv32i_custom-simd-swapad": ["basic"],
     "rv32i_custom-simd-dup": ["basic"],
     "rv32i_custom-simd-vins": ["basic"],
+    "rv32i_custom-simd-vext": ["basic"],
 
     "rd_pairing": ["basic"],
 

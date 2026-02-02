@@ -814,6 +814,20 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("sv_dup");
             }
             break;
+        case TO_U8(custom_op_t::type_sv_vext):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_SV_VEXT_CUSTOM_OP(vext16, data_fmt, 0x1)
+                CASE_SV_VEXT_CUSTOM_OP(vext16u, data_fmt, 0x1)
+                CASE_SV_VEXT_CUSTOM_OP(vext8, data_fmt, 0x3)
+                CASE_SV_VEXT_CUSTOM_OP(vext8u, data_fmt, 0x3)
+                CASE_SV_VEXT_CUSTOM_OP(vext4, data_fmt, 0x7)
+                CASE_SV_VEXT_CUSTOM_OP(vext4u, data_fmt, 0x7)
+                CASE_SV_VEXT_CUSTOM_OP(vext2, data_fmt, 0xf)
+                CASE_SV_VEXT_CUSTOM_OP(vext2u, data_fmt, 0xf)
+                default: tu.e_unsupported_inst("sv_vext");
+            }
+            break;
         case TO_U8(custom_op_t::type_hints):
             switch (funct3) {
                 CASE_SCP_CUSTOM(lcl); DASM_OP(scp.lcl); break;
@@ -860,6 +874,16 @@ void core::d_custom_ext() {
                 dasm.asm_ss << "," << FHEXN(imm, 1);
             }
             DASM_RD_UPDATE;
+            break;
+        case TO_U8(custom_op_t::type_sv_vext):
+            {
+                // vext: fn3 0,1->16-bit; 2,3->8-bit; 4,5->4-bit; 6,7->2-bit
+                static const uint32_t vext_lane_mask[] = {
+                    0x1u, 0x3u, 0x7u, 0xfu };
+                uint32_t imm = (ip.rs2() & vext_lane_mask[funct3 >> 1]);
+                DASM_OP_RD << "," << DASM_OP_RS1 << "," << FHEXN(imm, 1);
+                DASM_RD_UPDATE;
+            }
             break;
         case TO_U8(custom_op_t::type_hints):
             DASM_OP_RD << "," << DASM_OP_RS1;

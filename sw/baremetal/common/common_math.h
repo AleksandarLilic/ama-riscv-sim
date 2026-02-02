@@ -705,6 +705,64 @@ uint2x16_t _vins2(uint2x16_t vec, uint8_t scalar, size_t lane_idx) {
     return r;
 }
 
+// -----------------------------------------------------------------------------
+// vext: extract lane from vector, sign extend to 32-bit
+static INLINE
+int32_t _vext16(uint16x2_t vec, size_t lane_idx) {
+    int32_t r;
+    asm volatile("vext16 %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint32_t _vext16u(uint16x2_t vec, size_t lane_idx) {
+    uint32_t r;
+    asm volatile("vext16u %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+int32_t _vext8(uint8x4_t vec, size_t lane_idx) {
+    int32_t r;
+    asm volatile("vext8 %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint32_t _vext8u(uint8x4_t vec, size_t lane_idx) {
+    uint32_t r;
+    asm volatile("vext8u %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+int32_t _vext4(uint4x8_t vec, size_t lane_idx) {
+    int32_t r;
+    asm volatile("vext4 %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint32_t _vext4u(uint4x8_t vec, size_t lane_idx) {
+    uint32_t r;
+    asm volatile("vext4u %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+int32_t _vext2(uint2x16_t vec, size_t lane_idx) {
+    int32_t r;
+    asm volatile("vext2 %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
+static INLINE
+uint32_t _vext2u(uint2x16_t vec, size_t lane_idx) {
+    uint32_t r;
+    asm volatile("vext2u %0, %1, %2" : "=r"(r) : "r"(vec), "i"(lane_idx));
+    return r;
+}
+
 #else // non __riscv_xsimd implementations
 
 void add_int16(

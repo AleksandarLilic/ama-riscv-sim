@@ -57,10 +57,11 @@ class core {
             return ostr.str();
         }
         void simd_ss_clear();
+        void simd_ss_init_c();
+        void simd_ss_init_a();
         void simd_ss_init_ab();
         void simd_ss_init_ca();
         void simd_ss_init_cab();
-        void simd_ss_init_cab(std::string b);
         void simd_ss_append_a(int32_t a);
         void simd_ss_append_c(int32_t c);
         void simd_ss_append_ab(int32_t a, int32_t b);
@@ -68,11 +69,12 @@ class core {
         void simd_ss_append_cab(int32_t c, int32_t a, int32_t b);
         void simd_ss_append_imm(int32_t c, int32_t a, size_t w);
         void simd_ss_finish_ca();
-        void simd_ss_finish_cai();
+        void simd_ss_finish_cas(int32_t shamt);
         void simd_ss_finish_cab();
-        void simd_ss_finish_dot(int32_t res, int32_t rs3);
-        void simd_ss_init_vs_ab();
-        void simd_ss_finish_vs_ab(int32_t rs1_s, int32_t rs2_s);
+        void simd_ss_finish_dot(int32_t res, int32_t c_in);
+        void simd_ss_finish_dup(int32_t a_scalar);
+        void simd_ss_finish_vins(int32_t a, int32_t idx);
+        void simd_ss_finish_vext(int32_t c_scalar, int32_t idx);
         #endif
 
     private:
@@ -283,6 +285,15 @@ class core {
         uint32_t data_fmt_c_vins8(uint32_t rd_val, uint32_t rs1, uint8_t idx);
         uint32_t data_fmt_c_vins4(uint32_t rd_val, uint32_t rs1, uint8_t idx);
         uint32_t data_fmt_c_vins2(uint32_t rd_val, uint32_t rs1, uint8_t idx);
+        // custom extension - scalar-vector vext (extract lane to scalar)
+        uint32_t data_fmt_c_vext16(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext16u(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext8(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext8u(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext4(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext4u(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext2(uint32_t rs1, uint8_t idx);
+        uint32_t data_fmt_c_vext2u(uint32_t rs1, uint8_t idx);
 
         // C extension
         void d_compressed_0();
@@ -345,6 +356,8 @@ class core {
             uint32_t data_fmt_c_dup_t(uint32_t rs1);
         template <size_t vbits>
             uint32_t data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx);
+        template <size_t vbits, bool vsigned>
+            uint32_t data_fmt_c_vext_t(uint32_t rs1, uint8_t idx);
 
         // interrupts
         // TODO

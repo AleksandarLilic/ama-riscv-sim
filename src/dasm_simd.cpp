@@ -27,11 +27,14 @@ void core::simd_ss_init_cab() {
     dasm.simd_b << "[ ";
 }
 
-void core::simd_ss_init_cab(std::string b) {
+void core::simd_ss_init_c() {
     simd_ss_clear();
     dasm.simd_c << "[ ";
+}
+
+void core::simd_ss_init_a() {
+    simd_ss_clear();
     dasm.simd_a << "[ ";
-    dasm.simd_b << b;
 }
 
 void core::simd_ss_append_a(int32_t a) {
@@ -69,11 +72,11 @@ void core::simd_ss_finish_ca() {
                  << "RS1 = " << dasm.simd_a.str() << "]; ";
 }
 
-void core::simd_ss_finish_cai() {
+void core::simd_ss_finish_cas(int32_t shamt) {
     if (!ip.rd()) return;
     dasm.simd_ss << "RD = " << dasm.simd_c.str() << "], "
                  << "RS1 = " << dasm.simd_a.str() << "], "
-                 << "RS2 = " << dasm.simd_b.str() << "; ";
+                 << "SHAMT = " << shamt << "; ";
 }
 
 void core::simd_ss_finish_cab() {
@@ -83,24 +86,32 @@ void core::simd_ss_finish_cab() {
                  << "RS2 = " << dasm.simd_b.str() << "]; ";
 }
 
-void core::simd_ss_finish_dot(int32_t res, int32_t rs3) {
+void core::simd_ss_finish_dot(int32_t res, int32_t c_in) {
     if (!ip.rd()) return;
     dasm.simd_ss << "RD = " << res << ", "
                  << "RS1 = " << dasm.simd_a.str() << "], "
                  << "RS2 = " << dasm.simd_b.str() << "]; "
-                 << ", RS3 = " << rs3 << "; ";
+                 << ", RS3 = " << c_in << "; ";
 }
 
-void core::simd_ss_init_vs_ab() {
-    simd_ss_clear();
-    dasm.simd_c << "[ ";
-}
-
-void core::simd_ss_finish_vs_ab(int32_t a, int32_t b) {
+void core::simd_ss_finish_vins(int32_t a, int32_t idx) {
     if (!ip.rd()) return;
     dasm.simd_ss << "RD = " << dasm.simd_c.str() << "], "
                  << "RS1 = " << a
-                 << ", RS2 = " << b << "; ";
+                 << ", IDX = " << idx << "; ";
+}
+
+void core::simd_ss_finish_vext(int32_t c_scalar, int32_t idx) {
+    if (!ip.rd()) return;
+    dasm.simd_ss << "RD = " << c_scalar << ", "
+                 << "RS1 = " << dasm.simd_a.str() << "], "
+                 << "IDX = " << idx << "; ";
+}
+
+void core::simd_ss_finish_dup(int32_t a_scalar) {
+    if (!ip.rd()) return;
+    dasm.simd_ss << "RD = " << dasm.simd_c.str() << "], "
+                 << "RS1 = " << a_scalar << "; ";
 }
 
 #endif

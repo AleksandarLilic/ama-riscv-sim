@@ -14,19 +14,18 @@ uint32_t core::data_fmt_c_dup_t(uint32_t rs1) {
     uint32_t res = 0;
 
     #ifdef DASM_EN
-    simd_ss_init_ca();
+    simd_ss_init_c();
     #endif
 
     for (size_t i = 0; i < e; i++) {
         res |= lane_val << (i * vbits);
         #ifdef DASM_EN
-        simd_ss_append_a(scalar);
         simd_ss_append_c(scalar);
         #endif
     }
 
     #ifdef DASM_EN
-    simd_ss_finish_ca();
+    simd_ss_finish_dup(scalar);
     #endif
 
     return res;

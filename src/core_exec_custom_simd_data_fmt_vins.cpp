@@ -14,11 +14,11 @@ uint32_t core::data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx) {
 
     #ifdef DASM_EN
     // RD = result vector; RS1 = scalar (inserted value); RS2 = lane index
-    simd_ss_init_vs_ab();
+    simd_ss_init_c();
     for (size_t i = 0; i < lanes; i++) {
         simd_ss_append_c(extract_val<vbits, true>(res >> (i * vbits)));
     }
-    simd_ss_finish_vs_ab(
+    simd_ss_finish_vins(
         extract_val<vbits, true>(rs1), static_cast<int32_t>(idx));
     #endif
 

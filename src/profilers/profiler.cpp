@@ -139,6 +139,15 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(vins4);
     P_INIT(vins2);
 
+    P_INIT(vext16);
+    P_INIT(vext16u);
+    P_INIT(vext8);
+    P_INIT(vext8u);
+    P_INIT(vext4);
+    P_INIT(vext4u);
+    P_INIT(vext2);
+    P_INIT(vext2u);
+
     P_INIT_D(scp, lcl);
     P_INIT_D(scp, rel);
 
@@ -365,6 +374,7 @@ void profiler::log_to_file_and_print(bool silent) {
     for (auto &u: swapad_c_opcs) cnt.swapad_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: dup_c_opcs) cnt.dup_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: vins_c_opcs) cnt.vins_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &u: vext_c_opcs) cnt.vext_c += prof_g_arr[TO_U32(u)].count;
     for (auto &s: scp_c_opcs) cnt.scp_c += prof_g_arr[TO_U32(s)].count;
     cnt.nop = prof_g_arr[TO_U32(opc_g::i_nop)].count;
     cnt.find_mem();
@@ -389,6 +399,7 @@ void profiler::log_to_file_and_print(bool silent) {
     perc.swapad_c = cnt.get_perc(cnt.swapad_c);
     perc.dup_c = cnt.get_perc(cnt.dup_c);
     perc.vins_c = cnt.get_perc(cnt.vins_c);
+    perc.vext_c = cnt.get_perc(cnt.vext_c);
     perc.scp_c = cnt.get_perc(cnt.scp_c);
     perc.rest = cnt.get_perc(cnt.rest);
     perc.nop = cnt.get_perc(cnt.nop);
@@ -441,7 +452,8 @@ void profiler::log_to_file_and_print(bool silent) {
               << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%),"
               << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%),"
               << " DUP: " << cnt.dup_c << "(" << perc.dup_c << "%),"
-              << " VINS: " << cnt.vins_c << "(" << perc.vins_c << "%)"
+              << " VINS: " << cnt.vins_c << "(" << perc.vins_c << "%),"
+              << " VEXT: " << cnt.vext_c << "(" << perc.vext_c << "%)"
               << "\n";
 
     std::cout << INDENT << "Hint:"

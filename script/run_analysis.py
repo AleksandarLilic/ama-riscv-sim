@@ -72,6 +72,7 @@ class icfg:
     k_simd_swapad = "SIMD_SWAPAD"
     k_simd_dup = "SIMD_DUP"
     k_simd_vins = "SIMD_VINS"
+    k_simd_vext = "SIMD_VEXT"
     k_mem = "MEM"
     k_mem_hint = "MEM_HINTS"
     k_branch = "BRANCH"
@@ -125,6 +126,10 @@ class icfg:
         ],
         k_simd_dup: ["dup16", "dup8", "dup4", "dup2"],
         k_simd_vins: ["vins16", "vins8", "vins4", "vins2"],
+        k_simd_vext: [
+            "vext16", "vext16u", "vext8", "vext8u",
+            "vext4", "vext4u", "vext2", "vext2u",
+        ],
     }
 
     INST_T_JUMP = {
@@ -157,7 +162,8 @@ class icfg:
             INST_T_SIMD_DATA_FMT[k_simd_narrow] + \
             INST_T_SIMD_DATA_FMT[k_simd_swapad] + \
             INST_T_SIMD_DATA_FMT[k_simd_dup] + \
-            INST_T_SIMD_DATA_FMT[k_simd_vins],
+            INST_T_SIMD_DATA_FMT[k_simd_vins] + \
+            INST_T_SIMD_DATA_FMT[k_simd_vext],
 
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
         k_mem_hint: ["scp.ld", "scp.rel"],
@@ -176,7 +182,7 @@ class icfg:
 
     @staticmethod
     def simd_el_width(seq, width: str):
-        excl = ("dot", "narrow")
+        excl = ("dot", "narrow", "vins", "vext")
         return [s for s in seq
                 if (width in s and not any(b in s for b in excl))]
 
@@ -187,7 +193,9 @@ class icfg:
     OPS_PER_INST = {
         1: INST_T[k_alu] + INST_T[k_mem] + \
             INST_T[k_mul] + INST_T[k_div] + \
-            INST_T[k_bitmanip],
+            INST_T[k_bitmanip] + \
+            INST_T_SIMD_DATA_FMT[k_simd_vins] + \
+            INST_T_SIMD_DATA_FMT[k_simd_vext],
         2: simd_el_width(INST_T_SIMD_A, "16") + \
             simd_has(INST_T_SIMD_DATA_FMT[k_simd_narrow], "narrow32"),
         4: simd_el_width(INST_T_SIMD_A, "8")  + \

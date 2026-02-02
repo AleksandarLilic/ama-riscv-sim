@@ -72,6 +72,9 @@ enum class opc_g {
     i_dup16, i_dup8, i_dup4, i_dup2,
     // scalar-vector vins
     i_vins16, i_vins8, i_vins4, i_vins2,
+    // scalar-vector vext (extract)
+    i_vext16, i_vext16u, i_vext8, i_vext8u,
+    i_vext4, i_vext4u, i_vext2, i_vext2u,
     // custom hints
     i_scp_lcl, i_scp_rel,
 
@@ -212,6 +215,7 @@ struct cnt_t {
         uint32_t swapad_c = 0;
         uint32_t dup_c = 0;
         uint32_t vins_c = 0;
+        uint32_t vext_c = 0;
         uint32_t scp_c = 0;
 
     public:
@@ -220,7 +224,9 @@ struct cnt_t {
             rest = (
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
-                dot_c - alu_c - wmul_c - widen_c - narrow_c - swapad_c - dup_c - vins_c - scp_c
+                dot_c - alu_c - wmul_c -
+                widen_c - narrow_c - swapad_c - dup_c - vins_c - vext_c -
+                scp_c
             );
         }
         float_t get_perc(uint32_t count) {
@@ -252,6 +258,7 @@ struct perc_t {
         float_t swapad_c = 0.0;
         float_t dup_c = 0.0;
         float_t vins_c = 0.0;
+        float_t vext_c = 0.0;
         float_t scp_c = 0.0;
 };
 
@@ -461,6 +468,11 @@ class profiler {
 
         static constexpr std::array vins_c_opcs = {
             opc_g::i_vins16, opc_g::i_vins8, opc_g::i_vins4, opc_g::i_vins2,
+        };
+
+        static constexpr std::array vext_c_opcs = {
+            opc_g::i_vext16, opc_g::i_vext16u, opc_g::i_vext8, opc_g::i_vext8u,
+            opc_g::i_vext4, opc_g::i_vext4u, opc_g::i_vext2, opc_g::i_vext2u,
         };
 
         static constexpr std::array scp_c_opcs = {
