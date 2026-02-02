@@ -688,7 +688,7 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("alu_custom"); return;
             }
             break;
-        case TO_U8(custom_op_t::type_aluq):
+        case TO_U8(custom_op_t::type_qalu):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
                 CASE_ALUQ_CUSTOM_OP(qadd16, alu)
@@ -699,7 +699,7 @@ void core::d_custom_ext() {
                 CASE_ALUQ_CUSTOM_OP(qsub8, alu)
                 CASE_ALUQ_CUSTOM_OP(qsub16u, alu)
                 CASE_ALUQ_CUSTOM_OP(qsub8u, alu)
-                default: tu.e_unsupported_inst("aluq_custom"); return;
+                default: tu.e_unsupported_inst("qalu_custom"); return;
             }
             break;
         case TO_U8(custom_op_t::type_wmul):
@@ -841,7 +841,7 @@ void core::d_custom_ext() {
     #ifdef DASM_EN
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
-        case TO_U8(custom_op_t::type_aluq):
+        case TO_U8(custom_op_t::type_qalu):
         case TO_U8(custom_op_t::type_dot):
         case TO_U8(custom_op_t::type_min_max):
         case TO_U8(custom_op_t::type_data_fmt_narrow):

@@ -109,7 +109,7 @@ enum class csr_op_t {
 
 enum class custom_op_t {
     type_alu = 0x00,
-    type_aluq = 0x01,
+    type_qalu = 0x01,
     type_wmul = 0x02,
     type_dot = 0x03,
     type_min_max = 0x04,
@@ -130,7 +130,7 @@ enum class alu_custom_op_t {
     op_sub8 = 0x6,
 };
 
-enum class aluq_custom_op_t {
+enum class qalu_custom_op_t {
     op_qadd16 = 0x0,
     op_qadd16u = 0x1,
     op_qadd8 = 0x2,

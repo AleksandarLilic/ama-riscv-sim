@@ -332,7 +332,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         break;
 
 #define CASE_ALUQ_CUSTOM_OP(op, t) \
-    case TO_U8(aluq_custom_op_t::op_##op): \
+    case TO_U8(qalu_custom_op_t::op_##op): \
         res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
         write_rf(ip.rd(), res); \
         DASM_OP(op) \
