@@ -15,10 +15,19 @@ isa-instruction-distribution:
   rel_rv32i.compute: 10
   rel_rv32i.data: 20
   rel_rv32zmmul: 20
-  rel_rv32simd.add: 0
+  rel_rv32simd.alu: 0
+  rel_rv32simd.qalu: 0
   rel_rv32simd.wmul: 0
   rel_rv32simd.dot: 20
+  rel_rv32simd.minmax: 0
+  rel_rv32simd.shift: 0
   rel_rv32simd.widen: 0
+  rel_rv32simd.narrow: 0
+  rel_rv32simd.qnarrow: 0
+  rel_rv32simd.swapad: 0
+  rel_rv32simd.dup: 0
+  rel_rv32simd.vins: 0
+  rel_rv32simd.vext: 0
 
 # Compressed instructions
   rel_rvc.ctrl: 0

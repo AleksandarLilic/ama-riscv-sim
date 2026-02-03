@@ -1,5 +1,5 @@
 diff --git a/aapg/args_generator.py b/aapg/args_generator.py
-index 777ed3b..e5e2c16 100644
+index 777ed3b..78c9a0e 100644
 --- a/aapg/args_generator.py
 +++ b/aapg/args_generator.py
 @@ -292,6 +292,27 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
@@ -71,6 +71,29 @@ index 777ed3b..e5e2c16 100644
  
          if arg == 'rs1':
              try:
+@@ -470,6 +525,22 @@ def gen_args(instruction, regfile, arch, reg_ignore, csr_sections, *args, **kwar
+             final_inst.append(str(random.randint(0, 31)))
+             continue
+ 
++        if arg == 'shamth':
++            final_inst.append(str(random.randint(0, 15)))
++            continue
++
++        if arg == 'shamtb':
++            final_inst.append(str(random.randint(0, 7)))
++            continue
++
++        if arg == 'shamtn':
++            final_inst.append(str(random.randint(0, 3)))
++            continue
++
++        if arg == 'shamtc':
++            final_inst.append(str(random.randint(0, 1)))
++            continue
++
+         # Floating point instructions
+         if arg == 'rdf':
+             try:
 diff --git a/aapg/gen_random_program.py b/aapg/gen_random_program.py
 index f112a44..45a8f62 100644
 --- a/aapg/gen_random_program.py
@@ -85,10 +108,10 @@ index f112a44..45a8f62 100644
      with open(output_file_path, "w") as outfile:
        outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..77ae40e 100644
+index 6ff3c0e..29440ff 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
-@@ -453,6 +453,46 @@ inst_store_by_set = {
+@@ -453,6 +453,132 @@ inst_store_by_set = {
      ]
  }
  
@@ -102,23 +125,55 @@ index 6ff3c0e..77ae40e 100644
 +
 +# custom isa
 +inst_store_by_set.update({
-+    'rv32simd.add' : [
-+        'add16     rd rs1 rs2 31..25=0x00 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
-+        'add8      rd rs1 rs2 31..25=0x00 24..20=0 14..12=0x2 6..2=0x02 1..0=3',
-+        'sub16     rd rs1 rs2 31..25=0x00 24..20=0 14..12=0x4 6..2=0x02 1..0=3',
-+        'sub8      rd rs1 rs2 31..25=0x00 24..20=0 14..12=0x6 6..2=0x02 1..0=3',
++    'rv32simd.alu' : [
++        'add16  rd rs1 rs2 31..25=0x00 14..12=0x0 6..2=0x02 1..0=3',
++        'add8   rd rs1 rs2 31..25=0x00 14..12=0x2 6..2=0x02 1..0=3',
++        'sub16  rd rs1 rs2 31..25=0x00 14..12=0x4 6..2=0x02 1..0=3',
++        'sub8   rd rs1 rs2 31..25=0x00 14..12=0x6 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.qalu' : [
++        'qadd16   rd rs1 rs2 31..25=0x01 14..12=0x0 6..2=0x02 1..0=3',
++        'qadd16u  rd rs1 rs2 31..25=0x01 14..12=0x1 6..2=0x02 1..0=3',
++        'qadd8    rd rs1 rs2 31..25=0x01 14..12=0x2 6..2=0x02 1..0=3',
++        'qadd8u   rd rs1 rs2 31..25=0x01 14..12=0x3 6..2=0x02 1..0=3',
++        'qsub16   rd rs1 rs2 31..25=0x01 14..12=0x4 6..2=0x02 1..0=3',
++        'qsub16u  rd rs1 rs2 31..25=0x01 14..12=0x5 6..2=0x02 1..0=3',
++        'qsub8    rd rs1 rs2 31..25=0x01 14..12=0x6 6..2=0x02 1..0=3',
++        'qsub8u   rd rs1 rs2 31..25=0x01 14..12=0x7 6..2=0x02 1..0=3',
 +    ],
 +    'rv32simd.wmul' : [
-+        'wmul16    rdp rs1 rs2 31..25=0x02 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
-+        'wmul16u   rdp rs1 rs2 31..25=0x02 24..20=0 14..12=0x1 6..2=0x02 1..0=3',
-+        'wmul8     rdp rs1 rs2 31..25=0x02 24..20=0 14..12=0x2 6..2=0x02 1..0=3',
-+        'wmul8u    rdp rs1 rs2 31..25=0x02 24..20=0 14..12=0x3 6..2=0x02 1..0=3',
++        'wmul16   rdp rs1 rs2 31..25=0x02 14..12=0x0 6..2=0x02 1..0=3',
++        'wmul16u  rdp rs1 rs2 31..25=0x02 14..12=0x1 6..2=0x02 1..0=3',
++        'wmul8    rdp rs1 rs2 31..25=0x02 14..12=0x2 6..2=0x02 1..0=3',
++        'wmul8u   rdp rs1 rs2 31..25=0x02 14..12=0x3 6..2=0x02 1..0=3',
 +    ],
 +    'rv32simd.dot' : [
-+        'dot16  rd rs1 rs2 31..25=0x03 14..12=0x0 6..2=0x02 1..0=3',
-+        'dot8   rd rs1 rs2 31..25=0x03 14..12=0x2 6..2=0x02 1..0=3',
-+        #'dot4   rd rs1 rs2 31..25=0x03 14..12=0x4 6..2=0x02 1..0=3',
-+        #'dot2   rd rs1 rs2 31..25=0x03 14..12=0x6 6..2=0x02 1..0=3',
++        'dot16   rd rs1 rs2 31..25=0x03 14..12=0x0 6..2=0x02 1..0=3',
++        'dot16u  rd rs1 rs2 31..25=0x03 14..12=0x1 6..2=0x02 1..0=3',
++        'dot8    rd rs1 rs2 31..25=0x03 14..12=0x2 6..2=0x02 1..0=3',
++        'dot8u   rd rs1 rs2 31..25=0x03 14..12=0x3 6..2=0x02 1..0=3',
++        'dot4    rd rs1 rs2 31..25=0x03 14..12=0x4 6..2=0x02 1..0=3',
++        'dot4u   rd rs1 rs2 31..25=0x03 14..12=0x5 6..2=0x02 1..0=3',
++        'dot2    rd rs1 rs2 31..25=0x03 14..12=0x6 6..2=0x02 1..0=3',
++        'dot2u   rd rs1 rs2 31..25=0x03 14..12=0x7 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.minmax' : [
++        'min16   rd rs1 rs2 31..25=0x04 14..12=0x0 6..2=0x02 1..0=3',
++        'min16u  rd rs1 rs2 31..25=0x04 14..12=0x1 6..2=0x02 1..0=3',
++        'min8    rd rs1 rs2 31..25=0x04 14..12=0x2 6..2=0x02 1..0=3',
++        'min8u   rd rs1 rs2 31..25=0x04 14..12=0x3 6..2=0x02 1..0=3',
++        'max16   rd rs1 rs2 31..25=0x04 14..12=0x4 6..2=0x02 1..0=3',
++        'max16u  rd rs1 rs2 31..25=0x04 14..12=0x5 6..2=0x02 1..0=3',
++        'max8    rd rs1 rs2 31..25=0x04 14..12=0x6 6..2=0x02 1..0=3',
++        'max8u   rd rs1 rs2 31..25=0x04 14..12=0x7 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.shift' : [
++        'slli16  rd rs1 31..25=0x00 shamth 14..12=0x0 6..2=0x02 1..0=3',
++        'slli8   rd rs1 31..25=0x00 shamtb 14..12=0x2 6..2=0x02 1..0=3',
++        'srli16  rd rs1 31..25=0x00 shamth 14..12=0x4 6..2=0x02 1..0=3',
++        'srli8   rd rs1 31..25=0x00 shamtb 14..12=0x6 6..2=0x02 1..0=3',
++        'srai16  rd rs1 31..25=0x00 shamth 14..12=0x5 6..2=0x02 1..0=3',
++        'srai8   rd rs1 31..25=0x00 shamtb 14..12=0x7 6..2=0x02 1..0=3',
 +    ],
 +    'rv32simd.widen' : [
 +        'widen16   rdp rs1 31..25=0x20 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
@@ -129,13 +184,67 @@ index 6ff3c0e..77ae40e 100644
 +        'widen4u   rdp rs1 31..25=0x20 24..20=0 14..12=0x5 6..2=0x02 1..0=3',
 +        'widen2    rdp rs1 31..25=0x20 24..20=0 14..12=0x6 6..2=0x02 1..0=3',
 +        'widen2u   rdp rs1 31..25=0x20 24..20=0 14..12=0x7 6..2=0x02 1..0=3',
-+    ]
++    ],
++    #'rv32simd.widen' : [
++    #    'widen16   rdp rs1 31..25=0x20 shamtw 14..12=0x0 6..2=0x02 1..0=3',
++    #    'widen16u  rdp rs1 31..25=0x20 shamtw 14..12=0x1 6..2=0x02 1..0=3',
++    #    'widen8    rdp rs1 31..25=0x20 shamth 14..12=0x2 6..2=0x02 1..0=3',
++    #    'widen8u   rdp rs1 31..25=0x20 shamth 14..12=0x3 6..2=0x02 1..0=3',
++    #    'widen4    rdp rs1 31..25=0x20 shamtb 14..12=0x4 6..2=0x02 1..0=3',
++    #    'widen4u   rdp rs1 31..25=0x20 shamtb 14..12=0x5 6..2=0x02 1..0=3',
++    #    'widen2    rdp rs1 31..25=0x20 shamtn 14..12=0x6 6..2=0x02 1..0=3',
++    #    'widen2u   rdp rs1 31..25=0x20 shamtn 14..12=0x7 6..2=0x02 1..0=3',
++    #],
++    'rv32simd.narrow' : [
++        'narrow32  rd rs1 rs2 31..25=0x22 14..12=0x0 6..2=0x02 1..0=3',
++        'narrow16  rd rs1 rs2 31..25=0x22 14..12=0x2 6..2=0x02 1..0=3',
++        'narrow8   rd rs1 rs2 31..25=0x22 14..12=0x4 6..2=0x02 1..0=3',
++        'narrow4   rd rs1 rs2 31..25=0x22 14..12=0x6 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.qnarrow' : [
++        'qnarrow32   rd rs1 rs2 31..25=0x23 14..12=0x0 6..2=0x02 1..0=3',
++        'qnarrow32u  rd rs1 rs2 31..25=0x23 14..12=0x1 6..2=0x02 1..0=3',
++        'qnarrow16   rd rs1 rs2 31..25=0x23 14..12=0x2 6..2=0x02 1..0=3',
++        'qnarrow16u  rd rs1 rs2 31..25=0x23 14..12=0x3 6..2=0x02 1..0=3',
++        'qnarrow8    rd rs1 rs2 31..25=0x23 14..12=0x4 6..2=0x02 1..0=3',
++        'qnarrow8u   rd rs1 rs2 31..25=0x23 14..12=0x5 6..2=0x02 1..0=3',
++        'qnarrow4    rd rs1 rs2 31..25=0x23 14..12=0x6 6..2=0x02 1..0=3',
++        'qnarrow4u   rd rs1 rs2 31..25=0x23 14..12=0x7 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.swapad' : [
++        'swapad16  rdp rs1 rs2 31..25=0x30 14..12=0x0 6..2=0x02 1..0=3',
++        'swapad8   rdp rs1 rs2 31..25=0x30 14..12=0x2 6..2=0x02 1..0=3',
++        'swapad4   rdp rs1 rs2 31..25=0x30 14..12=0x4 6..2=0x02 1..0=3',
++        'swapad2   rdp rs1 rs2 31..25=0x30 14..12=0x6 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.dup' : [
++        'dup16  rd rs1 31..25=0x3c 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
++        'dup8   rd rs1 31..25=0x3c 24..20=0 14..12=0x2 6..2=0x02 1..0=3',
++        'dup4   rd rs1 31..25=0x3c 24..20=0 14..12=0x4 6..2=0x02 1..0=3',
++        'dup2   rd rs1 31..25=0x3c 24..20=0 14..12=0x6 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.vins' : [
++        'vins16  rd rs1 31..25=0x3c shamth 14..12=0x1 6..2=0x02 1..0=3',
++        'vins8   rd rs1 31..25=0x3c shamtb 14..12=0x3 6..2=0x02 1..0=3',
++        'vins4   rd rs1 31..25=0x3c shamtn 14..12=0x5 6..2=0x02 1..0=3',
++        'vins2   rd rs1 31..25=0x3c shamtc 14..12=0x7 6..2=0x02 1..0=3',
++    ],
++    'rv32simd.vext' : [
++        'vext16   rd rs1 31..25=0x3d shamth 14..12=0x0 6..2=0x02 1..0=3',
++        'vext16u  rd rs1 31..25=0x3d shamth 14..12=0x1 6..2=0x02 1..0=3',
++        'vext8    rd rs1 31..25=0x3d shamtb 14..12=0x2 6..2=0x02 1..0=3',
++        'vext8u   rd rs1 31..25=0x3d shamtb 14..12=0x3 6..2=0x02 1..0=3',
++        'vext4    rd rs1 31..25=0x3d shamtn 14..12=0x4 6..2=0x02 1..0=3',
++        'vext4u   rd rs1 31..25=0x3d shamtn 14..12=0x5 6..2=0x02 1..0=3',
++        'vext2    rd rs1 31..25=0x3d shamtc 14..12=0x6 6..2=0x02 1..0=3',
++        'vext2u   rd rs1 31..25=0x3d shamtc 14..12=0x7 6..2=0x02 1..0=3',
++    ],
 +})
 +
  comp_insts_subs = {
      'addi4spn': 'addi',
      'c.fld': 'fld',
-@@ -543,6 +583,7 @@ ctrl_insts = [x.split(' ')[0] for x in inst_store_by_set['rv32i.ctrl']]
+@@ -543,6 +669,7 @@ ctrl_insts = [x.split(' ')[0] for x in inst_store_by_set['rv32i.ctrl']]
  
  args_list = [
      'rd', 'rdf', 'rdprime', 'rdprimef',
@@ -143,6 +252,14 @@ index 6ff3c0e..77ae40e 100644
      'rs1', 'rs1f','rsprime1', 'rsprime1f',
      'rs2', 'rs2f','rsprime2', 'rsprime2f',
      'rs3', 'rs3f',
+@@ -553,6 +680,7 @@ args_list = [
+     'imm12hi',
+     'shamtw',
+     'shamt',
++    'shamth', 'shamtb', 'shamtn', 'shamtc',
+     'rm',
+     'imm6', 'nzuimm6', 'nzuimm5',
+     'uimm5', 'uimm6',
 diff --git a/aapg/main.py b/aapg/main.py
 index 1c3303a..764194f 100644
 --- a/aapg/main.py
