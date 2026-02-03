@@ -230,7 +230,7 @@ rv32_custom-simd-widen:
 
 rv32_custom-simd-widen_mem_zmmul_ctrl:
   general:
-    total_instructions: 8200
+    total_instructions: 7700
     regs_not_use: x2 # because x1 used in widen on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
@@ -238,7 +238,6 @@ rv32_custom-simd-widen_mem_zmmul_ctrl:
     rel_rv32i.compute: 10
     rel_rv32i.data: 20
     rel_rv32zmmul: 20
-    rel_rv32simd.dot: 20
     rel_rv32simd.widen: 20
   branch-control:
     backward-probability: 0.5
