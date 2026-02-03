@@ -9,6 +9,7 @@ import os
 import subprocess
 
 import numpy as np
+import regex
 
 GIT_ROOT = (subprocess.check_output(['git', 'rev-parse', '--show-toplevel'])
             .strip().decode('utf-8'))
@@ -30,8 +31,9 @@ def parse_args():
     parser.add_argument("--clean_only", default=False, action='store_true', help="Clean all targets and exit")
     parser.add_argument("--clean_first", default=False, action='store_true', help="Clean all targets before building. Otherwise, just run make to build")
     parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
-    parser.add_argument("--hex", default=True, action='store_true', help="Also prepare hex files for RTL simulation")
     parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
+    parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter to only generate specific tests.")
+    parser.add_argument("-a", "--append", default=False, action='store_true', help="Append to existing gtest_testlist.txt")
     return parser.parse_args()
 
 def print_runtime(start_time, process_name=''):
@@ -110,16 +112,25 @@ print(f"Number of directories in the input config: {len(tests)}")
 common_args = tests.get("_common_args", [])
 
 start_time = datetime.datetime.now()
-print("Building tests...", end="", flush=True)
 
 test_paths = []
-hex_gen = ["HEX=1"] if args.hex else ["HEX=0"]
+hex_gen = ["HEX=1"]
+test_items = [
+    item for item in tests.items()
+    if not item[0].startswith('_')
+    and (not args.filter or any(regex.search(f, item[0]) for f in args.filter))
+]
+if args.filter:
+    print(f"Filter enabled. Patterns: {args.filter}. "
+          f"Number of directories after filter: {len(test_items)}")
+
+print("Building tests...", end="", flush=True)
 # spawning processes is currently slower than threads; 'make' is called with -j
 #with concurrent.futures.ProcessPoolExecutor() as executor:
 with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = {
         executor.submit(build_test, item, common_args):
-        item for item in tests.items() if not item[0].startswith('_')
+        item for item in test_items
     }
     for future in concurrent.futures.as_completed(futures):
         test_item = futures[future]
@@ -152,7 +163,15 @@ os.chdir(WORK_DIR)
 paths = test_paths_isa + test_paths
 paths.sort() # sort paths for consistency
 print(f"Number of RISC-V tests built: {len(paths)}")
-with open("gtest_testlist.txt", 'w') as f:
+
+output_path = "gtest_testlist.txt"
+if args.append and os.path.exists(output_path):
+    with open(output_path, 'r') as f:
+        existing = [line.strip() for line in f if line.strip()]
+    paths = sorted(set(existing + paths))
+    print(f"Number of RISC-V tests after append: {len(paths)}")
+
+with open(output_path, 'w') as f:
     f.write("\n".join(paths))
 
 print_runtime(start_time, "Build")
