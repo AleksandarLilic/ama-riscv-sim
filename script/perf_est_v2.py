@@ -6,8 +6,12 @@ import os
 import numpy as np
 import pandas as pd
 from dep_scan import search, search_args
+from ruamel.yaml import YAML
 from run_analysis import icfg, load_inst_prof
 from utils import DELIM, INDENT, smarter_eng_formatter
+
+yaml = YAML()
+yaml.preserve_quotes = True
 
 # main mem configuration assumptions based on the port contention from hwpm
 
@@ -51,20 +55,21 @@ class perf:
         with open(inst_profile, 'r') as file:
             i_prof = json.load(file)
         for b in self.b_inst_a:
-            self._log_branches(i_prof[b])
+            if b in i_prof:
+                self._log_branches(i_prof[b])
 
         with open(hw_stats, 'r') as file:
             self.hw_stats = json.load(file)
 
         with open(hw_perf_metrics, 'r') as file:
-            hwpm = json.load(file)
+            hwpm = yaml.load(file)
 
         # check if all expected metrics are present
         for metric in self.expected_hw_metrics:
             if metric not in hwpm:
                 raise ValueError(
                     f"Missing metric '{metric}' in " +
-                    "HW performance metrics JSON file")
+                    "HW performance metrics YAML file")
             if "contention" in metric and hwpm[metric] > 1:
                 raise ValueError(
                     f"Contention '{metric}' can't be above 100% but was " + \
@@ -161,7 +166,9 @@ class perf:
 
         use_dep_analysis = (exec_log is not None)
         def find_hazards(src, win):
-            r = search(search_args(exec_log, src=src, dep="_any_", window=win))
+            r, _ = search(search_args(
+                exec_log, src=src, dep="_any_", window=win)
+            )
             #print(r)
             #print(r.dep_arr_cnt)
             #print(r.line_fmt_issue)
@@ -363,7 +370,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
     parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
-    parser.add_argument("hw_perf_metrics", help="Path to 'hw_perf_metrics.json' for the given hardware configuration")
+    parser.add_argument("hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration")
     parser.add_argument("-e", "--exec_log", help="Optional argument to provide 'exec.log' path for depndency/hazard analysis", default=None)
     parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")

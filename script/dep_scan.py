@@ -13,7 +13,8 @@ STORE_MNM = icfg.INST_T_MEM[icfg.k_mem_s]
 FENCE_MNM = icfg.INST_T[icfg.k_fence]
 ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
 
-RDP_MNM = icfg.INST_T[icfg.k_simd_widen] + icfg.INST_T[icfg.k_simd_wmul]
+RDP_MNM = icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_widen] + \
+    icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
 
 MNM_ANY = "_any_"
 
