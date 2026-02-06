@@ -24,7 +24,8 @@ yaml.preserve_quotes = True
 
 class perf:
     b_inst_a = icfg.INST_T[icfg.k_branch]
-    j_inst_a = icfg.INST_T[icfg.k_jump]
+    jd_inst_a = icfg.INST_T_JUMP[icfg.k_jump_direct]
+    ji_inst_a = icfg.INST_T_JUMP[icfg.k_jump_indirect]
     ld_inst_a = icfg.INST_T_MEM[icfg.k_mem_l]
     st_inst_a = icfg.INST_T_MEM[icfg.k_mem_s]
     scp_inst_a = icfg.INST_T[icfg.k_mem_hint]
@@ -33,11 +34,20 @@ class perf:
     dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
     csr_inst_a = icfg.INST_T[icfg.k_csr]
     expected_hw_metrics = [
-        "cpu_frequency_mhz", "pipeline", "branch_resolution", "jump_resolution",
-        "bpred", "icache", "dcache",
+        "cpu_frequency_mhz", "pipeline",
+        # bp and caches
+        "bp_hit", "bp_miss",
+        "icache_hit", "icache_miss",
+        "dcache_hit", "dcache_miss", "dcache_writeback",
+        # main memory access
         "mem_rd_port_contention", "mem_wr_port_contention",
-        "mem", "mul", "div", "dot", "dmem_load", "dmem_store",
-        "icache_name", "dcache_name", "bpred_name"]
+        # pipeline latencies
+        "jump_direct", "jump_indirect",
+        "mul", "div", "dot",
+        "dcache_load", "dcache_store",
+        # names
+        "icache_name", "dcache_name", "bpred_name"
+    ]
 
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
         self.inst_profile = inst_profile
@@ -77,19 +87,26 @@ class perf:
 
         # class can be printed, save all stats as member variables
         self.c_pipeline = hwpm['pipeline']
-        self.c_branch_res = hwpm['branch_resolution']
-        self.c_jump_res = hwpm['jump_resolution']
-        self.c_bp = hwpm["bpred"]
-        self.c_ic = hwpm['icache']
-        self.c_dc = hwpm['dcache']
+
+        self.c_jd_res = hwpm['jump_direct']
+        self.c_ji_res = hwpm['jump_indirect']
+        self.c_bp_miss = hwpm['bp_miss']
+        self.c_bp_hit = hwpm["bp_hit"]
+        self.c_ic_hit = hwpm['icache_hit']
+        self.c_ic_miss = hwpm['icache_miss']
+        self.c_dc_hit = hwpm['dcache_hit']
+        self.c_dc_miss = hwpm['dcache_miss']
+        self.c_dc_wb = hwpm['dcache_writeback']
+
         self.mrpc = hwpm["mem_rd_port_contention"]
         self.mwpc = hwpm["mem_wr_port_contention"]
-        self.c_mem = hwpm['mem']
+
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
         self.c_dot = hwpm['dot']
-        self.c_dmem_l = hwpm['dmem_load']
-        self.c_dmem_s = hwpm['dmem_store']
+        self.c_dc_load = hwpm['dcache_load']
+        self.c_dc_store = hwpm['dcache_store']
+
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
@@ -131,7 +148,8 @@ class perf:
 
         sum_up = lambda arr: df.loc[df['name'].isin(arr)]['count'].sum()
         self.b_inst = sum_up(self.b_inst_a)
-        self.j_inst = sum_up(self.j_inst_a)
+        self.jd_inst = sum_up(self.jd_inst_a)
+        self.ji_inst = sum_up(self.ji_inst_a)
         self.ld_inst = sum_up(self.ld_inst_a)
         self.st_inst = sum_up(self.st_inst_a)
         self.scp_inst = sum_up(self.scp_inst_a)
@@ -148,21 +166,22 @@ class perf:
         ### 'stalls' are non-negotiable - they will happen, but can overlap
         ### 'hazards' may (will stall) or may not happen (won't stall)
 
-        self.b_stalls = (self.c_bp - 1) * self.bp_stats['pred']
-        self.b_stalls += (self.c_branch_res - 1) * self.bp_stats['mispred']
-        self.j_stalls = (self.c_jump_res - 1) * self.j_inst
+        self.b_stalls = (self.c_bp_hit - 1) * self.bp_stats['pred']
+        self.b_stalls += (self.c_bp_miss - 1) * self.bp_stats['mispred']
 
-        self.ic_stalls = (self.c_ic - 1) * hw_ic["hits"]["reads"]
-        self.ic_stalls += self.c_mem * hw_ic["misses"]["reads"]
+        self.j_stalls = (self.c_jd_res - 1) * self.jd_inst
+        self.j_stalls += (self.c_ji_res - 1) * self.ji_inst
 
-        # dc miss incurs c_mem clk always, like ic
+        self.ic_stalls = (self.c_ic_hit - 1) * hw_ic["hits"]["reads"]
+        self.ic_stalls += self.c_ic_miss * hw_ic["misses"]["reads"]
+
+        # dc miss incurs c_dc_miss clk always, like ic
         # if dc can't handle read and write to the same cache line at once
         # or main mem has only 1 R/W port to dc
-        # writeback incurs (c_mem-1) clk to first write evicted cache line
-        # (last clk of evict is overlapped with first clk of servicing miss)
-        self.dc_stalls = (self.c_dc - 1) * sd(hw_dc["hits"])
-        self.dc_stalls += self.c_mem * sd(hw_dc["misses"])
-        self.dc_stalls += (self.c_mem - 1) * hw_dc["writebacks"]
+        # writeback incurs c_dc_wb clk to first write evicted cache line
+        self.dc_stalls = (self.c_dc_hit - 1) * sd(hw_dc["hits"])
+        self.dc_stalls += self.c_dc_miss * sd(hw_dc["misses"])
+        self.dc_stalls += self.c_dc_wb * hw_dc["writebacks"]
 
         use_dep_analysis = (exec_log is not None)
         def find_hazards(src, win):
@@ -174,9 +193,9 @@ class perf:
             #print(r.line_fmt_issue)
             return sum(r.dep_arr_cnt)
 
-        self.hazards = {"dmem": 0, "mul": 0, "div": 0, "dot": 0, }
+        self.hazards = {"dcache": 0, "mul": 0, "div": 0, "dot": 0, }
         hazard_penalty = {
-            "dmem": (self.c_dmem_l - 1),
+            "dcache": (self.c_dc_load - 1),
             "mul": (self.c_mul - 1),
             "div": (self.c_div - 1),
             "dot": (self.c_dot - 1),
@@ -185,36 +204,39 @@ class perf:
         # hazards occur when a 2+ clk inst is followed up by an instruction
         # that uses rd of that instruction as its rs1/2
         if (use_dep_analysis):
-            self.hazards["dmem"] = find_hazards(
-                fmt(icfg.INST_T_MEM[icfg.k_mem_l]), hazard_penalty['dmem'])
+            self.hazards["dcache"] = find_hazards(
+                fmt(icfg.INST_T_MEM[icfg.k_mem_l]), hazard_penalty['dcache'])
             self.hazards["mul"] = find_hazards(
                 fmt(icfg.INST_T[icfg.k_mul]), hazard_penalty['mul'])
             self.hazards["div"] = find_hazards(
                 fmt(icfg.INST_T[icfg.k_div]), hazard_penalty['div'])
             self.hazards["dot"] = find_hazards(
-                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]), hazard_penalty['dot'])
+                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]),
+                hazard_penalty['dot']
+            )
 
         else: # otherwise, estimate based on instruction count (pessimistic)
-            self.hazards["dmem"] = \
+            self.hazards["dcache"] = \
                 (hw_dc["hits"]["reads"] + hw_dc["misses"]["reads"])
-            self.hazards["dmem"] *= hazard_penalty['dmem']
+            self.hazards["dcache"] *= hazard_penalty['dcache']
             self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
             self.hazards["div"] = (self.c_div - 1) * self.div_inst
             self.hazards["dot"] = (self.c_dot - 1) * self.dot_inst
 
         self.all_hazards = sum(self.hazards.values())
 
+        # FIXME: this needs to be reworked, heavily dependent of main mem ports
         # memory read/write port contention stalls
         # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
         self.mrpc_stalls = 0
         self.mwpc_stalls = 0
         if self.mrpc > 0:
-            cont_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
-            self.mrpc_stalls = int(cont_num * self.c_mem * self.mrpc)
+            count_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
+            self.mrpc_stalls = int(count_num * self.c_ic_miss * self.mrpc)
 
         if self.mwpc > 0:
-            cont_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
-            self.mwpc_stalls = int(cont_num * self.c_mem * self.mwpc)
+            count_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
+            self.mwpc_stalls = int(count_num * self.c_dc_miss * self.mwpc)
 
         self.fe_stalls = self.ic_stalls + self.j_stalls
         self.be_stalls = self.dc_stalls + self.all_hazards
@@ -247,7 +269,7 @@ class perf:
         # worst case:
         #   fe stalls never overlap with be stalls
         #   alu hazard stall on each multi cycle instruction
-        #   dmem hazard stall on each load instruction
+        #   dcache hazard stall on each load instruction
         self.t_clk_wc = self.ipc_1_cycles
         self.t_clk_wc += self.b_stalls
         self.t_clk_wc += self.fe_stalls
@@ -257,7 +279,7 @@ class perf:
         # best case:
         #   fe stalls overlap with be stalls completely
         #   no alu hazard stall (e.g. best possible inst scheduling)
-        #   no dmem hazard stall (quite unlikely on some workloads)
+        #   no dcache hazard stall (quite unlikely on some workloads)
         self.t_clk_bc = self.ipc_1_cycles
         self.t_clk_bc += self.b_stalls
         self.t_clk_bc += max(self.be_stalls, self.fe_stalls)

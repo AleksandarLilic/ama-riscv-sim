@@ -1,18 +1,26 @@
 cpu_frequency_mhz: 100
-pipeline: 4
-branch_resolution: 3
-jump_resolution: 3
-bpred: 1
-icache: 1
-dcache: 1
+pipeline: 5
+# bp and caches
+bp_hit: 1
+bp_miss: 3
+icache_hit: 1
+icache_miss: 5
+dcache_hit: 1
+dcache_miss: 5
+dcache_writeback: 3
+# main memory access contention, 0.0 .. 1.0 (fraction of cycles with contention)
 mem_rd_port_contention: 0
 mem_wr_port_contention: 0
+# pipeline latencies
+jump_direct: 1
+jump_indirect: 3 # latency to resolution
 mem: 5
 mul: 2
 div: 6
 dot: 2
-dmem_load: 2
-dmem_store: 1
+dcache_load: 2
+dcache_store: 1
+# names
 icache_name: icache
 dcache_name: dcache
 bpred_name: bpred
