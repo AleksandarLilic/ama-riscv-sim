@@ -9,8 +9,8 @@ dcache_hit: 1
 dcache_miss: 5
 dcache_writeback: 3
 # main memory access contention, 0.0 .. 1.0 (fraction of cycles with contention)
-mem_rd_port_contention: 0
-mem_wr_port_contention: 0
+#mem_rd_port_contention: 0
+#mem_wr_port_contention: 0
 # pipeline latencies
 jump_direct: 1
 jump_indirect: 3 # latency to resolution

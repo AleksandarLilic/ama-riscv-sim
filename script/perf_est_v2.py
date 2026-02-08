@@ -40,7 +40,7 @@ class perf:
         "icache_hit", "icache_miss",
         "dcache_hit", "dcache_miss", "dcache_writeback",
         # main memory access
-        "mem_rd_port_contention", "mem_wr_port_contention",
+        #"mem_rd_port_contention", "mem_wr_port_contention",
         # pipeline latencies
         "jump_direct", "jump_indirect",
         "mul", "div", "dot",
@@ -98,8 +98,8 @@ class perf:
         self.c_dc_miss = hwpm['dcache_miss']
         self.c_dc_wb = hwpm['dcache_writeback']
 
-        self.mrpc = hwpm["mem_rd_port_contention"]
-        self.mwpc = hwpm["mem_wr_port_contention"]
+        #self.mrpc = hwpm["mem_rd_port_contention"]
+        #self.mwpc = hwpm["mem_wr_port_contention"]
 
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
@@ -227,16 +227,15 @@ class perf:
 
         # FIXME: this needs to be reworked, heavily dependent of main mem ports
         # memory read/write port contention stalls
-        # FIXME: a bit of handwaving for a 1RW config by just adding rdc + wrc
-        self.mrpc_stalls = 0
-        self.mwpc_stalls = 0
-        if self.mrpc > 0:
-            count_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
-            self.mrpc_stalls = int(count_num * self.c_ic_miss * self.mrpc)
+        #self.mrpc_stalls = 0
+        #self.mwpc_stalls = 0
+        #if self.mrpc > 0:
+        #    count_num = min(hw_ic["misses"]["reads"], hw_dc["misses"]["reads"])
+        #    self.mrpc_stalls = int(count_num * self.c_ic_miss * self.mrpc)
 
-        if self.mwpc > 0:
-            count_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
-            self.mwpc_stalls = int(count_num * self.c_dc_miss * self.mwpc)
+        #if self.mwpc > 0:
+        #    count_num = min(hw_dc["misses"]["reads"], hw_dc["misses"]["writes"])
+        #    self.mwpc_stalls = int(count_num * self.c_dc_miss * self.mwpc)
 
         self.fe_stalls = self.ic_stalls + self.j_stalls
         self.be_stalls = self.dc_stalls + self.all_hazards
@@ -274,7 +273,7 @@ class perf:
         self.t_clk_wc += self.b_stalls
         self.t_clk_wc += self.fe_stalls
         self.t_clk_wc += self.be_stalls
-        self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
+        #self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
 
         # best case:
         #   fe stalls overlap with be stalls completely
@@ -283,7 +282,7 @@ class perf:
         self.t_clk_bc = self.ipc_1_cycles
         self.t_clk_bc += self.b_stalls
         self.t_clk_bc += max(self.be_stalls, self.fe_stalls)
-        self.t_clk_bc += self.mrpc_stalls + self.mwpc_stalls
+        #self.t_clk_bc += self.mrpc_stalls + self.mwpc_stalls
 
     def _log_branches(self, entry):
         for key in entry['breakdown']:
@@ -362,9 +361,9 @@ class perf:
             f"Core: {FMT(self.j_stalls)}" + \
             f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
             f"DCache: {FMT(self.dc_stalls)}, " + \
-            f"Core: {FMT(self.all_hazards)}" + \
-            f"{DELIM}Memory contention: " + \
-                f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
+            f"Core: {FMT(self.all_hazards)}" #+ \
+            #f"{DELIM}Memory contention: " + \
+            #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
         stats = f"{self.name}" + \
                 f"\n{out_sp}" + \
