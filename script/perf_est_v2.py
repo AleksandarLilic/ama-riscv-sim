@@ -44,7 +44,7 @@ class perf:
         # pipeline latencies
         "jump_direct", "jump_indirect",
         "mul", "div", "dot",
-        "dcache_load", "dcache_store",
+        "dcache_load", #"dcache_store",
         # names
         "icache_name", "dcache_name", "bpred_name"
     ]
@@ -105,7 +105,7 @@ class perf:
         self.c_div = hwpm['div']
         self.c_dot = hwpm['dot']
         self.c_dc_load = hwpm['dcache_load']
-        self.c_dc_store = hwpm['dcache_store']
+        #self.c_dc_store = hwpm['dcache_store']
 
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']

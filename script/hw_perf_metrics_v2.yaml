@@ -18,8 +18,8 @@ mem: 5
 mul: 2
 div: 6
 dot: 2
-dcache_load: 2
-dcache_store: 1
+dcache_load: 2 # on load-to-use, otherwise irrelevant
+#dcache_store: 1
 # names
 icache_name: icache
 dcache_name: dcache
