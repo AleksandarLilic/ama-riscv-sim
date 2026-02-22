@@ -20,7 +20,7 @@ import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator
 from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
-                   get_reporoot, is_headless, is_notebook,
+                   get_reporoot, is_headless, is_notebook, reformat_json,
                    smarter_eng_formatter)
 
 # globals
@@ -83,33 +83,6 @@ def gen_sweep_log_name(
 
 def within_size(num, size_lim: List[int]) -> bool:
     return size_lim[0] <= num <= size_lim[1]
-
-def reformat_json(json_data, max_depth=2, indent=4):
-    dumped_json = json.dumps(json_data, indent=indent)
-    deeper_indent = " " * (indent * (max_depth + 1))
-    parent_indent = " " * (indent * max_depth)
-    out_json = re.sub(rf"\n{deeper_indent}", " ", dumped_json)
-    out_json = re.sub(rf"\n{parent_indent}}},", " },", out_json)
-    out_json = re.sub(rf"\n{parent_indent}}}", " }", out_json)
-
-    # replace all consecutive whitespaces NOT at beginning of line
-    def normalize_internal_whitespace(txt):
-        lines = txt.splitlines(keepends=True) # keep \n at the end of each line
-        processed = []
-        for line in lines:
-            # preserve leading whitespace (spaces or tabs)
-            match = re.match(r'^(\s*)', line)
-            leading = match.group(1)
-            rest = line[len(leading):]
-            # replace consecutive whitespace in the rest of the line
-            rest = re.sub(r'\s{2,}', ' ', rest)
-            processed.append(leading + rest)
-
-        return ''.join(processed)
-
-    out_json = normalize_internal_whitespace(out_json)
-
-    return out_json
 
 def convert_keys_to_int(obj):
     if isinstance(obj, dict):

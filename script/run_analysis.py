@@ -17,7 +17,8 @@ from matplotlib.ticker import (AutoMinorLocator, EngFormatter, FixedLocator,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
 from matplotlib.widgets import RangeSlider
-from utils import FMT_AXIS, get_test_title, is_notebook, smarter_eng_formatter
+from utils import (FMT_AXIS, get_test_title, is_notebook, reformat_json,
+                   smarter_eng_formatter)
 
 #SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -641,17 +642,17 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
             print(sym)
 
     if args.save_symbols and section == "text":
-        # convert to python types first
         symbols_py = {}
         for k,v in symbols.items():
-            for k2,v2 in v.items():
-                if isinstance(v2, np.int64):
-                    v[k2] = int(v2)
-            symbols_py[k] = dict(v)
+            symbols_py[k] = {}
+            symbols_py[k]['exec_count'] = v['exec_count']
+            symbols_py[k]['addr_start'] = int2hex(v['addr_start'], None)
+            symbols_py[k]['addr_end'] = int2hex(v['addr_end'], None)
 
         sym_json = os.path.join(logs_path, 'symbols.json')
         with open(sym_json, 'w') as symfile:
-            json.dump(symbols_py, symfile, indent=4)
+            # use max_depth=1 for single line per symbol if needed
+            symfile.write(reformat_json(symbols_py, max_depth=2))
         print(f"Symbols saved in '{sym_json}'")
 
     if section == "data":

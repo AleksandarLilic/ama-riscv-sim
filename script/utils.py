@@ -1,5 +1,7 @@
 
+import json
 import os
+import re
 import subprocess
 
 import matplotlib
@@ -68,3 +70,30 @@ def smarter_eng_formatter(places=1, unit='', sep=''):
     return FuncFormatter(_fmt)
 
 FMT_AXIS = EngFormatter(unit='', places=0, sep='')
+
+def reformat_json(json_data, max_depth=2, indent=4):
+    dumped_json = json.dumps(json_data, indent=indent)
+    deeper_indent = " " * (indent * (max_depth + 1))
+    parent_indent = " " * (indent * max_depth)
+    out_json = re.sub(rf"\n{deeper_indent}", " ", dumped_json)
+    out_json = re.sub(rf"\n{parent_indent}}},", " },", out_json)
+    out_json = re.sub(rf"\n{parent_indent}}}", " }", out_json)
+
+    # replace all consecutive whitespaces NOT at beginning of line
+    def normalize_internal_whitespace(txt):
+        lines = txt.splitlines(keepends=True) # keep \n at the end of each line
+        processed = []
+        for line in lines:
+            # preserve leading whitespace (spaces or tabs)
+            match = re.match(r'^(\s*)', line)
+            leading = match.group(1)
+            rest = line[len(leading):]
+            # replace consecutive whitespace in the rest of the line
+            rest = re.sub(r'\s{2,}', ' ', rest)
+            processed.append(leading + rest)
+
+        return ''.join(processed)
+
+    out_json = normalize_internal_whitespace(out_json)
+
+    return out_json
