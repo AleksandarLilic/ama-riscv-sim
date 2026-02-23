@@ -43,6 +43,7 @@
     "vector_ew_mac_uint8": ["basic"],
     "vector_ew_basic": ["all"],
     "matmul": ["all"],
+    "matmul_opt": ["int8"],
     "dot_product": ["all"],
     "dot_product_peak": ["int8"],
     "dot_product_unaligned_len_even": ["all"],

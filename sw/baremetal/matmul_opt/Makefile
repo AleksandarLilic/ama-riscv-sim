@@ -1,10 +1,5 @@
-LOOP_ORDERS := ijk jik jki ikj kij kji
 LOOPS := 1
-
-TARGETS := $(addsuffix .elf, $(addprefix int8_, $(LOOP_ORDERS)))
-
-TEST_DEFINES := $(foreach t,$(LOOP_ORDERS), \
-				int8_$(t):-DLOOP_ORDER_$(shell echo $(t) | tr a-z A-Z))
+TARGET := int8
 
 OPT := -O1 -flto
 CFLAGS += -DLOOPS=$(LOOPS)
@@ -14,9 +9,7 @@ PYVER := python3
 CODEGEN_PY := codegen.py
 INC_PATHS += .
 
-all: int8
-
-int8: $(TARGETS)
+all: $(TARGET).elf
 
 codegen: headers
 clean_codegen: clean_headers
