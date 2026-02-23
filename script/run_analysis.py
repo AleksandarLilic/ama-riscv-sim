@@ -45,12 +45,12 @@ CLR = {
 }
 
 CLR_HL = [
-    "#3ECCBB", # turquoise
-    "#EED595", # peach yellow
-    "#f4a261", # sandy brown
-    "#c03a2d", # persian red
-    "#457B74", # myrtle green
-    "#b17acf", # lavander (floral)
+    "#3ECCBB", # [0] turquoise
+    "#EED595", # [1] peach yellow
+    "#f4a261", # [2] sandy brown
+    "#c03a2d", # [3] persian red
+    "#b17acf", # [4] lavander (floral)
+    "#457B74", # [5] myrtle green
 ]
 
 CLR_TAB_BLUE = "tab:blue"
@@ -253,8 +253,8 @@ class icfg:
         k_mem: CLR_HL[0], # turquoise
         k_mul: CLR_HL[3], # persian red
         k_div: CLR_HL[2], # sandy brown
-        k_simd_arith: CLR_HL[4], # myrtle green
-        k_simd_data_fmt: CLR_HL[5], # lavander (floral)
+        k_simd_arith: CLR_HL[4], # lavander (floral)
+        k_simd_data_fmt: CLR_HL[5], # myrtle green
         # separate chart
         k_branch: CLR_HL[0], # peach yellow
         k_jump: CLR_HL[3], # persian red
@@ -267,8 +267,8 @@ class icfg:
         k_jump: CLR_HL[2], # sandy brown
         k_mul: CLR_HL[3], # persian red
         #DIV: CLR_HL[2], # sandy brown
-        k_simd_arith: CLR_HL[4], # myrtle green
-        k_simd_data_fmt: CLR_HL[5], # lavander (floral)
+        k_simd_arith: CLR_HL[4], # lavander (floral)
+        k_simd_data_fmt: CLR_HL[5], # myrtle green
     }
 
     # memory instructions breakdown store vs load
