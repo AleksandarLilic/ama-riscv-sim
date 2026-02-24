@@ -124,10 +124,10 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(qnarrow4);
     P_INIT(qnarrow4u);
 
-    P_INIT(swapad16);
-    P_INIT(swapad8);
-    P_INIT(swapad4);
-    P_INIT(swapad2);
+    P_INIT(txp16);
+    P_INIT(txp8);
+    P_INIT(txp4);
+    P_INIT(txp2);
 
     P_INIT(dup16);
     P_INIT(dup8);
@@ -371,7 +371,7 @@ void profiler::log_to_file_and_print(bool silent) {
     for (auto &z: zbb_opcs) cnt.zbb += prof_g_arr[TO_U32(z)].count;
     for (auto &u: widen_c_opcs) cnt.widen_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: narrow_c_opcs) cnt.narrow_c += prof_g_arr[TO_U32(u)].count;
-    for (auto &u: swapad_c_opcs) cnt.swapad_c += prof_g_arr[TO_U32(u)].count;
+    for (auto &u: txp_c_opcs) cnt.txp_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: dup_c_opcs) cnt.dup_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: vins_c_opcs) cnt.vins_c += prof_g_arr[TO_U32(u)].count;
     for (auto &u: vext_c_opcs) cnt.vext_c += prof_g_arr[TO_U32(u)].count;
@@ -396,7 +396,7 @@ void profiler::log_to_file_and_print(bool silent) {
     perc.zbb = cnt.get_perc(cnt.zbb);
     perc.widen_c = cnt.get_perc(cnt.widen_c);
     perc.narrow_c = cnt.get_perc(cnt.narrow_c);
-    perc.swapad_c = cnt.get_perc(cnt.swapad_c);
+    perc.txp_c = cnt.get_perc(cnt.txp_c);
     perc.dup_c = cnt.get_perc(cnt.dup_c);
     perc.vins_c = cnt.get_perc(cnt.vins_c);
     perc.vext_c = cnt.get_perc(cnt.vext_c);
@@ -450,7 +450,7 @@ void profiler::log_to_file_and_print(bool silent) {
     std::cout << INDENT << "SIMD data fmt:"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%),"
               << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%),"
-              << " SWAPAD: " << cnt.swapad_c << "(" << perc.swapad_c << "%)"
+              << " TXP: " << cnt.txp_c << "(" << perc.txp_c << "%)"
               << "\n";
 
     std::cout << INDENT << "SIMD vector-scalar:"

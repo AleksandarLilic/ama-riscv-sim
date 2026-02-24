@@ -32,22 +32,22 @@ void main(void) {
                 // b swaps
                 int8x8_t bswp8_01, bswp8_23;
                 asm volatile(
-                    "swapad8 %0, %1, %2" : "=r"(bswp8_01) : "r"(bs_0), "r"(bs_1)
+                    "txp8 %0, %1, %2" : "=r"(bswp8_01) : "r"(bs_0), "r"(bs_1)
                 );
 
                 asm volatile(
-                    "swapad8 %0, %1, %2" : "=r"(bswp8_23) : "r"(bs_2), "r"(bs_3)
+                    "txp8 %0, %1, %2" : "=r"(bswp8_23) : "r"(bs_2), "r"(bs_3)
                 );
 
                 int8x8_t bswp16_02, bswp16_13;
                 asm volatile(
-                    "swapad16 %0, %1, %2"
+                    "txp16 %0, %1, %2"
                     : "=r"(bswp16_02)
                     : "r"(bswp8_01.w.lo), "r"(bswp8_23.w.lo)
                 );
 
                 asm volatile(
-                    "swapad16 %0, %1, %2"
+                    "txp16 %0, %1, %2"
                     : "=r"(bswp16_13)
                     : "r"(bswp8_01.w.hi), "r"(bswp8_23.w.hi)
                 );

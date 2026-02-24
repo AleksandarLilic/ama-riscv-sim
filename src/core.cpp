@@ -790,14 +790,14 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("data_fmt_custom");
             }
             break;
-        case TO_U8(custom_op_t::type_data_fmt_swapad):
+        case TO_U8(custom_op_t::type_data_fmt_txp):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_SWAPAD_CUSTOM_OP(swapad16, data_fmt)
-                CASE_DATA_FMT_SWAPAD_CUSTOM_OP(swapad8, data_fmt)
-                CASE_DATA_FMT_SWAPAD_CUSTOM_OP(swapad4, data_fmt)
-                CASE_DATA_FMT_SWAPAD_CUSTOM_OP(swapad2, data_fmt)
-                default: tu.e_unsupported_inst("data_fmt_swapad");
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp16, data_fmt)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp8, data_fmt)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp4, data_fmt)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp2, data_fmt)
+                default: tu.e_unsupported_inst("data_fmt_txp");
             }
             break;
         case TO_U8(custom_op_t::type_sv_dup_vins):
@@ -854,7 +854,7 @@ void core::d_custom_ext() {
             DASM_RD_UPDATE;
             break;
         case TO_U8(custom_op_t::type_wmul):
-        case TO_U8(custom_op_t::type_data_fmt_swapad):
+        case TO_U8(custom_op_t::type_data_fmt_txp):
             DASM_OP_RD << "," << DASM_OP_RS1 << "," << DASM_OP_RS2;
             DASM_RD_UPDATE;
             DASM_RD_UPDATE_PAIR;

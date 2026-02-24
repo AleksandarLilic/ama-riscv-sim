@@ -29,7 +29,7 @@ index 9a121b47121..c7af5984640 100644
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..e5c6c122955 100644
+index e77b49a6298..57044733fdf 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
 @@ -3473,6 +3473,108 @@
@@ -111,10 +111,10 @@ index e77b49a6298..e5c6c122955 100644
 +#define MATCH_QNARROW4   0x4600600b
 +#define MATCH_QNARROW4U  0x4600700b
 +
-+#define MATCH_SWAPAD16 0x6000000b
-+#define MATCH_SWAPAD8  0x6000200b
-+#define MATCH_SWAPAD4  0x6000400b
-+#define MATCH_SWAPAD2  0x6000600b
++#define MATCH_TXP16 0x6000000b
++#define MATCH_TXP8  0x6000200b
++#define MATCH_TXP4  0x6000400b
++#define MATCH_TXP2  0x6000600b
 +
 +#define MATCH_DUP16 0x7800000b
 +#define MATCH_DUP8  0x7800200b
@@ -154,7 +154,7 @@ index adea7dbc794..81e557c95f8 100644
  
  /* This structure holds information for a particular instruction.  */
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..579957a828d 100644
+index fdd05ac75dc..c049baf4ea2 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
 @@ -347,6 +347,113 @@ const struct riscv_opcode riscv_opcodes[] =
@@ -241,10 +241,10 @@ index fdd05ac75dc..579957a828d 100644
 +{"qnarrow4",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW4, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qnarrow4u",   0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QNARROW4U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
-+{"swapad16",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD16, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"swapad8",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD8, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"swapad4",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD4, MASK_CUSTOM_REG, match_opcode, 0 },
-+{"swapad2",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_SWAPAD2, MASK_CUSTOM_REG, match_opcode, 0 },
++{"txp16",    0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_TXP16, MASK_CUSTOM_REG, match_opcode, 0 },
++{"txp8",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_TXP8, MASK_CUSTOM_REG, match_opcode, 0 },
++{"txp4",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_TXP4, MASK_CUSTOM_REG, match_opcode, 0 },
++{"txp2",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_TXP2, MASK_CUSTOM_REG, match_opcode, 0 },
 +
 +{"dup16",       0, INSN_CLASS_XSIMD, "d,s",       MATCH_DUP16, MASK_CUSTOM_NO_RS2, match_opcode, 0 },
 +{"dup8",        0, INSN_CLASS_XSIMD, "d,s",       MATCH_DUP8, MASK_CUSTOM_NO_RS2, match_opcode, 0 },

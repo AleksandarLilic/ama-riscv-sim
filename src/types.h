@@ -117,7 +117,7 @@ enum class custom_op_t {
     type_data_fmt_widen = 0x20,
     type_data_fmt_narrow = 0x22,
     type_data_fmt_qnarrow = 0x23,
-    type_data_fmt_swapad = 0x30,
+    type_data_fmt_txp = 0x30,
     type_sv_dup_vins = 0x3c,
     type_sv_vext = 0x3d,
     type_hints = 0x7f,
@@ -212,11 +212,11 @@ enum class data_fmt_qnarrow_custom_op_t {
     op_qnarrow4u = 0x7,
 };
 
-enum class data_fmt_swapad_custom_op_t {
-    op_swapad16 = 0x0,
-    op_swapad8 = 0x2,
-    op_swapad4 = 0x4,
-    op_swapad2 = 0x6,
+enum class data_fmt_txp_custom_op_t {
+    op_txp16 = 0x0,
+    op_txp8 = 0x2,
+    op_txp4 = 0x4,
+    op_txp2 = 0x6,
 };
 
 enum class sv_dup_custom_op_t {

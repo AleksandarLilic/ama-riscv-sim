@@ -70,7 +70,7 @@ class icfg:
     k_simd_wmul = "SIMD_WMUL"
     k_simd_widen = "SIMD_WIDEN"
     k_simd_narrow = "SIMD_NARROW"
-    k_simd_swapad = "SIMD_SWAPAD"
+    k_simd_txp = "SIMD_TXP"
     k_simd_dup = "SIMD_DUP"
     k_simd_vins = "SIMD_VINS"
     k_simd_vext = "SIMD_VEXT"
@@ -122,8 +122,8 @@ class icfg:
             "qnarrow32", "qnarrow32u", "qnarrow16", "qnarrow16u",
             "qnarrow8", "qnarrow8u", "qnarrow4", "qnarrow4u",
         ],
-        k_simd_swapad: [
-            "swapad16", "swapad8", "swapad4", "swapad2",
+        k_simd_txp: [
+            "txp16", "txp8", "txp4", "txp2",
         ],
         k_simd_dup: ["dup16", "dup8", "dup4", "dup2"],
         k_simd_vins: ["vins16", "vins8", "vins4", "vins2"],
@@ -161,7 +161,7 @@ class icfg:
         k_simd_data_fmt:
             INST_T_SIMD_DATA_FMT[k_simd_widen] + \
             INST_T_SIMD_DATA_FMT[k_simd_narrow] + \
-            INST_T_SIMD_DATA_FMT[k_simd_swapad] + \
+            INST_T_SIMD_DATA_FMT[k_simd_txp] + \
             INST_T_SIMD_DATA_FMT[k_simd_dup] + \
             INST_T_SIMD_DATA_FMT[k_simd_vins] + \
             INST_T_SIMD_DATA_FMT[k_simd_vext],

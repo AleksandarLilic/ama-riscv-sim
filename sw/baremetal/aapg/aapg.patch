@@ -108,7 +108,7 @@ index f112a44..45a8f62 100644
      with open(output_file_path, "w") as outfile:
        outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..29440ff 100644
+index 6ff3c0e..c71c0ac 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
 @@ -453,6 +453,132 @@ inst_store_by_set = {
@@ -211,11 +211,11 @@ index 6ff3c0e..29440ff 100644
 +        'qnarrow4    rd rs1 rs2 31..25=0x23 14..12=0x6 6..2=0x02 1..0=3',
 +        'qnarrow4u   rd rs1 rs2 31..25=0x23 14..12=0x7 6..2=0x02 1..0=3',
 +    ],
-+    'rv32simd.swapad' : [
-+        'swapad16  rdp rs1 rs2 31..25=0x30 14..12=0x0 6..2=0x02 1..0=3',
-+        'swapad8   rdp rs1 rs2 31..25=0x30 14..12=0x2 6..2=0x02 1..0=3',
-+        'swapad4   rdp rs1 rs2 31..25=0x30 14..12=0x4 6..2=0x02 1..0=3',
-+        'swapad2   rdp rs1 rs2 31..25=0x30 14..12=0x6 6..2=0x02 1..0=3',
++    'rv32simd.txp' : [
++        'txp16  rdp rs1 rs2 31..25=0x30 14..12=0x0 6..2=0x02 1..0=3',
++        'txp8   rdp rs1 rs2 31..25=0x30 14..12=0x2 6..2=0x02 1..0=3',
++        'txp4   rdp rs1 rs2 31..25=0x30 14..12=0x4 6..2=0x02 1..0=3',
++        'txp2   rdp rs1 rs2 31..25=0x30 14..12=0x6 6..2=0x02 1..0=3',
 +    ],
 +    'rv32simd.dup' : [
 +        'dup16  rd rs1 31..25=0x3c 24..20=0 14..12=0x0 6..2=0x02 1..0=3',

@@ -67,7 +67,7 @@ enum class opc_g {
     i_qnarrow32, i_qnarrow32u, i_qnarrow16, i_qnarrow16u,
     i_qnarrow8, i_qnarrow8u, i_qnarrow4, i_qnarrow4u,
     // swap anti-diagonal
-    i_swapad16, i_swapad8, i_swapad4, i_swapad2,
+    i_txp16, i_txp8, i_txp4, i_txp2,
     // scalar-vector dup
     i_dup16, i_dup8, i_dup4, i_dup2,
     // scalar-vector vins
@@ -212,7 +212,7 @@ struct cnt_t {
         uint32_t wmul_c = 0;
         uint32_t widen_c = 0;
         uint32_t narrow_c = 0;
-        uint32_t swapad_c = 0;
+        uint32_t txp_c = 0;
         uint32_t dup_c = 0;
         uint32_t vins_c = 0;
         uint32_t vext_c = 0;
@@ -225,7 +225,7 @@ struct cnt_t {
                 tot - nop - branch - jal - jalr - mem -
                 mul - div - alu - zbb -
                 dot_c - alu_c - wmul_c -
-                widen_c - narrow_c - swapad_c - dup_c - vins_c - vext_c -
+                widen_c - narrow_c - txp_c - dup_c - vins_c - vext_c -
                 scp_c
             );
         }
@@ -255,7 +255,7 @@ struct perc_t {
         float_t wmul_c = 0.0;
         float_t widen_c = 0.0;
         float_t narrow_c = 0.0;
-        float_t swapad_c = 0.0;
+        float_t txp_c = 0.0;
         float_t dup_c = 0.0;
         float_t vins_c = 0.0;
         float_t vext_c = 0.0;
@@ -458,8 +458,8 @@ class profiler {
             opc_g::i_qnarrow4, opc_g::i_qnarrow4u,
         };
 
-        static constexpr std::array swapad_c_opcs = {
-            opc_g::i_swapad16, opc_g::i_swapad8, opc_g::i_swapad4, opc_g::i_swapad2,
+        static constexpr std::array txp_c_opcs = {
+            opc_g::i_txp16, opc_g::i_txp8, opc_g::i_txp4, opc_g::i_txp2,
         };
 
         static constexpr std::array dup_c_opcs = {

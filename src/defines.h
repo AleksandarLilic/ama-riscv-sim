@@ -413,8 +413,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_SIMD(res, t) \
         break;
 
-#define CASE_DATA_FMT_SWAPAD_CUSTOM_OP(op, t) \
-    case TO_U8(data_fmt_swapad_custom_op_t::op_##op): \
+#define CASE_DATA_FMT_TXP_CUSTOM_OP(op, t) \
+    case TO_U8(data_fmt_txp_custom_op_t::op_##op): \
         rp = data_fmt_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
         write_rf_pair(ip.rd(), rp); \
         DASM_OP(op) \

@@ -3,9 +3,9 @@
 #include "core_exec_custom_simd.h"
 
 template <size_t vbits>
-reg_pair core::data_fmt_c_swapad_t(uint32_t a, uint32_t b) {
-    // swapad spec: rd = [rs1[0], rs2[0], rs1[2], rs2[2], ...],
-    //              rdp = [rs1[1], rs2[1], rs1[3], rs2[3], ...]
+reg_pair core::data_fmt_c_txp_t(uint32_t a, uint32_t b) {
+    // txp spec: rd = [rs1[0], rs2[0], rs1[2], rs2[2], ...],
+    //           rdp = [rs1[1], rs2[1], rs1[3], rs2[3], ...]
     // rd gets even lanes interleaved rs1/rs2
     // rdp gets odd lanes interleaved rs1/rs2
     constexpr size_t e = (32 / vbits);
@@ -63,18 +63,18 @@ reg_pair core::data_fmt_c_swapad_t(uint32_t a, uint32_t b) {
     return {rd_val, rdp_val};
 }
 
-reg_pair core::data_fmt_c_swapad16(uint32_t a, uint32_t b) {
-    return data_fmt_c_swapad_t<16>(a, b);
+reg_pair core::data_fmt_c_txp16(uint32_t a, uint32_t b) {
+    return data_fmt_c_txp_t<16>(a, b);
 }
 
-reg_pair core::data_fmt_c_swapad8(uint32_t a, uint32_t b) {
-    return data_fmt_c_swapad_t<8>(a, b);
+reg_pair core::data_fmt_c_txp8(uint32_t a, uint32_t b) {
+    return data_fmt_c_txp_t<8>(a, b);
 }
 
-reg_pair core::data_fmt_c_swapad4(uint32_t a, uint32_t b) {
-    return data_fmt_c_swapad_t<4>(a, b);
+reg_pair core::data_fmt_c_txp4(uint32_t a, uint32_t b) {
+    return data_fmt_c_txp_t<4>(a, b);
 }
 
-reg_pair core::data_fmt_c_swapad2(uint32_t a, uint32_t b) {
-    return data_fmt_c_swapad_t<2>(a, b);
+reg_pair core::data_fmt_c_txp2(uint32_t a, uint32_t b) {
+    return data_fmt_c_txp_t<2>(a, b);
 }
