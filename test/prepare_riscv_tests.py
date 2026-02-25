@@ -132,9 +132,10 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
         executor.submit(build_test, item, common_args):
         item for item in test_items
     }
-    for future in concurrent.futures.as_completed(futures):
-        test_item = futures[future]
-        test_paths.extend(future.result()) # aggregate all elf files
+    if not args.clean_only:
+        for future in concurrent.futures.as_completed(futures):
+            test_item = futures[future]
+            test_paths.extend(future.result()) # aggregate all elf files
 
 print(" Done")
 
