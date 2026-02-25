@@ -16,6 +16,8 @@ ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
 RDP_MNM = icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_widen] + \
     icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
 
+DOT_MNM = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
+
 MNM_ANY = "_any_"
 
 class dependency_results:
@@ -88,18 +90,20 @@ def inst_writes_rdp(mnemonic: str) -> bool:
         return True
     return False
 
-def dep_rs(mnemonic: str, regs_in_order: list[int]) -> list[int]:
+def dep_rs(mnemonic: str, ordered_regs: list[int]) -> list[int]:
     """
     For dependent side:
       - store/branch: first two x regs are sources
+      - dot: all x regs are sources
       - other: first x is rd, sources are the remainder (rs1/rs2/…)
     Always ignore x0 as a source (not a true dependency).
     """
+    srcs = []
     if (mnemonic in STORE_MNM) or (mnemonic in BRANCH_MNM):
-        srcs = regs_in_order[:2]
-    else:
-        srcs = regs_in_order[1:] if regs_in_order else []
-    # drop x0 if present
+        srcs = ordered_regs[:2]
+    elif ordered_regs:
+        if (mnemonic in DOT_MNM): srcs = ordered_regs
+        else: srcs = ordered_regs[1:]
     return [r for r in srcs if r != 0]
 
 def src_rd(mnemonic: str, inst_regs: list[int]) -> int | None:
@@ -219,15 +223,8 @@ def search(args):
                 res.line_fmt_issue += 1
                 continue
 
-            # if this instruction writes the same rd,
-            # kill the dependency search for this source
-            if inst_writes_rd(nx_mnm) and nx_regs:
-                nx_rd = nx_regs[0]
-                if nx_rd in rd:
-                    # stop scanning this window
-                    break
-
-            # if this is a dependent inst, check sources for a match
+            # check dependency before kill: an instruction that reads
+            # and writes the same register has a RAW dep on the prior writer
             if nx_mnm in res.dep_s['mnm']:
                 srcs = dep_rs(nx_mnm, nx_regs)
                 if any((r in rd) for r in srcs):
@@ -238,6 +235,13 @@ def search(args):
                         if seq is not None:
                             res.dep_line_num[dist].append(int(seq))
                     # only one increment per dep even if both rs1/rs2 == rd
+
+            # if this instruction writes the same rd,
+            # kill the dependency search for this source
+            if inst_writes_rd(nx_mnm) and nx_regs:
+                nx_rd = nx_regs[0]
+                if nx_rd in rd:
+                    break
 
     #import pandas as pd
     #fig, ax = plt.subplots()
