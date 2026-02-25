@@ -1,5 +1,12 @@
+
+# optimization variants
+OPT_V := load_b tiling
 LOOPS := 1
-TARGET := int8
+
+TARGETS := $(addsuffix .elf, $(addprefix int8_, $(OPT_V)))
+
+TEST_DEFINES := $(foreach t,$(OPT_V), \
+				int8_$(t):-DOPT_V_$(shell echo $(t) | tr a-z A-Z))
 
 OPT := -O1 -flto
 CFLAGS += -DLOOPS=$(LOOPS)
@@ -9,7 +16,9 @@ PYVER := python3
 CODEGEN_PY := codegen.py
 INC_PATHS += .
 
-all: $(TARGET).elf
+all: int8
+
+int8: $(TARGETS)
 
 codegen: headers
 clean_codegen: clean_headers
