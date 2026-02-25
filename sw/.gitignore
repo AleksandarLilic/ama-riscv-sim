@@ -1,6 +1,7 @@
 # RISC-V program files
 *.bin
 *.dump
+*.dasm
 *.map
 *.elf*
 *.hex*

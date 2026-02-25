@@ -45,7 +45,7 @@ all: $(TESTS_BIN)
 
 %.bin: $(DIR)/%.S
 	@$(RV_GNU)-gcc $(GCC_OPTS) -Idefines -Iriscv-tests/env -Iriscv-tests/isa/macros/scalar $^ -o $(basename $@).elf
-	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $(basename $@).elf > $(basename $@).dump
+	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $(basename $@).elf > $(basename $@).dasm
 	@if [ "$(HEX)" = "1" ]; then \
 		$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin; \
 		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
@@ -54,4 +54,4 @@ all: $(TESTS_BIN)
 	@echo "Generated $@"
 
 clean:
-	rm -f *.elf* *.dump *.hex* *.bin *.o *.d *.i *.s *_symbols.json *.map
+	rm -f *.elf* *.dasm *.hex* *.bin *.o *.d *.i *.s *_symbols.json *.map

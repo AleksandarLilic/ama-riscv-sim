@@ -112,7 +112,7 @@ HEX_GEN = \
 
 %.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
 	$(Q)$(BUILD_APP)
-	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dump
+	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dasm
 	$(Q)$(HEX_GEN)
 	@echo "Executable built: $@"
 	$(Q)$(RV_GNU)-size -G $@
@@ -135,7 +135,7 @@ $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
 
 clean:
-	rm -f *.elf* *.dump *.hex* *.bin *.o *.d *.i *.s *.map
+	rm -f *.elf* *.dasm *.hex* *.bin *.o *.d *.i *.s *.map
 
 clean_common:
 	rm -rf $(COMMON_BUILD_DIR)
