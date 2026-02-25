@@ -121,11 +121,11 @@ simd_saturating_narrowing:
     qnarrow4 x14, x18, x19
     qnarrow4u x14, x18, x19
 
-simd_swap_antidiagonal:
-    swapad16 x14, x18, x19
-    swapad8 x14, x18, x19
-    swapad4 x14, x18, x19
-    swapad2 x14, x18, x19
+simd_transpose_across_pair:
+    txp16 x14, x18, x19
+    txp8 x14, x18, x19
+    txp4 x14, x18, x19
+    txp2 x14, x18, x19
 
 simd_duplicate_scalar_to_vector:
     li x18, 0x109
