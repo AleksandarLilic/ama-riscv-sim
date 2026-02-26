@@ -184,14 +184,13 @@ class perf:
         self.dc_stalls += self.c_dc_wb * hw_dc["writebacks"]
 
         use_dep_analysis = (exec_log is not None)
-        def find_hazards(src, win):
-            r, _ = search(search_args(
-                exec_log, src=src, dep="_any_", window=win)
-            )
+        def find_hazards(win, src, dep="_any_"):
+            r, _ = search(search_args(exec_log, src=src, dep=dep, window=win))
             #print(r)
             #print(r.dep_arr_cnt)
+            #print(r.dep_arr_cnt_dot_acc)
             #print(r.line_fmt_issue)
-            return sum(r.dep_arr_cnt)
+            return sum(r.dep_arr_cnt), sum(r.dep_arr_cnt_dot_acc)
 
         self.hazards = {"dcache": 0, "mul": 0, "div": 0, "dot": 0, }
         hazard_penalty = {
@@ -200,20 +199,25 @@ class perf:
             "div": (self.c_div - 1),
             "dot": (self.c_dot - 1),
         }
-        fmt = lambda x: ','.join(x)
-        # hazards occur when a 2+ clk inst is followed up by an instruction
-        # that uses rd of that instruction as its rs1/2
+
         if (use_dep_analysis):
-            self.hazards["dcache"] = find_hazards(
-                fmt(icfg.INST_T_MEM[icfg.k_mem_l]), hazard_penalty['dcache'])
-            self.hazards["mul"] = find_hazards(
-                fmt(icfg.INST_T[icfg.k_mul]), hazard_penalty['mul'])
-            self.hazards["div"] = find_hazards(
-                fmt(icfg.INST_T[icfg.k_div]), hazard_penalty['div'])
-            self.hazards["dot"] = find_hazards(
-                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]),
-                hazard_penalty['dot']
+            fmt = lambda x: ','.join(x)
+            # hazards occur when a 2+ clk inst is followed up by an instruction
+            # that uses rd of that instruction as its rs1/2
+            self.hazards["dcache"], _ = find_hazards(
+                hazard_penalty['dcache'], fmt(icfg.INST_T_MEM[icfg.k_mem_l])
             )
+            self.hazards["mul"], _ = find_hazards(
+                hazard_penalty['mul'], fmt(icfg.INST_T[icfg.k_mul])
+            )
+            self.hazards["div"], _ = find_hazards(
+                hazard_penalty['div'], fmt(icfg.INST_T[icfg.k_div])
+            )
+            self.hazards["dot"], dot_acc_hazards= find_hazards(
+                hazard_penalty['dot'],
+                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot])
+            )
+            self.hazards["dot"] -= dot_acc_hazards # late_c fwd in RTL
 
         else: # otherwise, estimate based on instruction count (pessimistic)
             self.hazards["dcache"] = \
