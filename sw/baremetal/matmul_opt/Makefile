@@ -1,6 +1,6 @@
 
 # optimization variants
-OPT_V := load_b tiling
+OPT_V := load_b tiling txp_b
 LOOPS := 1
 
 TARGETS := $(addsuffix .elf, $(addprefix int8_, $(OPT_V)))
@@ -8,7 +8,7 @@ TARGETS := $(addsuffix .elf, $(addprefix int8_, $(OPT_V)))
 TEST_DEFINES := $(foreach t,$(OPT_V), \
 				int8_$(t):-DOPT_V_$(shell echo $(t) | tr a-z A-Z))
 
-OPT := -O1 -flto
+OPT := -O3 -flto
 CFLAGS += -DLOOPS=$(LOOPS)
 
 HEADERS := test_matrices.h

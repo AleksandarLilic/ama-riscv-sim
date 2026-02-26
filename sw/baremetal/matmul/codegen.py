@@ -16,6 +16,7 @@ A_COLS_B_ROWS = int(sys.argv[3])
 OUT = f"test_matrices.h"
 
 code = []
+code.append("#pragma once\n")
 code.append("#include <stdint.h>\n")
 code.append(f"#define A_ROWS {A_ROWS}")
 code.append(f"#define B_COLS {B_COLS}")
