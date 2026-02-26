@@ -23,7 +23,9 @@ MNM_ANY = "_any_"
 class dependency_results:
     inst_idxs = []
     dep_arr_cnt = []
+    dep_arr_cnt_dot_acc = []
     dep_line_num = []
+    dep_line_num_dot_acc = []
     line_fmt_issue = 0
     src_s = {"mnm": [], "lst": ""}
     dep_s = {"mnm": [], "lst": ""}
@@ -169,6 +171,10 @@ def search(args):
     # dep_lines: index i holds a list of dep line numbers for that distance
     res.dep_line_num = [[] for _ in range(window + 1)]
 
+    # dot acc: subset where dep is dot->dot with only rs3 (accumulator) matching
+    res.dep_arr_cnt_dot_acc = [0] * (window + 1)
+    res.dep_line_num_dot_acc = [[] for _ in range(window + 1)]
+
     # load all lines (need lookahead)
     with open(args.exec_log, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
@@ -234,6 +240,18 @@ def search(args):
                         seq = extract_seq_num(nx_line)
                         if seq is not None:
                             res.dep_line_num[dist].append(int(seq))
+
+                        is_dot_acc = (
+                            mnm in DOT_MNM and # src is dot
+                            nx_mnm in DOT_MNM and # dep is dot
+                            nx_regs[0] in rd and # dep rd is src rd (dot acc)
+                            # and no other src regs (rs1/2) in dep
+                            not any((r in rd) for r in nx_regs[1:] if r != 0)
+                        )
+                        if is_dot_acc:
+                            res.dep_arr_cnt_dot_acc[dist] += 1
+                            if seq is not None:
+                                res.dep_line_num_dot_acc[dist].append(int(seq))
                     # only one increment per dep even if both rs1/rs2 == rd
 
             # if this instruction writes the same rd,
@@ -273,15 +291,36 @@ def main(args):
     max_digits = len(str(max(res.dep_arr_cnt))) + 1
     for d in range(1, win + 1):
         perc = (res.dep_arr_cnt[d] / exec_inst) * 100
+        da = res.dep_arr_cnt_dot_acc[d]
+        da_s = f"  dot_acc: {FMT(da)}" if da else ""
         print(f"{INDENT}{d:{2}}: {FMT(res.dep_arr_cnt[d]):>{max_digits}}" +
-              f" ({perc:5.2f}%)   {res.dep_line_num[d][:LN]}")
+              f" ({perc:5.2f}%){da_s}   {res.dep_line_num[d][:LN]}")
+
+    total_dot_acc = sum(res.dep_arr_cnt_dot_acc)
+    if total_dot_acc:
+        total_dep = sum(res.dep_arr_cnt)
+        print(f"\nOf {FMT(total_dep)} total deps, " +
+              f"{FMT(total_dot_acc)} are dot acc (rd -> rs3 only)")
 
     if res.line_fmt_issue:
         print(f"\n(Skipped lines: {res.line_fmt_issue})")
 
     fig, ax = plt.subplots(figsize=(2.2+win*.5, 4.5))
-    r = ax.bar(range(1, win + 1), res.dep_arr_cnt[1:])
-    ax.bar_label(r, padding=3, fmt=FMT)
+    x = range(1, win + 1)
+    has_dot_acc = sum(res.dep_arr_cnt_dot_acc) > 0
+    if has_dot_acc:
+        other = [res.dep_arr_cnt[d] - res.dep_arr_cnt_dot_acc[d]
+                 for d in x]
+        dot_acc = res.dep_arr_cnt_dot_acc[1:]
+        r1 = ax.bar(x, other)
+        r2 = ax.bar(x, dot_acc, bottom=other, label="dot acc",
+                    color=icfg.HL_COLORS_OPS[icfg.k_simd_arith])
+        ax.bar_label(r2, labels=[FMT(res.dep_arr_cnt[d]) for d in x], padding=3)
+        ax.legend()
+    else:
+        r = ax.bar(x, res.dep_arr_cnt[1:])
+        ax.bar_label(r, padding=3, fmt=FMT)
+
     ax.set_ylim(0, max(res.dep_arr_cnt[1:]) * 1.1)
     ax.set_title(
         f"Register dependency distances for\n'{get_test_title(args.exec_log)}'")
