@@ -58,6 +58,12 @@ void main(void) {
     for (size_t i = 0; i < LOOPS; i++) {
         ASM_BLOCK_8;
         ASM_BLOCK_8;
+        ASM_BLOCK_8;
+        ASM_BLOCK_8;
+        ASM_BLOCK_8;
+        ASM_BLOCK_8;
+        ASM_BLOCK_8;
+        ASM_BLOCK_8;
     }
     PROF_STOP;
     //printf("%d\n",result);

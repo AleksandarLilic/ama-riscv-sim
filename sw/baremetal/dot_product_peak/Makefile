@@ -1,4 +1,4 @@
-LOOPS := 1
+LOOPS := 10
 TARGET := int8
 
 OPT := -O3 -flto
