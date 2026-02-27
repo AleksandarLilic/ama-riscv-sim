@@ -1639,6 +1639,18 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     ax_btm.xaxis.set_major_locator(max_n_locator)
     ax_btm.xaxis.set_major_formatter(EngFormatter(unit='', sep=''))
     ax_btm.set_xlim(df.smp[0]-1, ax_btm.get_xlim()[1]) # remove pad
+    ax_ops.yaxis.set_major_locator(MaxNLocator(nbins=4, integer=True))
+
+    def set_ops_locator(ymax):
+        y = ymax*.9
+        if y <= 2: loc = MultipleLocator(0.5)
+        elif y <= 4: loc = MultipleLocator(1)
+        elif y <= 8: loc = MultipleLocator(2)
+        elif y <= 16: loc = MultipleLocator(4)
+        else: loc = MultipleLocator(8)
+        return loc
+
+    ax_ops.yaxis.set_major_locator(set_ops_locator(ax_ops.get_ylim()[1]))
 
     # add a second x-axis
     if args.clk:
