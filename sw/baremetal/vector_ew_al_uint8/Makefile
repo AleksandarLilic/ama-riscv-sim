@@ -1,5 +1,5 @@
 LOOPS := 1
-TARGET := basic
+TARGET := test
 
 OPT := -O3 -flto
 CFLAGS += -DLOOPS=$(LOOPS)

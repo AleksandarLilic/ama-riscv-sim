@@ -1,24 +1,24 @@
 {
     "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP"],
 
-    "asm_rv32i": ["basic"],
-    "asm_rv32i_branches": ["basic"],
-    "asm_rv32i_zicsr": ["basic"],
-    "asm_rv32i_zihpm": ["basic"],
-    "asm_rv32im": ["basic"],
-    "asm_rv32ic": ["basic"],
-    "asm_rv32i_zbb_min-max": ["basic"],
+    "asm_rv32i": ["test"],
+    "asm_rv32i_branches": ["test"],
+    "asm_rv32i_zicsr": ["test"],
+    "asm_rv32i_zihpm": ["test"],
+    "asm_rv32im": ["test"],
+    "asm_rv32ic": ["test"],
+    "asm_rv32i_zbb_min-max": ["test"],
 
-    "asm_rv32i_custom-simd-dot": ["basic"],
-    "asm_rv32i_custom-simd-widen": ["basic"],
+    "asm_rv32i_custom-simd-dot": ["test"],
+    "asm_rv32i_custom-simd-widen": ["test"],
 
     "rv32i_zihpm_tda": ["test"],
     "rv32i_zihpm_all": ["test"],
-    "rv32i_custom-simd-widen": ["basic"],
+    "rv32i_custom-simd-widen": ["test"],
 
-    "rd_pairing": ["basic"],
+    "rd_pairing": ["test"],
 
-    "dcache_set_thrashing": ["basic"],
+    "dcache_set_thrashing": ["test"],
     "dcache_peak": ["all"],
     "memcpy": ["all"],
 
@@ -27,8 +27,8 @@
     "gcd_lcm": [["n_large"], ["LOOPS=1"]],
     "prime_numbers": [["n_3000"], ["LOOPS=1"]],
 
-    "vector_ew_al_uint8": ["basic"],
-    "vector_ew_mac_uint8": ["basic"],
+    "vector_ew_al_uint8": ["test"],
+    "vector_ew_mac_uint8": ["test"],
     "vector_ew_basic": ["all"],
     "matmul": ["all"],
     "dot_product": ["all"],

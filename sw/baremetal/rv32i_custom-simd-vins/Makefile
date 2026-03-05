@@ -1,4 +1,4 @@
-TARGET := basic
+TARGET := test
 LOOPS := 1
 CFLAGS += -DLOOPS=$(LOOPS)
 

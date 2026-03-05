@@ -1,6 +1,6 @@
 #TARGET := n_$(N_IN)
 LOOPS := 2
-TARGET := basic
+TARGET := test
 CACHE_ALIGNED := 1
 
 ifeq ($(CACHE_ALIGNED), 1)

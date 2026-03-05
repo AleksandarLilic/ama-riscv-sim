@@ -1,4 +1,4 @@
-TARGET := basic
+TARGET := test
 CFLAGS := -DLOOPS=1u -DBASIC_ASM_TEST -DZMMUL_ONLY
 MARCH := rv32im_zicsr
 COMMON_OBJ_NAMES = crt0.o
