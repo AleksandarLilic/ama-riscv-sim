@@ -1,4 +1,4 @@
-LOOPS := 1
+LOOPS := 10
 TYPES := int4 int8 int16 int16_int8 int16_int4 int8_int4 int8_int2
 TARGETS := $(addsuffix .elf, $(TYPES))
 

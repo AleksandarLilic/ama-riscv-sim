@@ -96,16 +96,15 @@ _Static_assert(0, "Unsupported number format: ref");
 #endif
 
 void main(void) {
-    for (size_t i = 0; i < LOOPS; i++) {
-        PROF_START;
-        int32_t result = FUNC(a, b, ARR_LEN);
-        PROF_STOP;
-        //printf("%d\n",result);
-        //printf("%d\n",ref);
-        if (result != ref) {
-            write_mismatch(result, ref, 1);
-            fail();
-        }
+    int32_t result;
+    PROF_START;
+    for (size_t i = 0; i < LOOPS; i++) { result = FUNC(a, b, ARR_LEN); }
+    PROF_STOP;
+    //printf("%d\n",result);
+    //printf("%d\n",ref);
+    if (result != ref) {
+        write_mismatch(result, ref, 1);
+        fail();
     }
     pass();
 }
