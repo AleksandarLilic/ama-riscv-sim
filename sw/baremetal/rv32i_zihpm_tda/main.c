@@ -8,6 +8,11 @@
         fail(); \
     }
 
+#define CHECK_CSR(csr_addr, val) \
+    write_csr(CSR_MSCRATCH, 0); \
+    read_csr(CSR_MSCRATCH, rval); \
+    CHECK(rval, 0, CSR_MSCRATCH);
+
 int32_t sum_up(uint32_t* array, uint32_t length) {
     int32_t sum = 0;
     for (uint32_t i = 0; i < length; i++) sum += array[i];
@@ -20,76 +25,54 @@ void main() {
     uint8_t arr_dot[8] = {1, 2, 3, 4, 5, 6, 7, 8};
     #define STEP 128
 
-    uint32_t expected, rval;
-
-    // mscratch
-    read_csr(CSR_MSCRATCH, rval);
-    expected = 0x133;
-    write_csr(CSR_MSCRATCH, expected);
-    read_csr(CSR_MSCRATCH, rval);
-    CHECK(rval, expected, CSR_MSCRATCH);
-
-    // mhpmcounters, 0 at this point before events are set up
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER3, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER3);
-
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER4, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER4);
-
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER5, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER5);
-
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER6, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER6);
-
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER7, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER7);
-
-    expected = 0;
-    read_csr(CSR_MHPMCOUNTER8, rval);
-    CHECK(rval, expected, CSR_MHPMCOUNTER8);
+    // check writing a random value, then check 0 (also serving as init)
+    uint32_t rval;
+    CHECK_CSR(CSR_MSCRATCH, 872);
+    CHECK_CSR(CSR_MSCRATCH, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER3, 123);
+    CHECK_CSR(CSR_MHPMCOUNTER3, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER4, 423);
+    CHECK_CSR(CSR_MHPMCOUNTER4, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER5, 54);
+    CHECK_CSR(CSR_MHPMCOUNTER5, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER6, 167);
+    CHECK_CSR(CSR_MHPMCOUNTER6, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER7, 390);
+    CHECK_CSR(CSR_MHPMCOUNTER7, 0);
+    CHECK_CSR(CSR_MHPMCOUNTER8, 23);
+    CHECK_CSR(CSR_MHPMCOUNTER8, 0);
 
     // set up events
+    uint32_t ev;
+    ev = mhpmevent_bad_spec;
+    write_csr(CSR_MHPMEVENT3, ev);
     read_csr(CSR_MHPMEVENT3, rval);
-    expected = mhpmevent_bad_spec;
-    write_csr(CSR_MHPMEVENT3, expected);
-    read_csr(CSR_MHPMEVENT3, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT3);
+    CHECK(rval, ev, CSR_MHPMEVENT3);
 
+    ev = mhpmevent_fe;
+    write_csr(CSR_MHPMEVENT4, ev);
     read_csr(CSR_MHPMEVENT4, rval);
-    expected = mhpmevent_fe;
-    write_csr(CSR_MHPMEVENT4, expected);
-    read_csr(CSR_MHPMEVENT4, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT4);
+    CHECK(rval, ev, CSR_MHPMEVENT4);
 
+    ev = mhpmevent_be;
+    write_csr(CSR_MHPMEVENT5, ev);
     read_csr(CSR_MHPMEVENT5, rval);
-    expected = mhpmevent_be;
-    write_csr(CSR_MHPMEVENT5, expected);
-    read_csr(CSR_MHPMEVENT5, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT5);
+    CHECK(rval, ev, CSR_MHPMEVENT5);
 
+    ev = mhpmevent_fe_ic;
+    write_csr(CSR_MHPMEVENT6, ev);
     read_csr(CSR_MHPMEVENT6, rval);
-    expected = mhpmevent_fe_ic;
-    write_csr(CSR_MHPMEVENT6, expected);
-    read_csr(CSR_MHPMEVENT6, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT6);
+    CHECK(rval, ev, CSR_MHPMEVENT6);
 
+    ev = mhpmevent_be_dc;
+    write_csr(CSR_MHPMEVENT7, ev);
     read_csr(CSR_MHPMEVENT7, rval);
-    expected = mhpmevent_be_dc;
-    write_csr(CSR_MHPMEVENT7, expected);
-    read_csr(CSR_MHPMEVENT7, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT7);
+    CHECK(rval, ev, CSR_MHPMEVENT7);
 
+    ev = mhpmevent_ret_simd;
+    write_csr(CSR_MHPMEVENT8, ev);
     read_csr(CSR_MHPMEVENT8, rval);
-    expected = mhpmevent_ret_simd;
-    write_csr(CSR_MHPMEVENT8, expected);
-    read_csr(CSR_MHPMEVENT8, rval);
-    CHECK(rval, expected, CSR_MHPMEVENT8);
+    CHECK(rval, ev, CSR_MHPMEVENT8);
 
     GLOBAL_SYMBOL("test_start");
     // generate some branch misses for mhpmcounter3

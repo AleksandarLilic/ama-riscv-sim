@@ -11,8 +11,8 @@ int8_t input_img_1[] __attribute__((aligned(CACHE_LINE_SIZE))) = {0, 0, 0, 0, 0,
 
 void main(void) {
     #ifdef MHPM
-    perf_event_cnt_t pe = {0ul};
-    set_up_perf_counters();
+    tda_cnt_t pe = {0ul};
+    init_tda_counters();
     #else
     set_cpu_cycles(0u);
     #endif
@@ -24,7 +24,7 @@ void main(void) {
     uint32_t end_time = get_cpu_time();
 
     #ifdef MHPM
-    save_perf_counters(&pe);
+    save_tda_counters(&pe);
     uint32_t clks = pe.cycles;
     #else
     uint32_t clks = get_cpu_cycles();
@@ -36,7 +36,7 @@ void main(void) {
            predicted, label_0, clks, time_diff, (1000000 / time_diff));
 
     #ifdef MHPM
-    print_perf_counters(&pe);
+    print_tda_counters(&pe);
     #endif
 
     // assumed model is accurate for the provided input

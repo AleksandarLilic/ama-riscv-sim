@@ -95,27 +95,51 @@ typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
 
 // mhpm events
 enum mhpmevent_t {
+    // TDA
     mhpmevent_bad_spec = (1 << 0),
     mhpmevent_be = (1 << 1),
     mhpmevent_be_dc = (1 << 2),
     mhpmevent_fe = (1 << 3),
     mhpmevent_fe_ic = (1 << 4),
     mhpmevent_ret_simd = (1 << 5),
+    // core events - executed instructions
+    mhpmevent_ret_ctrl_flow = (1 << 6),
+    mhpmevent_ret_ctrl_flow_j = (1 << 7), // direct unconditional branch
+    mhpmevent_ret_ctrl_flow_jr = (1 << 8), // indirect unconditional branch
+    mhpmevent_ret_ctrl_flow_br = (1 << 9), // direct conditional branch
+    mhpmevent_ret_mem = (1 << 10),
+    mhpmevent_ret_mem_load = (1 << 11),
+    mhpmevent_ret_mem_store = (1 << 12),
+    mhpmevent_ret_simd_arith = (1 << 13),
+    mhpmevent_ret_simd_data_fmt = (1 << 14),
+    // core specific
+    mhpmevent_core_stall_simd = (1 << 15),
+    mhpmevent_core_stall_load = (1 << 16),
+    // icache specific
+    mhpmevent_l1i_access = (1 << 17),
+    mhpmevent_l1i_miss = (1 << 18),
+    mhpmevent_l1i_spec_miss = (1 << 19),
+    mhpmevent_l1i_spec_miss_bad = (1 << 20),
+    mhpmevent_l1i_spec_miss_good = (1 << 21),
+    // dcache specific
+    mhpmevent_l1d_access = (1 << 22),
+    mhpmevent_l1d_miss = (1 << 23),
+    mhpmevent_l1d_writeback = (1 << 24),
 };
 
 typedef struct {
     uint64_t cycles;
-    uint64_t bad_spec;
-    uint64_t be;
-    uint64_t be_dc;
-    uint64_t be_core;
-    uint64_t fe;
-    uint64_t fe_ic;
-    uint64_t fe_core;
-    uint64_t ret_simd;
-    uint64_t ret_int;
-    uint64_t ret;
-} perf_event_cnt_t;
+    uint64_t bad_spec; // branch mispredict
+    uint64_t be; // backend stall
+    uint64_t be_dc; // backend stall - dcache
+    uint64_t be_core; // backend stall - core
+    uint64_t fe; // frontend stall
+    uint64_t fe_ic; // frontend stall - dcache
+    uint64_t fe_core; // frontend stall - core
+    uint64_t ret; // retired inst
+    uint64_t ret_simd; // retired inst - simd
+    uint64_t ret_int; // retired inst - intpipe
+} tda_cnt_t;
 
 // functions
 #define read_csr(CSR, dest) \
@@ -192,9 +216,9 @@ uint64_t get_cpu_instret();
 void set_cpu_cycles(uint64_t value);
 void set_cpu_instret(uint64_t value);
 
-void set_up_perf_counters();
-void save_perf_counters(perf_event_cnt_t* pe);
-void print_perf_counters(const perf_event_cnt_t* pe);
+void init_tda_counters();
+void save_tda_counters(tda_cnt_t* pe);
+void print_tda_counters(const tda_cnt_t* pe);
 
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 void timer_interrupt_handler();

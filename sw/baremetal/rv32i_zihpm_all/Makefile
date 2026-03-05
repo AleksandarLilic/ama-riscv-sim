@@ -1,4 +1,4 @@
-TARGET := basic
+TARGET := test
 
 GCC_OPTS += -O1
 

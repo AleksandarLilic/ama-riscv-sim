@@ -12,7 +12,8 @@
     "asm_rv32i_custom-simd-dot": ["basic"],
     "asm_rv32i_custom-simd-widen": ["basic"],
 
-    "rv32i_zihpm": ["basic"],
+    "rv32i_zihpm_tda": ["test"],
+    "rv32i_zihpm_all": ["test"],
     "rv32i_custom-simd-widen": ["basic"],
 
     "rd_pairing": ["basic"],

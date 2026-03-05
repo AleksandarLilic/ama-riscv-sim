@@ -1,5 +1,6 @@
 #include "common.h"
 
+// uart
 void send_byte_uart0(char byte) {
     while (!UART0_TX_READY);
     UART0->tx_data = byte;
@@ -33,6 +34,7 @@ void set_cpu_time(uint64_t value) {
     write_csr_wide(CSR_TIME, CSR_TIMEH, value);
 }
 
+// cpu perf counters
 uint64_t get_cpu_time() {
     uint64_t time;
     read_csr_wide(CSR_TIME, CSR_TIMEH, time);
@@ -59,7 +61,8 @@ uint64_t get_cpu_instret() {
     return instret;
 }
 
-void set_up_perf_counters() {
+// tda
+void init_tda_counters() {
     // reset existing event counters
     write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
     write_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, 0u);
@@ -78,7 +81,7 @@ void set_up_perf_counters() {
     write_csr(CSR_MHPMEVENT8, mhpmevent_ret_simd);
 }
 
-void save_perf_counters(perf_event_cnt_t* p) {
+void save_tda_counters(tda_cnt_t* p) {
     // read L2 events first
     read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->fe_ic);
     read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->be_dc);
@@ -94,14 +97,14 @@ void save_perf_counters(perf_event_cnt_t* p) {
     p->ret = (p->cycles - (p->bad_spec + p->fe + p->be));
 }
 
-void print_perf_counters(const perf_event_cnt_t* p) {
-    // scale up by 1000x to get 3 decimal places and no floating point
+void print_tda_counters(const tda_cnt_t* p) {
+    // scale up by 1000x to get 3 decimal places w/o floating point
     uint32_t ipc1000 = ((p->ret * 1000u) / p->cycles);
     printf(
         "Stats:\n"
         "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
         (uint32_t)p->cycles, (uint32_t)p->ret,
-        (uint32_t)(p->cycles - p->ret), ipc1000 / 1000, ipc1000 % 1000
+        (uint32_t)(p->cycles - p->ret), (ipc1000 / 1000), (ipc1000 % 1000)
     );
 
     printf(
@@ -119,6 +122,7 @@ void print_perf_counters(const perf_event_cnt_t* p) {
     );
 }
 
+// traps
 void __attribute__((weak))
 trap_handler(unsigned int mcause, void* mepc, void* sp) {
     (void)mepc;
