@@ -218,15 +218,17 @@ int main(int argc, char* argv[]) {
         ("run_insts", "Number of instructions to run. Set to 0 for no limit",
          CXXOPTS_VAL_STR->default_value(defs_t::run_insts))
         ("silent",
-         "Don't print stats at the end to terminal. Logs stored regardless",
+         "Don't print sim end stats to stdout. Logs are always saved to disk",
          CXXOPTS_VAL_BOOL->default_value(defs_t::silent))
         #ifdef UART_EN
         ("sink_uart",
-         "Don't print UART output to terminal. UART still fully operational",
+         "Don't print UART output to stdout. UART still fully operational",
          CXXOPTS_VAL_BOOL->default_value(defs_t::sink_uart))
         #endif
+        ;
 
-        #ifdef PROFILERS_EN
+    #ifdef PROFILERS_EN
+    options.add_options("Profiler")
         ("prof_pc_start", "Start PC (hex) for profiling",
          CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_start))
         ("prof_pc_stop", "Stop PC (hex) for profiling",
@@ -235,7 +237,7 @@ int main(int argc, char* argv[]) {
          "Run profiling only for match number (0 for all matches)",
          CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_sm))
         ("exit_on_prof_stop",
-         "Exit simulation immediately after profiling finishes."
+         "Exit simulation immediately after profiling finishes. "
          "Exits on the first 'prof_pc_stop' if 'prof_pc_single_match' is unused"
          "Otherwise exits on the 'prof_pc_stop' of the 'prof_pc_single_match'",
          CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_prof_stop))
@@ -246,10 +248,11 @@ int main(int argc, char* argv[]) {
          gen_help_list(perf_event_map),
          CXXOPTS_VAL_STR->default_value(defs_t::perf_event))
         ("rf_usage", "Enable profiling register file usage",
-         CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
-        #endif
+         CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage));
+    #endif
 
-        #ifdef DASM_EN
+    #ifdef DASM_EN
+    options.add_options("Logging")
         ("l,log",
          "Enable logging",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log))
@@ -266,9 +269,11 @@ int main(int argc, char* argv[]) {
         ("log_hw_models", "Log HW model stats for each executed instruction",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_hw_models))
         #endif
-        #endif
+        ;
+    #endif
 
-        #ifdef HW_MODELS_EN
+    #ifdef HW_MODELS_EN
+    options.add_options("HW model - Caches")
         // icache
         ("icache_sets", "Number of sets in I$",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::icache_sets))
@@ -301,11 +306,11 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_size))
         ("show_cache_state",
          "Show per cache line references at the end of simulation",
-         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state))
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state));
 
-        // branch predictors
+    options.add_options("HW model - Branch Predictor")
         ("bp",
-         "First branch predictor. Defaults as active, driving the I$."
+         "First branch predictor. Defaults as active, driving the I$. "
          "For combined predictor, counters will be weakly biased towards this" "predictor (impacts warm-up period)\n"
          "Options: " + gen_help_list(bp_names_map) + "\n ",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp))
@@ -366,15 +371,17 @@ int main(int argc, char* argv[]) {
         ("bp_run_all", "Run all branch predictors",
          CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_run_all))
         ("bp_dump_csv", "Dump branch predictor stats to CSV",
-         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_dump_csv))
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_dump_csv));
 
-        #endif
+    #endif
 
+    options.add_options("Help")
         ("h,help", "Print usage")
         ("v,version", "Print version/build info and exit");
 
-    options.positional_help("<path_to_elf_file>");
     options.parse_positional({"path"});
+    options.positional_help("");
+    options.custom_help("<path_to_elf_file> [OPTION...]");
 
     cxxopts::ParseResult result;
     try {
