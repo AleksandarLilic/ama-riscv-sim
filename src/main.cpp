@@ -141,7 +141,7 @@ struct defs_t {
     static constexpr char log[] = "false";
     static constexpr char log_always[] = "false";
     static constexpr char log_state[] = "false";
-    static constexpr char rf_names[] = "abi";
+    static constexpr char rf_names[] = "x";
     static constexpr char log_hw_models[] = "false";
     #endif
 };
