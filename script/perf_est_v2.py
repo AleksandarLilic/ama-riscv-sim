@@ -13,6 +13,9 @@ from utils import DELIM, INDENT, smarter_eng_formatter
 yaml = YAML()
 yaml.preserve_quotes = True
 
+SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_HW_YAML = f"{SCRIPT_PATH}/hw_perf_metrics_v2.yaml"
+
 # main mem configuration assumptions based on the port contention from hwpm
 
 # | rd  | wr  | mem cfg |
@@ -51,7 +54,7 @@ class perf:
 
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
         self.inst_profile = inst_profile
-        self.name = inst_profile
+        self.inputs = [inst_profile, hw_stats, hw_perf_metrics]
         df = load_inst_prof(inst_profile, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
@@ -140,6 +143,7 @@ class perf:
             "misses": sd(hw_dc["misses"]),
             "writebacks": hw_dc["writebacks"],
             "hit_rate": (sd(hw_dc["hits"]) / hw_dc["references"]) * 100,
+            "wb_rate": (hw_dc["writebacks"] / hw_dc["references"]) * 100,
             "mpki": (sd(hw_dc["misses"]) / (self.inst_total/1000)),
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
@@ -176,14 +180,26 @@ class perf:
 
         self.ic_stalls = (self.c_ic_hit - 1) * hw_ic["hits"]["reads"]
         self.ic_stalls += self.c_ic_miss * hw_ic["misses"]["reads"]
+        ic_miss_rate = (100 - self.ic_stats['hit_rate']) / 100
+        ic_miss_penalty = self.c_ic_miss - self.c_ic_hit
+        self.ic_amat = self.c_ic_hit + (ic_miss_rate * ic_miss_penalty)
+        self.ic_amat = round(self.ic_amat, 2)
 
         # dc miss incurs c_dc_miss clk always, like ic
         # if dc can't handle read and write to the same cache line at once
         # or main mem has only 1 R/W port to dc
-        # writeback incurs c_dc_wb clk to first write evicted cache line
+        # writeback incurs c_dc_wb clk to first write back evicted cache line
         self.dc_stalls = (self.c_dc_hit - 1) * sd(hw_dc["hits"])
         self.dc_stalls += self.c_dc_miss * sd(hw_dc["misses"])
         self.dc_stalls += self.c_dc_wb * hw_dc["writebacks"]
+        dc_miss_rate = (100 - self.dc_stats['hit_rate']) / 100
+        dc_miss_penalty = self.c_dc_miss - self.c_dc_hit
+        self.dc_amat = (
+            self.c_dc_hit + \
+            (dc_miss_rate * dc_miss_penalty) + \
+            (self.dc_stats['wb_rate']/100 * self.c_dc_wb)
+        )
+        self.dc_amat = round(self.dc_amat, 2)
 
         use_dep_analysis = (exec_log is not None)
         def find_hazards(win, src, dep="_any_"):
@@ -361,18 +377,19 @@ class perf:
             f"MPKI: {self.bp_stats['mpki']}"
             )
 
-        out_stalls = f"Pipeline stalls (max): " + \
+        out_stalls = f"\nPipeline stalls (max): " + \
             f"{DELIM}Bad spec: {FMT(self.b_stalls)}" + \
             f"{DELIM}FE bound: {FMT(self.fe_stalls)} - " + \
-            f"ICache: {FMT(self.ic_stalls)}, " + \
+            f"ICache: {FMT(self.ic_stalls)} (AMAT: {self.ic_amat}), " + \
             f"Core: {FMT(self.j_stalls)}" + \
             f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
-            f"DCache: {FMT(self.dc_stalls)}, " + \
+            f"DCache: {FMT(self.dc_stalls)} (AMAT: {self.dc_amat}), " + \
             f"Core: {FMT(self.all_hazards)}" #+ \
             #f"{DELIM}Memory contention: " + \
             #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
-        stats = f"{self.name}" + \
+        stats = f"Performance estimate breakdown for: \n{INDENT}" + \
+                f'\n{INDENT}'.join(self.inputs) + "\n" + \
                 f"\n{out_sp}" + \
                 f"\n{DELIM.join(out_ic)}" + \
                 f"\n{DELIM.join(out_dc)}" + \
@@ -398,7 +415,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
     parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
-    parser.add_argument("hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration")
+    parser.add_argument("--hw", "--hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration", default=DEFAULT_HW_YAML)
     parser.add_argument("-e", "--exec_log", help="Optional argument to provide 'exec.log' path for depndency/hazard analysis", default=None)
     parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
@@ -407,7 +424,7 @@ def parse_args():
 def main(args: argparse.Namespace):
     p_inst = args.inst_profile
     p_hws = args.hw_stats
-    p_met = args.hw_perf_metrics
+    p_met = args.hw
     p_exec = args.exec_log
     corr = args.corr
     paths = [p_inst, p_hws, p_met]
