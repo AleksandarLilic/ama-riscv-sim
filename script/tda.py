@@ -29,13 +29,14 @@ def main(args: argparse.Namespace):
     df = pd.DataFrame(data["core"], columns=col)
     df["root"] = "pipeline"
     df = df.replace("None", pd.NA) # replace literal "None" with pandas NaN
+    df_tda = df.iloc[:7] # first 7 counters expected for TDA
 
     # make new df that's a group and sum on L1 only
-    df_l1 = df.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
-    df_l1.to_csv(args.hw_stats.replace(".json", "_tda_l1.csv"), index=False)
+    df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
+    df_tda_l1.to_csv(args.hw_stats.replace(".json", "_tda_l1.csv"), index=False)
 
     fig = px.sunburst(
-        df,
+        df_tda,
         path=["root"] + col[:-1], # 'root' + 'L1' + 'L2'
         values=col[2], # 'cycles' column
         branchvalues="total",
@@ -69,7 +70,7 @@ def main(args: argparse.Namespace):
 
     if not args.silent:
         print(title)
-        print(df.drop(columns=["root"]))
+        print(df_tda.drop(columns=["root"]))
         fig.show(renderer=args.renderer)
 
     if args.save_png:
