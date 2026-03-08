@@ -71,7 +71,7 @@ void main() {
     ev = mhpmevent_core_stall_load;
     TEST_CSR(CSR_MHPMEVENT7, ev);
 
-    ev = mhpmevent_l1i_access;
+    ev = mhpmevent_l1i_ref;
     TEST_CSR(CSR_MHPMEVENT8, ev);
     ev = mhpmevent_l1i_miss;
     TEST_CSR(CSR_MHPMEVENT3, ev);
@@ -82,7 +82,7 @@ void main() {
     ev = mhpmevent_l1i_spec_miss_good;
     TEST_CSR(CSR_MHPMEVENT6, ev);
 
-    ev = mhpmevent_l1d_access;
+    ev = mhpmevent_l1d_ref;
     TEST_CSR(CSR_MHPMEVENT7, ev);
     ev = mhpmevent_l1d_miss;
     TEST_CSR(CSR_MHPMEVENT8, ev);

@@ -116,13 +116,13 @@ enum mhpmevent_t {
     mhpmevent_core_stall_simd = (1 << 15),
     mhpmevent_core_stall_load = (1 << 16),
     // icache specific
-    mhpmevent_l1i_access = (1 << 17),
+    mhpmevent_l1i_ref = (1 << 17),
     mhpmevent_l1i_miss = (1 << 18),
     mhpmevent_l1i_spec_miss = (1 << 19),
     mhpmevent_l1i_spec_miss_bad = (1 << 20),
     mhpmevent_l1i_spec_miss_good = (1 << 21),
     // dcache specific
-    mhpmevent_l1d_access = (1 << 22),
+    mhpmevent_l1d_ref = (1 << 22),
     mhpmevent_l1d_miss = (1 << 23),
     mhpmevent_l1d_writeback = (1 << 24),
 };
