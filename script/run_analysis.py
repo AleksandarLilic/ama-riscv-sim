@@ -20,8 +20,6 @@ from matplotlib.widgets import RangeSlider
 from utils import (FMT_AXIS, get_test_title, is_notebook, reformat_json,
                    smarter_eng_formatter)
 
-#SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x40000
 MEM_SIZE = 65536
@@ -37,7 +35,6 @@ X_LABEL = "Sample Count" # universal for all charts
 
 FREQ_DEFAULT = 100 # MHz
 
-# TODO: add function calls/graphs highlight when supported by the profiler
 CLR = {
     "blue_b0": "#0077b6",
     "blue_l1": "#00b4d8",
@@ -1048,6 +1045,7 @@ def plot_stat(
 
 def plot_hw_hm(ax, df, col, win_size) -> None:
     H_OFFSET = .3
+    exec_inst = df.inst.where(df.inst != 0).count()
     df[col] = df[col].replace(TRACE_NA, np.nan)
     hit = df[col].where(df[col] == 1, np.nan) + H_OFFSET
     miss = df[col].where(df[col] == 0, np.nan) - H_OFFSET
@@ -1061,7 +1059,8 @@ def plot_hw_hm(ax, df, col, win_size) -> None:
 
     metric = "ACC" if col == 'bp' else "HR"
     metric_mean = round(df[col].mean()*100,2)
-    label = f"{metric}: {metric_mean}%"
+    metric_mpki = round(miss.count()/(exec_inst/1000), 2)
+    label = f"{metric}: {metric_mean}%\nMPKI: {metric_mpki}"
     LW_OFF = .5
     lw = progressive_lw(df.index.size) * LW_OFF
 
@@ -2108,7 +2107,6 @@ def parse_args() -> argparse.Namespace:
 
     # common options
     parser.add_argument('--highlight', '--hl', type=str, nargs='+', help="Highlight specific instructions. Multiple instructions can be provided as a single string separated by whitespace (multiple groups) or separated by commas (multiple instructions in a group). E.g.: 'add,addi sub' colors 'add' and 'addi' the same and 'sub' a different color. Defaults to predefined groups if not provided. Use 'off' to disable highlighting")
-    # TODO: add highlighting for function calls/PC ?
     parser.add_argument('-b', '--browser', action='store_true', help="Open plots in the web browser instead of a pop-up window")
     parser.add_argument('--host', action='store_true', help="Host server for all machines on LAN instead of local-only. Only applicable if used with --browser")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")

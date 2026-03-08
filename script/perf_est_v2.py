@@ -56,6 +56,7 @@ class perf:
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
         df = df.loc[df['name'].str.startswith('_') == False]
+        self.inst_total = df['count'].sum()
         self.sp_usage = dfi[dfi['name'] == "_max_sp_usage"]['count'].tolist()[0]
 
         self.b = {"taken": 0, "taken_fwd": 0, "taken_bwd": 0,
@@ -128,6 +129,7 @@ class perf:
             "hits": hw_ic["hits"]["reads"],
             "misses": hw_ic["misses"]["reads"],
             "hit_rate": (hw_ic["hits"]["reads"] / hw_ic["references"]) * 100,
+            "mpki": (hw_ic["misses"]["reads"] / (self.inst_total/1000)),
             "sets": hw_ic["size"]["sets"],
             "ways": hw_ic["size"]["ways"],
             "data": hw_ic["size"]["data"]
@@ -138,6 +140,7 @@ class perf:
             "misses": sd(hw_dc["misses"]),
             "writebacks": hw_dc["writebacks"],
             "hit_rate": (sd(hw_dc["hits"]) / hw_dc["references"]) * 100,
+            "mpki": (sd(hw_dc["misses"]) / (self.inst_total/1000)),
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
             "data": hw_dc["size"]["data"]
@@ -158,7 +161,6 @@ class perf:
         self.div_inst = sum_up(self.div_inst_a)
         self.dot_inst = sum_up(self.dot_inst_a)
 
-        self.inst_total = df['count'].sum()
         # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
 
@@ -317,7 +319,8 @@ class perf:
               f"Misses: {FMT(stats['misses'])}, "
         if "writebacks" in stats and stats['writebacks'] > 0:
             out += f"Writebacks: {FMT(stats['writebacks'])}, "
-        out += f"Hit Rate: {stats['hit_rate']:.2f}%"
+        out += f"Hit Rate: {stats['hit_rate']:.2f}%, " + \
+               f"MPKI: {stats['mpki']:.2f}"
         return out
 
     def __str__(self):
