@@ -73,11 +73,11 @@ void init_tda_counters() {
     write_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, 0u);
     // set up events L1 events first
     write_csr(CSR_MHPMEVENT3, mhpmevent_bad_spec);
-    write_csr(CSR_MHPMEVENT4, mhpmevent_fe);
-    write_csr(CSR_MHPMEVENT5, mhpmevent_be);
+    write_csr(CSR_MHPMEVENT4, mhpmevent_stall_fe);
+    write_csr(CSR_MHPMEVENT5, mhpmevent_stall_be);
     // then L2 events
-    write_csr(CSR_MHPMEVENT6, mhpmevent_fe_ic);
-    write_csr(CSR_MHPMEVENT7, mhpmevent_be_dc);
+    write_csr(CSR_MHPMEVENT6, mhpmevent_stall_l1i);
+    write_csr(CSR_MHPMEVENT7, mhpmevent_stall_l1d);
     write_csr(CSR_MHPMEVENT8, mhpmevent_ret_simd);
 }
 

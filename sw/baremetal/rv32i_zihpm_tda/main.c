@@ -49,22 +49,22 @@ void main() {
     read_csr(CSR_MHPMEVENT3, rval);
     CHECK(rval, ev, CSR_MHPMEVENT3);
 
-    ev = mhpmevent_fe;
+    ev = mhpmevent_stall_fe;
     write_csr(CSR_MHPMEVENT4, ev);
     read_csr(CSR_MHPMEVENT4, rval);
     CHECK(rval, ev, CSR_MHPMEVENT4);
 
-    ev = mhpmevent_be;
+    ev = mhpmevent_stall_be;
     write_csr(CSR_MHPMEVENT5, ev);
     read_csr(CSR_MHPMEVENT5, rval);
     CHECK(rval, ev, CSR_MHPMEVENT5);
 
-    ev = mhpmevent_fe_ic;
+    ev = mhpmevent_stall_l1i;
     write_csr(CSR_MHPMEVENT6, ev);
     read_csr(CSR_MHPMEVENT6, rval);
     CHECK(rval, ev, CSR_MHPMEVENT6);
 
-    ev = mhpmevent_be_dc;
+    ev = mhpmevent_stall_l1d;
     write_csr(CSR_MHPMEVENT7, ev);
     read_csr(CSR_MHPMEVENT7, rval);
     CHECK(rval, ev, CSR_MHPMEVENT7);

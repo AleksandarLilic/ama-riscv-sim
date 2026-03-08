@@ -95,36 +95,37 @@ typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
 
 // mhpm events
 enum mhpmevent_t {
-    // TDA
-    mhpmevent_bad_spec = (1 << 0),
-    mhpmevent_be = (1 << 1),
-    mhpmevent_be_dc = (1 << 2),
-    mhpmevent_fe = (1 << 3),
-    mhpmevent_fe_ic = (1 << 4),
-    mhpmevent_ret_simd = (1 << 5),
-    // core events - executed instructions
-    mhpmevent_ret_ctrl_flow = (1 << 6),
-    mhpmevent_ret_ctrl_flow_j = (1 << 7), // direct unconditional branch
-    mhpmevent_ret_ctrl_flow_jr = (1 << 8), // indirect unconditional branch
-    mhpmevent_ret_ctrl_flow_br = (1 << 9), // direct conditional branch
-    mhpmevent_ret_mem = (1 << 10),
-    mhpmevent_ret_mem_load = (1 << 11),
-    mhpmevent_ret_mem_store = (1 << 12),
-    mhpmevent_ret_simd_arith = (1 << 13),
-    mhpmevent_ret_simd_data_fmt = (1 << 14),
-    // core specific
-    mhpmevent_core_stall_simd = (1 << 15),
-    mhpmevent_core_stall_load = (1 << 16),
-    // icache specific
-    mhpmevent_l1i_ref = (1 << 17),
-    mhpmevent_l1i_miss = (1 << 18),
-    mhpmevent_l1i_spec_miss = (1 << 19),
-    mhpmevent_l1i_spec_miss_bad = (1 << 20),
-    mhpmevent_l1i_spec_miss_good = (1 << 21),
-    // dcache specific
-    mhpmevent_l1d_ref = (1 << 22),
-    mhpmevent_l1d_miss = (1 << 23),
-    mhpmevent_l1d_writeback = (1 << 24),
+    mhpmevent_bad_spec = (1 << 0), // tda
+    mhpmevent_stall_be = (1 << 1), // tda
+    mhpmevent_stall_l1d = (1 << 2), // tda
+    mhpmevent_stall_l1d_r = (1 << 3),
+    mhpmevent_stall_l1d_w = (1 << 4),
+    mhpmevent_stall_fe = (1 << 5), // tda
+    mhpmevent_stall_l1i = (1 << 6), // tda
+    mhpmevent_stall_simd = (1 << 7),
+    mhpmevent_stall_load = (1 << 8),
+    mhpmevent_ret_ctrl_flow = (1 <<  9),
+    mhpmevent_ret_ctrl_flow_j = (1 << 10), // direct unconditional branch
+    mhpmevent_ret_ctrl_flow_jr = (1 << 11), // indirect unconditional branch
+    mhpmevent_ret_ctrl_flow_br = (1 << 12), // direct conditional branch
+    mhpmevent_ret_mem = (1 << 13),
+    mhpmevent_ret_mem_load = (1 << 14),
+    mhpmevent_ret_mem_store = (1 << 15),
+    mhpmevent_ret_simd = (1 << 16), // tda
+    mhpmevent_ret_simd_arith = (1 << 17),
+    mhpmevent_ret_simd_data_fmt = (1 << 18),
+    mhpmevent_l1i_ref = (1 << 19),
+    mhpmevent_l1i_miss = (1 << 20),
+    mhpmevent_l1i_spec_miss = (1 << 21),
+    mhpmevent_l1i_spec_miss_bad = (1 << 22),
+    mhpmevent_l1i_spec_miss_good = (1 << 23),
+    mhpmevent_l1d_ref = (1 << 24),
+    mhpmevent_l1d_ref_r = (1 << 25),
+    mhpmevent_l1d_ref_w = (1 << 26),
+    mhpmevent_l1d_miss = (1 << 27),
+    mhpmevent_l1d_miss_r = (1 << 28),
+    mhpmevent_l1d_miss_w = (1 << 29),
+    mhpmevent_l1d_writeback = (1 << 30)
 };
 
 typedef struct {

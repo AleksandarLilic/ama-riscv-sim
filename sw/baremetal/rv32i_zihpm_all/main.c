@@ -8,81 +8,44 @@
         fail(); \
     }
 
-#define TEST_CSR(csr_addr, ev) \
-    write_csr(csr_addr, ev); \
+#define TEST_CSR(csr_addr, event) \
+    write_csr(csr_addr, event); \
     read_csr(csr_addr, rval); \
-    CHECK(rval, ev, csr_addr);
-
-int32_t sum_up(uint32_t* array, uint32_t length) {
-    int32_t sum = 0;
-    for (uint32_t i = 0; i < length; i++) sum += array[i];
-    return sum;
-}
+    CHECK(rval, event, csr_addr);
 
 void main() {
-    #define LEN 512
-    uint32_t arr[LEN];
-    uint8_t arr_dot[8] = {1, 2, 3, 4, 5, 6, 7, 8};
-    #define STEP 128
-
-    // check all events
     uint32_t rval;
-    uint32_t ev;
-    ev = mhpmevent_bad_spec;
-    TEST_CSR(CSR_MHPMEVENT3, ev);
-    ev = mhpmevent_fe;
-    TEST_CSR(CSR_MHPMEVENT4, ev);
-    ev = mhpmevent_be;
-    TEST_CSR(CSR_MHPMEVENT5, ev);
-    ev = mhpmevent_fe_ic;
-    TEST_CSR(CSR_MHPMEVENT6, ev);
-    ev = mhpmevent_be_dc;
-    TEST_CSR(CSR_MHPMEVENT7, ev);
-    ev = mhpmevent_ret_simd;
-    TEST_CSR(CSR_MHPMEVENT8, ev);
-
-    ev = mhpmevent_ret_ctrl_flow;
-    TEST_CSR(CSR_MHPMEVENT3, ev);
-    ev = mhpmevent_ret_ctrl_flow_j;
-    TEST_CSR(CSR_MHPMEVENT4, ev);
-    ev = mhpmevent_ret_ctrl_flow_jr;
-    TEST_CSR(CSR_MHPMEVENT5, ev);
-    ev = mhpmevent_ret_ctrl_flow_br;
-    TEST_CSR(CSR_MHPMEVENT6, ev);
-    ev = mhpmevent_ret_mem;
-    TEST_CSR(CSR_MHPMEVENT7, ev);
-    ev = mhpmevent_ret_mem_load;
-    TEST_CSR(CSR_MHPMEVENT8, ev);
-    ev = mhpmevent_ret_mem_store;
-    TEST_CSR(CSR_MHPMEVENT3, ev);
-
-    ev = mhpmevent_ret_simd_arith;
-    TEST_CSR(CSR_MHPMEVENT4, ev);
-    ev = mhpmevent_ret_simd_data_fmt;
-    TEST_CSR(CSR_MHPMEVENT5, ev);
-
-    ev = mhpmevent_core_stall_simd;
-    TEST_CSR(CSR_MHPMEVENT6, ev);
-    ev = mhpmevent_core_stall_load;
-    TEST_CSR(CSR_MHPMEVENT7, ev);
-
-    ev = mhpmevent_l1i_ref;
-    TEST_CSR(CSR_MHPMEVENT8, ev);
-    ev = mhpmevent_l1i_miss;
-    TEST_CSR(CSR_MHPMEVENT3, ev);
-    ev = mhpmevent_l1i_spec_miss;
-    TEST_CSR(CSR_MHPMEVENT4, ev);
-    ev = mhpmevent_l1i_spec_miss_bad;
-    TEST_CSR(CSR_MHPMEVENT5, ev);
-    ev = mhpmevent_l1i_spec_miss_good;
-    TEST_CSR(CSR_MHPMEVENT6, ev);
-
-    ev = mhpmevent_l1d_ref;
-    TEST_CSR(CSR_MHPMEVENT7, ev);
-    ev = mhpmevent_l1d_miss;
-    TEST_CSR(CSR_MHPMEVENT8, ev);
-    ev = mhpmevent_l1d_writeback;
-    TEST_CSR(CSR_MHPMEVENT3, ev);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_bad_spec);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_stall_be);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_stall_l1d);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_stall_l1d_r);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_stall_l1d_w);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_stall_fe);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_stall_l1i);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_stall_simd);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_stall_load);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_ret_ctrl_flow);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_ret_ctrl_flow_j);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_ret_ctrl_flow_jr);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_ret_ctrl_flow_br);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_ret_mem);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_ret_mem_load);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_ret_mem_store);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_ret_simd);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_ret_simd_arith);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_ret_simd_data_fmt);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1i_ref);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1i_miss);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1i_spec_miss);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1i_spec_miss_bad);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1i_spec_miss_good);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1d_ref);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1d_ref_r);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1d_ref_w);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1d_miss);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1d_miss_r);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1d_miss_w);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1d_writeback);
 
     pass();
 }

@@ -25,11 +25,19 @@ def main(args: argparse.Namespace):
     with open(args.hw_stats, 'r') as f:
         data = json.load(f)
 
+    d = data['core']
+    row = [
+        ['bad_spec', pd.NA, d['bad_spec']],
+        ["frontend", "icache", d['stall_l1i']],
+        ["frontend", "core", d['stall_fe_core']],
+        ["backend", "dcache", d['stall_l1d']],
+        ["backend", "core", d['stall_be_core']],
+        ["retiring", "integer", d['ret_int']],
+        ["retiring", "simd", d['ret_simd']],
+    ]
     col = ["L1", "L2", "cycles"]
-    df = pd.DataFrame(data["core"], columns=col)
-    df["root"] = "pipeline"
-    df = df.replace("None", pd.NA) # replace literal "None" with pandas NaN
-    df_tda = df.iloc[:7] # first 7 counters expected for TDA
+    df_tda = pd.DataFrame(row, columns=col)
+    df_tda["root"] = "pipeline"
 
     # make new df that's a group and sum on L1 only
     df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
