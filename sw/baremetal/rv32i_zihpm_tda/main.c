@@ -9,9 +9,9 @@
     }
 
 #define CHECK_CSR(csr_addr, val) \
-    write_csr(CSR_MSCRATCH, 0); \
-    read_csr(CSR_MSCRATCH, rval); \
-    CHECK(rval, 0, CSR_MSCRATCH);
+    write_csr(csr_addr, 0); \
+    read_csr(csr_addr, rval); \
+    CHECK(rval, 0, csr_addr);
 
 int32_t sum_up(uint32_t* array, uint32_t length) {
     int32_t sum = 0;

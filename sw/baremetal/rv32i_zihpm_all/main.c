@@ -8,15 +8,10 @@
         fail(); \
     }
 
-#define CHECK_CSR(csr_addr, val) \
-    write_csr(CSR_MSCRATCH, 0); \
-    read_csr(CSR_MSCRATCH, rval); \
-    CHECK(rval, 0, CSR_MSCRATCH);
-
 #define TEST_CSR(csr_addr, ev) \
-    write_csr(CSR_MHPMEVENT4, ev); \
-    read_csr(CSR_MHPMEVENT4, rval); \
-    CHECK(rval, ev, CSR_MHPMEVENT4);
+    write_csr(csr_addr, ev); \
+    read_csr(csr_addr, rval); \
+    CHECK(rval, ev, csr_addr);
 
 int32_t sum_up(uint32_t* array, uint32_t length) {
     int32_t sum = 0;
