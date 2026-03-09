@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 import plotly.express as px
-from utils import get_test_title
+from utils import get_test_title, smarter_eng_formatter
 
 PLOTLY_COLORS = px.colors.qualitative.Plotly
 
@@ -17,6 +17,90 @@ COLOR_MAP = {
     "bad_spec": PLOTLY_COLORS[4], # #FFA15A (Orange/Yellow)
     "(?)": "rgba(0,0,0,0)" # fallback for undefined categories
 }
+
+CLASS_ORDER = [
+    "cycles", "ret", "stall", "bad_spec", "ret_*", "stall_*", "l1i_*", "l1d_*"]
+DROP_KEYS = {"cpi", "ipc"}
+EXACT_CLASS = {
+    "cycles": "cycles", "ret": "ret", "stalls": "stall", "bad_spec": "bad_spec"}
+PREFIX_CLASS = [
+    ("ret_", "ret_*"), ("stall_", "stall_*"),
+    ("l1i_", "l1i_*"), ("l1d_", "l1d_*")
+]
+BAR_COLOR_MAP = {cls: PLOTLY_COLORS[i] for i, cls in enumerate(CLASS_ORDER)}
+
+def classify_and_sort_counters(core: dict) -> list[tuple[str, int, str]]:
+    """Classify core counters into groups and sort by class order then name."""
+    class_rank = {c: i for i, c in enumerate(CLASS_ORDER)}
+    entries = []
+    for key, val in core.items():
+        if key in DROP_KEYS:
+            continue
+        cls = EXACT_CLASS.get(key)
+        if cls is None:
+            for prefix, prefix_cls in PREFIX_CLASS:
+                if key.startswith(prefix):
+                    cls = prefix_cls
+                    break
+        if cls is None:
+            continue
+        entries.append((key, val, cls))
+    SORT_FIRST = {"ret_int"} # special case to override the default sorting
+    entries.sort(
+        key=lambda e: (class_rank[e[2]], 0 if e[0] in SORT_FIRST else 1, e[0]))
+    return entries
+
+def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
+    entries = classify_and_sort_counters(core)
+    df = pd.DataFrame(entries, columns=["counter", "value", "class"])
+
+    eng_fmt = smarter_eng_formatter(places=1)
+    df["text"] = df["value"].apply(lambda x: eng_fmt(x, None))
+
+    ipc = core.get("ipc", 0)
+    title = f"Performance Counters for '{test_title}'(IPC: {ipc:.3f})"
+
+    fig = px.bar(
+        df,
+        x="counter",
+        y="value",
+        color="class",
+        color_discrete_map=BAR_COLOR_MAP,
+        category_orders={"counter": [e[0] for e in entries]},
+        title=title,
+        text="text",
+    )
+
+    fig.update_traces(
+        textposition="outside",
+        textfont_size=9,
+    )
+
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        title_x=0.5,
+        title_font=dict(color="black", size=20),
+        margin=dict(t=60, l=80, r=20, b=120),
+        xaxis_title=None,
+        yaxis_title="count",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        #xaxis=dict(gridcolor="#ddd", linecolor="#ccc"),
+        yaxis=dict(gridcolor="#ddd", linecolor="#ccc", tickformat=".2s"),
+    )
+
+    if not args.silent:
+        print(title)
+        print(df.to_string(index=False))
+        fig.show(renderer=args.renderer)
+
+    if args.save_png:
+        png_path = args.hw_stats.replace(".json", "_counters.png")
+        fig.write_image(png_path, scale=2)
+
+    if args.save_svg:
+        svg_path = args.hw_stats.replace(".json", "_counters.svg")
+        fig.write_image(svg_path)
 
 def main(args: argparse.Namespace):
     if not os.path.exists(args.hw_stats):
@@ -88,6 +172,8 @@ def main(args: argparse.Namespace):
     if args.save_svg:
         svg_path = args.hw_stats.replace(".json", "_tda.svg")
         fig.write_image(svg_path)
+
+    plot_counters_bar(d, get_test_title(args.hw_stats), args)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")
