@@ -33,6 +33,7 @@
     "vector_ew_mac_uint8": ["test"],
     "vector_ew_basic": ["all"],
     "matmul": ["all"],
+    "matmul_opt": ["all"],
     "dot_product": ["all"],
     "dot_product_peak": ["int8"],
 
