@@ -12,9 +12,11 @@
     "asm_rv32i_custom-simd-dot": ["test"],
     "asm_rv32i_custom-simd-widen": ["test"],
 
+    "rv32i_custom-simd-widen": ["test"],
+    "rv32i_custom-simd-txp": ["test"],
+
     "rv32i_zihpm_tda": ["test"],
     "rv32i_zihpm_all": ["test"],
-    "rv32i_custom-simd-widen": ["test"],
 
     "rd_pairing": ["test"],
 
@@ -96,6 +98,8 @@
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul_ctrl_short": ["all"],
     "aapg/aapg_rv32_custom-simd-widen": ["all"],
     "aapg/aapg_rv32_custom-simd-widen_mem_zmmul_ctrl": ["all"],
+    "aapg/aapg_rv32_custom-simd-txp": ["all"],
+    "aapg/aapg_rv32_custom-simd-txp_mem_zmmul_ctrl": ["all"],
 
     "imperas-riscv-tests/ADD": ["test"],
     "imperas-riscv-tests/ADDI": ["test"],

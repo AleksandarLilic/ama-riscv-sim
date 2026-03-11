@@ -218,6 +218,7 @@ rv32_custom-simd-dot_mem_zmmul_ctrl_short:
 rv32_custom-simd-widen:
   general:
     total_instructions: 10000
+    regs_not_use: x2 # because x1 used in widen on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -245,6 +246,37 @@ rv32_custom-simd-widen_mem_zmmul_ctrl:
   user-functions:
     randomize: '{128: "nop"}'
 
+rv32_custom-simd-txp:
+  general:
+    total_instructions: 14000
+    regs_not_use: x2 # because x1 used in txp on x0
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32zmmul: 0
+    rel_rv32simd.txp: 10
+  user-functions:
+    randomize: '{128: "nop"}'
+
+rv32_custom-simd-txp_mem_zmmul_ctrl:
+  general:
+    total_instructions: 7400
+    regs_not_use: x2 # because x1 used in txp on x0
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 5
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 20
+    rel_rv32zmmul: 20
+    rel_rv32simd.txp: 20
+  branch-control:
+    backward-probability: 0.5
+    block-size: 3
+  user-functions:
+    randomize: '{128: "nop"}'
+
 rv32_all:
   general:
     total_instructions: 7500
@@ -264,7 +296,7 @@ rv32_all:
     rel_rv32simd.widen: 5
     #rel_rv32simd.narrow: 0
     #rel_rv32simd.qnarrow: 0
-    #rel_rv32simd.txp: 0
+    rel_rv32simd.txp: 5
     #rel_rv32simd.dup: 0
     #rel_rv32simd.vins: 0
     #rel_rv32simd.vext: 0
@@ -293,7 +325,7 @@ rv32_all2:
     rel_rv32simd.widen: 5
     #rel_rv32simd.narrow: 0
     #rel_rv32simd.qnarrow: 0
-    #rel_rv32simd.txp: 0
+    rel_rv32simd.txp: 5
     #rel_rv32simd.dup: 0
     #rel_rv32simd.vins: 0
     #rel_rv32simd.vext: 0

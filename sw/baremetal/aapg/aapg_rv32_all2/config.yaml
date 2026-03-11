@@ -24,7 +24,7 @@ isa-instruction-distribution:
   rel_rv32simd.widen: 5
   rel_rv32simd.narrow: 0
   rel_rv32simd.qnarrow: 0
-  rel_rv32simd.txp: 0
+  rel_rv32simd.txp: 5
   rel_rv32simd.dup: 0
   rel_rv32simd.vins: 0
   rel_rv32simd.vext: 0
