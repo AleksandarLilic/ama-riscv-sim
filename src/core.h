@@ -24,7 +24,7 @@ class core {
     public:
         core() = delete;
         core(memory* mem, cfg_t cfg, hw_cfg_t hw_cfg);
-        void run();
+        uint64_t run();
         void single_step();
         void fetch();
         void exec();

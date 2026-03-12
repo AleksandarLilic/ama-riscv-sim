@@ -1,3 +1,4 @@
+#include <chrono>
 #include <filesystem>
 
 #include "defines.h"
@@ -532,11 +533,23 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
 
     cfg.out_dir = gen_out_dir(test_elf, out_dir_tag);
+    uint64_t sim_inst_cnt = 0;
+    double sim_elapsed_s = 0.0;
     TRY_CATCH({
         memory mem(test_elf, cfg, hw_cfg);
         core rv32(&mem, cfg, hw_cfg);
-        rv32.run();
+        auto t_start = std::chrono::steady_clock::now();
+        sim_inst_cnt = rv32.run();
+        auto t_end = std::chrono::steady_clock::now();
+        sim_elapsed_s = std::chrono::duration<double>(t_end - t_start).count();
     });
+
+    double mips = (sim_elapsed_s > 0.0)
+        ? (static_cast<double>(sim_inst_cnt) / sim_elapsed_s / 1e6) : 0.0;
+    std::cout << std::fixed << std::setprecision(2)
+              << "\nSimulation performance: " << mips << " MIPS ("
+              << sim_inst_cnt << " instructions in "
+              << sim_elapsed_s << "s)" << std::endl;
 
     return 0;
 }

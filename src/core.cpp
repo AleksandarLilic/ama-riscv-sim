@@ -77,7 +77,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     mem->set_mip(&csr.at(CSR_MIP).value);
 }
 
-void core::run() {
+uint64_t core::run() {
     std::cout << std::dec << "SIMULATION STARTED\n";
     #ifdef PROFILERS_EN
     prof_act = false;
@@ -97,7 +97,7 @@ void core::run() {
     // wrap up
     csr_cnt_update(0u); // so all instructions since last CSR access are counted
     finish(true);
-    return;
+    return inst_cnt;
 }
 
 void core::single_step() {
