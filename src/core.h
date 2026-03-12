@@ -42,8 +42,11 @@ class core {
         void save_trace_entry(trace_entry te);
         #endif
 
-        #ifdef PROFILERS_EN
+        #if defined(PROFILERS_EN) || defined(DASM_EN)
         uint8_t inst_w = 8;
+        #endif
+
+        #ifdef PROFILERS_EN
         std::string get_callstack_top_str() {
             return prof_perf.get_callstack_top_str();
         }

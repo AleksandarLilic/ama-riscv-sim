@@ -140,7 +140,9 @@ struct defs_t {
     #endif
     #ifdef DASM_EN
     static constexpr char log[] = "false";
+    #ifdef PROFILERS_EN
     static constexpr char log_always[] = "false";
+    #endif
     static constexpr char log_state[] = "false";
     static constexpr char rf_names[] = "x";
     static constexpr char log_hw_models[] = "false";
@@ -257,9 +259,11 @@ int main(int argc, char* argv[]) {
         ("l,log",
          "Enable logging",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log))
+        #ifdef PROFILERS_EN
         ("log_always",
          "Always log execution. Otherwise, log during profiling only",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_always))
+        #endif
         ("log_state", "Log state after each executed instruction",
          CXXOPTS_VAL_BOOL->default_value(defs_t::log_state))
         ("rf_names",
@@ -432,7 +436,11 @@ int main(int argc, char* argv[]) {
 
         #ifdef DASM_EN
         cfg.log = TO_BOOL(result["log"]);
+        #ifdef PROFILERS_EN
         cfg.log_always = TO_BOOL(result["log_always"]);
+        #else
+        cfg.log_always = true;
+        #endif
         cfg.log_state = TO_BOOL(result["log_state"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         #ifdef HW_MODELS_EN
@@ -526,7 +534,9 @@ int main(int argc, char* argv[]) {
     #ifdef DASM_EN
     if (cfg.log) {
         std::cout << "Logging enabled";
+        #ifdef PROFILERS_EN
         if (cfg.log_always) std::cout << ", Logging always";
+        #endif
         std::cout << "\n";
     }
     #endif

@@ -55,7 +55,9 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     logf = {cfg.log, cfg.log_always, cfg.log_always, cfg.log_state};
     logf.activate(false);
     if (logf.en) log_ofstream.open(cfg.out_dir + "exec.log");
+    #ifdef PROFILERS_EN
     if (logf.act) LOG_SYMBOL_TO_FILE;
+    #endif
     #endif
 
     #ifdef HW_MODELS_EN
@@ -164,15 +166,21 @@ void core::single_step() {
         if (tu.is_trapped()) {
             // log changed callstack and return
             log_ofstream << dasm.asm_str << "\n";
+            #ifdef PROFILERS_EN
             if (log_symbol) LOG_SYMBOL_TO_FILE;
+            #endif
             if (cfg.exit_on_trap) running = false;
             return;
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
         // don't count instructions unless also profiling
         //if (prof_act) log_ofstream << prof_pc.inst_cnt;
+        #ifdef PROFILERS_EN
         if (prof_act) log_ofstream << inst_cnt + 1;
         else log_ofstream << "";
+        #else
+        log_ofstream << inst_cnt + 1;
+        #endif
         log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
                      << dasm.asm_str;
 
@@ -203,7 +211,7 @@ void core::single_step() {
     #endif
     #endif
 
-    #ifdef DASM_EN
+    #if defined(PROFILERS_EN) && defined(DASM_EN)
     if (log_symbol && logf.act) LOG_SYMBOL_TO_FILE;
     #endif
 
@@ -305,7 +313,9 @@ void core::prof_state([[maybe_unused]] bool enable) {
 
     #ifdef DASM_EN
     logf.activate(enable);
+    #ifdef PROFILERS_EN
     if (logf.act) LOG_SYMBOL_TO_FILE;
+    #endif
     #endif
 
     #ifdef HW_MODELS_EN
@@ -431,7 +441,7 @@ void core::d_alu_imm() {
 }
 
 void core::d_load() {
-    #ifdef PROFILERS_EN
+    #if defined(PROFILERS_EN) || defined(DASM_EN)
     uint32_t rs1 = rf[ip.rs1()];
     #endif
     uint32_t loaded;
@@ -562,8 +572,11 @@ void core::d_jalr() {
     PROF_J(jalr)
     PROF_RD_RS1
 
-    #ifdef PROFILERS_EN
+    #if defined(PROFILERS_EN) || defined(DASM_EN)
     bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
+    #endif
+
+    #ifdef PROFILERS_EN
     bool tail_call = (ip.rd() == 0);
     prof_perf.update_jalr(next_pc, ret_inst, tail_call, (pc + 4));
     branch_taken = true;

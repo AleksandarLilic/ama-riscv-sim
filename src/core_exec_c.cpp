@@ -381,8 +381,11 @@ void core::c_jr() {
     DASM_OP(c.jr)
     PROF_J(c_jr)
 
-    #ifdef PROFILERS_EN
+    #if defined(PROFILERS_EN) || defined(DASM_EN)
     bool ret_inst = (inst == INST_C_RET);
+    #endif
+
+    #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, ret_inst, true, pc + 2); // no ra, tail calls
     branch_taken = true;
     #endif

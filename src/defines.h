@@ -11,18 +11,15 @@
 #define UART_EN
 #endif
 
-#ifdef DASM_EN
-#ifndef PROFILERS_EN
-static_assert(0, "DASM requires profilers");
-#endif
-#endif
-
 #ifdef DPI
 #ifdef HW_MODELS_EN
 static_assert(0, "HW models are not allowed in DPI mode");
 #endif
 #ifndef PROFILERS_EN
 static_assert(0, "DPI requires profilers");
+#endif
+#ifndef DASM_EN
+static_assert(0, "DPI requires DASM");
 #endif
 #endif
 
@@ -522,7 +519,11 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 // FIXME: need to differentiate names between macros that redirect to dasm and
 // those that are just formatting string or accessing registers
 
+#ifdef PROFILERS_EN
 #define LOG_SYMBOL_TO_FILE log_ofstream << prof_perf.get_callstack_str() << "\n"
+#else
+#define LOG_SYMBOL_TO_FILE
+#endif
 
 #define DASM_OP(o) dasm.op = #o;
 
