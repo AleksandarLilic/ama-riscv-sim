@@ -22,6 +22,8 @@
 
     "dcache_set_thrashing": ["test"],
     "dcache_peak": ["all"],
+    "dcache_ds_2": ["all"],
+    "dcache_ds_all": ["all"],
     "memcpy": ["all"],
 
     "factorial": [["n_20"], ["LOOPS=1"]],
