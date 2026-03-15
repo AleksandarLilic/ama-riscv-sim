@@ -1773,6 +1773,8 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     # load trace
     data = np.fromfile(bin_log, dtype=dtype)
     df = pd.DataFrame(data)
+    if len(df.index) == 0:
+        raise ValueError("Empty ISA sim trace")
     df = df.drop(columns=[c for c in df.columns if pad_str in c])
     if args.sample_begin_norm:
         df.smp = df.smp - df.smp.head(1).values[0] + 1 # normalize smp to 1
