@@ -182,6 +182,7 @@ op_dot8u:
     dot8u x26, x11, x12
     OP_END(60 + 55)
 
+#ifndef PARTIAL_RTL_SUPPORT_DOT
 op_dot4:
     li x26, -99
     nop
@@ -221,6 +222,7 @@ op_dot2u:
     lw x12, dat4
     dot4 x26, x11, x12
     OP_END(14 + 1092)
+#endif
 
 loop_check:
     li x24, 0x123456

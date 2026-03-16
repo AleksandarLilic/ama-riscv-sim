@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP"],
+    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP -DPARTIAL_RTL_SUPPORT_DOT"],
 
     "asm_rv32i": ["test"],
     "asm_rv32i_branches": ["test"],
@@ -12,6 +12,7 @@
     "asm_rv32i_custom-simd-dot": ["test"],
     "asm_rv32i_custom-simd-widen": ["test"],
 
+    "rv32i_custom-simd-dot": ["test"],
     "rv32i_custom-simd-widen": ["test"],
     "rv32i_custom-simd-txp": ["test"],
 
