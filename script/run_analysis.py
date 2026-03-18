@@ -1832,7 +1832,7 @@ Tuple[pd.DataFrame, plt.Figure]:
         save_df_to_file(df, log.replace(".json", "_exec_breakdown"))
     fig = draw_inst_breakdown(df, hl_inst_g, title, args)
 
-    return df, fig
+    return fig
 
 def run_bin_trace(bin_log, hl_inst_g, title, args) -> \
 Tuple[pd.DataFrame, plt.Figure]:
@@ -2216,7 +2216,6 @@ def run_main(args) -> None:
     else:
         fig = run_inst_breakdown(args_log, hl_inst_g, title, args)
         fig_arr.append([log_path, fig])
-        figs_dict = {"inst": fig}
 
     if args.symbols_only and run_trace:
         return
