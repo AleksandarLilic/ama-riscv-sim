@@ -1,0 +1,108 @@
+usage: hw_model_sweep.py [-h] -s {icache,dcache,bpred} -p PARAMS [--save_sim]
+                         [--save_stats] [--load_stats] [--work_dir WORK_DIR]
+                         [--track] [--max_workers MAX_WORKERS]
+                         [--bp_top_acc_num BP_TOP_ACC_NUM]
+                         [--bp_top_acc_thr BP_TOP_ACC_THR]
+                         [--bp_top_mpki_num BP_TOP_MPKI_NUM]
+                         [--bp_top_mpki_thr BP_TOP_MPKI_THR]
+                         [--bp_run_best_for_all_workloads]
+                         [--add_all_workloads] [--chart_title CHART_TITLE]
+                         [--save_png] [--save_pdf] [--silent]
+                         [--plot_skip_searched] [--plot_hr_thr PLOT_HR_THR]
+                         [--plot_ct_thr PLOT_CT_THR] [--plot_no_ct_thr]
+                         [--plot_name_filter PLOT_NAME_FILTER]
+                         [--plot_acc_thr_min PLOT_ACC_THR_MIN]
+                         [--plot_acc_thr_max PLOT_ACC_THR_MAX]
+                         [--plot_mpki_thr_min PLOT_MPKI_THR_MIN]
+                         [--plot_mpki_thr_max PLOT_MPKI_THR_MAX]
+                         [--plot_per_workload]
+
+Sweep through specified hardware models for a given workload
+
+options:
+  -h, --help            show this help message and exit
+  -s {icache,dcache,bpred}, --sweep {icache,dcache,bpred}
+                        Select the hardware model to sweep
+  -p PARAMS, --params PARAMS
+                        Path to the hardware model sweep params file
+  --save_sim            Save simulation stdout in a log file
+  --save_stats          Save combined simulation stats as json
+  --load_stats          Load the previously saved stats from a json file
+                        instead of running the sweep. Takes priority over
+                        --save_stats
+  --work_dir WORK_DIR   Path to run the sweep in and store results. Either
+                        absolute, or relative to this script
+  --track               Print the sweep progress
+  --max_workers MAX_WORKERS
+                        Maximum number of parallel workers to be dispatched,
+                        if the sweep allows it
+  --bp_top_acc_num BP_TOP_ACC_NUM
+                        Number of top branch predictor configs to always
+                        include based only on accuracy. Ignored for
+                        --load_stats. Useful to ensure at least this many will
+                        be included. Combined with other --bp_top_* results,
+                        if used together
+  --bp_top_acc_thr BP_TOP_ACC_THR
+                        Accuracy threshold for the best branch predictor
+                        configs to always include. Ignored for --load_stats.
+                        Applies to average accuracy if run for multiple
+                        workloads. Useful to ensure all good predictors are
+                        included. Combined with other --bp_top_* results, if
+                        used together
+  --bp_top_mpki_num BP_TOP_MPKI_NUM
+                        Number of top branch predictor configs to always
+                        include based only on MPKI. Ignored for --load_stats.
+                        Useful to ensure at least this many will be included.
+                        Combined with other --bp_top_* results, if used
+                        together
+  --bp_top_mpki_thr BP_TOP_MPKI_THR
+                        MPKI threshold for the best branch predictor configs
+                        to always include. Ignored for --load_stats. Applies
+                        to average MPKI if run for multiple workloads. Useful
+                        to ensure all good predictors are included. Combined
+                        with other --bp_top_* results, if used together
+  --bp_run_best_for_all_workloads
+                        Use 'best' predictors instead of 'binned' for the all
+                        workloads run. In general, this means more predictors
+                        to run for all workloads, and will bias towards better
+                        performing (and usually larger) predictors. Useful for
+                        very contrained runs, but will (significantly)
+                        increase runtime for larger runs
+  --add_all_workloads   Run with all workloads from the config (i.e. including
+                        'skip_search: true' ones) after the main sweep
+                        finished. Creates a single chart as average values
+                        across all workloads. Used to validate HW model across
+                        all benchmarks
+  --chart_title CHART_TITLE
+                        Adds this string to each chart's title
+  --save_png            Save chart(s) as PNG
+  --save_pdf            Save all charts as a single PDF
+  --silent              Don't display chart(s) in pop-up window
+  --plot_skip_searched  Don't plot searched workloads. Applicable only when
+                        stats are loaded with --load_stats
+  --plot_hr_thr PLOT_HR_THR
+                        Set the lower limit for the plot y-axis for cache hit
+                        rate
+  --plot_ct_thr PLOT_CT_THR
+                        Set the upper limit for the plot y-axis for cache
+                        traffic
+  --plot_no_ct_thr      Don't set the upper limit for the plot y-axis for
+                        cache traffic
+  --plot_name_filter PLOT_NAME_FILTER
+                        Filter (regex) for this string only during plotting
+  --plot_acc_thr_min PLOT_ACC_THR_MIN
+                        Override the lower limit for the plot y-axis for
+                        branch predictor accuracy
+  --plot_acc_thr_max PLOT_ACC_THR_MAX
+                        Override the upper limit for the plot y-axis for
+                        branch predictor accuracy
+  --plot_mpki_thr_min PLOT_MPKI_THR_MIN
+                        Override the lower limit for the plot y-axis for
+                        branch predictor MPKI
+  --plot_mpki_thr_max PLOT_MPKI_THR_MAX
+                        Override the upper limit for the plot y-axis for
+                        branch predictor MPKI
+  --plot_per_workload   Plot results from '--add_all_workloads' with one
+                        workload per chart. Used to validate HW model across
+                        all benchmarks. Requires running with '--
+                        add_all_workloads'

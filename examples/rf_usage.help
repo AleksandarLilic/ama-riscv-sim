@@ -1,0 +1,16 @@
+usage: rf_usage.py [-h] [--save_png] [--save_svg] [--save_csv]
+                   [--single SINGLE]
+                   prof
+
+Plot register file usage
+
+positional arguments:
+  prof             Input binary profile 'rf_usage.bin'
+
+options:
+  -h, --help       show this help message and exit
+  --save_png       Save charts as PNG
+  --save_svg       Save charts as SVG
+  --save_csv       Save source data formatted as CSV
+  --single SINGLE  Index of single column set to plot from [['rd', 'rdp',
+                   'rs1', 'rs2', 'rs3'], ['rd_all', 'rs_all'], ['total']]

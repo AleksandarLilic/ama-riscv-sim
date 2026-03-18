@@ -1,0 +1,37 @@
+{
+"icache": {
+    "references": 529819,
+    "hits": {"reads": 526687, "writes": 0}, 
+    "misses": {"reads": 3132, "writes": 0}, 
+    "replacements": 3068,
+    "writebacks": 0,
+    "ct_core": {"reads": 2119276, "writes": 0}, 
+    "ct_mem": {"reads": 200448, "writes": 0}, 
+    "size": {"data": 4096, "tags": 41, "metadata": 33, "sets": 32, "ways": 2, "line_size": 64}
+},
+"dcache": {
+    "references": 162717,
+    "hits": {"reads": 86166, "writes": 76345}, 
+    "misses": {"reads": 29, "writes": 177}, 
+    "replacements": 142,
+    "writebacks": 142,
+    "ct_core": {"reads": 304181, "writes": 285631}, 
+    "ct_mem": {"reads": 13184, "writes": 9088}, 
+    "size": {"data": 4096, "tags": 49, "metadata": 41, "sets": 16, "ways": 4, "line_size": 64}
+},
+"bpred": {
+    "type": "bimodal",
+    "branches": 63985,
+    "predicted": 55284,
+    "predicted_fwd": 36173,
+    "predicted_bwd": 19111,
+    "mispredicted": 8701,
+    "mispredicted_fwd": 4412,
+    "mispredicted_bwd": 4289,
+    "accuracy": 86.40,
+    "mpki": 16.70,
+    "size": 12
+},
+"profiled_inst": 521118,
+"_done": true
+}

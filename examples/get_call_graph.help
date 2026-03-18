@@ -1,0 +1,12 @@
+usage: get_call_graph.py [-h] [--svg] [--png] [--pdf] input
+
+Convert collapsed callstack to call graph
+
+positional arguments:
+  input       Collapsed stack trace
+
+options:
+  -h, --help  show this help message and exit
+  --svg       Also save output as SVG
+  --png       Also save output as PNG
+  --pdf       Also save output as PDF

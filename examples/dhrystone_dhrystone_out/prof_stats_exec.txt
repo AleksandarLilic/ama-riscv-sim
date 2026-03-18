@@ -1,0 +1,23 @@
+Profile - Inst
+     %      cumulative       self      total   symbol
+ 16.54           16.54      86172      86172   strcpy
+ 12.15           28.68      63291     510433   main
+ 10.94           39.62      57000      57000   strcmp
+ 10.36           49.98      54000      90000   Proc_1
+  6.00           55.98      31272      41316   _write
+  5.37           61.36      28000      90000   Func_2
+  4.88           66.24      25428      25428   __udivsi3
+  4.80           71.03      25000      25000   Proc_8
+  4.12           75.15      21475      90087   mini_vpprintf
+  3.84           78.99      20000      23000   Proc_6
+  3.83           82.82      19968      61284   __puts_uart
+  2.88           85.70      15000      15000   Func_1
+  2.30           88.00      12000      12000   Proc_7
+  2.04           90.04      10616      10616   clear_bss_w_loop
+  1.93           91.97      10044      10044   send_byte_uart0
+  1.73           93.70       9000       9000   Proc_2
+  1.73           95.42       9000       9000   Proc_3
+  1.73           97.15       9000       9000   Proc_4
+total_samples : 521118
+
+(Showing 18 of 40 entries after filtering: Threshold: 1%)

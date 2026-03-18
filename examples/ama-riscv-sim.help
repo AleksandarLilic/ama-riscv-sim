@@ -1,0 +1,91 @@
+ama-riscv-sim
+Usage:
+  ../src/build/ama-riscv-sim <path_to_elf_file> [OPTION...]
+
+      --show_state          Show architectural state at the end of simulation
+      --exit_on_trap        Exit sim on trap instead of going to trap handler
+      --mem_dump_start arg  Start address (hex) for memory dump at the end of simulation (default: 0)
+      --mem_dump_size arg   Size of the region for memory dump at the end of simulation (default: 0)
+      --out_dir_tag arg     Tag (suffix) for output directory (default: "")
+      --run_insts arg       Number of instructions to run. Set to 0 for no limit (default: 0)
+      --silent              Don't print sim end stats to stdout. Logs are always saved to disk
+      --sink_uart           Don't print UART output to stdout. UART still fully operational
+
+ Profiler options:
+      --prof_pc_start arg       Start PC (hex) for profiling (default: 0)
+      --prof_pc_stop arg        Stop PC (hex) for profiling (default: 0)
+      --prof_pc_single_match arg
+                                Run profiling only for match number (0 for all matches) (default: 0)
+      --exit_on_prof_stop       Exit simulation immediately after profiling finishes. Exits on the first 
+                                'prof_pc_stop' if 'prof_pc_single_match' is unusedOtherwise exits on the 
+                                'prof_pc_stop' of the 'prof_pc_single_match'
+  -t, --prof_trace              Record profiler trace
+  -e, --perf_event arg          Performance event to track. Options: bp_mispredict, dcache_reference, dcache_miss, 
+                                icache_reference, icache_miss, simd, mem, branch, inst (default: inst)
+      --rf_usage                Enable profiling register file usage
+
+ Logging options:
+  -l, --log            Enable logging
+      --log_always     Always log execution. Otherwise, log during profiling only
+      --log_state      Log state after each executed instruction
+      --rf_names arg   Register file names used for output. Options: x, abi (default: x)
+      --log_hw_models  Log HW model stats for each executed instruction
+
+ HW model - Caches options:
+      --icache_sets arg       Number of sets in I$ (default: 32)
+      --icache_ways arg       Number of ways in I$ (default: 2)
+      --icache_re_policy arg  I$ replacement policy. 
+                              Options: lru (default: lru)
+      --icache_in_policy arg  I$ insertion policy. 
+                              Options: no_update, update (default: update)
+      --dcache_sets arg       Number of sets in D$ (default: 16)
+      --dcache_ways arg       Number of ways in D$ (default: 4)
+      --dcache_re_policy arg  D$ replacement policy. 
+                              Options: lru (default: lru)
+      --dcache_in_policy arg  D$ insertion policy. 
+                              Options: no_update, update (default: update)
+      --dcache_wr_policy arg  D$ write policy. 
+                              Options: wb, wt (default: wb)
+      --roi_start arg         Region of interest start address (hex) (default: 0)
+      --roi_size arg          Region of interest size (default: 0)
+      --show_cache_state      Show per cache line references at the end of simulation
+
+ HW model - Branch Predictor options:
+      --bp arg                  First branch predictor. Defaults as active, driving the I$. For combined predictor, 
+                                counters will be weakly biased towards thispredictor (impacts warm-up period)
+                                Options: none, gselect, ideal, global, gshare, local, bimodal, static
+                                  (default: bimodal)
+      --bp2 arg                 Second branch predictor, only for combined predictor. If provided,combined 
+                                predictor becomes active
+                                Options: none, gselect, ideal, global, gshare, local, bimodal, static
+                                  (default: none)
+      --bp_static_method arg    Static predictor - method. 
+                                Options: btfn, ant, at (default: btfn)
+      --bp_pc_bits arg          Branch predictor - PC bits (default: 5)
+      --bp_cnt_bits arg         Branch predictor - counter bits (default: 3)
+      --bp_lhist_bits arg       Branch predictor - local history bits (default: 5)
+      --bp_ghr_bits arg         Branch predictor - global register bits (default: 5)
+      --bp_fold_pc arg          Branch predictor - Fold higher order PC bits for indexing
+                                Options: all, none (default: none)
+      --bp2_static_method arg   Static predictor - method. 
+                                Options: btfn, ant, at (default: at)
+      --bp2_pc_bits arg         Branch predictor 2 - PC bits (default: 5)
+      --bp2_cnt_bits arg        Branch predictor 2 - counter bits (default: 1)
+      --bp2_lhist_bits arg      Branch predictor 2 - local history bits (default: 5)
+      --bp2_ghr_bits arg        Branch predictor 2 - global register bits (default: 9)
+      --bp2_fold_pc arg         Branch predictor 2 - Fold higher order PC bits for indexing
+                                Options: all, none (default: none)
+      --bp_combined_pc_bits arg
+                                Combined predictor - PC bits (default: 4)
+      --bp_combined_cnt_bits arg
+                                Combined predictor - counter bits (default: 4)
+      --bp_combined_fold_pc arg
+                                Combined predictor - Fold higher order PC bits for indexing
+                                Options: all, none (default: all)
+      --bp_run_all              Run all branch predictors
+      --bp_dump_csv             Dump branch predictor stats to CSV
+
+ Help options:
+  -h, --help     Print usage
+  -v, --version  Print version/build info and exit
+

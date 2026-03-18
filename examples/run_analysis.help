@@ -1,0 +1,130 @@
+usage: run_analysis.py [-h] [-i INST_PROFILE] [-t TRACE]
+                       [--exclude EXCLUDE [EXCLUDE ...]]
+                       [--exclude_type EXCLUDE_TYPE [EXCLUDE_TYPE ...]]
+                       [--top TOP] [--allow_zero] [--save_exec_breakdown]
+                       [--dasm DASM] [--sample_begin SAMPLE_BEGIN]
+                       [--sample_end SAMPLE_END] [--clk] [--freq FREQ]
+                       [--sample_begin_norm] [--timeline] [--pc_hist]
+                       [--pc_trace] [--no_pc_limit] [--pc_begin PC_BEGIN]
+                       [--pc_end PC_END] [--dmem_hist] [--dmem_trace]
+                       [--no_dmem_limit] [--dmem_begin DMEM_BEGIN]
+                       [--dmem_end DMEM_END] [--stats_trace]
+                       [--win_size_stats WIN_SIZE_STATS]
+                       [--win_size_hw WIN_SIZE_HW] [--add_cache_lines]
+                       [--symbols_only] [--save_symbols] [--print_symbols]
+                       [--trace_limit TRACE_LIMIT] [--save_decoded_trace]
+                       [--save_pc_hist] [--save_dmem_hist]
+                       [--highlight HIGHLIGHT [HIGHLIGHT ...]] [-b] [--host]
+                       [-s] [--save_png] [--save_svg]
+
+Workload analysis tool
+
+options:
+  -h, --help            show this help message and exit
+  -i INST_PROFILE, --inst_profile INST_PROFILE
+                        Path to instruction profiling output
+                        'inst_profile.json'
+  -t TRACE, --trace TRACE
+                        Path to binary execution trace 'trace_clk.bin'
+  --exclude EXCLUDE [EXCLUDE ...]
+                        Exclude specific instructions. Instruction profile
+                        only option
+  --exclude_type EXCLUDE_TYPE [EXCLUDE_TYPE ...]
+                        Exclude specific instruction types. Available types
+                        are: ALU, MUL, DIV/REM, BITMANIP, SIMD_ARITH,
+                        SIMD_DATA_FMT, MEM, MEM_HINTS, BRANCH, JUMP, CSR, ENV,
+                        NOP, FENCE. Instruction profile only option
+  --top TOP             Number of N most common instructions to display.
+                        Default is all. Instruction profile only option
+  --allow_zero          Allow instructions with zero count to be displayed.
+                        Instruction profile only option
+  --save_exec_breakdown
+                        Save data used for execution breakdown chart,
+                        formatted as a CSV. Instruction profile only option
+  --dasm DASM           Path to disassembly 'dasm' file to backannotate the
+                        trace. This file and the new annotated file is saved
+                        in the same directory as the input trace with
+                        *.prof.<original ext> suffix. Trace only option
+  --sample_begin SAMPLE_BEGIN
+                        Show only samples after this sample. Applied before
+                        any other filtering options. Trace only option
+  --sample_end SAMPLE_END
+                        Show only samples before this sample. Applied before
+                        any other filtering options. Trace only option
+  --clk                 Trace is from the RTL simulation with real clock.
+                        Trace only option
+  --freq FREQ           Core clock frequency in [MHz]. Trace only option
+  --sample_begin_norm   Normalize trace start to 0th sample. Trace only option
+  --timeline            Plot top of stack trace as timeline. Requires --dasm.
+                        Trace only option
+  --pc_hist             Plot PC histogram. Each instruction is assigned to a
+                        separate bin. Trace only option
+  --pc_trace            Plot PC time trace. Each executed instruction is
+                        plotted using its respective size (2/4 B). Trace only
+                        option
+  --no_pc_limit         Don't limit the PC range to the execution trace range.
+                        Only updates plot view. Applied after
+                        --sample_begin/end. Useful when logging is done with
+                        HINT instruction. By default, the PC range is limited
+                        to the execution trace range. Trace only option
+  --pc_begin PC_BEGIN   Show only PCs after this PC (hex). Applied after
+                        --no_pc_limit. Trace only option
+  --pc_end PC_END       Show only PCs before this PC (hex). Applied after
+                        --no_pc_limit. Trace only option
+  --dmem_hist           Plot DMEM histogram. Each byte is assigned to a
+                        separate bin. Trace only option
+  --dmem_trace          Plot DMEM time trace. Each accessed memory location is
+                        plotted using its respective size (1/2/4 B). Trace
+                        only option
+  --no_dmem_limit       Don't limit the DMEM range to the execution trace
+                        range. Only updates plot view. Applied after
+                        --sample_begin/end. Same as --no_pc_limit but for
+                        DMEM. Trace only option
+  --dmem_begin DMEM_BEGIN
+                        Show only DMEM addresses after this address (hex).
+                        Applied after --no_dmem_limit. Trace only option
+  --dmem_end DMEM_END   Show only DMEM addresses before this address (hex).
+                        Applied after --no_dmem_limit. Trace only option
+  --stats_trace         Plot stats and hardware (model) counters time trace.
+                        Requires trace from either ISA sim with HW models or
+                        RTL sim. Trace only option
+  --win_size_stats WIN_SIZE_STATS
+                        Number of samples to use for rolling average window
+                        for stats plots (IPC, OPC, etc.). Trace only option
+  --win_size_hw WIN_SIZE_HW
+                        Number of samples to use for rolling average window
+                        for hardware (model) plots. Trace only option
+  --add_cache_lines     Add alternate gray shading for cache lines (both
+                        Icache and Dcache). Useful to inspect data locality.
+                        Trace only option
+  --symbols_only        Only backannotate and display the symbols found in the
+                        'dasm' file. Requires --dasm. Trace only option
+  --save_symbols        Save the symbols found in the 'dasm' file as a JSON
+                        file. Requires --dasm. Trace only option
+  --print_symbols       Print symbols from dasm to the stdout. Requires
+                        --dasm. Trace only option
+  --trace_limit TRACE_LIMIT
+                        Limit the number of address entries to display in the
+                        time series chart. Default is 1000000. Trace only
+                        option
+  --save_decoded_trace  Save the decoded binary trace data, formatted as a
+                        CSV. Trace only option
+  --save_pc_hist        Save data used for PC histogram chart, formatted as a
+                        CSV. Trace only option
+  --save_dmem_hist      Save data used for DMEM histogram chart, formatted as
+                        a CSV. Trace only option
+  --highlight HIGHLIGHT [HIGHLIGHT ...], --hl HIGHLIGHT [HIGHLIGHT ...]
+                        Highlight specific instructions. Multiple instructions
+                        can be provided as a single string separated by
+                        whitespace (multiple groups) or separated by commas
+                        (multiple instructions in a group). E.g.: 'add,addi
+                        sub' colors 'add' and 'addi' the same and 'sub' a
+                        different color. Defaults to predefined groups if not
+                        provided. Use 'off' to disable highlighting
+  -b, --browser         Open plots in the web browser instead of a pop-up
+                        window
+  --host                Host server for all machines on LAN instead of local-
+                        only. Only applicable if used with --browser
+  -s, --silent          Don't display chart(s)
+  --save_png            Save charts as PNG
+  --save_svg            Save charts as SVG
