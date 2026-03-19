@@ -175,11 +175,11 @@ The only required user argument is a path to the RISC-V executable, every other 
 Full usage available in [examples/ama-riscv-sim.help](examples/ama-riscv-sim.help)
 
 # Example use-case: Dhrystone
-Example use-case which includes all generated log files from the simulator and the applicable analysis outputs are available under [examples/dhrystone_dhrystone_out](./examples/dhrystone_dhrystone_out). The `stdout` redirected to a file is also available
+Example use-case which includes generated log files from the simulator and the applicable analysis outputs are available under [examples/dhrystone_dhrystone_out](./examples/dhrystone_dhrystone_out). The `stdout` redirected to a file is also available
 
 The following paragraphs will go into detail about each of the logs, analysis, and visualization
 
-ISA sim and Dhrystone are assumed to have been built as described in the [Quick start](#quick-start)
+ISA sim and Dhrystone are assumed to have been built as described in the [Quick start](#quick-start), but the provided elf at [examples/dhrystone.elf](./examples/dhrystone.elf) can also be used
 
 ## Running Dhrystone
 To generate all available outputs, run
@@ -436,7 +436,7 @@ Profile - Inst
   1.73           97.15       9000       9000   Proc_4
 total_samples : 521118
 
-(Showing 18 of 40 entries after filtering: Threshold: 1%)
+(Showing top 18 of 40 entries after filtering - Threshold: 1%)
 ```
 ![](examples/dhrystone_dhrystone_out/prof_stats_plot.png)
 
@@ -704,24 +704,24 @@ Dcache only needs `--sweep` parameter change
 ```
 Add `--load_stats` if the sweep has already been run and only charts need to be regenerated
 
-With `--save_stats`, output stats of each workload, and a combined average, are saved as `.json` files, e.g.
-- All workloads average: [examples/hw_sweep_icache/sweep_icache_workloads_searched_best.json](examples/hw_sweep_icache/sweep_icache_workloads_searched_best.json)
-- Workload specific - Dhrystone: [examples/hw_sweep_icache/sweep_icache_dhrystone_dhrystone_best.json](examples/hw_sweep_icache/sweep_icache_dhrystone_dhrystone_best.json)
+With `--save_stats`, output stats of each workload, and a combined average, are saved as `.json` files: 
+- icache at [examples/hw_sweeps/sweep_icache_workloads_searched_best.json](examples/hw_sweeps/sweep_icache_workloads_searched_best.json) 
+- dcache at [examples/hw_sweeps/sweep_dcache_workloads_searched_best.json](examples/hw_sweeps/sweep_dcache_workloads_searched_best.json)
+
+Detailed per workload result plots are available as PDFs: 
+- icache at [examples/hw_sweeps/sweep_icache_results.pdf](examples/hw_sweeps/sweep_icache_results.pdf) 
+- dcache at [examples/hw_sweeps/sweep_dcache_results.pdf](examples/hw_sweeps/sweep_dcache_results.pdf)
 
 Icache average stats across all workloads
-![](examples/hw_sweep_icache/sweep_icache_workloads_searched.png)
-
-Icache stats for Dhrystone
-![](examples/hw_sweep_icache/sweep_icache_dhrystone_dhrystone.png)
+![](examples/hw_sweeps/sweep_icache_workloads_searched.png)
 
 Dcache average stats across all workloads
-![](examples/hw_sweep_dcache/sweep_dcache_workloads_searched.png)
-
-Dcache stats for Dhrystone
-![](examples/hw_sweep_dcache/sweep_dcache_dhrystone_dhrystone.png)
+![](examples/hw_sweeps/sweep_dcache_workloads_searched.png)
 
 ## Branch predictors
 Similarly to caches, branch predictor sweeps are also specified through a config file with appropriate parameters: [script/hw_model_sweep_params_bp.json](script/hw_model_sweep_params_bp.json)
+
+Branch predictors are evaluated both for accuracy and MPKI (misses per 1k instructions).
 
 Sweep for branch predictors can be run with
 ```sh
@@ -730,21 +730,20 @@ Sweep for branch predictors can be run with
 This also ignores all predictors with accuracy below 70%
 
 With `--save_stats`, best and binned output stats of each workload, and a combined average, are saved as `.json` files, e.g.
-- All workloads average, best predictors: [examples/hw_sweep_bpred/sweep_bpred_workloads_all_best.json](examples/hw_sweep_bpred/sweep_bpred_workloads_all_best.json)
-- All workloads average, predictors binned for size: [examples/hw_sweep_bpred/sweep_bpred_workloads_all_binned.json](examples/hw_sweep_bpred/sweep_bpred_workloads_all_binned.json)
-- Workload specific, best - Dhrystone: [examples/hw_sweep_bpred/sweep_bpred_dhrystone_dhrystone_best.json](examples/hw_sweep_bpred/sweep_bpred_dhrystone_dhrystone_best.json)
-- Workload specific, binned - Dhrystone: [examples/hw_sweep_bpred/sweep_bpred_dhrystone_dhrystone_binned.json](examples/hw_sweep_bpred/sweep_bpred_dhrystone_dhrystone_binned.json)
+- All workloads average, best predictors: [examples/hw_sweeps/sweep_bpred_workloads_all_best.json](examples/hw_sweeps/sweep_bpred_workloads_all_best.json)
+- All workloads average, predictors binned for size: [examples/hw_sweeps/sweep_bpred_workloads_all_binned.json](examples/hw_sweeps/sweep_bpred_workloads_all_binned.json)
 
-If some workloads are skipped during search, an additional set of logs is available as `sweep_*_workloads_searched_*.json` that includes only stats of those predictors used for sweep
+Due to the large exploration space, it's impractical to run all workloads for all predictors. Instead, flow can (and does) use `"skip_search"` switch. Setting this to `true` will remove workload from the sweep search, and will only use it in the second, 'evaluation', pass. It's a tradeoff between accuracy and runtime. Leaving too few and/or unrepresentative workloads would result in poor performance once all workloads are evaluated
+
+When workloads are skipped during search, an additional set of logs is available as `sweep_*_workloads_searched_*.json` that includes only stats of those predictors used for the sweep
+
+Detailed per workload result plots are available as PDF at [examples/hw_sweeps/sweep_bpred_results.pdf](examples/hw_sweeps/sweep_bpred_results.pdf)
 
 Branch predictor stats across searched workloads only
-![](examples/hw_sweep_bpred/sweep_bpred_workloads_searched.png)
+![](examples/hw_sweeps/sweep_bpred_workloads_searched.png)
 
 Branch predictor stats across all workloads
-![](examples/hw_sweep_bpred/sweep_bpred_workloads_all.png)
-
-Branch predictor stats for Dhrystone
-![](examples/hw_sweep_bpred/sweep_bpred_dhrystone_dhrystone.png)
+![](examples/hw_sweeps/sweep_bpred_workloads_all.png)
 
 # Building RISC-V programs
 Each program is in its own directory with the provided `Makefile`  

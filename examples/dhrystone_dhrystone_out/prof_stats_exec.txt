@@ -20,4 +20,4 @@ Profile - Inst
   1.73           97.15       9000       9000   Proc_4
 total_samples : 521118
 
-(Showing 18 of 40 entries after filtering: Threshold: 1%)
+(Showing top 18 of 40 entries after filtering - Threshold: 1%)
