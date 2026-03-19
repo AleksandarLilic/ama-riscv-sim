@@ -1300,7 +1300,7 @@ def run_bp_sweep(
             with open(sr_best_out, "w") as f:
                 f.write(reformat_json(sr_best))
 
-    sweep_results = [sr_bin, sr_best]
+    sweep_results = [sr_bin, sr_best, None]
     if args.load_stats and args.plot_skip_searched and not running_best:
         return sweep_results
 
@@ -1315,6 +1315,7 @@ def run_bp_sweep(
     if args.save_png:
         fig.savefig(sweep_log.replace(".log", ".png"))
 
+    sweep_results[2] = fig
     return sweep_results
 
 def bin_bp_results(bins, best):
@@ -1499,6 +1500,7 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             del cr_bp_d[bpsz]['per_app_prof_branches']
         return cr_bp_d, (prof_inst, prof_branches)
 
+    figs = []
     for wl in workloads_all:
         app, log = gen_sweep_log_name(
             args.sweep, args.work_dir, [wl], True)
@@ -1527,7 +1529,7 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             f"{fmt(prof_info[0])}/{fmt(prof_info[1])}, {branch_perc:.1f}%)"
 
         ncols = 2 if args.bp_run_best_for_all_workloads else 1
-        _, axs = create_plot(
+        fig, axs = create_plot(
             args.sweep.capitalize(),
             sweep_name=app,
             ncols=ncols,
@@ -1536,11 +1538,14 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             prof_inst=prof_inst_str
         )
         plot_bp_results(axs, [per_app_bin_sr, per_app_sr], sweep_params)
+        figs.append(fig)
 
         if args.save_stats and not args.load_stats:
             sr_bin_out = log.replace(".log", "_binned.json")
             with open(sr_bin_out, "w") as f:
                 f.write(reformat_json(per_app_sr))
+
+    return figs
 
 MAX_WORKERS = int(os.cpu_count())
 def parse_args() -> argparse.Namespace:
@@ -1657,8 +1662,10 @@ def run_main(args: argparse.Namespace) -> List[plt.Figure]:
 
     if "bp" in args.sweep:
         tt = track_time()
-        sr_bin, sr_best = run_bp_sweep(args, workloads_sweep, sweep_params)
+        sr_bin, sr_best, fig = run_bp_sweep(args, workloads_sweep, sweep_params)
         sweep_wrapper_end(args, tt, "\n")
+        if fig:
+            figs.append(fig)
         if single_wl_sweep:
             return figs
 
@@ -1668,7 +1675,7 @@ def run_main(args: argparse.Namespace) -> List[plt.Figure]:
                 sr_to_use = sr_best if args.bp_run_best_for_all_workloads \
                             else sr_bin
                 best_params = gen_bp_final_params(sr_to_use)
-                sr_bin_all, sr_best_all = run_bp_sweep(
+                sr_bin_all, sr_best_all, fig = run_bp_sweep(
                     args, workloads_all, sweep_params, best_params)
                 sweep_wrapper_end(args, tt, "\n")
             else:
@@ -1677,11 +1684,16 @@ def run_main(args: argparse.Namespace) -> List[plt.Figure]:
                 sr_bin_all = sr_bin
                 sr_best_all = sr_best
 
+            if fig:
+                figs.append(fig)
+
         if args.plot_per_workload:
             add_charts_wrapper_start(args.sweep, "\n")
-            bp_plot_per_workload(
+            figs_per_wl = bp_plot_per_workload(
                 args, sweep_params, workloads_all, [sr_bin_all, sr_best_all])
             sweep_wrapper_end(args, tt, "\n")
+            if figs_per_wl:
+                figs += figs_per_wl
 
         return figs # only one sweep type at a time
 
