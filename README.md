@@ -4,6 +4,11 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
 
 - [RISC-V ISA simulator](#risc-v-isa-simulator)
 - [Getting the project](#getting-the-project)
+  - [Prerequisites](#prerequisites)
+    - [Simulator build](#simulator-build)
+    - [RISC-V software build (`sw/`)](#risc-v-software-build-sw)
+    - [Analysis scripts (`script/`)](#analysis-scripts-script)
+    - [Testing (`test/`)](#testing-test)
   - [Quick start](#quick-start)
 - [Overview](#overview)
   - [Usage](#usage)
@@ -43,6 +48,40 @@ Project relies on a few external libraries and tools. Clone recursively with
 ```sh
 git clone --recurse-submodules git@github.com:AleksandarLilic/ama-riscv-sim.git
 ```
+
+## Prerequisites
+
+Submodules are pulled automatically with `--recurse-submodules`:
+- [cxxopts](https://github.com/jarro2783/cxxopts)
+- [ELFIO](https://github.com/serge1/ELFIO)
+- [FlameGraph](https://github.com/brendangregg/FlameGraph)
+- [gprof2dot](https://github.com/jrfonseca/gprof2dot)
+
+### Simulator build
+- **GCC** >= 10 (C++17, `gnu++17`)
+- **Make**
+
+### RISC-V software build (`sw/`)
+- **RISC-V GNU toolchain** (`riscv64-unknown-elf-gcc`, `objcopy`, `objdump`, `size`) - set via `RV_GNU_LATEST` env var
+- **bin2hex** (`riscv64-unknown-elf-bin2hex`) - binary to hex conversion for RTL simulation; not part of the standard toolchain
+
+### Analysis scripts (`script/`)
+Python 3 packages:
+- **matplotlib**
+- **numpy**
+- **pandas**
+- **ruamel.yaml**
+- **plotly**
+- **pyelftools** 
+
+Other tools:
+- **Perl**
+- **Graphviz**
+
+### Testing (`test/`)
+- **Google Test** (`libgtest-dev` or equivalent)
+- **lcov** and **genhtml** (for coverage reports)
+- Optional: **valgrind**
 
 ## Quick start
 To check that everything is available and working as expected:
