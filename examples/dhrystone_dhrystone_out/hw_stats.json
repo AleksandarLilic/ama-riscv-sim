@@ -1,12 +1,12 @@
 {
 "icache": {
-    "references": 529819,
-    "hits": {"reads": 526687, "writes": 0}, 
-    "misses": {"reads": 3132, "writes": 0}, 
-    "replacements": 3068,
+    "references": 522689,
+    "hits": {"reads": 519554, "writes": 0}, 
+    "misses": {"reads": 3135, "writes": 0}, 
+    "replacements": 3071,
     "writebacks": 0,
-    "ct_core": {"reads": 2119276, "writes": 0}, 
-    "ct_mem": {"reads": 200448, "writes": 0}, 
+    "ct_core": {"reads": 2090756, "writes": 0}, 
+    "ct_mem": {"reads": 200640, "writes": 0}, 
     "size": {"data": 4096, "tags": 41, "metadata": 33, "sets": 32, "ways": 2, "line_size": 64}
 },
 "dcache": {
@@ -20,17 +20,17 @@
     "size": {"data": 4096, "tags": 49, "metadata": 41, "sets": 16, "ways": 4, "line_size": 64}
 },
 "bpred": {
-    "type": "bimodal",
+    "type": "combined",
     "branches": 63985,
-    "predicted": 55284,
-    "predicted_fwd": 36173,
-    "predicted_bwd": 19111,
-    "mispredicted": 8701,
-    "mispredicted_fwd": 4412,
-    "mispredicted_bwd": 4289,
-    "accuracy": 86.40,
-    "mpki": 16.70,
-    "size": 12
+    "predicted": 62414,
+    "predicted_fwd": 40272,
+    "predicted_bwd": 22142,
+    "mispredicted": 1571,
+    "mispredicted_fwd": 313,
+    "mispredicted_bwd": 1258,
+    "accuracy": 97.54,
+    "mpki": 3.01,
+    "size": 85
 },
 "profiled_inst": 521118,
 "_done": true

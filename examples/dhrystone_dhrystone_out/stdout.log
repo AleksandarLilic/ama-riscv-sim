@@ -1,0 +1,107 @@
+Running: ../sw/baremetal/dhrystone/dhrystone.elf
+Profiling start PC: 0x40000
+Logging enabled
+
+SIMULATION STARTED
+=== UART START ===
+
+Dhrystone Benchmark, Version 2.1 (Language: C)
+
+Program compiled without 'register' attribute
+
+Execution starts, 1000 runs through Dhrystone
+Execution ends
+
+Final values of the variables used in the benchmark:
+
+Int_Glob:            5
+        should be:   5
+Bool_Glob:           1
+        should be:   1
+Ch_1_Glob:           A
+        should be:   A
+Ch_2_Glob:           B
+        should be:   B
+Arr_1_Glob[8]:       7
+        should be:   7
+Arr_2_Glob[8][7]:    1010
+        should be:   Number_Of_Runs + 10
+Ptr_Glob->
+  Ptr_Comp:          289456
+        should be:   (implementation-dependent)
+  Discr:             0
+        should be:   0
+  Enum_Comp:         2
+        should be:   2
+  Int_Comp:          17
+        should be:   17
+  Str_Comp:          DHRYSTONE PROGRAM, SOME STRING
+        should be:   DHRYSTONE PROGRAM, SOME STRING
+Next_Ptr_Glob->
+  Ptr_Comp:          289456
+        should be:   (implementation-dependent), same as above
+  Discr:             0
+        should be:   0
+  Enum_Comp:         1
+        should be:   1
+  Int_Comp:          18
+        should be:   18
+  Str_Comp:          DHRYSTONE PROGRAM, SOME STRING
+        should be:   DHRYSTONE PROGRAM, SOME STRING
+Int_1_Loc:           5
+        should be:   5
+Int_2_Loc:           13
+        should be:   13
+Int_3_Loc:           7
+        should be:   7
+Enum_Loc:            1
+        should be:   1
+Str_1_Loc:           DHRYSTONE PROGRAM, 1'ST STRING
+        should be:   DHRYSTONE PROGRAM, 1'ST STRING
+Str_2_Loc:           DHRYSTONE PROGRAM, 2'ND STRING
+        should be:   DHRYSTONE PROGRAM, 2'ND STRING
+
+Measured time too small to obtain meaningful results 0s
+Please increase number of runs
+
+=== UART END ===
+SIMULATION FINISHED
+
+Instruction Counters: executed: 521118, profiled: 521118
+    0x051e tohost       : 0x00000001
+Profiler - Inst:
+    All: 521118
+    Control: B: 63985(12.28%), JAL: 21746(4.17%), JALR: 22705(4.36%)
+    Memory: MEM: 166065(31.87%) - L/S: 87869/78196(16.86%/15.01%)
+    Compute: ALU: 245609(47.13%), MUL: 1000(0.19%), DIV: 0(0.00%)
+    Bitmanip: Zbb: 0(0.00%)
+    SIMD arith: ALU: 0(0.00%), WMUL: 0(0.00%), DOT: 0(0.00%)
+    SIMD data fmt: WIDEN: 0(0.00%), NARROW: 0(0.00%), TXP: 0(0.00%)
+    SIMD vector-scalar: DUP: 0(0.00%), VINS: 0(0.00%), VEXT: 0(0.00%)
+    Hint: SCP: 0(0.00%)
+    Other: NOP: 0(0.00%), Misc: 8(0.00%)
+Profiler - Sparsity:
+    ANY: 355615/20719(5.83%)
+    ALU: 238689/16132(6.76%)
+    MEM_L: 87869/4583(5.22%)
+    MEM_S: 78196/0(0.00%)
+    SIMD_DOT: 0/0(0.00%)
+    SIMD_ALU: 0/0(0.00%)
+    SIMD_DATA_FMT: 0/0(0.00%)
+Profiler - Stack:
+    Peak usage: 368 B
+    Accesses: 80424(48.43%) - L/S: 40458/39966(24.36%/24.07%)
+Profiler - Perf:
+    Event: inst, Samples: 521118
+Profiler - Fusion:
+    LEA opportunities: 1000
+Branch stats:
+    Unique branches: 110
+bpred
+    combined (85 B): P: 62414, M: 1571, ACC: 97.54%, MPKI: 3.01
+icache (S/W: 32/2, D/T/M: 4096/41/33 B): 
+    Ref: 522689, H: 519554(519554/0), M: 3135(3135/0), R: 3071, HR: 99.40%; CT (R/W): core 2.0/0.0 MB, mem 195.9/0.0 KB
+dcache (S/W: 16/4, D/T/M: 4096/49/41 B): 
+    Ref: 162717, H: 162511(86166/76345), M: 206(29/177), R: 142, WB: 142, HR: 99.87%; CT (R/W): core 297/279 KB, mem 12.9/8.9 KB
+
+Simulation performance: 0.37 MIPS (521118 instructions in 1.42s)
