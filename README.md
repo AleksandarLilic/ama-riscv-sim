@@ -41,7 +41,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
   - [Instruction details](#instruction-details)
   - [Patching `binutils` to add support for custom instructions](#patching-binutils-to-add-support-for-custom-instructions)
   - [Patching `GCC` to add support for custom instructions](#patching-gcc-to-add-support-for-custom-instructions)
-
+  - [Patching AAPG](#patching-aapg)
 
 # Getting the project
 Project relies on a few external libraries and tools. Clone recursively with
@@ -64,6 +64,7 @@ Submodules are pulled automatically with `--recurse-submodules`:
 ### RISC-V software build (`sw/`)
 - **RISC-V GNU toolchain** (`riscv64-unknown-elf-gcc`, `objcopy`, `objdump`, `size`) - set via `RV_GNU_LATEST` env var
 - **bin2hex** (`riscv64-unknown-elf-bin2hex`) - binary to hex conversion for RTL simulation; not part of the standard toolchain
+- AAPG (check patch notes under [Patching AAPG](#patching-aapg) chapter)
 
 ### Analysis scripts (`script/`)
 Python 3 packages:
@@ -1061,4 +1062,16 @@ Author: GCC Administrator <gccadmin@gcc.gnu.org>
 Date:   Fri Aug 9 00:22:36 2024 +0000
 
     Daily bump
+```
+
+## Patching AAPG
+Automated Assembly Program Generator repo: https://gitlab.com/shaktiproject/tools/aapg
+
+Requires applying the provided [aapg.patch](./sw/baremetal/aapg/aapg.patch) to add support for custom SIMD instructions and register pair destinations
+
+```sh
+git clone https://gitlab.com/shaktiproject/tools/aapg.git
+cd aapg
+git apply <workdir>/ama-riscv-sim/sw/baremetal/aapg/aapg.patch
+pip install .
 ```
