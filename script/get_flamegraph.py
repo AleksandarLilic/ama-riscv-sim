@@ -42,3 +42,5 @@ with open(svg_out, "w") as f:
     result = subprocess.run(cmd, stdout=f)
     if result.returncode != 0:
         raise RuntimeError(f"Error: {result.stderr.decode('utf-8')}")
+
+print(f"Saved SVG chart to: '{svg_out}'")

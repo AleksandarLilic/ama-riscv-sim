@@ -45,3 +45,4 @@ for fmt in ("svg", "png", "pdf"):
         out_name = Path(dot_out_name).with_suffix(f".{fmt}")
         cmd = ["dot", f"-T{fmt}", dot_out_name, "-o", str(out_name)]
         run_cmd(cmd)
+        print(f"Saved {fmt.upper()} chart to: '{out_name}'")
