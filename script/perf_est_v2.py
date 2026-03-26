@@ -443,25 +443,30 @@ def main(args: argparse.Namespace):
         print("\nCycles Correlation")
         clk_best = res.est["best"]["clk"]
         clk_worst = res.est["worst"]["clk"]
-        diff = None
+        midpoint = (clk_best + clk_worst) >> 1
+        edge_diff = None
         if corr < clk_best:
             inout_str = "OUTSIDE (BELOW)"
-            diff = clk_best - corr
-            perc_diff = (diff / clk_best) * 100
+            edge_diff = clk_best - corr
+            edge_perc_diff = (edge_diff / clk_best) * 100
             ref_str = "best"
         elif corr > clk_worst:
             inout_str = "OUTSIDE (ABOVE)"
-            diff = corr - clk_worst
-            perc_diff = (diff / clk_worst) * 100
+            edge_diff = corr - clk_worst
+            edge_perc_diff = (edge_diff / clk_worst) * 100
             ref_str = "worst"
         else:
             inout_str = "INSIDE"
         print(f"{INDENT}Achieved cycles: {FMT(corr)} - " +
               f"result is {inout_str} estimated range")
 
-        if diff is not None:
-            print(f"{INDENT}Difference: {diff} cycles " +
-                  f"({perc_diff:.2f}% of {ref_str} estimate)")
+        if edge_diff is not None:
+            mid_diff = abs(corr - midpoint)
+            mid_perc_diff = (mid_diff / midpoint) * 100
+            print(f"{INDENT}Edge diff: {edge_diff} cycles " +
+                  f"({edge_perc_diff:.2f}% of {ref_str} estimate)")
+            print(f"{INDENT}Mid diff : {mid_diff} cycles " +
+                  f"({mid_perc_diff:.2f}% of midpoint estimate)")
 
         # --- Plot ---
         fig, ax = plt.subplots(figsize=(8, 2))
