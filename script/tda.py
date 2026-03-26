@@ -29,6 +29,9 @@ PREFIX_CLASS = [
 ]
 BAR_COLOR_MAP = {cls: PLOTLY_COLORS[i] for i, cls in enumerate(CLASS_ORDER)}
 
+FIG_WIDTH = 800
+FIG_HEIGHT = 550
+
 def classify_and_sort_counters(core: dict) -> list[tuple[str, int, str]]:
     """Classify core counters into groups and sort by class order then name."""
     class_rank = {c: i for i, c in enumerate(CLASS_ORDER)}
@@ -55,10 +58,10 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     df = pd.DataFrame(entries, columns=["counter", "value", "class"])
 
     eng_fmt = smarter_eng_formatter(places=1)
-    df["text"] = df["value"].apply(lambda x: eng_fmt(x, None))
+    df["count"] = df["value"].apply(lambda x: eng_fmt(x, None))
 
     ipc = core.get("ipc", 0)
-    title = f"Performance Counters for '{test_title}'(IPC: {ipc:.3f})"
+    title = f"Performance Counters for '{test_title}' (IPC: {ipc:.3f})"
 
     fig = px.bar(
         df,
@@ -68,7 +71,9 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         color_discrete_map=BAR_COLOR_MAP,
         category_orders={"counter": [e[0] for e in entries]},
         title=title,
-        text="text",
+        text="count",
+        width=FIG_WIDTH*2,
+        height=FIG_HEIGHT,
     )
 
     fig.update_traces(
@@ -92,15 +97,17 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     if not args.silent:
         print(title)
         print(df.to_string(index=False))
-        fig.show(renderer=args.renderer)
+        fig.show(renderer=args.renderer, width=FIG_WIDTH*2, height=FIG_HEIGHT)
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_counters.png")
-        fig.write_image(png_path, scale=2)
+        fig.write_image(png_path, width=FIG_WIDTH*2, height=FIG_HEIGHT, scale=2)
+        print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
         svg_path = args.hw_stats.replace(".json", "_counters.svg")
-        fig.write_image(svg_path)
+        fig.write_image(svg_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
+        print(f"Saved SVG chart to: '{svg_path}'")
 
 def main(args: argparse.Namespace):
     if not os.path.exists(args.hw_stats):
@@ -133,7 +140,9 @@ def main(args: argparse.Namespace):
         values=col[2], # 'cycles' column
         branchvalues="total",
         color=col[0], # color by 'L1' column
-        color_discrete_map=COLOR_MAP
+        color_discrete_map=COLOR_MAP,
+        width=FIG_WIDTH,
+        height=FIG_HEIGHT,
     )
 
     fig.update_traces(
@@ -163,17 +172,19 @@ def main(args: argparse.Namespace):
     if not args.silent:
         print(title)
         print(df_tda.drop(columns=["root"]))
-        fig.show(renderer=args.renderer)
+        fig.show(renderer=args.renderer, width=FIG_WIDTH, height=FIG_HEIGHT)
+
+    plot_counters_bar(d, get_test_title(args.hw_stats), args)
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_tda.png")
-        fig.write_image(png_path, scale=2)
+        fig.write_image(png_path, width=FIG_WIDTH, height=FIG_HEIGHT, scale=2)
+        print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
         svg_path = args.hw_stats.replace(".json", "_tda.svg")
-        fig.write_image(svg_path)
-
-    plot_counters_bar(d, get_test_title(args.hw_stats), args)
+        fig.write_image(svg_path, width=FIG_WIDTH, height=FIG_HEIGHT)
+        print(f"Saved SVG chart to: '{svg_path}'")
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")
