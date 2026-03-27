@@ -101,7 +101,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_counters.png")
-        fig.write_image(png_path, width=FIG_WIDTH*2, height=FIG_HEIGHT, scale=2)
+        fig.write_image(png_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
         print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
@@ -178,7 +178,7 @@ def main(args: argparse.Namespace):
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_tda.png")
-        fig.write_image(png_path, width=FIG_WIDTH, height=FIG_HEIGHT, scale=2)
+        fig.write_image(png_path, width=FIG_WIDTH, height=FIG_HEIGHT)
         print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
