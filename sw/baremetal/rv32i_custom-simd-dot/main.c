@@ -489,6 +489,36 @@ void main() {
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 2147483647, 413);
             }
+            {
+                GLOBAL_SYMBOL("op_dot8u_bit17_boundary");
+                // dot = 255*255 + 255*255 + 14*73 + 0 = 131072 = 0x20000
+                // bit 17 set, bit 16 clear
+                uint8_t a[] = {255, 255, 14, 0};
+                uint8_t b[] = {255, 255, 73, 0};
+                int32_t c = 0;
+                _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
+                CHECK(c, 131072, 414);
+            }
+            {
+                GLOBAL_SYMBOL("op_dot8u_bit17_mid");
+                // dot = 255*255 + 255*255 + 100*200 + 0 = 150050 = 0x24A22
+                // bit 17 set, bit 16 clear
+                uint8_t a[] = {255, 255, 100, 0};
+                uint8_t b[] = {255, 255, 200, 0};
+                int32_t c = 0;
+                _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
+                CHECK(c, 150050, 415);
+            }
+            {
+                GLOBAL_SYMBOL("op_dot8u_bit17_with_acc");
+                // dot = 255*255 + 255*255 + 14*73 + 1*1 = 131073
+                // bit 17 set, bit 16 clear
+                uint8_t a[] = {255, 255, 14, 1};
+                uint8_t b[] = {255, 255, 73, 1};
+                int32_t c = -100;
+                _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
+                CHECK(c, 130973, 416);
+            }
         }
 
         #ifndef PARTIAL_RTL_SUPPORT_DOT
@@ -659,6 +689,16 @@ void main() {
                 int32_t c = 100;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 100, 607);
+            }
+            {
+                GLOBAL_SYMBOL("op_dot4u_bit10_boundary");
+                // dot = 6 * (15*15) + 2 * 0 = 1350 = 0x546
+                // bit 10 set, bit 9 clear: extraction blind spot
+                uint8_t a[] = {0xFF, 0xFF, 0xFF, 0};
+                uint8_t b[] = {0xFF, 0xFF, 0xFF, 0};
+                int32_t c = 0;
+                _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
+                CHECK(c, 1350, 608);
             }
         }
 
