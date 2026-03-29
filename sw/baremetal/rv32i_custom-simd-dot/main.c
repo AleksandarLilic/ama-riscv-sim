@@ -521,7 +521,6 @@ void main() {
             }
         }
 
-        #ifndef PARTIAL_RTL_SUPPORT_DOT
         {
             { // int4
                 GLOBAL_SYMBOL("op_dot4");
@@ -867,7 +866,6 @@ void main() {
                 CHECK(c, 77, 807);
             }
         }
-        #endif
 
     }
     pass();

@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP -DPARTIAL_RTL_SUPPORT_DOT"],
+    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP"],
 
     "asm_rv32i": ["test"],
     "asm_rv32i_branches": ["test"],
