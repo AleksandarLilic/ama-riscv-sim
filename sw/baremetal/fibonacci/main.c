@@ -50,26 +50,45 @@ uint32_t fib(uint32_t n) {
         return fib(n-1) + fib(n-2);
 }
 
-void main() {
+void run() {
     SET_N
     SET_EXP
     #ifdef MEASURE_TIME
     uint32_t start_time = get_cpu_time();
     #endif
+
     for (uint32_t i = 0; i < LOOPS; i++) {
         PROF_START;
         uint32_t result = fib(n);
         PROF_STOP;
 
         if (result != expected){
+            //printf("result %d, expected: %d\n", result, expected);
             write_mismatch(result, expected, 1);
             fail();
         }
     }
+
     #ifdef MEASURE_TIME
     uint32_t end_time = get_cpu_time();
     uint32_t time_diff = (end_time - start_time);
     printf("Time taken: %d ms\n", time_diff / 1000);
     #endif
+}
+
+#ifdef FOREVER
+void main() {
+    uint32_t iter = 0;
+    while(1) {
+        printf("I %0d - ", iter);
+        run();
+        iter++;
+    }
+}
+
+#else
+void main() {
+    run();
     pass();
 }
+#endif
