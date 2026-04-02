@@ -5,6 +5,13 @@
 #define CHECK(r, e, i) \
     if ((r) != (e)){ write_mismatch((r), (e), (i)); fail(); }
 
+#define CHECK_DEBUG(r, e, i) \
+    if ((r) != (e)){ \
+        write_mismatch((r), (e), (i)); \
+        printf("%d: result %d, expected: %d\n", i, r, e); \
+        fail(); \
+    }
+
 // packing macro helpers
 // 32-bit
 #define PK_I16(lo, hi) \
