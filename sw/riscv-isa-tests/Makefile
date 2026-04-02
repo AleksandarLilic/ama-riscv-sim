@@ -24,9 +24,9 @@ OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 MEM_WIDTH := 128
 
 TESTS := $(notdir $(shell find $(DIR) -type f -name "*.S"))
-TESTS_BIN := $(subst .S,.bin,$(TESTS))
+TESTS_BIN := $(subst .S,.elf,$(TESTS))
 # remove "ma_data" from the list of tests if it exists (rv32ui only)
-TESTS_BIN := $(filter-out %ma_data.bin,$(TESTS_BIN))
+TESTS_BIN := $(filter-out %ma_data.elf,$(TESTS_BIN))
 
 RV_GNU_DEFAULT := riscv64-unknown-elf
 BIN2HEX :=
@@ -43,15 +43,15 @@ endif
 
 all: $(TESTS_BIN)
 
-%.bin: $(DIR)/%.S
+%.elf: $(DIR)/%.S
 	@$(RV_GNU)-gcc $(GCC_OPTS) -Idefines -Iriscv-tests/env -Iriscv-tests/isa/macros/scalar $^ -o $(basename $@).elf
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $(basename $@).elf > $(basename $@).dasm
 	@if [ "$(HEX)" = "1" ]; then \
 		$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin; \
-		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
-		rm $(basename $@).bin; \
+		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).mem; \
+		sed -i '1s/^/@0\n/' $(basename $@).mem; \
 	fi
 	@echo "Generated $@"
 
 clean:
-	rm -f *.elf* *.dasm *.hex* *.bin *.o *.d *.i *.s *_symbols.json *.map
+	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map

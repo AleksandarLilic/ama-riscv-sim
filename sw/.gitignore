@@ -5,6 +5,7 @@
 *.map
 *.elf*
 *.hex*
+*.mem*
 *.o
 *.d
 *.i

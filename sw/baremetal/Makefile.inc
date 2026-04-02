@@ -106,7 +106,8 @@ BUILD_APP = \
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
 		$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin; \
-		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).hex; \
+		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).mem; \
+		sed -i '1s/^/@0\n/' $(basename $@).mem; \
 		rm $(basename $@).bin; \
 	fi
 
@@ -135,7 +136,7 @@ $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
 
 clean:
-	rm -f *.elf* *.dasm *.hex* *.bin *.o *.d *.i *.s *.map
+	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map
 
 clean_common:
 	rm -rf $(COMMON_BUILD_DIR)
