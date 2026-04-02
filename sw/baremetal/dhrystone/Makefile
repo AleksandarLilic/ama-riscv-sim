@@ -1,4 +1,4 @@
-DHRY_ITERS = 8000000u
+DHRY_ITERS = 1000000u
 TARGET := dhrystone
 GCC_OPTS += -O3
 LIBS += -lc
