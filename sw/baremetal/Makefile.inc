@@ -1,13 +1,19 @@
+SHELL := /bin/bash
+
+NPROCS_DEF := 8
+NPROCS := $(shell nproc 2>/dev/null || echo $(NPROCS_DEF))
+# only add -j if MAKEFLAGS doesn't already contain a job limit
+ifeq ($(filter -j% --jobserver%, $(MAKEFLAGS)),)
+    MAKEFLAGS += -j$(NPROCS)
+endif
 
 REPO_ROOT := $(shell git rev-parse --show-toplevel)
 
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
-SHELL  := /bin/bash
 
 # Turn on increased build verbosity by defining BUILD_VERBOSE in test Makefile
 # or use V=1 on the make command line
-
 BUILD_VERBOSE ?= 0
 
 ifeq ("$(origin V)", "command line")

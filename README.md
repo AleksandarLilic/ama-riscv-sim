@@ -97,9 +97,9 @@ make DHRY_ITERS=1000 # override number of iterations for testing only
 cd -
 # build ISA sim
 cd src
-make -j8
+make
 # optionally, use non-default gcc
-# make CXX=g++-12 -j8
+# make CXX=g++-12
 # create a separate workdir
 cd .. && mkdir workdir && cd workdir
 # run test, profile from the beginning, log executed instructions
@@ -821,12 +821,12 @@ cd sw/riscv-isa-tests
 Build all tests
 ```sh
 # uses default DIR=riscv-tests/isa/rv32ui
-make -j8
+make
 ```
 
 To add CSR test
 ``` sh
-make -j8 DIR=modified_riscv-tests/isa/rv32mi/
+make DIR=modified_riscv-tests/isa/rv32mi/
 ```
 
 # GTest
@@ -851,7 +851,7 @@ make prepare_tests
 
 GTest can then be run with
 ```sh
-make -j8
+make
 ```
 
 Test outputs are stored under `*_out` directory, while `stdout` is stored under `*_dump.log`, e.g. for Dhrystone: `dhrystone_dhrystone_out` and `dhrystone_dhrystone_dump.log`
@@ -860,12 +860,12 @@ Test outputs are stored under `*_out` directory, while `stdout` is stored under 
 
 By default, use
 ```sh
-make -j8
+make
 ```
 
 Options can be passed to make by using `USER_DEFINES=` argument, e.g.
 ```
-make -j8 USER_DEFINES=-DRV32C
+make USER_DEFINES=-DRV32C
 ```
 
 Optional build switches  

@@ -1,3 +1,12 @@
+SHELL := /bin/bash
+
+NPROCS_DEF := 8
+NPROCS := $(shell nproc 2>/dev/null || echo $(NPROCS_DEF))
+# only add -j if MAKEFLAGS doesn't already contain a job limit
+ifeq ($(filter -j% --jobserver%, $(MAKEFLAGS)),)
+    MAKEFLAGS += -j$(NPROCS)
+endif
+
 RV_GNU := $(RV_GNU_LATEST)
 LD_SRC := link.ld
 
