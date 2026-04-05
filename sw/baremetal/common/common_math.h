@@ -292,7 +292,51 @@ uint8x4_t _qsub8u(const uint8x4_t a, const uint8x4_t b) {
 }
 
 // -----------------------------------------------------------------------------
-// mul and mul unsigned
+// mul and mulh unsigned
+static INLINE
+int16x2_t _mul16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("mul16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _mul8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("mul8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int16x2_t _mulh16(const int16x2_t a, const int16x2_t b) {
+    int16x2_t c;
+    asm volatile("mulh16 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint16x2_t _mulh16u(const uint16x2_t a, const uint16x2_t b) {
+    uint16x2_t c;
+    asm volatile("mulh16u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x4_t _mulh8(const int8x4_t a, const int8x4_t b) {
+    int8x4_t c;
+    asm volatile("mulh8 %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+uint8x4_t _mulh8u(const uint8x4_t a, const uint8x4_t b) {
+    uint8x4_t c;
+    asm volatile("mulh8u %0, %1, %2" : "=r"(c) : "r"(a), "r"(b));
+    return c;
+}
+
+// -----------------------------------------------------------------------------
+// wmul and wmul unsigned
 static INLINE
 int32x2_t _wmul16(const int16x2_t a, const int16x2_t b) {
     int32x2_t c;

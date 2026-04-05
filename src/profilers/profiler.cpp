@@ -71,6 +71,13 @@ profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
     P_INIT(qsub16u);
     P_INIT(qsub8u);
 
+    P_INIT(mul16);
+    P_INIT(mul8);
+    P_INIT(mulh16);
+    P_INIT(mulh16u);
+    P_INIT(mulh8);
+    P_INIT(mulh8u);
+
     P_INIT(wmul16);
     P_INIT(wmul16u);
     P_INIT(wmul8);
@@ -443,7 +450,7 @@ void profiler::log_to_file_and_print(bool silent) {
 
     std::cout << INDENT << "SIMD arith:"
               << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
-              << " WMUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
+              << " MUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%)"
               << "\n";
 
@@ -474,7 +481,6 @@ void profiler::log_to_file_and_print(bool silent) {
         const char* n = sparsity_cnt_names[i];
         std::cout << INDENT << n << ": " << ptr->total << "/" << ptr->sparse
                   << "(" << TO_F32(ptr->get_perc()) << "%)" << "\n";
-
     }
 
     uint64_t sa_cnt = stack_access.total();

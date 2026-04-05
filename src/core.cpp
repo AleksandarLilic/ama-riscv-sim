@@ -715,6 +715,18 @@ void core::d_custom_ext() {
                 default: tu.e_unsupported_inst("qalu_custom"); return;
             }
             break;
+        case TO_U8(custom_op_t::type_mul):
+            PROF_SET_PERF_EVENT_SIMD
+            switch (funct3) {
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mul16, alu)
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mul8, alu)
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh16, alu)
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh16u, alu)
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh8, alu)
+                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh8u, alu)
+                default: tu.e_unsupported_inst("alu_simd_mul_custom"); return;
+            }
+            break;
         case TO_U8(custom_op_t::type_wmul):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
@@ -855,6 +867,7 @@ void core::d_custom_ext() {
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
         case TO_U8(custom_op_t::type_qalu):
+        case TO_U8(custom_op_t::type_mul):
         case TO_U8(custom_op_t::type_dot):
         case TO_U8(custom_op_t::type_min_max):
         case TO_U8(custom_op_t::type_data_fmt_narrow):

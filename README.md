@@ -898,6 +898,12 @@ Includes instructions for using Dcache as scratchpad
 | Subtraction Unsigned Saturated 16-bit | `qsub16u rd, rs1, rs2` |
 | Subtraction Signed Saturated 8-bit | `qsub8 rd, rs1, rs2` |
 | Subtraction Unsigned Saturated 8-bit | `qsub8u rd, rs1, rs2` |
+| Multiply Signed 16-bit | `mul16 rd, rs1, rs2` |
+| Multiply Signed 8-bit | `mul8 rd, rs1, rs2` |
+| Multiply High Signed 16-bit | `mulh16 rd, rs1, rs2` |
+| Multiply High Unsigned 16-bit | `mulh16u rd, rs1, rs2` |
+| Multiply High Signed 8-bit | `mulh8 rd, rs1, rs2` |
+| Multiply High Unsigned 8-bit | `mulh8u rd, rs1, rs2` |
 | Widening Multiply Signed 16-bit | `wmul16 rd, rs1, rs2` |
 | Widening Multiply Unsigned 16-bit | `wmul16u rd, rs1, rs2` |
 | Widening Multiply Signed 8-bit | `wmul8 rd, rs1, rs2` |

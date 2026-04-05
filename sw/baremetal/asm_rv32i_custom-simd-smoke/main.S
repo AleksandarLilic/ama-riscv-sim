@@ -44,6 +44,14 @@ simd_saturating_add_sub:
     qsub8 x14, x18, x19
     qsub8u x14, x18, x19
 
+simd_mul:
+    mul16 x14, x18, x19
+    mul8 x14, x18, x19
+    mulh16 x14, x18, x19
+    mulh16u x14, x18, x19
+    mulh8 x14, x18, x19
+    mulh8u x14, x18, x19
+
 simd_widening_mul:
     wmul16 x14, x18, x19
     wmul16u x14, x18, x19

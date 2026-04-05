@@ -17,6 +17,7 @@
     "asm_rv32i_custom-scp": ["test"],
 
     "rv32i_custom-simd-add-sub": ["test"],
+    "rv32i_custom-simd-mul": ["test"],
     "rv32i_custom-simd-wmul": ["test"],
     "rv32i_custom-simd-dot": ["test"],
     "rv32i_custom-simd-min-max": ["test"],

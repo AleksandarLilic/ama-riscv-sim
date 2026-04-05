@@ -64,7 +64,7 @@ class icfg:
     k_simd_add_sub = "SIMD_ADD_SUB"
     k_simd_min_max = "SIMD_MIN_MAX"
     k_simd_shift = "SIMD_SHIFT"
-    k_simd_wmul = "SIMD_WMUL"
+    k_simd_mul = "SIMD_MUL"
     k_simd_widen = "SIMD_WIDEN"
     k_simd_narrow = "SIMD_NARROW"
     k_simd_txp = "SIMD_TXP"
@@ -96,7 +96,10 @@ class icfg:
             "qadd16", "qadd16u", "qadd8", "qadd8u",
             "qsub16", "qsub16u", "qsub8", "qsub8u",
         ],
-        k_simd_wmul: ["wmul16", "wmul16u", "wmul8", "wmul8u"],
+        k_simd_mul: [
+            "mul16", "mul8", "mulh16", "mulh16u", "mulh8", "mulh8u",
+            "wmul16", "wmul16u", "wmul8", "wmul8u",
+        ],
         k_simd_dot: [
             "dot16", "dot16u", "dot8", "dot8u", "dot4", "dot4u", "dot2", "dot2u"
         ],
@@ -150,7 +153,7 @@ class icfg:
         k_bitmanip: ["max", "maxu", "min", "minu"],
         k_simd_arith:
             INST_T_SIMD_ARITH[k_simd_add_sub] + \
-            INST_T_SIMD_ARITH[k_simd_wmul] + \
+            INST_T_SIMD_ARITH[k_simd_mul] + \
             INST_T_SIMD_ARITH[k_simd_dot] + \
             INST_T_SIMD_ARITH[k_simd_min_max] + \
             INST_T_SIMD_ARITH[k_simd_shift],

@@ -348,6 +348,16 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_RD_RDP_RS1_RS2 \
         break;
 
+#define CASE_ALU_SIMD_MUL_CUSTOM_OP(op, t) \
+    case TO_U8(alu_simd_mul_custom_op_t::op_##op): \
+        PROF_SPARSITY_SIMD_AB(rf[ip.rs1()], rf[ip.rs2()], t) \
+        res = alu_c_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        break;
+
 #define CASE_ALU_CUSTOM_DOT(op, t) \
     case TO_U8(alu_dot_custom_op_t::op_##op): \
         PROF_SPARSITY_SIMD_AB(rf[ip.rs1()], rf[ip.rs2()], t) \

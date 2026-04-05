@@ -29,10 +29,10 @@ index 9a121b47121..c7af5984640 100644
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..57044733fdf 100644
+index e77b49a6298..af45c3f8990 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
-@@ -3473,6 +3473,108 @@
+@@ -3473,6 +3473,115 @@
  #define CSR_VL 0xc20
  #define CSR_VTYPE 0xc21
  #define CSR_VLENB 0xc22
@@ -58,35 +58,42 @@ index e77b49a6298..57044733fdf 100644
 +#define MATCH_QSUB8   0x200600b
 +#define MATCH_QSUB8U  0x200700b
 +
-+#define MATCH_WMUL16  0x400000b
-+#define MATCH_WMUL16U 0x400100b
-+#define MATCH_WMUL8   0x400200b
-+#define MATCH_WMUL8U  0x400300b
++#define MATCH_MUL16   0x400000b
++#define MATCH_MUL8    0x400200b
++#define MATCH_MULH16  0x400400b
++#define MATCH_MULH16U 0x400500b
++#define MATCH_MULH8   0x400600b
++#define MATCH_MULH8U  0x400700b
 +
-+#define MATCH_DOT16  0x600000b
-+#define MATCH_DOT16U 0x600100b
-+#define MATCH_DOT8   0x600200b
-+#define MATCH_DOT8U  0x600300b
-+#define MATCH_DOT4   0x600400b
-+#define MATCH_DOT4U  0x600500b
-+#define MATCH_DOT2   0x600600b
-+#define MATCH_DOT2U  0x600700b
++#define MATCH_WMUL16  0x600000b
++#define MATCH_WMUL16U 0x600100b
++#define MATCH_WMUL8   0x600200b
++#define MATCH_WMUL8U  0x600300b
 +
-+#define MATCH_MIN16  0x800000b
-+#define MATCH_MIN16U 0x800100b
-+#define MATCH_MIN8   0x800200b
-+#define MATCH_MIN8U  0x800300b
-+#define MATCH_MAX16  0x800400b
-+#define MATCH_MAX16U 0x800500b
-+#define MATCH_MAX8   0x800600b
-+#define MATCH_MAX8U  0x800700b
++#define MATCH_DOT16  0x800000b
++#define MATCH_DOT16U 0x800100b
++#define MATCH_DOT8   0x800200b
++#define MATCH_DOT8U  0x800300b
++#define MATCH_DOT4   0x800400b
++#define MATCH_DOT4U  0x800500b
++#define MATCH_DOT2   0x800600b
++#define MATCH_DOT2U  0x800700b
 +
-+#define MATCH_SLLI16 0xc00000b
-+#define MATCH_SLLI8  0xc00200b
-+#define MATCH_SRLI16 0xc00400b
-+#define MATCH_SRLI8  0xc00600b
-+#define MATCH_SRAI16 0xc00500b
-+#define MATCH_SRAI8  0xc00700b
++#define MATCH_MIN16  0x1000000b
++#define MATCH_MIN16U 0x1000100b
++#define MATCH_MIN8   0x1000200b
++#define MATCH_MIN8U  0x1000300b
++#define MATCH_MAX16  0x1000400b
++#define MATCH_MAX16U 0x1000500b
++#define MATCH_MAX8   0x1000600b
++#define MATCH_MAX8U  0x1000700b
++
++#define MATCH_SLLI16 0x1200000b
++#define MATCH_SLLI8  0x1200200b
++#define MATCH_SRLI16 0x1200400b
++#define MATCH_SRLI8  0x1200600b
++#define MATCH_SRAI16 0x1200500b
++#define MATCH_SRAI8  0x1200700b
 +
 +#define MATCH_WIDEN16  0x4000000b
 +#define MATCH_WIDEN16U 0x4000100b
@@ -154,10 +161,10 @@ index adea7dbc794..81e557c95f8 100644
  
  /* This structure holds information for a particular instruction.  */
 diff --git a/opcodes/riscv-opc.c b/opcodes/riscv-opc.c
-index fdd05ac75dc..c049baf4ea2 100644
+index fdd05ac75dc..a6d8d6574e7 100644
 --- a/opcodes/riscv-opc.c
 +++ b/opcodes/riscv-opc.c
-@@ -347,6 +347,113 @@ const struct riscv_opcode riscv_opcodes[] =
+@@ -347,6 +347,120 @@ const struct riscv_opcode riscv_opcodes[] =
  {
  /* name, xlen, isa, operands, match, mask, match_func, pinfo.  */
  
@@ -175,6 +182,13 @@ index fdd05ac75dc..c049baf4ea2 100644
 +{"qsub16u",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QSUB16U, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qsub8",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QSUB8, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"qsub8u",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_QSUB8U, MASK_CUSTOM_REG, match_opcode, 0 },
++
++{"mul16",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MUL16, MASK_CUSTOM_REG, match_opcode, 0 },
++{"mul8",        0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MUL8, MASK_CUSTOM_REG, match_opcode, 0 },
++{"mulh16",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MULH16, MASK_CUSTOM_REG, match_opcode, 0 },
++{"mulh16u",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MULH16U, MASK_CUSTOM_REG, match_opcode, 0 },
++{"mulh8",       0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MULH8, MASK_CUSTOM_REG, match_opcode, 0 },
++{"mulh8u",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_MULH8U, MASK_CUSTOM_REG, match_opcode, 0 },
 +
 +{"wmul16",      0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_WMUL16, MASK_CUSTOM_REG, match_opcode, 0 },
 +{"wmul16u",     0, INSN_CLASS_XSIMD, "d,s,t",     MATCH_WMUL16U, MASK_CUSTOM_REG, match_opcode, 0 },

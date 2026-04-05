@@ -47,6 +47,8 @@ enum class opc_g {
     // add/sub sat
     i_qadd16, i_qadd16u, i_qadd8, i_qadd8u,
     i_qsub16, i_qsub16u, i_qsub8, i_qsub8u,
+    // mul
+    i_mul16, i_mul8, i_mulh16, i_mulh16u, i_mulh8, i_mulh8u,
     // widening mul
     i_wmul16, i_wmul16u, i_wmul8, i_wmul8u,
     // dot
@@ -437,6 +439,8 @@ class profiler {
         };
 
         static constexpr std::array mul_c_opcs = {
+            opc_g::i_mul16, opc_g::i_mul8,
+            opc_g::i_mulh16, opc_g::i_mulh16u, opc_g::i_mulh8, opc_g::i_mulh8u,
             opc_g::i_wmul16, opc_g::i_wmul16u, opc_g::i_wmul8, opc_g::i_wmul8u,
         };
 

@@ -110,10 +110,11 @@ enum class csr_op_t {
 enum class custom_op_t {
     type_alu = 0x00,
     type_qalu = 0x01,
-    type_wmul = 0x02,
-    type_dot = 0x03,
-    type_min_max = 0x04,
-    type_shift = 0x06,
+    type_mul = 0x02,
+    type_wmul = 0x03,
+    type_dot = 0x04,
+    type_min_max = 0x08,
+    type_shift = 0x09,
     type_data_fmt_widen = 0x20,
     type_data_fmt_narrow = 0x22,
     type_data_fmt_qnarrow = 0x23,
@@ -150,6 +151,15 @@ enum class alu_mul_custom_op_t {
     op_wmul16u = 0x1,
     op_wmul8 = 0x2,
     op_wmul8u = 0x3,
+};
+
+enum class alu_simd_mul_custom_op_t {
+    op_mul16   = 0x0,
+    op_mul8    = 0x2,
+    op_mulh16  = 0x4,
+    op_mulh16u = 0x5,
+    op_mulh8   = 0x6,
+    op_mulh8u  = 0x7,
 };
 
 enum class alu_dot_custom_op_t {
