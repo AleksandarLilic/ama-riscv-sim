@@ -124,6 +124,7 @@ rv32_custom-simd-alu_mem:
     rel_rv32i.data: 10
     rel_rv32zmmul: 0
     rel_rv32simd.alu: 10
+    rel_rv32simd.mul: 10
     rel_rv32simd.wmul: 10
     rel_rv32simd.dot: 0
   user-functions:
@@ -139,6 +140,7 @@ rv32_custom-simd-alu-dot_mem_zmmul_ctrl:
     rel_rv32i.data: 10
     rel_rv32zmmul: 10
     rel_rv32simd.alu: 10
+    rel_rv32simd.mul: 10
     rel_rv32simd.wmul: 10
     rel_rv32simd.dot: 10
   branch-control:
@@ -289,6 +291,7 @@ rv32_all:
     # to be added once RTL supports it
     #rel_rv32simd.alu: 0
     #rel_rv32simd.qalu: 0
+    #rel_rv32simd.mul: 0
     #rel_rv32simd.wmul: 0
     rel_rv32simd.dot: 20
     #rel_rv32simd.minmax: 0
@@ -318,6 +321,7 @@ rv32_all2:
     # to be added once RTL supports it
     #rel_rv32simd.alu: 0
     #rel_rv32simd.qalu: 0
+    #rel_rv32simd.mul: 0
     #rel_rv32simd.wmul: 0
     rel_rv32simd.dot: 20
     #rel_rv32simd.minmax: 0
@@ -346,6 +350,7 @@ rv32_all_isa_sim_only:
     rel_rv32zmmul: 20
     rel_rv32simd.alu: 10
     rel_rv32simd.qalu: 10
+    rel_rv32simd.mul: 10
     rel_rv32simd.wmul: 10
     rel_rv32simd.dot: 10
     rel_rv32simd.minmax: 10
