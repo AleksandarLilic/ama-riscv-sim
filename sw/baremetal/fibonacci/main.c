@@ -80,7 +80,9 @@ void run() {
 void main() {
     uint32_t iter = 0;
     while(1) {
+        #ifdef MEASURE_TIME
         printf("I %0d - ", iter);
+        #endif
         run();
         iter++;
     }
