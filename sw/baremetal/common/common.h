@@ -22,6 +22,8 @@
 #define TOSTR(x) STRINGIFY(x)
 #define TESTNUM_REG x28
 
+#define NOP asm volatile ("nop")
+
 // profiling features
 #ifdef NO_PROF
 #define PROF_START
