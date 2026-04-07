@@ -12,6 +12,7 @@
     "asm_rv32i_custom-simd-dot": ["test"],
     "asm_rv32i_custom-simd-wmul": ["test"],
     "asm_rv32i_custom-simd-widen": ["test"],
+    "asm_rv32i_custom-simd-smoke": [["test"], ["RTL_PARTIAL_SUPPORT"]],
 
     "rv32i_custom-simd-mul": ["test"],
     "rv32i_custom-simd-wmul": ["test"],
