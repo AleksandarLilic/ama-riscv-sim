@@ -34,7 +34,8 @@ class perf:
     scp_inst_a = icfg.INST_T[icfg.k_mem_hint]
     mul_inst_a = icfg.INST_T[icfg.k_mul]
     div_inst_a = icfg.INST_T[icfg.k_div]
-    dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
+    simd_dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
+    simd_mul_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul]
     csr_inst_a = icfg.INST_T[icfg.k_csr]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline",
@@ -46,7 +47,7 @@ class perf:
         #"mem_rd_port_contention", "mem_wr_port_contention",
         # pipeline latencies
         "jump_direct", "jump_indirect",
-        "mul", "div", "dot",
+        "mul", "div", "simd_dot", "simd_mul", #"simd_sdd_sub"
         "dcache_load", #"dcache_store",
         # names
         "icache_name", "dcache_name", "bpred_name"
@@ -107,7 +108,8 @@ class perf:
 
         self.c_mul = hwpm['mul']
         self.c_div = hwpm['div']
-        self.c_dot = hwpm['dot']
+        self.c_simd_dot = hwpm['simd_dot']
+        self.c_simd_mul = hwpm['simd_mul']
         self.c_dc_load = hwpm['dcache_load']
         #self.c_dc_store = hwpm['dcache_store']
 
@@ -127,11 +129,17 @@ class perf:
         }
         hw_ic = self.hw_stats[self.ic_name]
         hw_dc = self.hw_stats[self.dc_name]
+
+        def get_hr(hits, tot):
+            if tot == 0:
+                return 0
+            return hits / tot * 100
+
         self.ic_stats = {
             "references": hw_ic["references"],
             "hits": hw_ic["hits"]["reads"],
             "misses": hw_ic["misses"]["reads"],
-            "hit_rate": (hw_ic["hits"]["reads"] / hw_ic["references"]) * 100,
+            "hit_rate": get_hr(hw_ic["hits"]["reads"], hw_ic["references"]),
             "mpki": (hw_ic["misses"]["reads"] / (self.inst_total/1000)),
             "sets": hw_ic["size"]["sets"],
             "ways": hw_ic["size"]["ways"],
@@ -142,8 +150,8 @@ class perf:
             "hits": sd(hw_dc["hits"]),
             "misses": sd(hw_dc["misses"]),
             "writebacks": hw_dc["writebacks"],
-            "hit_rate": (sd(hw_dc["hits"]) / hw_dc["references"]) * 100,
-            "wb_rate": (hw_dc["writebacks"] / hw_dc["references"]) * 100,
+            "hit_rate": get_hr(sd(hw_dc["hits"]), hw_dc["references"]),
+            "wb_rate": get_hr(hw_dc["writebacks"], hw_dc["references"]),
             "mpki": (sd(hw_dc["misses"]) / (self.inst_total/1000)),
             "sets": hw_dc["size"]["sets"],
             "ways": hw_dc["size"]["ways"],
@@ -163,7 +171,8 @@ class perf:
         self.dc_inst = self.ld_inst + self.st_inst + self.scp_inst
         self.mul_inst = sum_up(self.mul_inst_a)
         self.div_inst = sum_up(self.div_inst_a)
-        self.dot_inst = sum_up(self.dot_inst_a)
+        self.simd_dot_inst = sum_up(self.simd_dot_inst_a)
+        self.simd_mul_inst = sum_up(self.simd_mul_inst_a)
 
         # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
@@ -210,12 +219,16 @@ class perf:
             #print(r.line_fmt_issue)
             return sum(r.dep_arr_cnt), sum(r.dep_arr_cnt_dot_acc)
 
-        self.hazards = {"dcache": 0, "mul": 0, "div": 0, "dot": 0, }
+        self.hazards = {
+            "dcache": 0, "mul": 0, "div": 0,
+            "simd_dot": 0, "simd_mul": 0,
+        }
         hazard_penalty = {
             "dcache": (self.c_dc_load - 1),
             "mul": (self.c_mul - 1),
             "div": (self.c_div - 1),
-            "dot": (self.c_dot - 1),
+            "simd_dot": (self.c_simd_dot - 1),
+            "simd_mul": (self.c_simd_mul - 1),
         }
 
         if (use_dep_analysis):
@@ -231,11 +244,15 @@ class perf:
             self.hazards["div"], _ = find_hazards(
                 hazard_penalty['div'], fmt(icfg.INST_T[icfg.k_div])
             )
-            self.hazards["dot"], dot_acc_hazards= find_hazards(
-                hazard_penalty['dot'],
+            self.hazards["simd_dot"], dot_acc_hazards= find_hazards(
+                hazard_penalty['simd_dot'],
                 fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot])
             )
-            self.hazards["dot"] -= dot_acc_hazards # late_c fwd in RTL
+            self.hazards["simd_dot"] -= dot_acc_hazards # late_c fwd in RTL
+            self.hazards["simd_mul"], _ = find_hazards(
+                hazard_penalty['simd_mul'],
+                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul])
+            )
 
         else: # otherwise, estimate based on instruction count (pessimistic)
             self.hazards["dcache"] = \
@@ -243,7 +260,10 @@ class perf:
             self.hazards["dcache"] *= hazard_penalty['dcache']
             self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
             self.hazards["div"] = (self.c_div - 1) * self.div_inst
-            self.hazards["dot"] = (self.c_dot - 1) * self.dot_inst
+            self.hazards["simd_dot"] = \
+                (self.c_simd_dot - 1) * self.simd_dot_inst
+            self.hazards["simd_mul"] = \
+                (self.c_simd_mul - 1) * self.simd_mul_inst
 
         self.all_hazards = sum(self.hazards.values())
 
