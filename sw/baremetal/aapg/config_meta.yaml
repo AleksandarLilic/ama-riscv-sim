@@ -122,17 +122,13 @@ rv32_custom-simd-alu_mem:
     rel_rv32i.ctrl: 0
     rel_rv32i.compute: 10
     rel_rv32i.data: 10
-    rel_rv32zmmul: 0
     rel_rv32simd.alu: 10
-    rel_rv32simd.mul: 10
-    rel_rv32simd.wmul: 10
-    rel_rv32simd.dot: 0
   user-functions:
     randomize: '{256: "nop"}'
 
 rv32_custom-simd-alu-dot_mem_zmmul_ctrl:
   general:
-    total_instructions: 8000
+    total_instructions: 7500
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 2
@@ -140,14 +136,40 @@ rv32_custom-simd-alu-dot_mem_zmmul_ctrl:
     rel_rv32i.data: 10
     rel_rv32zmmul: 10
     rel_rv32simd.alu: 10
-    rel_rv32simd.mul: 10
-    rel_rv32simd.wmul: 10
     rel_rv32simd.dot: 10
   branch-control:
     backward-probability: 0.5
     block-size: 9
   user-functions:
     randomize: '{128: "nop"}'
+
+rv32_custom-simd-mul:
+  general:
+    total_instructions: 11000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 0
+    rel_rv32simd.mul: 10
+    rel_rv32simd.wmul: 10
+  user-functions:
+    randomize: '{256: "nop"}'
+
+rv32_custom-simd-mul-dot_mem_zmmul:
+  general:
+    total_instructions: 11000
+  isa-instruction-distribution:
+    rel_sys.csr: 0
+    rel_rv32i.ctrl: 0
+    rel_rv32i.compute: 10
+    rel_rv32i.data: 10
+    rel_rv32zmmul: 10
+    rel_rv32simd.mul: 10
+    rel_rv32simd.wmul: 10
+    rel_rv32simd.dot: 10
+  user-functions:
+    randomize: '{256: "nop"}'
 
 rv32_custom-simd-dot:
   general:

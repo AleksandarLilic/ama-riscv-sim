@@ -17,8 +17,8 @@ isa-instruction-distribution:
   rel_rv32zmmul: 0
   rel_rv32simd.alu: 10
   rel_rv32simd.qalu: 0
-  rel_rv32simd.mul: 10
-  rel_rv32simd.wmul: 10
+  rel_rv32simd.mul: 0
+  rel_rv32simd.wmul: 0
   rel_rv32simd.dot: 0
   rel_rv32simd.minmax: 0
   rel_rv32simd.shift: 0

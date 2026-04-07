@@ -10,8 +10,11 @@
     "asm_rv32i_zbb_min-max": ["test"],
 
     "asm_rv32i_custom-simd-dot": ["test"],
+    "asm_rv32i_custom-simd-wmul": ["test"],
     "asm_rv32i_custom-simd-widen": ["test"],
 
+    "rv32i_custom-simd-mul": ["test"],
+    "rv32i_custom-simd-wmul": ["test"],
     "rv32i_custom-simd-dot": ["test"],
     "rv32i_custom-simd-widen": ["test"],
     "rv32i_custom-simd-txp": ["test"],
@@ -95,6 +98,10 @@
     "aapg/aapg_rv32_zmmul_mem_ctrl": ["all"],
     "aapg/aapg_rv32_zmmul_mem_ctrl2": ["all"],
     "aapg/aapg_rv32_zmmul_mem_ctrl_short": ["all"],
+    "aapg/aapg_rv32_custom-simd-alu_mem": ["all"],
+    "aapg/aapg_rv32_custom-simd-alu-dot_mem_zmmul_ctrl": ["all"],
+    "aapg/aapg_rv32_custom-simd-mul": ["all"],
+    "aapg/aapg_rv32_custom-simd-mul-dot_mem_zmmul": ["all"],
     "aapg/aapg_rv32_custom-simd-dot": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem_zmmul": ["all"],
