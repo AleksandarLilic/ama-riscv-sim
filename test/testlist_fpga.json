@@ -1,0 +1,33 @@
+{
+    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP -DMHPM"],
+
+    "mlp": ["all"],
+
+    "dhrystone": ["dhrystone"],
+    "coremark": [["coremark"], ["ITERATIONS=1600"]],
+    "stream_int": ["stream"],
+
+    "embench/aha-mont64": [["embench"], ["CPU_MHZ=50"]],
+    "embench/crc32": [["embench"], ["CPU_MHZ=50"]],
+    "embench/cubic": [["embench"], ["CPU_MHZ=50"]],
+    "embench/edn": [["embench"], ["CPU_MHZ=50"]],
+    "embench/huffbench": [["embench"], ["CPU_MHZ=50"]],
+    "embench/matmult-int": [["embench"], ["CPU_MHZ=50"]],
+    "embench/md5sum": [["embench"], ["CPU_MHZ=50"]],
+    "embench/minver": [["embench"], ["CPU_MHZ=50"]],
+    "embench/nbody": [["embench"], ["CPU_MHZ=50"]],
+    "embench/nettle-aes": [["embench"], ["CPU_MHZ=50"]],
+    "embench/nettle-sha256": [["embench"], ["CPU_MHZ=50"]],
+    "embench/nsichneu": [["embench"], ["CPU_MHZ=50"]],
+    "embench/picojpeg": [["embench"], ["CPU_MHZ=50"]],
+    "embench/primecount": [["embench"], ["CPU_MHZ=50"]],
+    "embench/qrduino": [["embench"], ["CPU_MHZ=50"]],
+    "embench/sglib-combined": [["embench"], ["CPU_MHZ=50"]],
+    "embench/slre": [["embench"], ["CPU_MHZ=50"]],
+    "embench/st": [["embench"], ["CPU_MHZ=50"]],
+    "embench/statemate": [["embench"], ["CPU_MHZ=50"]],
+    "embench/tarfind": [["embench"], ["CPU_MHZ=50"]],
+    "embench/ud": [["embench"], ["CPU_MHZ=50"]],
+    "embench/wikisort": [["embench"], ["CPU_MHZ=50"]]
+
+}
