@@ -62,6 +62,8 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
 
     ipc = core.get("ipc", 0)
     title = f"Performance Counters for '{test_title}' (IPC: {ipc:.3f})"
+    # scale up 2x wider if complete cosim counters are used
+    scale = 2 if len(entries) > 7 else 1
 
     fig = px.bar(
         df,
@@ -72,7 +74,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         category_orders={"counter": [e[0] for e in entries]},
         title=title,
         text="count",
-        width=FIG_WIDTH*2,
+        width=FIG_WIDTH*scale,
         height=FIG_HEIGHT,
     )
 
@@ -94,20 +96,22 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         yaxis=dict(gridcolor="#ddd", linecolor="#ccc", tickformat=".2s"),
     )
 
+    log_txt = f"{title}\n{df.to_string(index=False)}"
     if not args.silent:
-        print(title)
-        print(df.to_string(index=False))
+        print(log_txt)
         fig.show(renderer=args.renderer, width=FIG_WIDTH*2, height=FIG_HEIGHT)
 
     if args.save_png:
-        png_path = args.hw_stats.replace(".json", "_counters.png")
+        png_path = args.hw_stats.replace(".json", "_all_counters.png")
         fig.write_image(png_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
         print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
-        svg_path = args.hw_stats.replace(".json", "_counters.svg")
+        svg_path = args.hw_stats.replace(".json", "_all_counters.svg")
         fig.write_image(svg_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
         print(f"Saved SVG chart to: '{svg_path}'")
+
+    return log_txt
 
 def main(args: argparse.Namespace):
     if not os.path.exists(args.hw_stats):
@@ -128,11 +132,19 @@ def main(args: argparse.Namespace):
     ]
     col = ["L1", "L2", "cycles"]
     df_tda = pd.DataFrame(row, columns=col)
-    df_tda["root"] = "pipeline"
+
+    ret = df_tda[df_tda["L1"] == "retiring"]["cycles"].sum()
+    cycles = df_tda["cycles"].sum()
+    ipc = ret / cycles
+    ipc = round(ipc, 3) if ipc > 0 else "N/A"
+    df_tda["root"] = f"pipeline<br>IPC: {ipc}"
+    # if ipc is missing in d, add it
+    if "ipc" not in d:
+        d["ipc"] = ipc
 
     # make new df that's a group and sum on L1 only
-    df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
-    df_tda_l1.to_csv(args.hw_stats.replace(".json", "_tda_l1.csv"), index=False)
+    #df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
+    #df_tda_l1.to_csv(args.hw_stats.replace(".json", "_tda_l1.csv"),index=False)
 
     fig = px.sunburst(
         df_tda,
@@ -157,9 +169,9 @@ def main(args: argparse.Namespace):
     )
 
     # add title
-    title = f"TDA for '{get_test_title(args.hw_stats)}'"
+    title = args.title or f"{get_test_title(args.hw_stats)}"
     fig.update_layout(
-        title_text=title,
+        title_text=f"TDA for '{title}'",
         title_x=0.5,
         title_font=dict(color="black", size=20)
     )
@@ -169,12 +181,12 @@ def main(args: argparse.Namespace):
         margin=dict(t=60, l=0, r=0, b=30),
     )
 
+    log_txt = f"{title}\nIPC: {ipc}\n{df_tda.drop(columns=['root'])}"
     if not args.silent:
-        print(title)
-        print(df_tda.drop(columns=["root"]))
+        print(log_txt)
         fig.show(renderer=args.renderer, width=FIG_WIDTH, height=FIG_HEIGHT)
 
-    plot_counters_bar(d, get_test_title(args.hw_stats), args)
+    log_txt += "\n\n" + plot_counters_bar(d, title, args)
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_tda.png")
@@ -186,13 +198,21 @@ def main(args: argparse.Namespace):
         fig.write_image(svg_path, width=FIG_WIDTH, height=FIG_HEIGHT)
         print(f"Saved SVG chart to: '{svg_path}'")
 
+    if args.save_log:
+        log_path = args.hw_stats.replace(".json", "_summary.log")
+        with open(log_path, "w") as f:
+            f.write(log_txt)
+        print(f"Saved log to: '{log_path}'")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' from RTL simulation for the given workload")
+    parser.add_argument('-t', '--title', default=None, help="Title to use for the plot. If not provided, the title will be the test name.")
     parser.add_argument('-r', '--renderer', default='browser', help="Plotly renderer to use")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display plot")
     parser.add_argument('--save_png', action='store_true', help="Save plot as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plot as SVG")
+    parser.add_argument('--save_log', action='store_true', help="Save log to a file")
     return parser.parse_args()
 
 if __name__ == "__main__":
