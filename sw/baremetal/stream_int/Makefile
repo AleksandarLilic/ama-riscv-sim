@@ -1,4 +1,4 @@
-NTIMES := 500
+NTIMES := 400
 STREAM_ARRAY_SIZE := 4096
 TARGET := stream
 GCC_OPTS += -O3 -flto

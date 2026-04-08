@@ -122,6 +122,21 @@ void print_tda_counters(const tda_cnt_t* p) {
     );
 }
 
+void print_tda_counters_json(const tda_cnt_t* p) {
+    printf(
+        "{\"bad_spec\": %u, \"stall_l1i\": %u, \"stall_fe_core\": %u, "
+        "\"stall_l1d\": %u, \"stall_be_core\": %u, \"ret_int\": %u, "
+        "\"ret_simd\": %u}\n",
+        (uint32_t)p->bad_spec,
+        (uint32_t)p->fe_ic,
+        (uint32_t)p->fe_core,
+        (uint32_t)p->be_dc,
+        (uint32_t)p->be_core,
+        (uint32_t)p->ret,
+        (uint32_t)p->ret_simd
+    );
+}
+
 // traps
 void __attribute__((weak))
 trap_handler(unsigned int mcause, void* mepc, void* sp) {

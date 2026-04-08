@@ -140,6 +140,11 @@ main ()
   /* Start timer */
   /***************/
 
+#ifdef MHPM
+tda_cnt_t pe = {0ul};
+init_tda_counters();
+#endif
+
 #ifdef TIMES
   times (&time_info);
   Begin_Time = (long) time_info.tms_utime;
@@ -210,6 +215,11 @@ main ()
 #endif
 #ifdef MSC_CLOCK
   End_Time = clock();
+#endif
+
+#ifdef MHPM
+save_tda_counters(&pe);
+print_tda_counters_json(&pe);
 #endif
 
   printf ("Execution ends\n");

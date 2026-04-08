@@ -42,7 +42,7 @@ void run(uint8_t* label, int8_t* input_img) {
            predicted, *label, clks, time_diff, (1000000 / time_diff));
 
     #ifdef MHPM
-    print_tda_counters(&pe);
+    print_tda_counters_json(&pe);
     #endif
 
     // assumed model is accurate for the provided input

@@ -222,6 +222,7 @@ void set_cpu_instret(uint64_t value);
 void init_tda_counters();
 void save_tda_counters(tda_cnt_t* pe);
 void print_tda_counters(const tda_cnt_t* pe);
+void print_tda_counters_json(const tda_cnt_t* pe);
 
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 void timer_interrupt_handler();

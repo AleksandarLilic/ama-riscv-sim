@@ -234,6 +234,11 @@ main()
 
     printf(HLINE);
 
+    #ifdef MHPM
+    tda_cnt_t pe = {0ul};
+    init_tda_counters();
+    #endif
+
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
     scalar = 3; // volatile to avoid compiler optimization
 	register uint32_t scalar_reg = scalar; // but put in reg to avoid hitting memory every time
@@ -260,6 +265,11 @@ main()
 		times[3][k] = mysecond() - times[3][k];
 		//PROF_STOP;
 	}
+
+    #ifdef MHPM
+    save_tda_counters(&pe);
+    print_tda_counters_json(&pe);
+    #endif
 
     GLOBAL_SYMBOL(stream_summary);
     /*	--- SUMMARY --- */

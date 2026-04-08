@@ -69,6 +69,10 @@ barebones_clock()
 /** Define Host specific (POSIX), or target specific global time variables. */
 static CORETIMETYPE start_time_val, stop_time_val;
 
+#ifdef MHPM
+tda_cnt_t pe = {0ul};
+#endif
+
 /* Function : start_time
         This function will be called right before starting the timed portion of
    the benchmark.
@@ -80,6 +84,9 @@ static CORETIMETYPE start_time_val, stop_time_val;
 void
 start_time(void)
 {
+    #ifdef MHPM
+    init_tda_counters();
+    #endif
     GETMYTIME(&start_time_val);
 }
 /* Function : stop_time
@@ -94,6 +101,10 @@ void
 stop_time(void)
 {
     GETMYTIME(&stop_time_val);
+    #ifdef MHPM
+    save_tda_counters(&pe);
+    print_tda_counters_json(&pe);
+    #endif
 }
 /* Function : get_time
         Return an abstract "ticks" number that signifies time on the system.

@@ -17,16 +17,35 @@ uint32_t start_time, end_time, clks, time_diff;
 
 void initialise_board (void) {};
 
+#ifdef MHPM
+tda_cnt_t pe = {0ul};
+#endif
+
 void start_trigger (void) {
-  set_cpu_cycles(0);
+  printf("Running test...");
+
+  #ifdef MHPM
+  init_tda_counters();
+  #else
+  set_cpu_cycles(0u);
+  #endif
+
   start_time = get_cpu_time();
   //PROF_START;
 }
 
 void stop_trigger (void) {
    //PROF_STOP;
-   uint32_t clks = get_cpu_cycles();
    uint32_t end_time = get_cpu_time();
+
+   #ifdef MHPM
+   save_tda_counters(&pe);
+   print_tda_counters_json(&pe);
+   uint32_t clks = pe.cycles;
+   #else
+   uint32_t clks = get_cpu_cycles();
+   #endif
+
    uint32_t time_diff = (end_time - start_time) / 1000;
    printf("Ran for %d cycles and %d ms\n", clks, time_diff);
 }
