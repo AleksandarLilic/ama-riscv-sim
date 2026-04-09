@@ -96,40 +96,39 @@ typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
 #endif
 
 // mhpm events
-enum mhpmevent_t {
-    mhpmevent_bad_spec = (1 << 0), // tda
-    mhpmevent_stall_be = (1 << 1), // tda
-    mhpmevent_stall_l1d = (1 << 2), // tda
-    mhpmevent_stall_l1d_r = (1 << 3),
-    mhpmevent_stall_l1d_w = (1 << 4),
-    mhpmevent_stall_fe = (1 << 5), // tda
-    mhpmevent_stall_l1i = (1 << 6), // tda
-    mhpmevent_stall_simd = (1 << 7),
-    mhpmevent_stall_load = (1 << 8),
-    mhpmevent_ret_ctrl_flow = (1 <<  9),
-    mhpmevent_ret_ctrl_flow_j = (1 << 10), // direct unconditional branch
-    mhpmevent_ret_ctrl_flow_jr = (1 << 11), // indirect unconditional branch
-    mhpmevent_ret_ctrl_flow_br = (1 << 12), // direct conditional branch
-    mhpmevent_ret_mem = (1 << 13),
-    mhpmevent_ret_mem_load = (1 << 14),
-    mhpmevent_ret_mem_store = (1 << 15),
-    mhpmevent_ret_simd = (1 << 16), // tda
-    mhpmevent_ret_simd_arith = (1 << 17),
-    mhpmevent_ret_simd_data_fmt = (1 << 18),
-    mhpmevent_bp_miss = (1 << 19),
-    mhpmevent_l1i_ref = (1 << 20),
-    mhpmevent_l1i_miss = (1 << 21),
-    mhpmevent_l1i_spec_miss = (1 << 22),
-    mhpmevent_l1i_spec_miss_bad = (1 << 23),
-    mhpmevent_l1i_spec_miss_good = (1 << 24),
-    mhpmevent_l1d_ref = (1 << 25),
-    mhpmevent_l1d_ref_r = (1 << 26),
-    mhpmevent_l1d_ref_w = (1 << 27),
-    mhpmevent_l1d_miss = (1 << 28),
-    mhpmevent_l1d_miss_r = (1 << 29),
-    mhpmevent_l1d_miss_w = (1 << 30),
-    mhpmevent_l1d_writeback = (1 << 31)
-};
+// can't enum beacuse C, switch back to enums with `-std=gnu23`
+static const uint32_t mhpmevent_bad_spec = (1u << 0); // tda
+static const uint32_t mhpmevent_stall_be = (1u << 1); // tda
+static const uint32_t mhpmevent_stall_l1d = (1u << 2); // tda
+static const uint32_t mhpmevent_stall_l1d_r = (1u << 3);
+static const uint32_t mhpmevent_stall_l1d_w = (1u << 4);
+static const uint32_t mhpmevent_stall_fe = (1u << 5); // tda
+static const uint32_t mhpmevent_stall_l1i = (1u << 6); // tda
+static const uint32_t mhpmevent_stall_simd = (1u << 7);
+static const uint32_t mhpmevent_stall_load = (1u << 8);
+static const uint32_t mhpmevent_ret_ctrl_flow = (1u <<  9);
+static const uint32_t mhpmevent_ret_ctrl_flow_j = (1u << 10); // direct unconditional branch
+static const uint32_t mhpmevent_ret_ctrl_flow_jr = (1u << 11); // indirect unconditional branch
+static const uint32_t mhpmevent_ret_ctrl_flow_br = (1u << 12); // direct conditional branch
+static const uint32_t mhpmevent_ret_mem = (1u << 13);
+static const uint32_t mhpmevent_ret_mem_load = (1u << 14);
+static const uint32_t mhpmevent_ret_mem_store = (1u << 15);
+static const uint32_t mhpmevent_ret_simd = (1u << 16); // tda
+static const uint32_t mhpmevent_ret_simd_arith = (1u << 17);
+static const uint32_t mhpmevent_ret_simd_data_fmt = (1u << 18);
+static const uint32_t mhpmevent_bp_miss = (1u << 19);
+static const uint32_t mhpmevent_l1i_ref = (1u << 20);
+static const uint32_t mhpmevent_l1i_miss = (1u << 21);
+static const uint32_t mhpmevent_l1i_spec_miss = (1u << 22);
+static const uint32_t mhpmevent_l1i_spec_miss_bad = (1u << 23);
+static const uint32_t mhpmevent_l1i_spec_miss_good = (1u << 24);
+static const uint32_t mhpmevent_l1d_ref = (1u << 25);
+static const uint32_t mhpmevent_l1d_ref_r = (1u << 26);
+static const uint32_t mhpmevent_l1d_ref_w = (1u << 27);
+static const uint32_t mhpmevent_l1d_miss = (1u << 28);
+static const uint32_t mhpmevent_l1d_miss_r = (1u << 29);
+static const uint32_t mhpmevent_l1d_miss_w = (1u << 30);
+static const uint32_t mhpmevent_l1d_writeback = (1u << 31);
 
 typedef struct {
     uint64_t cycles;
