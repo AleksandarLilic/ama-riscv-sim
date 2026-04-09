@@ -288,10 +288,11 @@ void core::finish(bool dump_regs) {
     #ifdef HW_MODELS_EN
     #ifdef PROFILERS_EN
     bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.silent);
+    mem->cache_finish(cfg.silent, prof_pc.inst_cnt);
     #else
     bp.finish(cfg.out_dir, inst_cnt, cfg.silent);
+    mem->cache_finish(cfg.silent, inst_cnt);
     #endif
-    mem->cache_finish(cfg.silent);
     log_hw_stats();
     #endif
     #ifdef DASM_EN
@@ -1040,7 +1041,11 @@ void core::log_hw_stats() {
     std::ofstream ofs;
     ofs.open(cfg.out_dir + "hw_stats.json");
     ofs << "{\n";
-    mem->log_cache_stats(ofs);
+    #ifdef PROFILERS_EN
+    mem->log_cache_stats(ofs, prof_pc.inst_cnt);
+    #else
+    mem->log_cache_stats(ofs, inst_cnt);
+    #endif
     bp.log_stats(ofs);
     ofs << "\n\"profiled_inst\": "
     #ifdef PROFILERS_EN

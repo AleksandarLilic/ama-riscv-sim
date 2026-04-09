@@ -18,7 +18,9 @@
     << ", \"writes\": " << stat_struct->ct_core.writes << "}, " \
     << JSON_N << "\"ct_mem\": " \
     << "{\"reads\": " << stat_struct->ct_mem.reads \
-    << ", \"writes\": " << stat_struct->ct_mem.writes << "}" \
+    << ", \"writes\": " << stat_struct->ct_mem.writes << "}," \
+    << std::fixed << std::setprecision(2) \
+    << JSON_N << "\"mpki\": " << stat_struct->mpki \
 
 #define CACHE_SIZE_JSON_ENTRY(size_struct) \
     JSON_N << "\"size\"" << ": {" \
@@ -104,6 +106,7 @@ struct cache_stats_t {
         uint64_t writebacks;
         cache_traffic_t ct_core;
         cache_traffic_t ct_mem;
+        float_t mpki = -1.0; // misses per 1k instructions
         bool prof_active = false;
 
     public:
@@ -143,12 +146,23 @@ struct cache_stats_t {
         }
 
     public:
-        float_t get_hr() { // hit rate
+        float_t get_hr() const { // hit rate
             float_t hr = -1.0; // i.e. never seen a request
             if (references > 0) {
                 hr = TO_F32(hits.all()) / TO_F32(references) * 100;
             }
             return hr;
+        }
+        void summarize(cache_type_t type, uint64_t total_insts) {
+            mpki = -1.0;
+            if (total_insts == 0) return;
+
+            uint64_t total_misses =
+                (type == cache_type_t::inst) ? misses.ld : misses.all();
+            mpki = 0;
+            if (total_misses > 0) {
+                mpki = TO_F32(total_misses) / (TO_F32(total_insts) / 1000.0);
+            }
         }
         void show(cache_type_t type) {
             std::cout << "Ref: " << references
@@ -162,6 +176,7 @@ struct cache_stats_t {
             }
             std::cout << ", HR: " << std::fixed << std::setprecision(2)
                       << get_hr() << "%"
+                      << ", MPKI: " << mpki
                       << "; CT (R/W): "
                       << "core " << ct_core.to_string()
                       << ", mem " << ct_mem.to_string();

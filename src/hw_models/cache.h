@@ -176,6 +176,7 @@ class cache {
 
         // stats
         void set_roi(uint32_t start, uint32_t size);
+        void summarize_stats(uint64_t total_insts);
         void show_stats(bool show_state);
         void log_stats(std::ofstream& hw_ofs);
         float_t get_hr() { return stats.get_hr(); }

@@ -54,15 +54,15 @@ class memory {
         scp_status_t cache_hint(uint32_t address, scp_mode_t scp_mode);
         #ifdef HW_MODELS_EN
         // propagating to caches
-        void log_cache_stats(std::ofstream& hw_ofs) {
-            mm.log_cache_stats(hw_ofs);
+        void log_cache_stats(std::ofstream& hw_ofs, uint64_t profiled_insts) {
+            mm.log_cache_stats(hw_ofs, profiled_insts);
         }
         void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
             mm.set_cache_hws(ic, dc);
         }
-        void cache_finish(bool silent) {
+        void cache_finish(bool silent, uint64_t profiled_insts) {
             if (silent) return;
-            mm.finish();
+            mm.finish(profiled_insts);
         }
         void cache_profiling(bool enable) {
             mm.cache_profiling(enable);

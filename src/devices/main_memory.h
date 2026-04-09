@@ -41,7 +41,9 @@ class main_memory : public dev {
             icache.speculative_exec(smode);
             dcache.speculative_exec(smode);
         }
-        void log_cache_stats(std::ofstream& hw_ofs) {
+        void log_cache_stats(std::ofstream& hw_ofs, uint64_t profiled_insts) {
+           icache.summarize_stats(profiled_insts);
+           dcache.summarize_stats(profiled_insts);
            icache.log_stats(hw_ofs);
            dcache.log_stats(hw_ofs);
         }
@@ -49,7 +51,9 @@ class main_memory : public dev {
             icache.set_hws(ic);
             dcache.set_hws(dc);
         }
-        void finish() {
+        void finish(uint64_t profiled_insts) {
+            icache.summarize_stats(profiled_insts);
+            dcache.summarize_stats(profiled_insts);
             icache.show_stats(show_state);
             dcache.show_stats(show_state);
         }

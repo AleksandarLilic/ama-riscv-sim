@@ -439,6 +439,11 @@ void cache::write_to_cache(
 // stats
 void cache::set_roi(uint32_t start, uint32_t size) { roi.set(start, size); }
 
+void cache::summarize_stats(uint64_t total_insts) {
+    stats.summarize(type, total_insts);
+    roi.stats.summarize(type, total_insts);
+}
+
 void cache::show_stats(bool show_state) {
     std::cout << cache_name;
     size.show();
