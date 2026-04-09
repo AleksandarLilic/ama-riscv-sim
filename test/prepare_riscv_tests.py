@@ -106,7 +106,9 @@ args = parse_args()
 with open(args.testlist, 'r') as f:
     tests = json.load(f)
 
-print(f"Number of directories in the input config: {len(tests)}")
+# print number of tests, excluding internal keys that start with '_'
+test_dirs = [k for k in tests.keys() if not k.startswith('_')]
+print(f"Number of directories in the input config: {len(test_dirs)}")
 
 # get "_common_args" if present
 common_args = tests.get("_common_args", [])
