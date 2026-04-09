@@ -19,13 +19,15 @@ COLOR_MAP = {
 }
 
 CLASS_ORDER = [
-    "cycles", "ret", "stall", "bad_spec", "ret_*", "stall_*", "l1i_*", "l1d_*"]
+    "cycles", "ret", "stall", "bad_spec",
+    "ret_*", "stall_*", "bp_*", "l1i_*", "l1d_*"
+]
 DROP_KEYS = {"cpi", "ipc"}
 EXACT_CLASS = {
     "cycles": "cycles", "ret": "ret", "stalls": "stall", "bad_spec": "bad_spec"}
 PREFIX_CLASS = [
     ("ret_", "ret_*"), ("stall_", "stall_*"),
-    ("l1i_", "l1i_*"), ("l1d_", "l1d_*")
+    ("bp_", "bp_*"), ("l1i_", "l1i_*"), ("l1d_", "l1d_*")
 ]
 BAR_COLOR_MAP = {cls: PLOTLY_COLORS[i] for i, cls in enumerate(CLASS_ORDER)}
 

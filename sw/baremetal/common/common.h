@@ -116,23 +116,24 @@ enum mhpmevent_t {
     mhpmevent_ret_simd = (1 << 16), // tda
     mhpmevent_ret_simd_arith = (1 << 17),
     mhpmevent_ret_simd_data_fmt = (1 << 18),
-    mhpmevent_l1i_ref = (1 << 19),
-    mhpmevent_l1i_miss = (1 << 20),
-    mhpmevent_l1i_spec_miss = (1 << 21),
-    mhpmevent_l1i_spec_miss_bad = (1 << 22),
-    mhpmevent_l1i_spec_miss_good = (1 << 23),
-    mhpmevent_l1d_ref = (1 << 24),
-    mhpmevent_l1d_ref_r = (1 << 25),
-    mhpmevent_l1d_ref_w = (1 << 26),
-    mhpmevent_l1d_miss = (1 << 27),
-    mhpmevent_l1d_miss_r = (1 << 28),
-    mhpmevent_l1d_miss_w = (1 << 29),
-    mhpmevent_l1d_writeback = (1 << 30)
+    mhpmevent_bp_miss = (1 << 19),
+    mhpmevent_l1i_ref = (1 << 20),
+    mhpmevent_l1i_miss = (1 << 21),
+    mhpmevent_l1i_spec_miss = (1 << 22),
+    mhpmevent_l1i_spec_miss_bad = (1 << 23),
+    mhpmevent_l1i_spec_miss_good = (1 << 24),
+    mhpmevent_l1d_ref = (1 << 25),
+    mhpmevent_l1d_ref_r = (1 << 26),
+    mhpmevent_l1d_ref_w = (1 << 27),
+    mhpmevent_l1d_miss = (1 << 28),
+    mhpmevent_l1d_miss_r = (1 << 29),
+    mhpmevent_l1d_miss_w = (1 << 30),
+    mhpmevent_l1d_writeback = (1 << 31)
 };
 
 typedef struct {
     uint64_t cycles;
-    uint64_t bad_spec; // branch mispredict
+    uint64_t bad_spec; // bp miss flushed cycles
     uint64_t be; // backend stall
     uint64_t be_dc; // backend stall - dcache
     uint64_t be_core; // backend stall - core
