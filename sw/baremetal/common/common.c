@@ -99,12 +99,13 @@ void save_tda_counters(tda_cnt_t* p) {
 
 void print_tda_counters(const tda_cnt_t* p) {
     // scale up by 1000x to get 3 decimal places w/o floating point
-    uint32_t ipc1000 = ((p->ret * 1000u) / p->cycles);
+    const uint32_t sf_ipc = 1000u;
+    uint32_t ipc_x = ((p->ret * sf_ipc) / p->cycles);
     printf(
         "Stats:\n"
         "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
         (uint32_t)p->cycles, (uint32_t)p->ret,
-        (uint32_t)(p->cycles - p->ret), (ipc1000 / 1000), (ipc1000 % 1000)
+        (uint32_t)(p->cycles - p->ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
     );
 
     printf(
@@ -134,6 +135,107 @@ void print_tda_counters_json(const tda_cnt_t* p) {
         (uint32_t)p->be_core,
         (uint32_t)p->ret,
         (uint32_t)p->ret_simd
+    );
+}
+
+// baseline hw counters
+void init_hw_counters() {
+    // reset existing event counters
+    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
+    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, 0u);
+    write_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, 0u);
+    // set up hw events
+    write_csr(CSR_MHPMEVENT3, mhpmevent_ret_ctrl_flow_br);
+    write_csr(CSR_MHPMEVENT4, mhpmevent_bp_miss);
+    write_csr(CSR_MHPMEVENT5, mhpmevent_l1i_ref);
+    write_csr(CSR_MHPMEVENT6, mhpmevent_l1i_miss);
+    write_csr(CSR_MHPMEVENT7, mhpmevent_l1d_ref);
+    write_csr(CSR_MHPMEVENT8, mhpmevent_l1d_miss);
+}
+
+void save_hw_counters(hw_cnt_t* p) {
+    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->ret_branches);
+    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->bp_miss);
+    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->l1i_ref);
+    read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->l1i_miss);
+    read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->l1d_ref);
+    read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->l1d_miss);
+    read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
+}
+
+void print_hw_counters(const hw_cnt_t* p) {
+    // scale up by 1000x to get 3 decimal places w/o floating point
+    const uint32_t sf_ipc = 1000u;
+    const uint32_t sf_hw = 100u;
+    const uint32_t to_perc = 100u;
+
+    uint32_t ipc_x = ((p->ret * sf_ipc) / p->cycles);
+
+    uint32_t bp_hr_x =
+        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_branches)) * to_perc);
+    uint32_t bp_mpki_x = ((p->bp_miss * sf_hw) / (p->ret / 1000));
+
+    uint32_t l1i_hr_x =
+        ((sf_hw - ((p->l1i_miss * sf_hw) / p->l1i_ref)) * to_perc);
+    uint32_t l1i_mpki_x = ((p->l1i_miss * sf_hw) / (p->ret / 1000));
+
+    uint32_t l1d_hr_x =
+        ((sf_hw - ((p->l1d_miss * sf_hw) / p->l1d_ref)) * to_perc);
+    uint32_t l1d_mpki_x = ((p->l1d_miss * sf_hw) / (p->ret / 1000));
+
+    printf(
+        "Stats:\n"
+        "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
+        (uint32_t)p->cycles, (uint32_t)p->ret,
+        (uint32_t)(p->cycles - p->ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
+    );
+
+    uint32_t bp_hit = (p->ret_branches - p->bp_miss);
+    printf(
+        "bpred:\n"
+        "    P: %u, M: %u, ACC: %u.%02u, MPKI: %u.%02u\n",
+        (uint32_t)bp_hit, (uint32_t)p->bp_miss,
+        (bp_hr_x / sf_hw), (bp_hr_x % sf_hw),
+        (bp_mpki_x / sf_hw), (bp_mpki_x % sf_hw)
+    );
+
+    uint32_t l1i_hit = (p->l1i_ref - p->l1i_miss);
+    printf(
+        "icache:\n"
+        "    Ref: %u, H: %u, M: %u, HR: %u.%02u, MPKI: %u.%02u\n",
+        (uint32_t)p->l1i_ref, (uint32_t)l1i_hit, (uint32_t)p->l1i_miss,
+        (l1i_hr_x / sf_hw), (l1i_hr_x % sf_hw),
+        (l1i_mpki_x / sf_hw), (l1i_mpki_x % sf_hw)
+    );
+
+    uint32_t l1d_hit = (p->l1d_ref - p->l1d_miss);
+    printf(
+        "dcache:\n"
+        "    Ref: %u, H: %u, M: %u, HR: %u.%02u, MPKI: %u.%02u\n",
+        (uint32_t)p->l1d_ref, (uint32_t)l1d_hit, (uint32_t)p->l1d_miss,
+        (l1d_hr_x / sf_hw), (l1d_hr_x % sf_hw),
+        (l1d_mpki_x / sf_hw), (l1d_mpki_x % sf_hw)
+    );
+}
+
+void print_hw_counters_json(const hw_cnt_t* p) {
+    printf(
+        "{\"ret_branches\": %u, \"bp_miss\": %u, "
+        "\"l1i_ref\": %u, \"l1i_miss\": %u, "
+        "\"l1d_ref\": %u, \"l1d_miss\": %u, "
+        "\"ret_simd\": %u}\n",
+        (uint32_t)p->ret_branches,
+        (uint32_t)p->bp_miss,
+        (uint32_t)p->l1i_ref,
+        (uint32_t)p->l1i_miss,
+        (uint32_t)p->l1d_ref,
+        (uint32_t)p->l1d_miss
     );
 }
 

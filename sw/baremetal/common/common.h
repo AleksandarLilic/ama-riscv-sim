@@ -144,6 +144,17 @@ typedef struct {
     uint64_t ret_int; // retired inst - intpipe
 } tda_cnt_t;
 
+typedef struct {
+    uint64_t cycles;
+    uint64_t ret_branches;
+    uint64_t bp_miss;
+    uint64_t l1i_ref;
+    uint64_t l1i_miss;
+    uint64_t l1d_ref;
+    uint64_t l1d_miss;
+    uint64_t ret;
+} hw_cnt_t;
+
 // functions
 #define read_csr(CSR, dest) \
     do { \
@@ -223,6 +234,10 @@ void init_tda_counters();
 void save_tda_counters(tda_cnt_t* pe);
 void print_tda_counters(const tda_cnt_t* pe);
 void print_tda_counters_json(const tda_cnt_t* pe);
+void init_hw_counters();
+void save_hw_counters(hw_cnt_t* p);
+void print_hw_counters(const hw_cnt_t* pe);
+void print_hw_counters_json(const hw_cnt_t* pe);
 
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 void timer_interrupt_handler();
