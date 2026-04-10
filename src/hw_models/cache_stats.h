@@ -20,6 +20,7 @@
     << "{\"reads\": " << stat_struct->ct_mem.reads \
     << ", \"writes\": " << stat_struct->ct_mem.writes << "}," \
     << std::fixed << std::setprecision(2) \
+    << JSON_N << "\"hr\": " << stat_struct->hr << ", " \
     << JSON_N << "\"mpki\": " << stat_struct->mpki \
 
 #define CACHE_SIZE_JSON_ENTRY(size_struct) \
