@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 import plotly.express as px
-from utils import get_test_title, smarter_eng_formatter
+from utils import INDENT, get_test_title, smarter_eng_formatter
 
 PLOTLY_COLORS = px.colors.qualitative.Plotly
 
@@ -39,20 +39,36 @@ def classify_and_sort_counters(core: dict) -> list[tuple[str, int, str]]:
     class_rank = {c: i for i, c in enumerate(CLASS_ORDER)}
     entries = []
     for key, val in core.items():
+        # drop irrelevant counters
         if key in DROP_KEYS:
             continue
-        cls = EXACT_CLASS.get(key)
-        if cls is None:
-            for prefix, prefix_cls in PREFIX_CLASS:
+
+        # classify by exact match?
+        cnt_class = EXACT_CLASS.get(key)
+
+        # if not, classify by prefix?
+        if cnt_class is None:
+            for prefix, prefix_class in PREFIX_CLASS:
                 if key.startswith(prefix):
-                    cls = prefix_cls
+                    cnt_class = prefix_class
                     break
-        if cls is None:
+
+        # if not, drop it
+        if cnt_class is None:
             continue
-        entries.append((key, val, cls))
-    SORT_FIRST = {"ret_int"} # special case to override the default sorting
-    entries.sort(
-        key=lambda e: (class_rank[e[2]], 0 if e[0] in SORT_FIRST else 1, e[0]))
+
+        entries.append((key, val, cnt_class))
+
+    # second-level sorting inside each class
+    def sort_priority(key: str) -> int:
+        if key.startswith(("l1i_ref", "l1d_ref")):
+            return 0
+        if key == "ret_int":
+            return 1
+        return 2
+
+    # sort by class group, then priority within class, then alphabetically
+    entries.sort(key=lambda e: (class_rank[e[2]], sort_priority(e[0]), e[0]))
     return entries
 
 def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
@@ -65,7 +81,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     ipc = core.get("ipc", 0)
     title = f"Performance Counters for '{test_title}' (IPC: {ipc:.3f})"
     # scale up 2x wider if complete cosim counters are used
-    scale = 2 if len(entries) > 7 else 1
+    scale = 2 if len(entries) > 15 else 1
 
     fig = px.bar(
         df,
@@ -114,6 +130,89 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         print(f"Saved SVG chart to: '{svg_path}'")
 
     return log_txt
+
+def get_stats(data: dict) -> dict:
+    # try to derive stats from core stats if not present in the data
+    # (e.g. when collected from emulation/runtime)
+
+    cnt = data["core"]
+    if "icache" not in data:
+        icache_keys = ["l1i_ref", "l1i_miss", "ret"]
+        if all(k in cnt for k in icache_keys):
+            hits = cnt["l1i_ref"] - cnt["l1i_miss"]
+            data["icache"] = {
+                "references": cnt["l1i_ref"],
+                "hits": {"all": hits},
+                "misses": {"all": cnt["l1i_miss"]},
+                "hr": (hits / cnt["l1i_ref"]) * 100,
+                "mpki": cnt["l1i_miss"] / (cnt["ret"] / 1000)
+            }
+
+    if "dcache" not in data:
+        dcache_keys = ["l1d_ref", "l1d_miss", "ret"]
+        if all(k in cnt for k in dcache_keys):
+            hits = cnt["l1d_ref"] - cnt["l1d_miss"]
+            data["dcache"] = {
+                "references": cnt["l1d_ref"],
+                "hits": {"all": hits},
+                "misses": {"all": cnt["l1d_miss"]},
+                "hr": (hits / cnt["l1d_ref"]) * 100,
+                "mpki": cnt["l1d_miss"] / (cnt["ret"] / 1000)
+            }
+
+    if "bpred" not in data:
+        bpred_keys = ["bp_miss", "ret_ctrl_flow_br", "ret"]
+        if all(k in cnt for k in bpred_keys):
+            predicted = cnt["ret_ctrl_flow_br"] - cnt["bp_miss"]
+            data["bpred"] = {
+                "predicted": predicted,
+                "mispredicted": cnt["bp_miss"],
+                "accuracy": (predicted / cnt["ret_ctrl_flow_br"]) * 100,
+                "mpki": cnt["bp_miss"] / (cnt["ret"] / 1000)
+            }
+
+    out = ""
+    if "core" in data:
+        cnt = data['core']
+        out += f"\ncore:\n{INDENT}"
+        out += f"Cycles: {cnt['cycles']}, "
+        out += f"Retired: {cnt['ret']}, "
+        out += f"Empty: {cnt['cycles'] - cnt['ret']}, "
+        out += f"IPC: {cnt['ipc']:.3f} "
+    else:
+        out += f"core: N/A "
+
+    def format_cache_stats(cache: dict) -> str:
+        sd = lambda d: sum(d.values())
+        return f"Ref: {cache['references']}, " \
+            f"H: {sd(cache['hits'])}, " \
+            f"M: {sd(cache['misses'])}, " \
+            f"HR: {cache['hr']:.2f}%, " \
+            f"MPKI: {cache['mpki']:.2f} "
+
+    if "icache" in data:
+        out += f"\nicache:\n{INDENT}"
+        out += format_cache_stats(data['icache'])
+    else:
+        out += f"icache: N/A "
+
+    if "dcache" in data:
+        out += f"\ndcache:\n{INDENT}"
+        out += format_cache_stats(data['dcache'])
+    else:
+        out += f"dcache: N/A "
+
+    if "bpred" in data:
+        bp = data['bpred']
+        out += f"\nbpred:\n{INDENT}"
+        out += f"P: {bp['predicted']}, "
+        out += f"M: {bp['mispredicted']}, "
+        out += f"ACC: {bp['accuracy']:.2f}%, "
+        out += f"MPKI: {bp['mpki']:.2f} "
+    else:
+        out += f"bpred: N/A "
+
+    return out
 
 def main(args: argparse.Namespace):
     if not os.path.exists(args.hw_stats):
@@ -190,6 +289,12 @@ def main(args: argparse.Namespace):
 
     log_txt += "\n\n" + plot_counters_bar(d, title, args)
 
+    if args.get_stats:
+        stats_txt = get_stats(data)
+        log_txt += "\n\n" + stats_txt
+        if not args.silent:
+            print(stats_txt)
+
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_tda.png")
         fig.write_image(png_path, width=FIG_WIDTH, height=FIG_HEIGHT)
@@ -209,11 +314,12 @@ def main(args: argparse.Namespace):
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' from RTL simulation for the given workload")
-    parser.add_argument('-t', '--title', default=None, help="Title to use for the plot. If not provided, the title will be the test name.")
+    parser.add_argument('-t', '--title', default=None, help="Title to use for the plots. If not provided, the title will be the test name.")
     parser.add_argument('-r', '--renderer', default='browser', help="Plotly renderer to use")
-    parser.add_argument('-s', '--silent', action='store_true', help="Don't display plot")
-    parser.add_argument('--save_png', action='store_true', help="Save plot as PNG")
-    parser.add_argument('--save_svg', action='store_true', help="Save plot as SVG")
+    parser.add_argument('-s', '--silent', action='store_true', help="Don't display plots")
+    parser.add_argument('--get_stats', default=False, action='store_true', help="Print stats (from json or derived from counters) to the stdout")
+    parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
+    parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
     parser.add_argument('--save_log', action='store_true', help="Save log to a file")
     return parser.parse_args()
 
