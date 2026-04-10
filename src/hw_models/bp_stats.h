@@ -42,7 +42,6 @@ struct bp_stats_t {
         uint64_t predicted;
         uint64_t mispredicted;
         uint64_t total_branches;
-        uint64_t total_insts;
         float_t accuracy = -1.0; // i.e. never seen a branch
         float_t mpki = -1.0; // mispredicted per 1k instruction
         const std::string type_name;
@@ -78,22 +77,16 @@ struct bp_stats_t {
         }
         #endif
         void summarize(uint64_t total_insts) {
-            this->total_insts = total_insts;
             #ifndef DPI
-            predicted = predicted_fwd + predicted_bwd;
-            mispredicted = mispredicted_fwd + mispredicted_bwd;
+            predicted = (predicted_fwd + predicted_bwd);
+            mispredicted = (mispredicted_fwd + mispredicted_bwd);
             #endif
-            total_branches = predicted + mispredicted;
-            if (total_branches > 0) {
-                accuracy = TO_F32(predicted) / TO_F32(total_branches) * 100.0;
-            }
-            if (total_insts > 0) {
-                mpki = 0;
-                if (mispredicted > 0) {
-                    mpki = TO_F32(mispredicted) /
-                           (TO_F32(total_insts) / 1000.0);
-                }
-            }
+            total_branches = (predicted + mispredicted);
+            if ((total_insts == 0) || (total_branches == 0)) return;
+            accuracy = (TO_F32(predicted) / TO_F32(total_branches) * 100.0);
+            mpki = 0;
+            if (mispredicted == 0) return;
+            mpki = (TO_F32(mispredicted) / (TO_F32(total_insts) / 1000.0));
         }
         uint32_t get_predicted(uint32_t pc) const {
             if (bi_predictor_stats.find(pc) == bi_predictor_stats.end()) {

@@ -179,7 +179,6 @@ class cache {
         void summarize_stats(uint64_t total_insts);
         void show_stats(bool show_state);
         void log_stats(std::ofstream& hw_ofs);
-        float_t get_hr() { return stats.get_hr(); }
         void dump() const;
 
     private:
