@@ -133,7 +133,7 @@ void print_tda_counters_json(const tda_cnt_t* p) {
         (uint32_t)p->fe_core,
         (uint32_t)p->be_dc,
         (uint32_t)p->be_core,
-        (uint32_t)p->ret,
+        (uint32_t)(p->ret - p->ret_simd),
         (uint32_t)p->ret_simd
     );
 }
@@ -159,7 +159,7 @@ void init_hw_counters() {
 }
 
 void save_hw_counters(hw_cnt_t* p) {
-    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->ret_branches);
+    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->ret_ctrl_flow_br);
     read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->bp_miss);
     read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->l1i_ref);
     read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->l1i_miss);
@@ -178,7 +178,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t ipc_x = ((p->ret * sf_ipc) / p->cycles);
 
     uint32_t bp_hr_x =
-        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_branches)) * to_perc);
+        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_ctrl_flow_br)) * to_perc);
     uint32_t bp_mpki_x = ((p->bp_miss * sf_hw) / (p->ret / 1000));
 
     uint32_t l1i_hr_x =
@@ -196,7 +196,7 @@ void print_hw_counters(const hw_cnt_t* p) {
         (uint32_t)(p->cycles - p->ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
     );
 
-    uint32_t bp_hit = (p->ret_branches - p->bp_miss);
+    uint32_t bp_hit = (p->ret_ctrl_flow_br - p->bp_miss);
     printf(
         "bpred:\n"
         "    P: %u, M: %u, ACC: %u.%02u, MPKI: %u.%02u\n",
@@ -226,11 +226,13 @@ void print_hw_counters(const hw_cnt_t* p) {
 
 void print_hw_counters_json(const hw_cnt_t* p) {
     printf(
-        "{\"ret_branches\": %u, \"bp_miss\": %u, "
+        "{\"cycles\": %u, \"ret\": %u, "
+        "\"ret_ctrl_flow_br\": %u, \"bp_miss\": %u, "
         "\"l1i_ref\": %u, \"l1i_miss\": %u, "
-        "\"l1d_ref\": %u, \"l1d_miss\": %u, "
-        "\"ret_simd\": %u}\n",
-        (uint32_t)p->ret_branches,
+        "\"l1d_ref\": %u, \"l1d_miss\": %u}\n",
+        (uint32_t)p->cycles,
+        (uint32_t)p->ret,
+        (uint32_t)p->ret_ctrl_flow_br,
         (uint32_t)p->bp_miss,
         (uint32_t)p->l1i_ref,
         (uint32_t)p->l1i_miss,

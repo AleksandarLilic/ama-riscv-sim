@@ -146,7 +146,7 @@ typedef struct {
 
 typedef struct {
     uint64_t cycles;
-    uint64_t ret_branches;
+    uint64_t ret_ctrl_flow_br;
     uint64_t bp_miss;
     uint64_t l1i_ref;
     uint64_t l1i_miss;
