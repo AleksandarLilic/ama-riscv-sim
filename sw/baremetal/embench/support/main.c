@@ -77,9 +77,11 @@ main (int argc __attribute__ ((unused)),
 
   initialise_board ();
   initialise_benchmark ();
-  printf("Warming up... ");
+  printf("\nWarming up... ");
+  uint32_t start_time = get_cpu_time();
   warm_caches (WARMUP_HEAT);
-  printf("Warmup done.\n");
+  uint32_t time_diff = (get_cpu_time() - start_time) / 1000;
+  printf("Warmup done. Ran for %0dms\n", time_diff);
 
   start_trigger ();
   result = benchmark ();

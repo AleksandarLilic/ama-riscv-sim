@@ -199,7 +199,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t bp_hit = (p->ret_ctrl_flow_br - p->bp_miss);
     printf(
         "bpred:\n"
-        "    P: %u, M: %u, ACC: %u.%02u, MPKI: %u.%02u\n",
+        "    P: %u, M: %u, ACC: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)bp_hit, (uint32_t)p->bp_miss,
         (bp_hr_x / sf_hw), (bp_hr_x % sf_hw),
         (bp_mpki_x / sf_hw), (bp_mpki_x % sf_hw)
@@ -208,7 +208,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t l1i_hit = (p->l1i_ref - p->l1i_miss);
     printf(
         "icache:\n"
-        "    Ref: %u, H: %u, M: %u, HR: %u.%02u, MPKI: %u.%02u\n",
+        "    Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1i_ref, (uint32_t)l1i_hit, (uint32_t)p->l1i_miss,
         (l1i_hr_x / sf_hw), (l1i_hr_x % sf_hw),
         (l1i_mpki_x / sf_hw), (l1i_mpki_x % sf_hw)
@@ -217,7 +217,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t l1d_hit = (p->l1d_ref - p->l1d_miss);
     printf(
         "dcache:\n"
-        "    Ref: %u, H: %u, M: %u, HR: %u.%02u, MPKI: %u.%02u\n",
+        "    Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1d_ref, (uint32_t)l1d_hit, (uint32_t)p->l1d_miss,
         (l1d_hr_x / sf_hw), (l1d_hr_x % sf_hw),
         (l1d_mpki_x / sf_hw), (l1d_mpki_x % sf_hw)
