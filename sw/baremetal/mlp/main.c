@@ -17,9 +17,14 @@ int8_t input_img[FC1_WEIGHT_IN] __attribute__((aligned(CACHE_LINE_SIZE)));
 
 void run(uint8_t* label, int8_t* input_img) {
     #ifdef MHPM
+    #ifdef MHPM_TDA
     tda_cnt_t pe = {0ul};
     init_tda_counters();
     #else
+    hw_cnt_t pe = {0ul};
+    init_hw_counters();
+    #endif
+    #else // !MHPM
     set_cpu_cycles(0u);
     #endif
 
@@ -30,9 +35,13 @@ void run(uint8_t* label, int8_t* input_img) {
     uint32_t end_time = get_cpu_time();
 
     #ifdef MHPM
+    #ifdef MHPM_TDA
     save_tda_counters(&pe);
-    uint32_t clks = pe.cycles;
     #else
+    save_hw_counters(&pe);
+    #endif
+    uint32_t clks = pe.cycles;
+    #else // !MHPM
     uint32_t clks = get_cpu_cycles();
     #endif
 
@@ -42,7 +51,13 @@ void run(uint8_t* label, int8_t* input_img) {
            predicted, *label, clks, time_diff, (1000000 / time_diff));
 
     #ifdef MHPM
+    #ifdef MHPM_TDA
+    print_tda_counters(&pe);
     print_tda_counters_json(&pe);
+    #else
+    print_hw_counters(&pe);
+    print_hw_counters_json(&pe);
+    #endif
     #endif
 
     // assumed model is accurate for the provided input

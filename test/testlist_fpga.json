@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP -DMHPM"],
+    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP -DMHPM -DMHPM_TDA"],
 
     "mlp": ["all"],
 
@@ -28,6 +28,10 @@
     "embench/statemate": [["embench"], ["CPU_MHZ=50"]],
     "embench/tarfind": [["embench"], ["CPU_MHZ=50"]],
     "embench/ud": [["embench"], ["CPU_MHZ=50"]],
-    "embench/wikisort": [["embench"], ["CPU_MHZ=50"]]
+    "embench/wikisort": [["embench"], ["CPU_MHZ=50"]],
+
+    "uart_direct_send": ["hello_world"],
+    "uart_printf_mini": ["hello_world"],
+    "uart_direct_loopback": ["test"]
 
 }

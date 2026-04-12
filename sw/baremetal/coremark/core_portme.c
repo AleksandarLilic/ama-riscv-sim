@@ -70,7 +70,11 @@ barebones_clock()
 static CORETIMETYPE start_time_val, stop_time_val;
 
 #ifdef MHPM
+#ifdef MHPM_TDA
 tda_cnt_t pe = {0ul};
+#else
+hw_cnt_t pe = {0ul};
+#endif
 #endif
 
 /* Function : start_time
@@ -85,7 +89,11 @@ void
 start_time(void)
 {
     #ifdef MHPM
+    #ifdef MHPM_TDA
     init_tda_counters();
+    #else
+    init_hw_counters();
+    #endif
     #endif
     GETMYTIME(&start_time_val);
 }
@@ -102,8 +110,15 @@ stop_time(void)
 {
     GETMYTIME(&stop_time_val);
     #ifdef MHPM
+    #ifdef MHPM_TDA
     save_tda_counters(&pe);
+    print_tda_counters(&pe);
     print_tda_counters_json(&pe);
+    #else
+    save_hw_counters(&pe);
+    print_hw_counters(&pe);
+    print_hw_counters_json(&pe);
+    #endif
     #endif
 }
 /* Function : get_time

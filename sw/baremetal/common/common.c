@@ -115,7 +115,7 @@ void print_tda_counters(const tda_cnt_t* p) {
         "    L2: "
         "FE ICache: %u, FE Core: %u, "
         "BE DCache: %u, BE Core: %u, "
-        "INT: %u, SIMD: %u\n",
+        "INT: %u, SIMD: %u\n\n",
         (uint32_t)p->bad_spec, (uint32_t)p->fe,(uint32_t)p->be,(uint32_t)p->ret,
         (uint32_t)p->fe_ic, (uint32_t)p->fe_core,
         (uint32_t)p->be_dc, (uint32_t)p->be_core,
@@ -127,7 +127,7 @@ void print_tda_counters_json(const tda_cnt_t* p) {
     printf(
         "{\"bad_spec\": %u, \"stall_l1i\": %u, \"stall_fe_core\": %u, "
         "\"stall_l1d\": %u, \"stall_be_core\": %u, \"ret_int\": %u, "
-        "\"ret_simd\": %u}\n",
+        "\"ret_simd\": %u}\n\n",
         (uint32_t)p->bad_spec,
         (uint32_t)p->fe_ic,
         (uint32_t)p->fe_core,
@@ -222,6 +222,7 @@ void print_hw_counters(const hw_cnt_t* p) {
         (l1d_hr_x / sf_hw), (l1d_hr_x % sf_hw),
         (l1d_mpki_x / sf_hw), (l1d_mpki_x % sf_hw)
     );
+    printf("\n");
 }
 
 void print_hw_counters_json(const hw_cnt_t* p) {
@@ -229,7 +230,7 @@ void print_hw_counters_json(const hw_cnt_t* p) {
         "{\"cycles\": %u, \"ret\": %u, "
         "\"ret_ctrl_flow_br\": %u, \"bp_miss\": %u, "
         "\"l1i_ref\": %u, \"l1i_miss\": %u, "
-        "\"l1d_ref\": %u, \"l1d_miss\": %u}\n",
+        "\"l1d_ref\": %u, \"l1d_miss\": %u}\n\n",
         (uint32_t)p->cycles,
         (uint32_t)p->ret,
         (uint32_t)p->ret_ctrl_flow_br,

@@ -18,16 +18,26 @@ uint32_t start_time, end_time, clks, time_diff;
 void initialise_board (void) {};
 
 #ifdef MHPM
+#ifdef MHPM_TDA
 tda_cnt_t pe = {0ul};
+#else
+hw_cnt_t pe = {0ul};
+#endif
+#endif
+
+#ifndef EMBENCH_TEST_NAME
+#define EMBENCH_TEST_NAME "undefined name"
 #endif
 
 void start_trigger (void) {
-  printf("Running test...");
+  printf("Running embench %s...\n", EMBENCH_TEST_NAME);
 
   #ifdef MHPM
+  #ifdef MHPM_TDA
   init_tda_counters();
   #else
-  set_cpu_cycles(0u);
+  init_hw_counters();
+  #endif
   #endif
 
   start_time = get_cpu_time();
@@ -39,10 +49,17 @@ void stop_trigger (void) {
    uint32_t end_time = get_cpu_time();
 
    #ifdef MHPM
+   #ifdef MHPM_TDA
    save_tda_counters(&pe);
+   print_tda_counters(&pe);
    print_tda_counters_json(&pe);
-   uint32_t clks = pe.cycles;
    #else
+   save_hw_counters(&pe);
+   print_hw_counters(&pe);
+   print_hw_counters_json(&pe);
+   #endif
+   uint32_t clks = pe.cycles;
+   #else // !MHPM
    uint32_t clks = get_cpu_cycles();
    #endif
 
@@ -60,7 +77,9 @@ main (int argc __attribute__ ((unused)),
 
   initialise_board ();
   initialise_benchmark ();
+  printf("Warming up... ");
   warm_caches (WARMUP_HEAT);
+  printf("Warmup done.\n");
 
   start_trigger ();
   result = benchmark ();

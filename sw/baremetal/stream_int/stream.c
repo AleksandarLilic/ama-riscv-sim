@@ -235,8 +235,13 @@ main()
     printf(HLINE);
 
     #ifdef MHPM
+    #ifdef MHPM_TDA
     tda_cnt_t pe = {0ul};
     init_tda_counters();
+    #else
+    hw_cnt_t pe = {0ul};
+    init_hw_counters();
+    #endif
     #endif
 
     /*	--- MAIN LOOP --- repeat test cases NTIMES times --- */
@@ -267,8 +272,15 @@ main()
 	}
 
     #ifdef MHPM
+    #ifdef MHPM_TDA
     save_tda_counters(&pe);
+    print_tda_counters(&pe);
     print_tda_counters_json(&pe);
+    #else
+    save_hw_counters(&pe);
+    print_hw_counters(&pe);
+    print_hw_counters_json(&pe);
+    #endif
     #endif
 
     GLOBAL_SYMBOL(stream_summary);
