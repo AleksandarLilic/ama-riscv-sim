@@ -79,7 +79,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     df["count"] = df["value"].apply(lambda x: eng_fmt(x, None))
 
     ipc = core.get("ipc", 0)
-    title = f"Performance Counters for '{test_title}' (IPC: {ipc:.3f})"
+    title = f"Performance Counters for '{test_title}'<br>IPC: {ipc:.3f}"
     # scale up 2x wider if complete cosim counters are used
     scale = 2 if len(entries) > 15 else 1
 
@@ -190,27 +190,21 @@ def get_stats(data: dict) -> dict:
             f"HR: {cache['hr']:.2f}%, " \
             f"MPKI: {cache['mpki']:.2f} "
 
-    if "icache" in data:
-        out += f"\nicache:\n{INDENT}"
-        out += format_cache_stats(data['icache'])
-    else:
-        out += f"icache: N/A "
+    out += f"\nicache:\n{INDENT}"
+    out += format_cache_stats(data['icache']) if 'icache' in data else "N/A"
 
-    if "dcache" in data:
-        out += f"\ndcache:\n{INDENT}"
-        out += format_cache_stats(data['dcache'])
-    else:
-        out += f"dcache: N/A "
+    out += f"\ndcache:\n{INDENT}"
+    out += format_cache_stats(data['dcache']) if 'dcache' in data else "N/A"
 
+    out += f"\nbpred:\n{INDENT}"
     if "bpred" in data:
         bp = data['bpred']
-        out += f"\nbpred:\n{INDENT}"
         out += f"P: {bp['predicted']}, "
         out += f"M: {bp['mispredicted']}, "
         out += f"ACC: {bp['accuracy']:.2f}%, "
         out += f"MPKI: {bp['mpki']:.2f} "
     else:
-        out += f"bpred: N/A "
+        out += f"N/A"
 
     return out
 
@@ -239,9 +233,15 @@ def main(args: argparse.Namespace):
     ipc = ret / cycles
     ipc = round(ipc, 3) if ipc > 0 else "N/A"
     df_tda["root"] = f"pipeline<br>IPC: {ipc}"
-    # if ipc is missing in d, add it
+
     if "ipc" not in d:
         d["ipc"] = ipc
+    if "cycles" not in d:
+        d["cycles"] = cycles
+    if "ret" not in d:
+        d["ret"] = ret
+    if "stalls" not in d:
+        d["stalls"] = d["cycles"] - d["ret"] - d["bad_spec"]
 
     # make new df that's a group and sum on L1 only
     #df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
