@@ -97,22 +97,27 @@ void save_tda_counters(tda_cnt_t* p) {
     p->ret = (p->cycles - (p->bad_spec + p->fe + p->be));
 }
 
-void print_tda_counters(const tda_cnt_t* p) {
+void print_ipc(const uint64_t cycles, const uint64_t ret) {
     // scale up by 1000x to get 3 decimal places w/o floating point
     const uint32_t sf_ipc = 1000u;
-    uint32_t ipc_x = ((p->ret * sf_ipc) / p->cycles);
+    uint32_t ipc_x = ((ret * sf_ipc) / cycles);
     printf(
         "Stats:\n"
-        "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
-        (uint32_t)p->cycles, (uint32_t)p->ret,
-        (uint32_t)(p->cycles - p->ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
+        INDENT "Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
+        (uint32_t)cycles,
+        (uint32_t)ret,
+        (uint32_t)(cycles - ret),
+        (ipc_x / sf_ipc), (ipc_x % sf_ipc)
     );
+}
 
+void print_tda_counters(const tda_cnt_t* p) {
+    print_ipc(p->cycles, p->ret);
     printf(
         "TDA:\n"
-        "    L1: "
+        INDENT "L1: "
         "Bad Spec: %u, FE: %u, BE: %u, Retired: %u\n"
-        "    L2: "
+        INDENT "L2: "
         "FE ICache: %u, FE Core: %u, "
         "BE DCache: %u, BE Core: %u, "
         "INT: %u, SIMD: %u\n\n",
@@ -170,36 +175,24 @@ void save_hw_counters(hw_cnt_t* p) {
 }
 
 void print_hw_counters(const hw_cnt_t* p) {
-    // scale up by 1000x to get 3 decimal places w/o floating point
-    const uint32_t sf_ipc = 1000u;
     const uint32_t sf_hw = 100u;
-    const uint32_t to_perc = 100u;
-
-    uint32_t ipc_x = ((p->ret * sf_ipc) / p->cycles);
 
     uint32_t bp_hr_x =
-        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_ctrl_flow_br)) * to_perc);
+        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_ctrl_flow_br)) * 100u);
     uint32_t bp_mpki_x = ((p->bp_miss * sf_hw) / (p->ret / 1000));
 
-    uint32_t l1i_hr_x =
-        ((sf_hw - ((p->l1i_miss * sf_hw) / p->l1i_ref)) * to_perc);
+    uint32_t l1i_hr_x = ((sf_hw - ((p->l1i_miss * sf_hw) / p->l1i_ref)) * 100u);
     uint32_t l1i_mpki_x = ((p->l1i_miss * sf_hw) / (p->ret / 1000));
 
-    uint32_t l1d_hr_x =
-        ((sf_hw - ((p->l1d_miss * sf_hw) / p->l1d_ref)) * to_perc);
+    uint32_t l1d_hr_x = ((sf_hw - ((p->l1d_miss * sf_hw) / p->l1d_ref)) * 100u);
     uint32_t l1d_mpki_x = ((p->l1d_miss * sf_hw) / (p->ret / 1000));
 
-    printf(
-        "Stats:\n"
-        "    Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
-        (uint32_t)p->cycles, (uint32_t)p->ret,
-        (uint32_t)(p->cycles - p->ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
-    );
+    print_ipc(p->cycles, p->ret);
 
     uint32_t bp_hit = (p->ret_ctrl_flow_br - p->bp_miss);
     printf(
         "bpred:\n"
-        "    P: %u, M: %u, ACC: %u.%02u%%, MPKI: %u.%02u\n",
+        INDENT "P: %u, M: %u, ACC: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)bp_hit, (uint32_t)p->bp_miss,
         (bp_hr_x / sf_hw), (bp_hr_x % sf_hw),
         (bp_mpki_x / sf_hw), (bp_mpki_x % sf_hw)
@@ -208,7 +201,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t l1i_hit = (p->l1i_ref - p->l1i_miss);
     printf(
         "icache:\n"
-        "    Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
+        INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1i_ref, (uint32_t)l1i_hit, (uint32_t)p->l1i_miss,
         (l1i_hr_x / sf_hw), (l1i_hr_x % sf_hw),
         (l1i_mpki_x / sf_hw), (l1i_mpki_x % sf_hw)
@@ -217,7 +210,7 @@ void print_hw_counters(const hw_cnt_t* p) {
     uint32_t l1d_hit = (p->l1d_ref - p->l1d_miss);
     printf(
         "dcache:\n"
-        "    Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
+        INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1d_ref, (uint32_t)l1d_hit, (uint32_t)p->l1d_miss,
         (l1d_hr_x / sf_hw), (l1d_hr_x % sf_hw),
         (l1d_mpki_x / sf_hw), (l1d_mpki_x % sf_hw)

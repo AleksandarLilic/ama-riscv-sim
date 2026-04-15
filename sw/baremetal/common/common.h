@@ -21,6 +21,7 @@
 #define STRINGIFY(x) #x
 #define TOSTR(x) STRINGIFY(x)
 #define TESTNUM_REG x28
+#define INDENT "    "
 
 #define NOP asm volatile ("nop")
 
@@ -232,6 +233,7 @@ void set_cpu_instret(uint64_t value);
 
 void init_tda_counters();
 void save_tda_counters(tda_cnt_t* pe);
+void print_ipc(const uint64_t cycles, const uint64_t ret);
 void print_tda_counters(const tda_cnt_t* pe);
 void print_tda_counters_json(const tda_cnt_t* pe);
 void init_hw_counters();
