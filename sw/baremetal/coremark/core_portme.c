@@ -71,9 +71,9 @@ static CORETIMETYPE start_time_val, stop_time_val;
 
 #ifdef MHPM
 #ifdef MHPM_TDA
-tda_cnt_t pe = {0ul};
+tda_cnt_t tda_pe = {0ul};
 #else
-hw_cnt_t pe = {0ul};
+hw_cnt_t hw_pe = {0ul};
 #endif
 #endif
 
@@ -111,13 +111,13 @@ stop_time(void)
     GETMYTIME(&stop_time_val);
     #ifdef MHPM
     #ifdef MHPM_TDA
-    save_tda_counters(&pe);
-    print_tda_counters(&pe);
-    print_tda_counters_json(&pe);
+    save_tda_counters(&tda_pe);
+    print_tda_counters(&tda_pe);
+    print_tda_counters_json(&tda_pe);
     #else
-    save_hw_counters(&pe);
-    print_hw_counters(&pe);
-    print_hw_counters_json(&pe);
+    save_hw_counters(&hw_pe);
+    print_hw_counters(&hw_pe);
+    print_hw_counters_json(&hw_pe);
     #endif
     #endif
 }

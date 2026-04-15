@@ -19,9 +19,9 @@ void initialise_board (void) {};
 
 #ifdef MHPM
 #ifdef MHPM_TDA
-tda_cnt_t pe = {0ul};
+tda_cnt_t tda_pe = {0ul};
 #else
-hw_cnt_t pe = {0ul};
+hw_cnt_t hw_pe = {0ul};
 #endif
 #endif
 
@@ -47,20 +47,22 @@ void start_trigger (void) {
 void stop_trigger (void) {
    //PROF_STOP;
    uint32_t end_time = get_cpu_time();
+   uint32_t clks;
 
    #ifdef MHPM
    #ifdef MHPM_TDA
-   save_tda_counters(&pe);
-   print_tda_counters(&pe);
-   print_tda_counters_json(&pe);
+   save_tda_counters(&tda_pe);
+   print_tda_counters(&tda_pe);
+   print_tda_counters_json(&tda_pe);
+   clks = tda_pe.cycles;
    #else
-   save_hw_counters(&pe);
-   print_hw_counters(&pe);
-   print_hw_counters_json(&pe);
+   save_hw_counters(&hw_pe);
+   print_hw_counters(&hw_pe);
+   print_hw_counters_json(&hw_pe);
+   clks = hw_pe.cycles;
    #endif
-   uint32_t clks = pe.cycles;
    #else // !MHPM
-   uint32_t clks = get_cpu_cycles();
+   clks = get_cpu_cycles();
    #endif
 
    uint32_t time_diff = (end_time - start_time) / 1000;
