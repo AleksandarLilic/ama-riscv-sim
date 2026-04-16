@@ -74,6 +74,10 @@ void main() {
     read_csr(CSR_MHPMEVENT8, rval);
     CHECK(rval, ev, CSR_MHPMEVENT8);
 
+    // reset mcycle and minstret
+    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
+    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
+
     GLOBAL_SYMBOL("test_start");
     // generate some branch misses for mhpmcounter3
     uint32_t random = 0x74321239;
@@ -100,7 +104,20 @@ void main() {
     int32_t dot_result = _simd_dot_product_int8(arr_dot, arr_dot, 8);
     sum += dot_result;
 
+    GLOBAL_SYMBOL("check");
     // check counters, shouldn't be zero at this point
+    read_csr(CSR_MCYCLE, rval);
+    if (rval == 0) {
+        write_mismatch(rval, cnt, CSR_MCYCLE);
+        fail();
+    }
+
+    read_csr(CSR_MINSTRET, rval);
+    if (rval == 0) {
+        write_mismatch(rval, cnt, CSR_MINSTRET);
+        fail();
+    }
+
     read_csr(CSR_MHPMCOUNTER3, rval);
     if (rval == 0) {
         write_mismatch(rval, cnt, CSR_MHPMCOUNTER3);

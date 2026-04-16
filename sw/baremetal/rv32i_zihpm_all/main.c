@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include "common.h"
-#include "common_math.h"
 
 #define CHECK(val, expected, csr_num) \
     if (val != expected){ \
@@ -34,18 +33,19 @@ void main() {
     TEST_CSR(CSR_MHPMEVENT7, mhpmevent_ret_simd);
     TEST_CSR(CSR_MHPMEVENT8, mhpmevent_ret_simd_arith);
     TEST_CSR(CSR_MHPMEVENT3, mhpmevent_ret_simd_data_fmt);
-    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1i_ref);
-    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1i_miss);
-    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1i_spec_miss);
-    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1i_spec_miss_bad);
-    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1i_spec_miss_good);
-    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1d_ref);
-    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1d_ref_r);
-    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1d_ref_w);
-    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1d_miss);
-    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1d_miss_r);
-    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1d_miss_w);
-    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1d_writeback);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_bp_miss);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1i_ref);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1i_miss);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1i_spec_miss);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1i_spec_miss_bad);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1i_spec_miss_good);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1d_ref);
+    TEST_CSR(CSR_MHPMEVENT5, mhpmevent_l1d_ref_r);
+    TEST_CSR(CSR_MHPMEVENT6, mhpmevent_l1d_ref_w);
+    TEST_CSR(CSR_MHPMEVENT7, mhpmevent_l1d_miss);
+    TEST_CSR(CSR_MHPMEVENT8, mhpmevent_l1d_miss_r);
+    TEST_CSR(CSR_MHPMEVENT3, mhpmevent_l1d_miss_w);
+    TEST_CSR(CSR_MHPMEVENT4, mhpmevent_l1d_writeback);
 
     pass();
 }
