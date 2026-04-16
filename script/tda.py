@@ -14,19 +14,19 @@ COLOR_MAP = {
     "retiring": PLOTLY_COLORS[0], # #636efa (Blue)
     "backend": PLOTLY_COLORS[2], # #00CC96 (Green)
     "frontend": PLOTLY_COLORS[1], # #EF553B (Red)
-    "bad_spec": PLOTLY_COLORS[4], # #FFA15A (Orange/Yellow)
+    "lost": PLOTLY_COLORS[4], # #FFA15A (Orange/Yellow)
     "(?)": "rgba(0,0,0,0)" # fallback for undefined categories
 }
 
 CLASS_ORDER = [
-    "cycles", "ret", "stall", "bad_spec",
-    "ret_*", "stall_*", "bp_*", "l1i_*", "l1d_*"
+    "cycles", "ret", "stall", "lost",
+    "ret_*", "stall_*", "bad_spec", "l1i_*", "l1d_*", "bp_*",
 ]
 DROP_KEYS = {"cpi", "ipc"}
 EXACT_CLASS = {
-    "cycles": "cycles", "ret": "ret", "stalls": "stall", "bad_spec": "bad_spec"}
+    "cycles": "cycles", "ret": "ret", "stalls": "stall", "lost": "lost"}
 PREFIX_CLASS = [
-    ("ret_", "ret_*"), ("stall_", "stall_*"),
+    ("ret_", "ret_*"), ("stall_", "stall_*"), ("bad_spec", "bad_spec"),
     ("bp_", "bp_*"), ("l1i_", "l1i_*"), ("l1d_", "l1d_*")
 ]
 BAR_COLOR_MAP = {cls: PLOTLY_COLORS[i] for i, cls in enumerate(CLASS_ORDER)}
@@ -81,7 +81,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     ipc = core.get("ipc", 0)
     title = f"Performance Counters for '{test_title}'<br>IPC: {ipc:.3f}"
     # scale up 2x wider if complete cosim counters are used
-    scale = 2 if len(entries) > 15 else 1
+    scale = 2 if len(entries) > 16 else 1
 
     fig = px.bar(
         df,
@@ -114,7 +114,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         yaxis=dict(gridcolor="#ddd", linecolor="#ccc", tickformat=".2s"),
     )
 
-    log_txt = f"{title}\n{df.to_string(index=False)}"
+    log_txt = f"{title.split('<br>')[0]}\n{df.to_string(index=False)}"
     if not args.silent:
         print(log_txt)
         fig.show(renderer=args.renderer, width=FIG_WIDTH*2, height=FIG_HEIGHT)
@@ -217,7 +217,8 @@ def main(args: argparse.Namespace):
 
     d = data['core']
     row = [
-        ['bad_spec', pd.NA, d['bad_spec']],
+        ['lost', 'bad_spec', d['bad_spec']],
+        ['lost', 'other', d['lost_other']],
         ["frontend", "icache", d['stall_l1i']],
         ["frontend", "core", d['stall_fe_core']],
         ["backend", "dcache", d['stall_l1d']],
@@ -240,8 +241,12 @@ def main(args: argparse.Namespace):
         d["cycles"] = cycles
     if "ret" not in d:
         d["ret"] = ret
+    if "empty" not in d:
+        d["empty"] = d["cycles"] - d["ret"]
+    if "lost" not in d:
+        d["lost"] = d['bad_spec'] + d['lost_other']
     if "stalls" not in d:
-        d["stalls"] = d["cycles"] - d["ret"] - d["bad_spec"]
+        d["stalls"] = d["cycles"] - d["ret"] - d["lost"]
 
     # make new df that's a group and sum on L1 only
     #df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
