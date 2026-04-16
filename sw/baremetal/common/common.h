@@ -133,16 +133,20 @@ static const uint32_t mhpmevent_l1d_writeback = (1u << 31);
 
 typedef struct {
     uint64_t cycles;
-    uint64_t bad_spec; // bp miss flushed cycles
-    uint64_t be; // backend stall
-    uint64_t be_dc; // backend stall - dcache
-    uint64_t be_core; // backend stall - core
-    uint64_t fe; // frontend stall
-    uint64_t fe_ic; // frontend stall - dcache
-    uint64_t fe_core; // frontend stall - core
-    uint64_t ret; // retired inst
-    uint64_t ret_simd; // retired inst - simd
-    uint64_t ret_int; // retired inst - intpipe
+    uint64_t empty; // derived
+    uint64_t stalls; // derived
+    uint64_t lost; // derived
+    uint64_t lost_other; // derived
+    uint64_t bad_spec;
+    uint64_t stall_be;
+    uint64_t stall_l1d;
+    uint64_t stall_be_core; // derived
+    uint64_t stall_fe;
+    uint64_t stall_l1i;
+    uint64_t stall_fe_core; // derived
+    uint64_t ret;
+    uint64_t ret_simd;
+    uint64_t ret_int; // derived
 } tda_cnt_t;
 
 typedef struct {

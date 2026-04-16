@@ -65,6 +65,7 @@ uint64_t get_cpu_instret() {
 void init_tda_counters() {
     // reset existing event counters
     write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
+    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
     write_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, 0u);
@@ -83,18 +84,23 @@ void init_tda_counters() {
 
 void save_tda_counters(tda_cnt_t* p) {
     // read L2 events first
-    read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->fe_ic);
-    read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->be_dc);
+    read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->stall_l1i);
+    read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->stall_l1d);
     read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->ret_simd);
     // then L1 events
     read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
-    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->fe);
-    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->be);
+    read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->stall_fe);
+    read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->stall_be);
     read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
-    // figure out the rest
-    p->be_core = (p->be - p->be_dc);
-    p->fe_core = (p->fe - p->fe_ic);
-    p->ret = (p->cycles - (p->bad_spec + p->fe + p->be));
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
+    // derive the rest
+    p->empty = (p->cycles - p->ret);
+    p->stalls = (p->stall_be + p->stall_fe);
+    p->lost = (p->empty - p->stalls);
+    p->lost_other = (p->lost - p->bad_spec);
+    p->stall_be_core = (p->stall_be - p->stall_l1d);
+    p->stall_fe_core = (p->stall_fe - p->stall_l1i);
+    p->ret_int = (p->ret - p->ret_simd);
 }
 
 void print_ipc(const uint64_t cycles, const uint64_t ret) {
@@ -115,31 +121,60 @@ void print_tda_counters(const tda_cnt_t* p) {
     print_ipc(p->cycles, p->ret);
     printf(
         "TDA:\n"
-        INDENT "L1: "
-        "Bad Spec: %u, FE: %u, BE: %u, Retired: %u\n"
+        INDENT "L1: Retired: %u, FE: %u, BE: %u, Lost: %u\n",
+        (uint32_t)p->ret,
+        (uint32_t)p->stall_fe,
+        (uint32_t)p->stall_be,
+        (uint32_t)p->lost
+    );
+    printf(
         INDENT "L2: "
+        "INT: %u, SIMD: %u"
         "FE ICache: %u, FE Core: %u, "
         "BE DCache: %u, BE Core: %u, "
-        "INT: %u, SIMD: %u\n\n",
-        (uint32_t)p->bad_spec, (uint32_t)p->fe,(uint32_t)p->be,(uint32_t)p->ret,
-        (uint32_t)p->fe_ic, (uint32_t)p->fe_core,
-        (uint32_t)p->be_dc, (uint32_t)p->be_core,
-        (uint32_t)p->ret, (uint32_t)p->ret_simd
+        "Bad Spec: %u, Other: %u"
+        "\n\n",
+        (uint32_t)p->ret, (uint32_t)p->ret_simd,
+        (uint32_t)p->stall_l1i, (uint32_t)p->stall_fe_core,
+        (uint32_t)p->stall_l1d, (uint32_t)p->stall_be_core,
+        (uint32_t)p->bad_spec, (uint32_t)p->lost_other
     );
 }
 
 void print_tda_counters_json(const tda_cnt_t* p) {
     printf(
-        "{\"bad_spec\": %u, \"stall_l1i\": %u, \"stall_fe_core\": %u, "
-        "\"stall_l1d\": %u, \"stall_be_core\": %u, \"ret_int\": %u, "
-        "\"ret_simd\": %u}\n\n",
+        "{"
+        "\"cycles\": %u, "
+        "\"empty\": %u, "
+        "\"stalls\": %u, "
+        "\"lost\": %u, "
+        "\"lost_other\": %u, "
+        "\"bad_spec\": %u, "
+        "\"stall_be\": %u, "
+        "\"stall_l1d\": %u, "
+        "\"stall_be_core\": %u, "
+        "\"stall_fe\": %u, "
+        "\"stall_l1i\": %u, "
+        "\"stall_fe_core\": %u, "
+        "\"ret\": %u, "
+        "\"ret_simd\": %u, "
+        "\"ret_int\": %u"
+        "}\n\n",
+        (uint32_t)p->cycles,
+        (uint32_t)p->empty,
+        (uint32_t)p->stalls,
+        (uint32_t)p->lost,
+        (uint32_t)p->lost_other,
         (uint32_t)p->bad_spec,
-        (uint32_t)p->fe_ic,
-        (uint32_t)p->fe_core,
-        (uint32_t)p->be_dc,
-        (uint32_t)p->be_core,
-        (uint32_t)(p->ret - p->ret_simd),
-        (uint32_t)p->ret_simd
+        (uint32_t)p->stall_be,
+        (uint32_t)p->stall_l1d,
+        (uint32_t)p->stall_be_core,
+        (uint32_t)p->stall_fe,
+        (uint32_t)p->stall_l1i,
+        (uint32_t)p->stall_fe_core,
+        (uint32_t)p->ret,
+        (uint32_t)p->ret_simd,
+        (uint32_t)p->ret_int
     );
 }
 
