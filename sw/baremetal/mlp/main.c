@@ -18,10 +18,10 @@ int8_t input_img[FC1_WEIGHT_IN] __attribute__((aligned(CACHE_LINE_SIZE)));
 void run(uint8_t* label, int8_t* input_img) {
     #ifdef MHPM
     #ifdef MHPM_TDA
-    tda_cnt_t pe = {0ul};
+    tda_cnt_t tda_pe = {0ul};
     init_tda_counters();
     #else
-    hw_cnt_t pe = {0ul};
+    hw_cnt_t hw_pe = {0ul};
     init_hw_counters();
     #endif
     #else // !MHPM
@@ -33,16 +33,18 @@ void run(uint8_t* label, int8_t* input_img) {
     uint32_t predicted = run_inference(input_img);
     PROF_STOP;
     uint32_t end_time = get_cpu_time();
+    uint32_t clks;
 
     #ifdef MHPM
     #ifdef MHPM_TDA
-    save_tda_counters(&pe);
+    save_tda_counters(&tda_pe);
+    clks = tda_pe.cycles;
     #else
-    save_hw_counters(&pe);
+    print_hw_counters_json(&hw_pe);
+    clks = hw_pe.cycles;
     #endif
-    uint32_t clks = pe.cycles;
     #else // !MHPM
-    uint32_t clks = get_cpu_cycles();
+    clks = get_cpu_cycles();
     #endif
 
     uint32_t time_diff = (end_time - start_time); // us
@@ -52,11 +54,11 @@ void run(uint8_t* label, int8_t* input_img) {
 
     #ifdef MHPM
     #ifdef MHPM_TDA
-    print_tda_counters(&pe);
-    print_tda_counters_json(&pe);
+    print_tda_counters(&tda_pe);
+    print_tda_counters_json(&tda_pe);
     #else
-    print_hw_counters(&pe);
-    print_hw_counters_json(&pe);
+    save_hw_counters(&hw_pe);
+    print_hw_counters(&hw_pe);
     #endif
     #endif
 
