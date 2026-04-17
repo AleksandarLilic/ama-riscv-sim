@@ -81,7 +81,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     ipc = core.get("ipc", 0)
     title = f"Performance Counters for '{test_title}'<br>IPC: {ipc:.3f}"
     # scale up 2x wider if complete cosim counters are used
-    scale = 2 if len(entries) > 16 else 1
+    sc = 2 if len(entries) > 20 else 1.2
 
     fig = px.bar(
         df,
@@ -92,7 +92,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         category_orders={"counter": [e[0] for e in entries]},
         title=title,
         text="count",
-        width=FIG_WIDTH*scale,
+        width=FIG_WIDTH*sc,
         height=FIG_HEIGHT,
     )
 
@@ -117,16 +117,16 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     log_txt = f"{title.split('<br>')[0]}\n{df.to_string(index=False)}"
     if not args.silent:
         print(log_txt)
-        fig.show(renderer=args.renderer, width=FIG_WIDTH*2, height=FIG_HEIGHT)
+        fig.show(renderer=args.renderer, width=FIG_WIDTH*sc, height=FIG_HEIGHT)
 
     if args.save_png:
         png_path = args.hw_stats.replace(".json", "_all_counters.png")
-        fig.write_image(png_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
+        fig.write_image(png_path, width=FIG_WIDTH*sc, height=FIG_HEIGHT)
         print(f"Saved PNG chart to: '{png_path}'")
 
     if args.save_svg:
         svg_path = args.hw_stats.replace(".json", "_all_counters.svg")
-        fig.write_image(svg_path, width=FIG_WIDTH*2, height=FIG_HEIGHT)
+        fig.write_image(svg_path, width=FIG_WIDTH*sc, height=FIG_HEIGHT)
         print(f"Saved SVG chart to: '{svg_path}'")
 
     return log_txt
