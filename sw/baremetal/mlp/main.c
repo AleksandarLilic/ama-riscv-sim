@@ -3,6 +3,14 @@
 #include "common.h"
 #include "inference.h"
 
+#if defined(W8A8)
+static const char* q_str = "W8A8";
+#elif defined(W4A8)
+static const char* q_str = "W4A8";
+#elif defined(W2A8)
+static const char* q_str = "W2A8";
+#endif
+
 #ifndef UART_INPUT
 uint8_t label_0 = 7;
 int8_t input_img_0[] __attribute__((aligned(CACHE_LINE_SIZE))) = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 10, 8, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 85, 79, 57, 43, 42, 42, 42, 36, 10, 0, 0, 0, 0, 0, 0, 25, 49, 56, 82, 88, 93, 94, 92, 109, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 5, 8, 9, 52, 96, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 98, 60, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 55, 96, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 89, 50, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 65, 92, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 104, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 90, 71, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 64, 112, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 104, 96, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 49, 25, 1, 0, 0, 0, 0, 0, 0, 0 };
@@ -40,7 +48,7 @@ void run(uint8_t* label, int8_t* input_img) {
     save_tda_counters(&tda_pe);
     clks = tda_pe.cycles;
     #else
-    print_hw_counters_json(&hw_pe);
+    save_hw_counters(&hw_pe);
     clks = hw_pe.cycles;
     #endif
     #else // !MHPM
@@ -49,7 +57,7 @@ void run(uint8_t* label, int8_t* input_img) {
 
     uint32_t time_diff = (end_time - start_time); // us
     printf("Predicted: %u (label: %u); "
-           "Performance: cycles: %u, time: %u us, Inf/s: %u\n",
+           "Performance: cycles: %u, time: %u us, Inf/s: %u\n\n",
            predicted, *label, clks, time_diff, (1000000 / time_diff));
 
     #ifdef MHPM
@@ -57,8 +65,8 @@ void run(uint8_t* label, int8_t* input_img) {
     print_tda_counters(&tda_pe);
     print_tda_counters_json(&tda_pe);
     #else
-    save_hw_counters(&hw_pe);
     print_hw_counters(&hw_pe);
+    print_hw_counters_json(&hw_pe);
     #endif
     #endif
 
@@ -72,6 +80,7 @@ void run(uint8_t* label, int8_t* input_img) {
 #ifdef UART_INPUT
 void main() {
     uint32_t iter = 0;
+    printf("\nMLP model quantization: %s\n", q_str);
     while(1) {
         printf("\nIter %0d\nWaiting on input...\n", iter);
         for (size_t i = 0; i < FC1_WEIGHT_IN; i++) {
@@ -90,6 +99,7 @@ void main() {
 
 #else
 void main() {
+    printf("\nMLP model quantization: %s\n", q_str);
     run(&label_0, input_img_0);
     pass();
 }
