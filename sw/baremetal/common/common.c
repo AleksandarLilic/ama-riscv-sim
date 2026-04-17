@@ -64,35 +64,35 @@ uint64_t get_cpu_instret() {
 // tda
 void init_tda_counters() {
     // reset existing event counters
-    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
-    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
     write_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, 0u);
+    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
     // set up events L1 events first
-    write_csr(CSR_MHPMEVENT3, mhpmevent_bad_spec);
     write_csr(CSR_MHPMEVENT4, mhpmevent_stall_fe);
     write_csr(CSR_MHPMEVENT5, mhpmevent_stall_be);
     // then L2 events
+    write_csr(CSR_MHPMEVENT3, mhpmevent_bad_spec);
     write_csr(CSR_MHPMEVENT6, mhpmevent_stall_l1i);
     write_csr(CSR_MHPMEVENT7, mhpmevent_stall_l1d);
     write_csr(CSR_MHPMEVENT8, mhpmevent_ret_simd);
+    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
 }
 
 void save_tda_counters(tda_cnt_t* p) {
     // read L2 events first
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
+    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
     read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->stall_l1i);
     read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->stall_l1d);
     read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->ret_simd);
     // then L1 events
-    read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
     read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->stall_fe);
     read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->stall_be);
     read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
-    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
     // derive the rest
     p->empty = (p->cycles - p->ret);
     p->stalls = (p->stall_be + p->stall_fe);
@@ -181,8 +181,6 @@ void print_tda_counters_json(const tda_cnt_t* p) {
 // baseline hw counters
 void init_hw_counters() {
     // reset existing event counters
-    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
-    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
     write_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, 0u);
@@ -190,15 +188,18 @@ void init_hw_counters() {
     write_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, 0u);
     write_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, 0u);
     // set up hw events
+    write_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, 0u);
     write_csr(CSR_MHPMEVENT3, mhpmevent_ret_ctrl_flow_br);
     write_csr(CSR_MHPMEVENT4, mhpmevent_bp_miss);
     write_csr(CSR_MHPMEVENT5, mhpmevent_l1i_ref);
     write_csr(CSR_MHPMEVENT6, mhpmevent_l1i_miss);
     write_csr(CSR_MHPMEVENT7, mhpmevent_l1d_ref);
     write_csr(CSR_MHPMEVENT8, mhpmevent_l1d_miss);
+    write_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, 0u);
 }
 
 void save_hw_counters(hw_cnt_t* p) {
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
     read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->ret_ctrl_flow_br);
     read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->bp_miss);
     read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->l1i_ref);
@@ -206,7 +207,6 @@ void save_hw_counters(hw_cnt_t* p) {
     read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->l1d_ref);
     read_csr_wide(CSR_MHPMCOUNTER8, CSR_MHPMCOUNTER8H, p->l1d_miss);
     read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
-    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
 }
 
 static uint32_t calc_hr(uint64_t ref, uint64_t miss, uint64_t decimal_scale) {
