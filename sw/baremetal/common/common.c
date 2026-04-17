@@ -129,7 +129,7 @@ void print_tda_counters(const tda_cnt_t* p) {
     );
     printf(
         INDENT "L2: "
-        "INT: %u, SIMD: %u"
+        "INT: %u, SIMD: %u, "
         "FE ICache: %u, FE Core: %u, "
         "BE DCache: %u, BE Core: %u, "
         "Bad Spec: %u, Other: %u"
@@ -209,46 +209,64 @@ void save_hw_counters(hw_cnt_t* p) {
     read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
 }
 
+static uint32_t calc_hr(uint64_t ref, uint64_t miss, uint64_t decimal_scale) {
+    const uint64_t percent_scale = 100ull;
+
+    if (ref == 0u) return 0u;
+    uint64_t hit = (miss < ref) ? (ref - miss) : 0u;
+    return (uint32_t)((hit * percent_scale * decimal_scale) / ref);
+}
+
+static uint32_t calc_mpki(uint64_t miss, uint64_t ret, uint64_t decimal_scale) {
+    const uint64_t per_kilo_scale = 1000ull;
+
+    if (ret == 0u) return 0u;
+    return (uint32_t)((miss * per_kilo_scale * decimal_scale) / ret);
+}
+
 void print_hw_counters(const hw_cnt_t* p) {
-    const uint32_t sf_hw = 100u;
+    const uint32_t print_sc = 100u;
+    const uint64_t dec_sc = (uint64_t)print_sc;
 
-    uint32_t bp_hr_x =
-        ((sf_hw - ((p->bp_miss * sf_hw) / p->ret_ctrl_flow_br)) * 100u);
-    uint32_t bp_mpki_x = ((p->bp_miss * sf_hw) / (p->ret / 1000));
+    uint32_t bp_hr_x = calc_hr(p->ret_ctrl_flow_br, p->bp_miss, dec_sc);
+    uint32_t bp_mpki_x = calc_mpki(p->bp_miss, p->ret, dec_sc);
 
-    uint32_t l1i_hr_x = ((sf_hw - ((p->l1i_miss * sf_hw) / p->l1i_ref)) * 100u);
-    uint32_t l1i_mpki_x = ((p->l1i_miss * sf_hw) / (p->ret / 1000));
+    uint32_t l1i_hr_x = calc_hr(p->l1i_ref, p->l1i_miss, dec_sc);
+    uint32_t l1i_mpki_x = calc_mpki(p->l1i_miss, p->ret, dec_sc);
 
-    uint32_t l1d_hr_x = ((sf_hw - ((p->l1d_miss * sf_hw) / p->l1d_ref)) * 100u);
-    uint32_t l1d_mpki_x = ((p->l1d_miss * sf_hw) / (p->ret / 1000));
+    uint32_t l1d_hr_x = calc_hr(p->l1d_ref, p->l1d_miss, dec_sc);
+    uint32_t l1d_mpki_x = calc_mpki(p->l1d_miss, p->ret, dec_sc);
 
     print_ipc(p->cycles, p->ret);
 
-    uint32_t bp_hit = (p->ret_ctrl_flow_br - p->bp_miss);
+    uint32_t bp_hit = (uint32_t)((p->bp_miss < p->ret_ctrl_flow_br) ?
+        (p->ret_ctrl_flow_br - p->bp_miss) : 0u);
     printf(
         "bpred:\n"
         INDENT "P: %u, M: %u, ACC: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)bp_hit, (uint32_t)p->bp_miss,
-        (bp_hr_x / sf_hw), (bp_hr_x % sf_hw),
-        (bp_mpki_x / sf_hw), (bp_mpki_x % sf_hw)
+        (bp_hr_x / print_sc), (bp_hr_x % print_sc),
+        (bp_mpki_x / print_sc), (bp_mpki_x % print_sc)
     );
 
-    uint32_t l1i_hit = (p->l1i_ref - p->l1i_miss);
+    uint32_t l1i_hit = (uint32_t)((p->l1i_miss < p->l1i_ref) ?
+        (p->l1i_ref - p->l1i_miss) : 0u);
     printf(
         "icache:\n"
         INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1i_ref, (uint32_t)l1i_hit, (uint32_t)p->l1i_miss,
-        (l1i_hr_x / sf_hw), (l1i_hr_x % sf_hw),
-        (l1i_mpki_x / sf_hw), (l1i_mpki_x % sf_hw)
+        (l1i_hr_x / print_sc), (l1i_hr_x % print_sc),
+        (l1i_mpki_x / print_sc), (l1i_mpki_x % print_sc)
     );
 
-    uint32_t l1d_hit = (p->l1d_ref - p->l1d_miss);
+    uint32_t l1d_hit = (uint32_t)((p->l1d_miss < p->l1d_ref) ?
+        (p->l1d_ref - p->l1d_miss) : 0u);
     printf(
         "dcache:\n"
         INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
         (uint32_t)p->l1d_ref, (uint32_t)l1d_hit, (uint32_t)p->l1d_miss,
-        (l1d_hr_x / sf_hw), (l1d_hr_x % sf_hw),
-        (l1d_mpki_x / sf_hw), (l1d_mpki_x % sf_hw)
+        (l1d_hr_x / print_sc), (l1d_hr_x % print_sc),
+        (l1d_mpki_x / print_sc), (l1d_mpki_x % print_sc)
     );
     printf("\n");
 }
