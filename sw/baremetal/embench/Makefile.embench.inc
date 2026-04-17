@@ -1,4 +1,6 @@
-GCC_OPTS += -O2
+OPT ?= -O2
+
+GCC_OPTS += $(OPT)
 INC_PATHS += ../support
 C_SRCS += ../support/main.c ../support/beebsc.c
 
