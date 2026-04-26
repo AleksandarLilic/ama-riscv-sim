@@ -6,7 +6,8 @@ import os
 
 import pandas as pd
 import plotly.express as px
-from utils import INDENT, get_test_title, smarter_eng_formatter
+from matplotlib.ticker import EngFormatter
+from utils import INDENT, get_test_title
 
 PLOTLY_COLORS = px.colors.qualitative.Plotly
 
@@ -73,10 +74,10 @@ def classify_and_sort_counters(core: dict) -> list[tuple[str, int, str]]:
 
 def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     entries = classify_and_sort_counters(core)
-    df = pd.DataFrame(entries, columns=["counter", "value", "class"])
-
-    eng_fmt = smarter_eng_formatter(places=1)
-    df["count"] = df["value"].apply(lambda x: eng_fmt(x, None))
+    df_cnt = pd.DataFrame(entries, columns=["counter", "count", "class"])
+    # reorder columns to class, counter, count
+    df_cnt = df_cnt[["class", "counter", "count"]]
+    df_cnt["count_e"] = df_cnt["count"].apply(lambda x: FMT(x, None))
 
     ipc = core.get("ipc", 0)
     title = f"Performance Counters for '{test_title}'<br>IPC: {ipc:.3f}"
@@ -84,14 +85,14 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
     sc = 2 if len(entries) > 20 else 1.2
 
     fig = px.bar(
-        df,
+        df_cnt,
         x="counter",
-        y="value",
+        y="count",
         color="class",
         color_discrete_map=BAR_COLOR_MAP,
         category_orders={"counter": [e[0] for e in entries]},
         title=title,
-        text="count",
+        text="count_e",
         width=FIG_WIDTH*sc,
         height=FIG_HEIGHT,
     )
@@ -114,7 +115,7 @@ def plot_counters_bar(core: dict, test_title: str, args: argparse.Namespace):
         yaxis=dict(gridcolor="#ddd", linecolor="#ccc", tickformat=".2s"),
     )
 
-    log_txt = f"{title.split('<br>')[0]}\n{df.to_string(index=False)}"
+    log_txt = f"{title.split('<br>')[0]}\n{df_cnt.to_string(index=False)}"
     if not args.silent:
         print(log_txt)
         fig.show(renderer=args.renderer, width=FIG_WIDTH*sc, height=FIG_HEIGHT)
@@ -175,18 +176,18 @@ def get_stats(data: dict) -> dict:
     if "core" in data:
         cnt = data['core']
         out += f"\ncore:\n{INDENT}"
-        out += f"Cycles: {cnt['cycles']}, "
-        out += f"Retired: {cnt['ret']}, "
-        out += f"Empty: {cnt['cycles'] - cnt['ret']}, "
+        out += f"Cycles: {FMT(cnt['cycles'])}, "
+        out += f"Retired: {FMT(cnt['ret'])}, "
+        out += f"Empty: {FMT(cnt['cycles'] - cnt['ret'])}, "
         out += f"IPC: {cnt['ipc']:.3f} "
     else:
         out += f"core: N/A "
 
     def format_cache_stats(cache: dict) -> str:
         sd = lambda d: sum(d.values())
-        return f"Ref: {cache['references']}, " \
-            f"H: {sd(cache['hits'])}, " \
-            f"M: {sd(cache['misses'])}, " \
+        return f"Ref: {FMT(cache['references'])}, " \
+            f"H: {FMT(sd(cache['hits']))}, " \
+            f"M: {FMT(sd(cache['misses']))}, " \
             f"HR: {cache['hr']:.2f}%, " \
             f"MPKI: {cache['mpki']:.2f} "
 
@@ -199,8 +200,8 @@ def get_stats(data: dict) -> dict:
     out += f"\nbpred:\n{INDENT}"
     if "bpred" in data:
         bp = data['bpred']
-        out += f"P: {bp['predicted']}, "
-        out += f"M: {bp['mispredicted']}, "
+        out += f"P: {FMT(bp['predicted'])}, "
+        out += f"M: {FMT(bp['mispredicted'])}, "
         out += f"ACC: {bp['accuracy']:.2f}%, "
         out += f"MPKI: {bp['mpki']:.2f} "
     else:
@@ -228,6 +229,7 @@ def main(args: argparse.Namespace):
     ]
     col = ["L1", "L2", "cycles"]
     df_tda = pd.DataFrame(row, columns=col)
+    df_tda["cycles_e"] = df_tda["cycles"].apply(lambda x: FMT(x, None))
 
     ret = df_tda[df_tda["L1"] == "retiring"]["cycles"].sum()
     cycles = df_tda["cycles"].sum()
@@ -268,10 +270,10 @@ def main(args: argparse.Namespace):
         root=dict(color="rgba(0,0,0,0)"),
         # breakdown of the template:
         # %{label} -> name
-        # %{value} -> number
+        # %{count} -> number
         # %{percentRoot:.1%} -> % of the total (to 1 decimal)
         hovertemplate=
-            '<b>%{label}</b><br>%{percentRoot:.1%}<br>%{value}<extra></extra>'
+            '<b>%{label}</b><br>%{percentRoot:.1%}<br>%{count}<extra></extra>'
     )
 
     # add title
@@ -322,6 +324,7 @@ def parse_args():
     parser.add_argument('-t', '--title', default=None, help="Title to use for the plots. If not provided, the title will be the test name.")
     parser.add_argument('-r', '--renderer', default='browser', help="Plotly renderer to use")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display plots")
+    parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
     parser.add_argument('--get_stats', default=False, action='store_true', help="Print stats (from json or derived from counters) to the stdout")
     parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
@@ -330,4 +333,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    FMT = EngFormatter(unit='', places=args.places, sep="")
     main(args)
