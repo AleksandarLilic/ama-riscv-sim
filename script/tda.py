@@ -136,6 +136,14 @@ def get_stats(data: dict) -> dict:
     # try to derive stats from core stats if not present in the data
     # (e.g. when collected from emulation/runtime)
 
+    def get_hr(hits: int, references: int, precision: int = 2) -> float:
+        hr = (hits / references) * 100
+        return round(hr, precision) if hr > 0 else 0
+
+    def get_mpki(misses: int, ret: int, precision: int = 2) -> float:
+        mpki = (misses / (ret / 1000))
+        return round(mpki, precision) if mpki > 0 else 0
+
     cnt = data["core"]
     if "icache" not in data:
         icache_keys = ["l1i_ref", "l1i_miss", "ret"]
@@ -145,8 +153,8 @@ def get_stats(data: dict) -> dict:
                 "references": cnt["l1i_ref"],
                 "hits": {"all": hits},
                 "misses": {"all": cnt["l1i_miss"]},
-                "hr": (hits / cnt["l1i_ref"]) * 100,
-                "mpki": cnt["l1i_miss"] / (cnt["ret"] / 1000)
+                "hr": get_hr(hits, cnt["l1i_ref"]),
+                "mpki": get_mpki(cnt["l1i_miss"], cnt["ret"])
             }
 
     if "dcache" not in data:
@@ -157,8 +165,8 @@ def get_stats(data: dict) -> dict:
                 "references": cnt["l1d_ref"],
                 "hits": {"all": hits},
                 "misses": {"all": cnt["l1d_miss"]},
-                "hr": (hits / cnt["l1d_ref"]) * 100,
-                "mpki": cnt["l1d_miss"] / (cnt["ret"] / 1000)
+                "hr": get_hr(hits, cnt["l1d_ref"]),
+                "mpki": get_mpki(cnt["l1d_miss"], cnt["ret"])
             }
 
     if "bpred" not in data:
@@ -168,8 +176,8 @@ def get_stats(data: dict) -> dict:
             data["bpred"] = {
                 "predicted": predicted,
                 "mispredicted": cnt["bp_miss"],
-                "accuracy": (predicted / cnt["ret_ctrl_flow_br"]) * 100,
-                "mpki": cnt["bp_miss"] / (cnt["ret"] / 1000)
+                "accuracy": get_hr(predicted, cnt["ret_ctrl_flow_br"]),
+                "mpki": get_mpki(cnt["bp_miss"], cnt["ret"])
             }
 
     out = ""
@@ -318,6 +326,12 @@ def main(args: argparse.Namespace):
             f.write(log_txt)
         print(f"Saved log to: '{log_path}'")
 
+    if args.save_hw_stats:
+        hw_stats_path = args.hw_stats.replace("_raw.json", "_hw_stats.json")
+        with open(hw_stats_path, "w") as f:
+            json.dump(data, f, indent=4)
+        print(f"Saved hw_stats to: '{hw_stats_path}'")
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' from RTL simulation for the given workload")
@@ -326,6 +340,7 @@ def parse_args():
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display plots")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
     parser.add_argument('--get_stats', default=False, action='store_true', help="Print stats (from json or derived from counters) to the stdout")
+    parser.add_argument('--save_hw_stats', action='store_true', help="Save hw_stats.json to a file")
     parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
     parser.add_argument('--save_log', action='store_true', help="Save log to a file")
