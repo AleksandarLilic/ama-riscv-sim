@@ -1,0 +1,5 @@
+commit 54fd9a0f10aabc662991567ca19ff3e61bfd3939
+Author: David Harris <David_Harris@hmc.edu>
+Date:   Mon Nov 20 07:21:12 2023 -0800
+
+    Enable floating-point for CORE-V Wally to test floating-point benefits

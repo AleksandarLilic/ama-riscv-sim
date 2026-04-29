@@ -1,0 +1,11 @@
+commit 0466a18e4f6b47e19598d7c6ba72916d54b68f65 (HEAD, tag: embench-1.0)
+Author: Jeremy Bennett <jeremy.bennett@embecosm.com>
+Date:   Thu Jan 21 08:51:20 2021 +0000
+
+    Branch for release 1.0.
+    
+    Files changed:
+    
+            * README.md: Updated to note this is explicitly the release 1.0 branch.
+    
+    Signed-off-by: Jeremy Bennett <jeremy.bennett@embecosm.com>
