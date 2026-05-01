@@ -36,6 +36,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
   - [RISC-V ISA tests](#risc-v-isa-tests)
 - [GTest](#gtest)
 - [Building the Simulator](#building-the-simulator)
+- [Building RISC-V Toolchain](#building-risc-v-toolchain)
 - [Custom packed SIMD ISA](#custom-packed-simd-isa)
   - [Instruction list](#instruction-list)
   - [Instruction details](#instruction-details)
@@ -873,6 +874,34 @@ Optional build switches
 `-DRV32C`- enables support for compressed RISC-V instructions (C ext.), disabled by default  
 `-DUART_INPUT_EN` - enables user interaction through UART, disabled by default  
 `-DDPI` - build targetting DPI environment, disabled by default
+
+# Building RISC-V Toolchain
+
+Install dependencies if needed (per the [riscv-gnu-toolchain repo](https://github.com/riscv-collab/riscv-gnu-toolchain#prerequisites))
+```sh
+sudo apt install autoconf automake autotools-dev curl python3 python3-pip libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev libslirp-dev
+```
+
+Clone and build the toolchain
+```sh
+git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git
+cd riscv-gnu-toolchain
+
+# set tools directory to prefered output location 
+BUILD_DIR=/opt/riscv/rv_gcc_14_custom
+
+# optionally get the newer gcc or drop `--with-gcc-src=$(pwd)/gcc-14` below
+git clone https://github.com/gcc-mirror/gcc gcc-14 -b releases/gcc-14 --depth 1
+
+./configure \
+    --with-gcc-src=$(pwd)/gcc-14 \
+    --prefix=${BUILD_DIR} \
+    --with-arch=rv32i_zicsr_zifencei --with-abi=ilp32 \
+    --with-multilib-generator="rv32i_zicsr_zifencei-ilp32--;rv32im_zicsr_zifencei-ilp32--;rv32ic_zicsr_zifencei-ilp32--;rv32imc_zicsr_zifencei-ilp32--;rv32i_zmmul_zicsr_zifencei-ilp32--;rv32ic_zmmul_zicsr_zifencei-ilp32--"
+
+# build will automatically fetch remaining submodules like binutils and newlib
+make -j8
+```
 
 # Custom packed SIMD ISA
 
