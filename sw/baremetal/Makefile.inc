@@ -48,9 +48,8 @@ INC := $(addprefix -I, $(INC_PATHS))
 LIBS += -lgcc
 USER_DEFINES ?=
 
-# if not set in test's Makefile, default to all supported ISA extensions
-#MARCH ?= rv32imc_zicsr_zifencei_zicntr_xsimd
-MARCH ?= rv32i_zmmul_zicsr_zifencei_zicntr_xsimd
+# if not set in test's Makefile, default to all supported ISA extensions in RTL
+MARCH ?= rv32im_zicsr_zifencei_zicntr_xsimd
 MABI ?= ilp32
 GCC_OPTS += -march=$(MARCH) -mabi=$(MABI) -mcmodel=medany
 GCC_OPTS += -mstrict-align -mcsr-check
@@ -61,6 +60,7 @@ GCC_OPTS += -g
 # aligning code and data
 CACHE_LINE_BYTES := 64
 GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
+#GCC_OPTS += -specs=nano.specs
 #GCC_OPTS += -falign-functions=$(CACHE_LINE_BYTES)
 #GCC_OPTS += -falign-loops=$(CACHE_LINE_BYTES)
 #GCC_OPTS += -falign-jumps=$(CACHE_LINE_BYTES)

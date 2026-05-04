@@ -266,7 +266,7 @@ class icfg:
         k_branch: CLR_HL[1], # peach yellow
         k_jump: CLR_HL[2], # sandy brown
         k_mul: CLR_HL[3], # persian red
-        #DIV: CLR_HL[2], # sandy brown
+        k_div: CLR_HL[2], # sandy brown
         k_simd_arith: CLR_HL[4], # lavander (floral)
         k_simd_data_fmt: CLR_HL[5], # myrtle green
     }
@@ -1594,8 +1594,8 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
               'ops', win_s, icfg.k_alu, clr="lut")
     plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mul, 0), y,
               'ops', win_s, icfg.k_mul, clr="lut")
-    #plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_div, 0), y,
-    #          'ops', win_s, icfg.k_div, clr="lut")
+    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_div, 0), y,
+              'ops', win_s, icfg.k_div, clr="lut")
     plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mem, 0), y,
               'ops', win_s, icfg.k_mem, clr="lut")
     plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_arith, 0), y,

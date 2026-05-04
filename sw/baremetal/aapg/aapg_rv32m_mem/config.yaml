@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 3500
+  total_instructions: 10000
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x40000
@@ -11,10 +11,10 @@ general:
 
 isa-instruction-distribution:
   rel_sys.csr: 0
-  rel_rv32i.ctrl: 2
+  rel_rv32i.ctrl: 0
   rel_rv32i.compute: 10
-  rel_rv32i.data: 10
-  rel_rv32m: 0
+  rel_rv32i.data: 20
+  rel_rv32m: 20
   rel_rv32simd.alu: 0
   rel_rv32simd.qalu: 0
   rel_rv32simd.mul: 0
@@ -43,7 +43,7 @@ isa-instruction-distribution:
 
 branch-control:
   backward-probability: 0.5
-  block-size: 9
+  block-size: 7
 
 recursion-options:
   recursion-enable: false
@@ -77,7 +77,7 @@ csr-sections:
   sections: 0x340:0x340 # mscratch
 
 user-functions:
-  randomize: '{32: "nop"}' # dc about function, new one is provided
+  randomize: '{64: "nop"}' # dc about function, new one is provided
 
 switch-priv-modes:
   switch_modes: false

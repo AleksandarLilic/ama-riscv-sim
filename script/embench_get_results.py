@@ -16,7 +16,7 @@ BASELINE_SPEED = (EMBENCH_DIR / "_info/baseline-data_1.0/speed.json").resolve()
 BASELINE_SIZE = (EMBENCH_DIR / "_info/baseline-data_1.0/size.json").resolve()
 
 CPU_MHZ_DEF = 100.0
-ARCH_DEF = "rv32i_zmmul_xsimd"
+ARCH_DEF = "rv32im_xsimd"
 DESC_DEF = "ama-riscv RV32I GCC 14.2.1 -O2"
 
 def parse_args():

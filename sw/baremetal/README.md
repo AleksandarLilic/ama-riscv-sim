@@ -84,7 +84,7 @@ Key variables a per-test `Makefile` may set before the `include`:
 |----------|---------|---------|
 | `TARGET` / `TARGETS` | Output ELF name(s) without extension | *none* |
 | `OPT` | Optimization flags | *none* |
-| `MARCH` | ISA string | `rv32i_zmmul_zicsr_zifencei_zicntr_xsimd` |
+| `MARCH` | ISA string | `rv32im_zicsr_zifencei_zicntr_xsimd` |
 | `MABI` | ABI | `ilp32` |
 | `CFLAGS` | Extra compiler flags | *none* |
 | `LOOPS` | Loop count passed as `-DLOOPS=N` | `1` |
@@ -195,7 +195,7 @@ aapg/
 
 ## Variant configuration
 
-`config_meta.yaml` has one top-level entry per variant. Each entry lists only the fields that differ from `template/config.yaml` - typically `total_instructions` and ISA distribution weights such as `rel_rv32i.compute`, `rel_rv32i.data`, `rel_rv32i.ctrl`, `rel_rv32zmmul`, and custom-SIMD groups. The variant name becomes the directory suffix (e.g. `rv32_generic` -> `aapg_rv32_generic/`).
+`config_meta.yaml` has one top-level entry per variant. Each entry lists only the fields that differ from `template/config.yaml` - typically `total_instructions` and ISA distribution weights such as `rel_rv32i.compute`, `rel_rv32i.data`, `rel_rv32i.ctrl`, `rel_rv32m`, and custom-SIMD groups. The variant name becomes the directory suffix (e.g. `rv32_generic` -> `aapg_rv32_generic/`).
 
 ## Generating variant directories
 
