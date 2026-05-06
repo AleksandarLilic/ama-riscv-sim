@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <fstream>
 #include <iomanip>
