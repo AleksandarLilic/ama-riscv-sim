@@ -17,7 +17,7 @@ cache::cache(
         wr_policy(wr_policy),
         cache_name(cache_name)
     {
-    validate_inputs(sets, ways, re_policy, wr_policy);
+    validate_inputs();
     direct_mapped = (ways == 1);
 
     // first dim is number of sets
@@ -341,12 +341,7 @@ scp_status_t cache::release_scp(cache_line_t& line) {
     }
 }
 
-void cache::validate_inputs(
-    uint32_t sets,
-    uint32_t ways,
-    cache_re_policy_t re_policy,
-    cache_wr_policy_t wr_policy
-) {
+void cache::validate_inputs() {
     bool error = false;
 
     if (re_policy != cache_re_policy_t::lru) {

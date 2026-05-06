@@ -100,7 +100,7 @@ class cache {
         cache_type_t type;
         uint32_t sets;
         uint32_t ways;
-        [[maybe_unused]] cache_re_policy_t re_policy;
+        cache_re_policy_t re_policy;
         cache_in_policy_t in_policy;
         cache_wr_policy_t wr_policy;
         bool direct_mapped;
@@ -192,12 +192,7 @@ class cache {
         scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
         scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
-        void validate_inputs(
-            uint32_t sets,
-            uint32_t ways,
-            cache_re_policy_t re_policy,
-            cache_wr_policy_t wr_policy
-            );
+        void validate_inputs();
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(
             uint32_t byte_addr, uint32_t size, cache_line_t& act_line);
