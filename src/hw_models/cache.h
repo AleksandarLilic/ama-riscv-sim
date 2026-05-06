@@ -100,7 +100,7 @@ class cache {
         cache_type_t type;
         uint32_t sets;
         uint32_t ways;
-        cache_re_policy_t re_policy;
+        [[maybe_unused]] cache_re_policy_t re_policy;
         cache_in_policy_t in_policy;
         cache_wr_policy_t wr_policy;
         bool direct_mapped;

@@ -63,7 +63,7 @@ class bp_local : public bp {
 
         uint32_t get_idx(uint32_t pc) { return get_pc(pc, pc_mask); }
 
-        uint32_t predict(uint32_t target_pc, uint32_t pc) {
+        uint32_t predict(uint32_t target_pc, uint32_t pc) override {
             idx_last = get_idx(pc);
             hist_last = hist_table[idx_last].hist_pattern & hist_mask;
             return predict_common(target_pc, pc, pht.thr_check(hist_last));

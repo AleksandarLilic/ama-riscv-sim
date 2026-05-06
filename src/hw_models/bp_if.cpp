@@ -274,9 +274,9 @@ void bp_if::show_stats(std::string active_bp_name) {
     return;
 
     // TODO: dump as cli switch? useful to have BP state at the end at all?
-    std::cout << "Predictors internal state:" << std::endl;
-    active_bp->dump();
-    for (auto& p : all_bps) p->dump();
+    // std::cout << "Predictors internal state:" << std::endl;
+    // active_bp->dump();
+    // for (auto& p : all_bps) p->dump();
 }
 
 void bp_if::dump_csv(std::string out_dir) {
