@@ -304,7 +304,7 @@ class profiler {
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_b, TO_U32(opc_b::_count)> prof_b_arr;
         std::array<std::array<uint64_t, TO_U32(reg_use_t::_count)>, 32>
-            prof_rf_usage = {0};
+            prof_rf_usage = {{}};
         std::array<sparsity_cnt_t, TO_U32(sparsity_t::_count)> sparsity_cnt;
         bool trace_en;
         bool rf_usage;
