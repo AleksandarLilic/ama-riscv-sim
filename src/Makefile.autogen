@@ -5,7 +5,7 @@ VER_H := $(BDIR)/version_autogen.h
 GIT_SHORT_SHA_LOG := $(BDIR)/git.sha
 
 # ISO-8601 UTC now, honoring reproducible build env var
-NOW_ISO_UTC := $(shell python3 -c "import os,time,datetime; e=int(os.getenv('SOURCE_DATE_EPOCH', '0')) or int(time.time()); print(datetime.datetime.utcfromtimestamp(e).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+NOW_ISO_UTC := $(shell python3 -c "import os,time,datetime; e=int(os.getenv('SOURCE_DATE_EPOCH', '0')) or int(time.time()); print(datetime.datetime.fromtimestamp(e, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
 
 # safe git helpers - don't fail if not a repo or missing some fields
 GIT_DESCRIBE   := $(shell git describe --tags --long --dirty 2>/dev/null || echo "v0.0.0-0-g0000000")
