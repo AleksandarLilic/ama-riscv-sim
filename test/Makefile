@@ -58,7 +58,7 @@ clean_tests:
 	@./prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
 
 build_sim:
-	make -C ../src --no-print-directory BDIR=$(BDIR) NO_SYMLINK=1 -j $(SIM_FLAGS)
+	$(MAKE) -C ../src --no-print-directory BDIR=$(BDIR) NO_SYMLINK=1 $(SIM_FLAGS)
 	@echo "Simulator build done."
 
 cleanlogs:
@@ -74,7 +74,7 @@ clean: cleanlogs cleanbins
 	rm -rf $(TEST_DIR) $(TEST) $(COV_DIR) *.gc*
 
 cleansim:
-	make -C ../src --no-print-directory BDIR=$(BDIR) clean
+	$(MAKE) -C ../src --no-print-directory BDIR=$(BDIR) clean
 
 cleanall: clean cleansim
 	rm -rf gtest_testlist.txt
