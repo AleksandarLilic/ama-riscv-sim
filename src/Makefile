@@ -22,7 +22,7 @@ CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
 CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
 CXXFLAGS += -O3 -flto=auto # release build
-#CXXFLAGS += -g -fno-omit-frame-pointer # perf profiling, but drop -s below
+#CXXFLAGS += -g -fno-omit-frame-pointer # perf profiling
 #CXXFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 #CXXFLAGS += -ftime-report
@@ -34,7 +34,7 @@ else ifeq ($(TUNE), native)
 CXXFLAGS += -march=native -mtune=native
 endif
 
-LDFLAGS := -s
+LDFLAGS :=
 
 STATIC_LINKING ?= 0 # default: dynamic linking
 ifeq ($(STATIC_LINKING), 1) # static linking of C++ runtime only
@@ -44,6 +44,11 @@ LDFLAGS += -static
 endif
 
 LDLIBS :=
+
+# post-link strip
+# optional 'STRIPFLAGS=--strip-all' with GNU strip
+STRIP ?= strip
+STRIPFLAGS ?=
 
 BDIR ?= build
 $(shell mkdir -p $(BDIR))
@@ -85,6 +90,9 @@ $(TARGET): $(OBJECTS)
 		ln -sf $@ $(BIN); \
 	fi
 
+strip: $(TARGET)
+	$(STRIP) $(STRIPFLAGS) $(TARGET)
+
 $(BDIR)/%.o: %.cpp | $(VER_H)
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
@@ -97,4 +105,4 @@ cleanbuild:
 clean: cleanlogs cleanbuild
 	rm -rf $(TARGET)
 
-.PHONY: all obj clean cleanlogs cleanbuild
+.PHONY: all obj strip clean cleanlogs cleanbuild
