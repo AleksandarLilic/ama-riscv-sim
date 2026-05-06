@@ -1,5 +1,7 @@
 #include "dev.h"
 
+dev::~dev() = default;
+
 inline uint32_t dev::rd(uint32_t addr, uint32_t size) {
     #if defined(DEBUG)
     if (__builtin_expect((size != 1) && (size != 2) && (size != 4), 0)){
