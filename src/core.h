@@ -14,6 +14,7 @@
 
 #ifdef HW_MODELS_EN
 #include "bp_if.h"
+#include "divider.h"
 #endif
 
 #ifdef DPI
@@ -483,6 +484,7 @@ class core {
         #ifdef HW_MODELS_EN
         std::string bp_name;
         bp_if bp;
+        divider div;
         uint32_t inst_speculative;
         uint32_t inst_resolved;
         bool last_inst_branch;

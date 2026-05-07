@@ -321,6 +321,7 @@ void core::prof_state([[maybe_unused]] bool enable) {
 
     #ifdef HW_MODELS_EN
     bp.profiling(enable);
+    div.profiling(enable);
     mem->cache_profiling(enable);
     hwrs.rst();
     #endif
@@ -386,10 +387,10 @@ void core::d_alu_reg() {
                 CASE_ALU_REG_MUL_OP(mulh)
                 CASE_ALU_REG_MUL_OP(mulhsu)
                 CASE_ALU_REG_MUL_OP(mulhu)
-                CASE_ALU_REG_MUL_OP(div)
-                CASE_ALU_REG_MUL_OP(divu)
-                CASE_ALU_REG_MUL_OP(rem)
-                CASE_ALU_REG_MUL_OP(remu)
+                CASE_ALU_REG_DIV_OP(div, false)
+                CASE_ALU_REG_DIV_OP(divu, true)
+                CASE_ALU_REG_DIV_OP(rem, false)
+                CASE_ALU_REG_DIV_OP(remu, true)
                 default: tu.e_unsupported_inst("alu_reg_rv32m"); return;
             }
             break;
@@ -1047,15 +1048,14 @@ void core::log_hw_stats() {
     mem->log_cache_stats(ofs, inst_cnt);
     #endif
     bp.log_stats(ofs);
+    div.log_stats("divider", ofs);
     ofs << "\n\"profiled_inst\": "
     #ifdef PROFILERS_EN
     << prof_pc.inst_cnt // profiled inst, depending on settings/triggers
     #else
     << inst_cnt // app profiled from boot
     #endif
-    << ",";
-    ofs << "\n\"_done\": true"; // to avoid trailing comma
-    ofs << "\n}\n";
+    << "\n}\n";
     ofs.close();
 }
 #endif

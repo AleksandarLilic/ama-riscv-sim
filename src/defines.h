@@ -263,6 +263,23 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_SPARSITY_ALU \
         break;
 
+#ifdef HW_MODELS_EN
+#define DIV_HM_EVAL(uns) div.eval(rf[ip.rs1()], rf[ip.rs2()], uns);
+#else
+#define DIV_HM_EVAL(uns)
+#endif
+
+#define CASE_ALU_REG_DIV_OP(op, uns) \
+    case TO_U8(alu_r_mul_op_t::op_##op): \
+        DIV_HM_EVAL(uns) \
+        res = alu_##op(rf[ip.rs1()], rf[ip.rs2()]); \
+        write_rf(ip.rd(), res); \
+        DASM_OP(op) \
+        PROF_G(op) \
+        PROF_RD_RS1_RS2 \
+        PROF_SPARSITY_ALU \
+        break;
+
 #define CASE_ALU_REG_ZBB_OP(op) \
     case TO_U8(alu_r_zbb_op_t::op_##op): \
         res = alu_##op(rf[ip.rs1()], rf[ip.rs2()]); \
