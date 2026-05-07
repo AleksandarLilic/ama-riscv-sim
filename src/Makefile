@@ -27,11 +27,15 @@ CXXFLAGS += -O3 -flto=auto # release build
 #CXXFLAGS += -save-temps
 #CXXFLAGS += -ftime-report
 
-TUNE ?= native
-ifeq ($(TUNE), generic)
+TUNE ?= native_x86
+ifeq ($(TUNE), generic_x86)
 CXXFLAGS += -march=x86-64 -mtune=generic
-else ifeq ($(TUNE), native)
+else ifeq ($(TUNE), native_x86)
 CXXFLAGS += -march=native -mtune=native
+else ifeq ($(TUNE), generic_arm)
+CXXFLAGS += -march=armv8.5-a -mtune=generic
+else ifeq ($(TUNE), native_arm)
+CXXFLAGS += -mcpu=native
 endif
 
 LDFLAGS :=
