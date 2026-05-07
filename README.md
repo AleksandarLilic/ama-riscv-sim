@@ -96,15 +96,24 @@ To check that everything is available and working as expected:
 cd sw/baremetal/dhrystone
 make DHRY_ITERS=1000 # override number of iterations for testing only
 cd -
+
 # build ISA sim
 cd src
 make
-# optionally, use non-default gcc
+# or use non-default gcc, e.g.
 # make CXX=g++-12
+
+# for macOS
+# gmake TUNE=native_arm
+# or
+# gmake CXX=g++-15 TUNE=native_arm
+
 # create a separate workdir
 cd .. && mkdir workdir && cd workdir
+
 # run test, profile from the beginning, log executed instructions
 ../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x40000 -tl
+
 # check the execution log
 vim dhrystone_dhrystone_out/exec.log
 ```
@@ -877,31 +886,78 @@ Optional build switches
 
 # Building RISC-V Toolchain
 
-Install dependencies if needed (per the [riscv-gnu-toolchain repo](https://github.com/riscv-collab/riscv-gnu-toolchain#prerequisites))
+Install dependencies if needed (per the [riscv-gnu-toolchain repo](https://github.com/riscv-collab/riscv-gnu-toolchain#prerequisites))  
+
+For Ubuntu
 ```sh
 sudo apt install autoconf automake autotools-dev curl python3 python3-pip libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev libslirp-dev
 ```
 
-Clone and build the toolchain
+For macOS
 ```sh
+brew install python3 gawk gnu-sed make gmp mpfr libmpc isl zlib expat texinfo flock libslirp ncurses ninja bison m4 wget
+```
+
+Build the toolchain
+```sh
+# get the repo
 git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git
 cd riscv-gnu-toolchain
+git checkout 121fdd24764f6cb6ed1cc998fa920654b1b56253
+
+# fetch newlib and binutils; update binutils pointer
+git submodule update --init --recursive newlib binutils
+cd ..
+
+cd binutils
+git fetch origin tag binutils-2_42
+git checkout binutils-2_42
+# confirm patch can later be applied cleanly (must have no errors)
+git apply --check <workdir>/ama-riscv-sim/binutils.patch
+cd ..
+
+# get gcc-14 (independent from the above, can be started in parallel)
+git clone https://github.com/gcc-mirror/gcc gcc-14 \
+    --branch releases/gcc-14 \
+    --single-branch \
+    --no-tags \
+    --shallow-since="2024-08-01"
+cd gcc-14
+git checkout 897cd794d341a3bdd3195e90ebeea054ac80bf65
+./contrib/download_prerequisites
+# confirm patch can later be applied cleanly (must have no errors)
+git apply --check <workdir>/ama-riscv-sim/gcc-14.patch
+cd ..
 
 # set tools directory to prefered output location 
 BUILD_DIR=/opt/riscv/rv_gcc_14_custom
 
-# optionally get the newer gcc or drop `--with-gcc-src=$(pwd)/gcc-14` below
-git clone https://github.com/gcc-mirror/gcc gcc-14 -b releases/gcc-14 --depth 1
-
+# '--disable-gdb --with-system-zlib' flags only needed for macOS
 ./configure \
     --with-gcc-src=$(pwd)/gcc-14 \
     --prefix=${BUILD_DIR} \
     --with-arch=rv32i_zicsr_zifencei --with-abi=ilp32 \
-    --with-multilib-generator="rv32i_zicsr_zifencei-ilp32--;rv32im_zicsr_zifencei-ilp32--;rv32ic_zicsr_zifencei-ilp32--;rv32imc_zicsr_zifencei-ilp32--;rv32i_zmmul_zicsr_zifencei-ilp32--;rv32ic_zmmul_zicsr_zifencei-ilp32--"
-
-# build will automatically fetch remaining submodules like binutils and newlib
-make -j8
+    --with-multilib-generator="rv32i_zicsr_zifencei-ilp32--;rv32im_zicsr_zifencei-ilp32--;rv32ic_zicsr_zifencei-ilp32--;rv32imc_zicsr_zifencei-ilp32--;rv32i_zmmul_zicsr_zifencei-ilp32--;rv32ic_zmmul_zicsr_zifencei-ilp32--" \
+    --disable-gdb \
+    --with-system-zlib
 ```
+
+For Ubuntu
+```sh
+make -j8 2>&1 | tee build.log
+```
+
+For macOS
+```sh
+gmake -j8 2>&1 | tee build.log
+```
+
+Build on macOS may need
+```sh
+sed -i '' 's/define fdopen(fd,mode) NULL/define disabled_fdopen(fd,mode) NULL/g' binutils/zlib/zutil.h
+```
+
+Patching the toolchain with custom packed SIMD ISA can now be done. Check [patching binutils](#patching-binutils-to-add-support-for-custom-instructions) and [patching gcc](#patching-gcc-to-add-support-for-custom-instructions) below
 
 # Custom packed SIMD ISA
 
@@ -1052,10 +1108,7 @@ cd <toolchain_workdir>/riscv-gnu-toolchain/build-binutils-newlib
 make -j8 && make install -j8
 ```
 
-Patch taken from  
-RISC-V GNU toolchain repo: https://github.com/riscv/riscv-gnu-toolchain  
-Pulls binutils from: https://sourceware.org/git/binutils-gdb.git
-
+Done on commit
 ```
 commit c7f28aad0c99d1d2fec4e52ebfa3735d90ceb8e9 (HEAD, tag: binutils-2_42)
 Author: Nick Clifton <nickc@redhat.com>
@@ -1085,14 +1138,9 @@ cd <toolchain_workdir>/riscv-gnu-toolchain/build-gcc-newlib-stage2
 make -j8 && make install -j8
 ```
 
-Patch taken from  
-RISC-V GNU toolchain repo: https://github.com/riscv/riscv-gnu-toolchain  
-Pulls GCC from: https://github.com/gcc-mirror/gcc  
-Patch targets GCC 14
-
+Done on commit
 ```
-commit 897cd794d341a3bdd3195e90ebeea054ac80bf65 (grafted, HEAD -> releases/gcc-14, origin/releases/gcc
--14)
+commit 897cd794d341a3bdd3195e90ebeea054ac80bf65 (HEAD -> releases/gcc-14, origin/releases/gcc-14)
 Author: GCC Administrator <gccadmin@gcc.gnu.org>
 Date:   Fri Aug 9 00:22:36 2024 +0000
 
