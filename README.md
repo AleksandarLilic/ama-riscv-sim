@@ -59,12 +59,11 @@ Submodules are pulled automatically with `--recurse-submodules`:
 - [gprof2dot](https://github.com/jrfonseca/gprof2dot)
 
 ### Simulator build
-- **GCC** >= 10 (C++17, `gnu++17`)
-- **Make**
+- GCC >= 10 (C++17, `gnu++17`)
+- Make
 
 ### RISC-V software build (`sw/`)
-- **RISC-V GNU toolchain** (`riscv64-unknown-elf-gcc`, `objcopy`, `objdump`, `size`) - set via `RV_GNU_LATEST` env var
-- **bin2hex** (`riscv64-unknown-elf-bin2hex`) - binary to hex conversion for RTL simulation; not part of the standard toolchain
+- RISC-V GNU toolchain (check build notes under [Building RISC-V Toolchain](#building-risc-v-toolchain) chapter)
 - AAPG (check patch notes under [Patching AAPG](#patching-aapg) chapter)
 
 ### Analysis scripts (`script/`)
@@ -88,13 +87,13 @@ source .venv/bin/activate
 ```
 
 Other tools:
-- **Perl**
-- **Graphviz**
+- Perl
+- Graphviz
 
 ### Testing (`test/`)
-- **Google Test** (`libgtest-dev` or equivalent)
-- **lcov** and **genhtml** (for coverage reports)
-- Optional: **valgrind**
+- Google Test (`libgtest-dev` or equivalent)
+- `lcov` and `genhtml` (for coverage reports)
+- Optional: `valgrind`
 
 ## Quick start
 To check that everything is available and working as expected:
