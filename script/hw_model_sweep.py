@@ -138,9 +138,10 @@ def run_sim(cmd: List) -> Dict[str, Any]:
 class workload_params:
     workloads: List[Dict[str, Any]]
     sweep: str # icache/dcache/bpred
-    args: List[str]
+    sim_args: List[str]
     msg: str
     save_sim: bool
+    work_dir: str
     ignore_thr: bool = False
     tag: str = ""
     ret_list: List = None # for parallel, anything needed to be returned
@@ -170,11 +171,11 @@ def run_workloads(wp: workload_params):
 
     msg_out = f"{wp.msg}\n"
     start_dir = os.getcwd()
-    os.chdir(args.work_dir)
+    os.chdir(wp.work_dir)
     for workload in wp.workloads:
         app = workload["app"]
         wl_args = workload["args"]
-        cmd = [SIM] + [app] + wp.args + tag_arg + wl_args
+        cmd = [SIM] + [app] + wp.sim_args + tag_arg + wl_args
         res = run_sim(cmd)
 
         if wp.save_sim:
@@ -321,9 +322,10 @@ def run_cache_sweep(
                     workload_params(
                         workloads=workloads,
                         sweep=ck,
-                        args=cp + bp_act,
+                        sim_args=cp + bp_act,
                         msg= f"==> SWEEP: {ck} {cp} <==",
                         save_sim=args.save_sim,
+                        work_dir=args.work_dir,
                         ignore_thr=False,
                         tag="".join(cp[1::2]), # set (1), way (3), policy (5)
                         ret_list=cp
@@ -1113,9 +1115,10 @@ def run_bp_sweep(
                     workload_params(
                         workloads=workloads,
                         sweep=bpk,
-                        args=bpp + bp_act,
+                        sim_args=bpp + bp_act,
                         msg=f"==> SWEEP: {bp_handle} {bpp} <==",
                         save_sim=args.save_sim,
+                        work_dir=args.work_dir,
                         ignore_thr=ignore_thr,
                         # every even index is a number, use as tag
                         tag=f"{bp_handle}_" + "".join(bpp[1::2]),
