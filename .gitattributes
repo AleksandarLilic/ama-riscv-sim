@@ -10,6 +10,7 @@ sw/baremetal/ustress/** linguist-vendored
 
 # generated
 sw/baremetal/aapg/aapg_rv32*/** linguist-generated
+uv.lock linguist-generated=true
 
 # overrides
 Makefile*inc linguist-language=Makefile

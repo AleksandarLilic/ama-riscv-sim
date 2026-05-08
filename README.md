@@ -68,13 +68,24 @@ Submodules are pulled automatically with `--recurse-submodules`:
 - AAPG (check patch notes under [Patching AAPG](#patching-aapg) chapter)
 
 ### Analysis scripts (`script/`)
-Python 3 packages:
-- **matplotlib**
-- **numpy**
-- **pandas**
-- **ruamel.yaml**
-- **plotly**
-- **pyelftools** 
+Get `uv` first if needed  
+
+On Ubuntu
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+On macOS
+```sh
+brew install uv
+```
+
+Set up the Python environment
+``` sh
+# install dependencies
+uv sync
+# activate when needed
+source .venv/bin/activate
+```
 
 Other tools:
 - **Perl**

@@ -1,0 +1,18 @@
+[project]
+name = "sim"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "brevitas>=0.12.1",
+    "matplotlib>=3.10.9",
+    "nltk>=3.9.4",
+    "numpy>=1.26.4",
+    "pandas>=2.3.3",
+    "plotly>=6.7.0",
+    "pyelftools>=0.32",
+    "regex>=2026.4.4",
+    "ruamel-yaml>=0.19.1",
+    "torch>=2.11.0",
+]
