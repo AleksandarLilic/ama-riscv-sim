@@ -1082,9 +1082,12 @@ void core::dump() {
         }
     }
     std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
-    #ifdef PROFILERS_EN
+              #ifdef PROFILERS_EN
+              // profiled inst, depending on settings/triggers
               << ", profiled: " << prof_pc.inst_cnt
-    #endif
+              #else
+              << inst_cnt // app profiled from boot
+              #endif
               << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
     else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";

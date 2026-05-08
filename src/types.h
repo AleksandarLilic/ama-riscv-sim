@@ -418,7 +418,7 @@ struct prof_pc_t {
         uint32_t start;
         uint32_t stop;
         uint32_t single_match_num;
-        uint64_t inst_cnt;
+        uint64_t inst_cnt = 0;
         bool exit_on_prof_stop;
     private:
         uint32_t current_match = 0;
