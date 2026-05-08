@@ -17,7 +17,10 @@ TEST_DIR = os.path.join(GIT_ROOT, 'sw/baremetal')
 ISA_TEST_DIR = os.path.join(GIT_ROOT, 'sw/riscv-isa-tests')
 WORK_DIR = os.getcwd()
 
-CODEGEN_APPS = ["aapg", "sorting", "vector_ew_basic", "matmul", "memcpy"]
+CODEGEN_APPS = [
+    "aapg", "sorting", "vector_ew_basic", "matmul", "memcpy",
+    "dcache_ds_2", "dcache_ds_all"
+]
 
 def file_exists(filename):
     if not os.path.exists(filename):
