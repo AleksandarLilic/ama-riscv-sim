@@ -11,6 +11,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel)
 
 RV_GNU := $(RV_GNU_LATEST)
 # e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
+BIN2HEX := $(REPO_ROOT)/sw/bin2hex.py
 
 # Turn on increased build verbosity by defining BUILD_VERBOSE in test Makefile
 # or use V=1 on the make command line
@@ -83,6 +84,8 @@ OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 #OBJDUMP_OPTS += -z # show zero padding as well (complete dump)
 #OBJDUMP_OPTS += --visualize-jumps
 #OBJDUMP_OPTS += -S # inline C source code in disassembly
+
+HEX ?= 1
 MEM_WIDTH := 128
 
 # for tests that are parameterized by defines
@@ -90,31 +93,15 @@ define GET_DEFINES
 $(wordlist 2,999,$(subst :, ,$(filter $1:%,$(TEST_DEFINES))))
 endef
 
-# run with HEX=1 to generate hex file for RTL simulation
-HEX ?= 1
-RV_GNU_DEFAULT := riscv64-unknown-elf
-BIN2HEX :=
-ifeq ($(HEX), 1)
-	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
-		BIN2HEX := $(RV_GNU)-bin2hex
-	else ifneq (, $(shell command -v $(RV_GNU_DEFAULT)-bin2hex 2> /dev/null))
-		BIN2HEX := $(RV_GNU_DEFAULT)-bin2hex
-	else
-		$(error "No bin2hex tool found")
-	endif
-endif
-
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-	$(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
-	$(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
+    $(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
+    $(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
 		$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin; \
-		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).mem; \
-		sed -i '1s/^/@0\n/' $(basename $@).mem; \
-		rm $(basename $@).bin; \
+		$(BIN2HEX) -w $(MEM_WIDTH) -a 0 $(basename $@).bin $(basename $@).mem; \
 	fi
 
 %.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)

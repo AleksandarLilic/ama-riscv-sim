@@ -7,7 +7,10 @@ ifeq ($(filter -j% --jobserver%, $(MAKEFLAGS)),)
     MAKEFLAGS += -j$(NPROCS)
 endif
 
+REPO_ROOT := $(shell git rev-parse --show-toplevel)
+
 RV_GNU := $(RV_GNU_LATEST)
+BIN2HEX := $(REPO_ROOT)/sw/bin2hex.py
 LD_SRC := link.ld
 
 MARCH ?= rv32i_zicsr_zifencei
@@ -30,25 +33,14 @@ OBJDUMP_OPTS += --start-address=0x40000 --stop-address=0x50000
 OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 #OBJDUMP_OPTS += --visualize-jumps
 #OBJDUMP_OPTS += -S # inline C source code in disassembly
+
+HEX ?= 1
 MEM_WIDTH := 128
 
 TESTS := $(notdir $(shell find $(DIR) -type f -name "*.S"))
 TESTS_BIN := $(subst .S,.elf,$(TESTS))
 # remove "ma_data" from the list of tests if it exists (rv32ui only)
 TESTS_BIN := $(filter-out %ma_data.elf,$(TESTS_BIN))
-
-RV_GNU_DEFAULT := riscv64-unknown-elf
-BIN2HEX :=
-HEX ?= 1
-ifeq ($(HEX), 1)
-	ifneq (, $(shell command -v $(RV_GNU)-bin2hex 2> /dev/null))
-		BIN2HEX := $(RV_GNU)-bin2hex
-	else ifneq (, $(shell command -v $(RV_GNU_DEFAULT)-bin2hex 2> /dev/null))
-		BIN2HEX := $(RV_GNU_DEFAULT)-bin2hex
-	else
-		$(error "No bin2hex tool found")
-	endif
-endif
 
 all: $(TESTS_BIN)
 
@@ -57,10 +49,10 @@ all: $(TESTS_BIN)
 	@$(RV_GNU)-objdump $(OBJDUMP_OPTS) $(basename $@).elf > $(basename $@).dasm
 	@if [ "$(HEX)" = "1" ]; then \
 		$(RV_GNU)-objcopy $(basename $@).elf -O binary $(basename $@).bin; \
-		$(BIN2HEX) -w $(MEM_WIDTH) $(basename $@).bin $(basename $@).mem; \
-		sed -i '1s/^/@0\n/' $(basename $@).mem; \
+		$(BIN2HEX) -w $(MEM_WIDTH) -a 0 $(basename $@).bin $(basename $@).mem; \
 	fi
-	@echo "Generated $@"
+	@echo "Executable built: $@"
+	@$(RV_GNU)-size -G $@
 
 clean:
 	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map
