@@ -462,6 +462,7 @@ struct cfg_t {
     uint64_t run_insts;
     bool prof_trace;
     bool rf_usage;
+    bool no_callstack;
     bool log;
     bool log_always;
     bool log_state;

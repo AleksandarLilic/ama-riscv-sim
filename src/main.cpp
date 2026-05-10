@@ -252,7 +252,9 @@ int main(int argc, char* argv[]) {
          gen_help_list(perf_event_map),
          CXXOPTS_VAL_STR->default_value(defs_t::perf_event))
         ("rf_usage", "Enable profiling register file usage",
-         CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage));
+         CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
+        ("no_callstack", "Disable callstack tracing",
+         CXXOPTS_VAL_BOOL->default_value("false"));
     #endif
 
     #ifdef DASM_EN
@@ -436,6 +438,7 @@ int main(int argc, char* argv[]) {
         cfg.prof_trace = TO_BOOL(result["prof_trace"]);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
         cfg.rf_usage = TO_BOOL(result["rf_usage"]);
+        cfg.no_callstack = TO_BOOL(result["no_callstack"]);
         #endif
 
         #ifdef DASM_EN

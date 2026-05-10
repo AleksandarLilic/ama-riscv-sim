@@ -25,6 +25,7 @@ profiler_perf::profiler_perf(
 }
 
 bool profiler_perf::finish_inst(uint32_t next_pc) {
+    if (!callstack_en) return false;
     // handle next instruction symbol change, if any
     bool fallthrough = ((next_pc == st.fallthrough_pc) && !st.updated);
     if (fallthrough) {
@@ -71,6 +72,7 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
 }
 
 void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
+    if (!callstack_en) return;
     if (!taken) return;
     auto found_sym = find_symbol_in_range(next_pc);
     bool sym_chg = (found_sym.second.idx != st.idx_callstack.back());
@@ -82,6 +84,7 @@ void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
 
 void profiler_perf::update_jalr(
     uint32_t next_pc, bool ret_inst, bool tail_call, uint32_t ra) {
+    if (!callstack_en) return;
     // also not ret if it doesn't change the symbol
     ret_inst &= symbol_change_on_jump(next_pc);
     if (ret_inst) {
@@ -108,6 +111,7 @@ void profiler_perf::update_jalr(
 }
 
 void profiler_perf::update_jal(uint32_t next_pc, bool tail_call, uint32_t ra) {
+    if (!callstack_en) return;
     bool noreturn_call = symbol_map.find(ra) != symbol_map.end();
     if (symbol_map.find(next_pc) != symbol_map.end()) {
         update_callstack(next_pc);
@@ -207,6 +211,7 @@ std::u16string profiler_perf::callstack_to_key() {
 }
 
 void profiler_perf::log_to_file_and_print(bool silent) {
+    if (!callstack_en) return;
     // close last callstack
     save_callstack_cnt();
     std::string pt = "";

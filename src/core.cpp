@@ -28,6 +28,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
     prof.set_prof_flags(cfg.prof_trace, cfg.rf_usage);
+    if (cfg.no_callstack) prof_perf.set_callstack_en(false);
     prof_trace = cfg.prof_trace;
 
     #ifdef DPI
@@ -57,7 +58,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     logf.activate(false);
     if (logf.en) log_ofstream.open(cfg.out_dir + "exec.log");
     #ifdef PROFILERS_EN
-    if (logf.act) LOG_SYMBOL_TO_FILE;
+    if (logf.act && prof_perf.is_callstack_en()) LOG_SYMBOL_TO_FILE;
     #endif
     #endif
 
@@ -318,7 +319,7 @@ void core::prof_state([[maybe_unused]] bool enable) {
     #ifdef DASM_EN
     logf.activate(enable);
     #ifdef PROFILERS_EN
-    if (logf.act) LOG_SYMBOL_TO_FILE;
+    if (logf.act && prof_perf.is_callstack_en()) LOG_SYMBOL_TO_FILE;
     #endif
     #endif
 

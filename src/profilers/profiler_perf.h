@@ -20,6 +20,7 @@ class profiler_perf {
         clock_source_t* clk_src;
         #endif
         uint32_t diverged_cnt = 0;
+        bool callstack_en = true;
 
     public:
         profiler_perf() = delete;
@@ -31,6 +32,8 @@ class profiler_perf {
         #ifdef DPI
         void set_clk_src (clock_source_t* src) { clk_src = src; }
         #endif
+        void set_callstack_en(bool en) { callstack_en = en; }
+        bool is_callstack_en() const { return callstack_en; }
         bool finish_inst(uint32_t next_pc);
         std::string get_callstack_str() {
             return get_callstack_str(st.idx_callstack);
