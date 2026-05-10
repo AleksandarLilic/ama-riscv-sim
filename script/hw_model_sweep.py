@@ -173,10 +173,12 @@ def run_trial_run(workloads: List[Dict[str, Any]], work_dir: str) -> None:
                 runtime_skip_search += runtime
             else:
                 runtime_search += runtime
+            warn = " <----- WARNING: 0 profiled instructions" \
+                if profiled == 0 else ""
             print(
                 f"{INDENT}{get_test_name(app)}: "
                 f"executed: {executed:,}, profiled: {profiled:,} "
-                f"({profiled_perc:.2f}%), runtime: {runtime:.2f}s"
+                f"({profiled_perc:.2f}%), runtime: {runtime:.2f}s{warn}"
             )
     finally:
         os.chdir(start_dir)
