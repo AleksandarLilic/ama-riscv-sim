@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import time
+import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import timedelta
@@ -133,6 +134,58 @@ def run_sim(cmd: List) -> Dict[str, Any]:
                            f"{cmd}\n {res.stderr}\n {res.stdout}")
     return res
 
+def parse_inst_counters(sim_stdout: str, app: str) -> Tuple[int, int]:
+    match = re.search(
+        r"Instruction Counters: executed: (\d+), profiled: (\d+)",
+        sim_stdout
+    )
+    if match is None:
+        raise RuntimeError(
+            f"Instruction counters not found in trial run output for {app}")
+    return int(match.group(1)), int(match.group(2))
+
+def parse_sim_runtime(sim_stdout: str, app: str) -> float:
+    match = re.search(
+        r"Simulation performance: .* \(\d+ instructions in ([0-9.eE+-]+)s\)",
+        sim_stdout
+    )
+    if match is None:
+        raise RuntimeError(
+            f"Simulation runtime not found in trial run output for {app}")
+    return float(match.group(1))
+
+def run_trial_run(workloads: List[Dict[str, Any]], work_dir: str) -> None:
+    runtime_search = 0.0
+    runtime_skip_search = 0.0
+    start_dir = os.getcwd()
+
+    print("Trial run stats:")
+    try:
+        os.chdir(work_dir)
+        for workload in workloads:
+            app = workload["app"]
+            cmd = [SIM, app, "--out_dir_tag", "trial_run"] + workload["args"]
+            res = run_sim(cmd)
+            executed, profiled = parse_inst_counters(res.stdout, app)
+            runtime = parse_sim_runtime(res.stdout, app)
+            profiled_perc = (profiled / executed * 100) if executed else 0.0
+            if workload["skip_search"]:
+                runtime_skip_search += runtime
+            else:
+                runtime_search += runtime
+            print(
+                f"{INDENT}{get_test_name(app)}: "
+                f"executed: {executed:,}, profiled: {profiled:,} "
+                f"({profiled_perc:.2f}%), runtime: {runtime:.2f}s"
+            )
+    finally:
+        os.chdir(start_dir)
+
+    print(f"{INDENT}Runtime searched workloads: {runtime_search:.2f}s")
+    print(f"{INDENT}Runtime skip_search workloads: {runtime_skip_search:.2f}s")
+    print(f"{INDENT}Runtime total: {runtime_search + runtime_skip_search:.2f}s")
+    print()
+
 # functions
 @dataclass
 class workload_params:
@@ -200,7 +253,8 @@ def run_workloads(wp: workload_params):
         if os.path.exists(branches_csv):
             # if branches exist, remove everything else, save as pkl/gz and cont
             branches = pd.read_csv(branches_csv)
-            subprocess.run(["rm", "-rf"] + glob.glob(f"{out_dir}/*"), check=True)
+            subprocess.run(
+                ["rm", "-rf"] + glob.glob(f"{out_dir}/*"), check=True)
             branches.to_pickle(os.path.join(out_dir, "branches.pkl.gz"))
         else:
             # if not, remove the entire dir, nothing to keep
@@ -224,6 +278,8 @@ def run_workloads(wp: workload_params):
                 if not wp.ignore_thr:
                     # skip rest of workloads if acc/mpki is violated on any
                     bp_agg = {k: [] for k in bp_agg.keys()}
+                    # and remove entire dir, nothing to keep
+                    subprocess.run(["rm", "-r", out_dir])
                     break
 
             bp_agg['acc'].append(acc)
@@ -248,6 +304,8 @@ def run_workloads(wp: workload_params):
             hr = round(hits/references*100, 2)
             if hr < app_thr_hr and not wp.ignore_thr:
                 agg_hr = []
+                # and remove entire dir, nothing to keep
+                subprocess.run(["rm", "-r", out_dir])
                 break
             agg_hr.append(hr)
             per_app_hr[get_test_name(app)] = hr
@@ -1556,6 +1614,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sweep through specified hardware models for a given workload")
     parser.add_argument("-s", "--sweep", required=True, choices=SWEEP_CHOICES, help="Select the hardware model to sweep")
     parser.add_argument("-p", "--params", required=True, help="Path to the hardware model sweep params file")
+    parser.add_argument("--trial_run", action="store_true", help="Run all workloads once with default HW model params before the sweep and print executed/profiled instruction counts")
 
     parser.add_argument("--save_sim", action="store_true", help="Save simulation stdout in a log file")
     parser.add_argument("--save_stats", action="store_true", help="Save combined simulation stats as json")
@@ -1617,13 +1676,22 @@ def run_main(args: argparse.Namespace) -> List[plt.Figure]:
             else:
                 use_for_sweep = not wl_params[3]['skip_search']
                 wl_args = wl_params[2]["sim_args"].split(" ") # args as list
-                e = {"app": elf, "thr": wl_params[1], "args": wl_args}
+                e = {
+                    "app": elf,
+                    "thr": wl_params[1],
+                    "args": wl_args,
+                    "skip_search": wl_params[3]['skip_search']
+                }
                 workloads_all.append(e)
                 if use_for_sweep:
                     workloads_sweep.append(e)
 
     if len(workloads_sweep) == 0:
         raise FileNotFoundError("No workloads found for sweep")
+
+    if args.trial_run:
+        run_trial_run(workloads_all, args.work_dir)
+        sys.exit()
 
     single_wl_sweep = (len(workloads_sweep) == 1)
     print(f"Sweep: '{args.sweep}'", end='')
@@ -1718,12 +1786,16 @@ def sweep_wrapper_end(
 if __name__ == "__main__":
     tt = track_time()
     args = parse_args()
+    if args.trial_run and args.load_stats:
+        raise ValueError("--trial_run cannot be used with --load_stats")
+
     mw_str = ""
     if not args.load_stats:
         if not os.path.exists(SIM): # dc about SIM if stats are only loaded
             raise FileNotFoundError(f"Simulator not found at: {SIM}")
         args.max_workers = min(MAX_WORKERS, args.max_workers)
-        mw_str = f" with {args.max_workers} workers"
+        if not args.load_stats:
+            mw_str = f" with {args.max_workers} workers"
 
     print(f"Running with config '{args.params}' in '{args.work_dir}'" + mw_str)
     figs = run_main(args)
