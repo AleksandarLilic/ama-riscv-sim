@@ -166,6 +166,7 @@ struct hw_defs_t {
     static constexpr char roi_start[] = "0";
     static constexpr char roi_size[] = "0";
     static constexpr char show_cache_state[] = "false";
+    static constexpr char div_cache_entries[] = "1";
     // branch predictors
     static constexpr char bp[] = "bimodal";
     static constexpr char bp2[] = "none"; // global
@@ -311,7 +312,10 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_size))
         ("show_cache_state",
          "Show per cache line references at the end of simulation",
-         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state));
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state))
+        ("div_cache_entries",
+         "Number of entries in divider result cache",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::div_cache_entries));
 
     options.add_options("HW model - Branch Predictor")
         ("bp",
@@ -469,6 +473,7 @@ int main(int argc, char* argv[]) {
         hw_cfg.roi_start = TO_HEX(result["roi_start"]);
         hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
         hw_cfg.show_cache_state = TO_BOOL(result["show_cache_state"]);
+        hw_cfg.div_cache_entries = TO_SIZE(result["div_cache_entries"]);
 
         // branch predictors
         hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);

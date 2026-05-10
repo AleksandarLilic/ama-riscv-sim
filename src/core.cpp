@@ -12,6 +12,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #ifdef HW_MODELS_EN
     , bp_name("bpred")
     , bp(bp_name, hw_cfg)
+    , div(hw_cfg.div_cache_entries)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
     , out_dir(cfg.out_dir)
@@ -289,9 +290,11 @@ void core::finish(bool dump_regs) {
     #ifdef PROFILERS_EN
     bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.silent);
     mem->cache_finish(cfg.silent, prof_pc.inst_cnt);
+    div.finish(cfg.silent);
     #else
     bp.finish(cfg.out_dir, inst_cnt, cfg.silent);
     mem->cache_finish(cfg.silent, inst_cnt);
+    div.finish(cfg.silent);
     #endif
     log_hw_stats();
     #endif

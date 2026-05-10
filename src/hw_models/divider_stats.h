@@ -53,16 +53,51 @@ struct div_common_stats_t {
             max = std::max(max, bits);
         }
 
-        void log(std::ofstream& log_file) const {
+        void log(std::ofstream& log_file, uint64_t count) const {
+            float_t avg = -1.0;
+            if (count != 0) avg = TO_F32(total) / TO_F32(count);
             log_file << JSON_N << "\"common_cases_info\": {"
                      << "\"total\": " << total << ", "
                      << "\"min\": ";
             if (min == na_min) log_file << "null";
-            else log_file << min;
+            else log_file << TO_U32(min);
             log_file << ", " << "\"max\": ";
             if (max == na_max) log_file << "null";
-            else log_file << max;
+            else log_file << TO_U32(max);
+            log_file << ", " << "\"avg\": ";
+            if (min == na_min) log_file << "null";
+            else log_file << std::fixed << std::setprecision(2) << avg;
             log_file << "}";
+        }
+
+        uint64_t get_total() const { return total; }
+};
+
+struct div_size_t {
+    private:
+        uint32_t total = 0;
+        uint32_t entries = 0;
+        uint32_t entry_size = 0;
+
+    public:
+        div_size_t() = default;
+        div_size_t(uint32_t entries, uint32_t entry_bits) :
+            total((entries * entry_bits) >> 3),
+            entries(entries),
+            entry_size((entry_bits) >> 3)
+        {}
+
+        void log(std::ofstream& log_file) const {
+            log_file << JSON_N << "\"size\": {"
+                     << "\"total\": " << total
+                     << ", \"entries\": " << entries
+                     << ", \"entry_size\": " << entry_size
+                     << "}";
+        }
+
+        void show() const {
+            std::cout << "divider (E: " << entries
+                      << ", S/ES: " << total << "/" << entry_size << " B):";
         }
 };
 
@@ -77,6 +112,11 @@ struct div_stats_t {
         bool prof_active = false;
 
     public:
+        static float_t fraction(uint64_t count, uint64_t total) {
+            if (total == 0) return -1.0;
+            return (TO_F32(count) / TO_F32(total) * 100.0);
+        }
+
         void profiling(bool enable) { prof_active = enable; }
 
         void hit() {
@@ -100,12 +140,48 @@ struct div_stats_t {
         }
 
         void log(std::ofstream& log_file) const {
+            float_t cache_fraction = fraction(cache_hits, total);
+            float_t special_fraction = fraction(special_cases, total);
+            float_t common_fraction = fraction(common_cases, total);
+
+            log_file << std::fixed << std::setprecision(2);
             log_file << JSON_N << "\"total\": " << total << ","
-                     << JSON_N << "\"cache_hits\": " << cache_hits << ","
-                     << JSON_N << "\"special_cases\": " << special_cases << ",";
+                     << JSON_N << "\"cache\": {"
+                     << "\"count\": " << cache_hits
+                     << ", \"fraction\": " << cache_fraction
+                     << "},"
+                     << JSON_N << "\"special_cases\": {"
+                     << "\"count\": " << special_cases
+                     << ", \"fraction\": " << special_fraction
+                     << "},";
             special_classes.log(log_file);
             log_file << ","
-                     << JSON_N << "\"common_cases\": " << common_cases << ",";
-            common_cases_info.log(log_file);
+                     << JSON_N << "\"common_cases\": {"
+                     << "\"count\": " << common_cases
+                     << ", \"fraction\": " << common_fraction
+                     << "},";
+            common_cases_info.log(log_file, common_cases);
+        }
+
+        void show() const {
+            float_t cache_fraction = fraction(cache_hits, total);
+            float_t special_fraction = fraction(special_cases, total);
+            float_t common_fraction = fraction(common_cases, total);
+            float_t avg_common_bits = -1.0;
+            if (common_cases != 0) {
+                avg_common_bits =
+                    TO_F32(common_cases_info.get_total()) / TO_F32(common_cases);
+            }
+
+            std::cout << std::fixed << std::setprecision(2);
+            std::cout << "Div: " << total
+                      << ", Cache: " << cache_hits
+                      << " (" << cache_fraction << "%)"
+                      << ", Special: " << special_cases
+                      << " (" << special_fraction << "%)"
+                      << ", Common: " << common_cases
+                      << "(" << common_fraction << "%), "
+                      << common_cases_info.get_total() << " b, "
+                      << avg_common_bits << " b/d";
         }
 };

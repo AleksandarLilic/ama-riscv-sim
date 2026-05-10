@@ -23,14 +23,33 @@ struct div_result_cache_t {
 
 class divider {
     private:
-        div_result_cache_t div_cache;
+        // a, b, div, rem, op_uns, valid
+        static constexpr uint32_t div_result_cache_entry_bits =
+            32 + 32 + 32 + 32 + 1 + 1;
+        uint32_t div_cache_entries;
+        uint32_t div_cache_wr_ptr;
+        std::vector<div_result_cache_t> div_cache;
+        div_size_t size;
         div_stats_t stats;
 
     public:
+        divider(uint32_t div_cache_entries = 1) :
+            div_cache_entries(div_cache_entries),
+            div_cache_wr_ptr(0),
+            div_cache(div_cache_entries),
+            size(div_cache_entries, div_result_cache_entry_bits)
+        {
+            if (div_cache_entries == 0) {
+                std::cerr << "ERROR: divider result cache: number of entries "
+                          << "cannot be 0" << std::endl;
+                throw std::invalid_argument("");
+            }
+        }
+
         void profiling(bool enable) { stats.profiling(enable); }
 
         void eval(uint32_t a, uint32_t b, bool op_uns) {
-            if (div_cache.hit(a, b, op_uns)) {
+            if (cache_hit(a, b, op_uns)) {
                 stats.hit();
                 return;
             }
@@ -40,17 +59,35 @@ class divider {
                 stats.special(special);
             } else {
                 stats.common(count_common_bits(a, op_uns));
-                div_cache.update(a, b, op_uns);
+                div_cache.at(div_cache_wr_ptr).update(a, b, op_uns);
+                div_cache_wr_ptr = ((div_cache_wr_ptr + 1) % div_cache_entries);
             }
         }
 
         void log_stats(std::string name, std::ofstream& file) {
             file << "\n\"" << name << "\"" << ": {";
             stats.log(file);
+            file << ",";
+            size.log(file);
             file << "\n},";
         }
 
+        void finish(bool silent) const {
+            if (silent) return;
+            size.show();
+            std::cout << "\n" << INDENT;
+            stats.show();
+            std::cout << "\n";
+        }
+
     private:
+        bool cache_hit(uint32_t a, uint32_t b, bool op_uns) const {
+            for (const auto& cache_entry : div_cache) {
+                if (cache_entry.hit(a, b, op_uns)) return true;
+            }
+            return false;
+        }
+
         static uint32_t abs_val(uint32_t x, bool op_uns) {
             if (op_uns || (TO_I32(x) >= 0)) return x;
             return (~x + 1u);
@@ -83,6 +120,6 @@ class divider {
         }
 
         static uint8_t count_common_bits(uint32_t a, bool op_uns) {
-            return (32 - clz32(abs_val(a, op_uns)));
+            return TO_U8(32 - clz32(abs_val(a, op_uns)));
         }
 };
