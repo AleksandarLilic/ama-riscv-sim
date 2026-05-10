@@ -59,19 +59,19 @@
 
     "mlp": ["all"],
 
-    "dhrystone": [["dhrystone"], ["DHRY_ITERS=10"]],
+    "dhrystone": [["dhrystone"], ["DHRY_ITERS=20"]],
     "coremark": [["coremark"], ["ITERATIONS=5"]],
     "stream_int": [["stream"], ["NTIMES=5"]],
 
     "embench/aha-mont64": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/crc32": [["embench"], ["CPU_MHZ=0.1"]],
-    "embench/cubic": [["embench"], ["CPU_MHZ=1", "WARMUP=5"]],
+    "embench/cubic": [["embench"], ["CPU_MHZ=1", "WARMUP=4"]],
     "embench/edn": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/huffbench": [["embench"], ["CPU_MHZ=1", "WARMUP=5"]],
     "embench/matmult-int": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/md5sum": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/minver": [["embench"], ["CPU_MHZ=0.1"]],
-    "embench/nbody": [["embench"], ["CPU_MHZ=1", "WARMUP=5"]],
+    "embench/nbody": [["embench"], ["CPU_MHZ=1", "WARMUP=3"]],
     "embench/nettle-aes": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/nettle-sha256": [["embench"], ["CPU_MHZ=0.1"]],
     "embench/nsichneu": [["embench"], ["CPU_MHZ=0.1"]],
