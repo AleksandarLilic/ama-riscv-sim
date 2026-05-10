@@ -41,11 +41,13 @@ struct div_special_stats_t {
 struct div_common_stats_t {
     private:
         uint64_t total = 0;
-        uint32_t min = 33; // never seen a divide
-        uint32_t max = 0;
+        static constexpr uint8_t na_min = 255; // never seen a divide
+        static constexpr uint8_t na_max = 0; // never seen a divide
+        uint8_t min = na_min;
+        uint8_t max = na_max;
 
     public:
-        void collect(uint32_t bits) {
+        void collect(uint8_t bits) {
             total += bits;
             min = std::min(min, bits);
             max = std::max(max, bits);
@@ -54,9 +56,13 @@ struct div_common_stats_t {
         void log(std::ofstream& log_file) const {
             log_file << JSON_N << "\"common_cases_info\": {"
                      << "\"total\": " << total << ", "
-                     << "\"min\": " << min << ", "
-                     << "\"max\": " << max
-                     << "}";
+                     << "\"min\": ";
+            if (min == na_min) log_file << "null";
+            else log_file << min;
+            log_file << ", " << "\"max\": ";
+            if (max == na_max) log_file << "null";
+            else log_file << max;
+            log_file << "}";
         }
 };
 
@@ -86,7 +92,7 @@ struct div_stats_t {
             special_classes.collect(type);
         }
 
-        void common(uint32_t bits) {
+        void common(uint8_t bits) {
             if (!prof_active) return;
             total++;
             common_cases++;

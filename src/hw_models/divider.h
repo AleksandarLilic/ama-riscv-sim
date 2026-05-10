@@ -56,9 +56,9 @@ class divider {
             return (~x + 1u);
         }
 
-        static uint32_t clz32(uint32_t x) {
+        static uint8_t clz32(uint32_t x) {
             if (x == 0) return 32;
-            return TO_U32(__builtin_clz(x));
+            return TO_U8(__builtin_clz(x));
         }
 
         static bool is_pow2(uint32_t x) {
@@ -82,7 +82,7 @@ class divider {
             return div_special_t::none;
         }
 
-        static uint32_t count_common_bits(uint32_t a, bool op_uns) {
-            return 32 - clz32(abs_val(a, op_uns));
+        static uint8_t count_common_bits(uint32_t a, bool op_uns) {
+            return (32 - clz32(abs_val(a, op_uns)));
         }
 };
