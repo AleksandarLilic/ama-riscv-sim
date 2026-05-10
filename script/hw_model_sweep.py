@@ -27,6 +27,7 @@ from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
 # globals
 reporoot = get_reporoot()
 SIM = os.path.join(reporoot, "src", "build", "ama-riscv-sim")
+GLOBAL_SIM_ARGS = ["--no_callstack"]
 APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 FIG_SIZE = (7, 7)
 MK = "o"
@@ -127,6 +128,7 @@ def create_plot(
     return fig, axs
 
 def run_sim(cmd: List) -> Dict[str, Any]:
+    cmd += GLOBAL_SIM_ARGS
     res = subprocess.run(cmd, capture_output=True, text=True)
     if (SIM_PASS_STRING not in res.stdout and
         SIM_EARLY_EXIT_STRING not in res.stdout):

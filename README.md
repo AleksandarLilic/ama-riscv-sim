@@ -751,6 +751,9 @@ ISA simulator provides two types of parametrizable hardware models - caches and 
 
 Full usage available in [examples/hw_model_sweep.help](examples/hw_model_sweep.help)
 
+> [!NOTE]
+> For faster simulation (and therefore markedly faster sweeps), build ISA sim with `make DEFINES=` to disable disassembly and debug support, and use `TUNE` appropriate for the host machine
+
 ## Caches
 Icache and Dcache share the config file for workloads, but have separate hardware parameters: [script/hw_model_sweep_params_caches.json](script/hw_model_sweep_params_caches.json)
 
