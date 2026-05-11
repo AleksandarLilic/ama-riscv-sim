@@ -1,28 +1,37 @@
 cpu_frequency_mhz: 100
 pipeline: 5
-# bp and caches
+
+# pipeline latencies
 bp_hit: 1
 bp_miss: 3
 icache_hit: 1
-icache_miss: 5
+icache_miss: 7
 dcache_hit: 1
-dcache_miss: 5
-dcache_writeback: 3
-# main memory access contention, 0.0 .. 1.0 (fraction of cycles with contention)
-#mem_rd_port_contention: 0
-#mem_wr_port_contention: 0
-# pipeline latencies
+dcache_miss: 7
+dcache_writeback: 3 # last writeback cycle used to initiate first miss request
+
+# R2U: on result-to-use, but is pipelined and doesn't stall the core otherwise
 jump_direct: 1
 jump_indirect: 3 # latency to resolution
 mem: 5
-mul: 2
-div: 6
-simd_dot: 2
-simd_mul: 2
-#simd_add_sub: 2
-dcache_load: 2 # on load-to-use, otherwise irrelevant
+mul: 2 # R2U
+simd_dot: 2 # R2U
+simd_mul: 2 # R2U
+#simd_add_sub: 2 # R2U
+dcache_load: 2 # R2U
 #dcache_store: 1
+
+div: # 3 classes: cache, special, common (as overhead + clk/dividend bit)
+  cache: 1 # fully combinational
+  special: 3 # 1 + setup + flop result
+  common_overhead: 4 # 1 + setup + fixup + flop result; + #bits from stats
+
+# main memory access contention, 0.0 .. 1.0 (fraction of cycles with contention)
+#mem_rd_port_contention: 0
+#mem_wr_port_contention: 0
+
 # names
 icache_name: icache
 dcache_name: dcache
 bpred_name: bpred
+divider_name: divider

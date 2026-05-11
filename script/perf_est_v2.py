@@ -8,6 +8,7 @@ import pandas as pd
 from dep_scan import search, search_args
 from ruamel.yaml import YAML
 from run_analysis import icfg, load_inst_prof
+from types import SimpleNamespace
 from utils import DELIM, INDENT, smarter_eng_formatter
 
 yaml = YAML()
@@ -107,7 +108,10 @@ class perf:
         #self.mwpc = hwpm["mem_wr_port_contention"]
 
         self.c_mul = hwpm['mul']
-        self.c_div = hwpm['div']
+        self.c_div = SimpleNamespace()
+        self.c_div.cache = hwpm['div']['cache']
+        self.c_div.special = hwpm['div']['special']
+        self.c_div.common_overhead = hwpm['div']['common_overhead']
         self.c_simd_dot = hwpm['simd_dot']
         self.c_simd_mul = hwpm['simd_mul']
         self.c_dc_load = hwpm['dcache_load']
@@ -116,6 +120,7 @@ class perf:
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
         self.bp_name = hwpm['bpred_name']
+        self.div_name = hwpm['divider_name']
 
         sd = lambda d: sum(d.values())
 
@@ -158,6 +163,21 @@ class perf:
             "data": hw_dc["size"]["data"]
         }
 
+        hw_div = self.hw_stats[self.div_name]
+        self.div_stats = {
+            "total": hw_div["total"],
+            "cache": hw_div["cache"]["count"],
+            "special": hw_div["special_cases"]["count"],
+            "common": hw_div["common_cases"]["count"],
+            "common_bits": hw_div["common_cases_info"]["total"],
+            "cache_f": hw_div["cache"]["fraction"],
+            "special_f": hw_div["special_cases"]["fraction"],
+            "common_f": hw_div["common_cases"]["fraction"],
+            "common_b": hw_div["common_cases_info"]["total"],
+            "common_bd": hw_div["common_cases_info"]["avg"],
+            "size": hw_div["size"]["total"]
+        }
+
         self.freq = hwpm['cpu_frequency_mhz']
         self.period = 1 / self.freq
 
@@ -188,7 +208,7 @@ class perf:
         self.j_stalls += (self.c_ji_res - 1) * self.ji_inst
 
         self.ic_stalls = (self.c_ic_hit - 1) * hw_ic["hits"]["reads"]
-        self.ic_stalls += self.c_ic_miss * hw_ic["misses"]["reads"]
+        self.ic_stalls += (self.c_ic_miss - 1) * hw_ic["misses"]["reads"]
         ic_miss_rate = (100 - self.ic_stats['hit_rate']) / 100
         ic_miss_penalty = self.c_ic_miss - self.c_ic_hit
         self.ic_amat = self.c_ic_hit + (ic_miss_rate * ic_miss_penalty)
@@ -199,7 +219,7 @@ class perf:
         # or main mem has only 1 R/W port to dc
         # writeback incurs c_dc_wb clk to first write back evicted cache line
         self.dc_stalls = (self.c_dc_hit - 1) * sd(hw_dc["hits"])
-        self.dc_stalls += self.c_dc_miss * sd(hw_dc["misses"])
+        self.dc_stalls += (self.c_dc_miss - 1) * sd(hw_dc["misses"])
         self.dc_stalls += self.c_dc_wb * hw_dc["writebacks"]
         dc_miss_rate = (100 - self.dc_stats['hit_rate']) / 100
         dc_miss_penalty = self.c_dc_miss - self.c_dc_hit
@@ -209,6 +229,16 @@ class perf:
             (self.dc_stats['wb_rate']/100 * self.c_dc_wb)
         )
         self.dc_amat = round(self.dc_amat, 2)
+
+        self.div_stalls = SimpleNamespace()
+        self.div_stalls.cached = (
+            self.c_div.cache - 1) * self.div_stats["cache"]
+        self.div_stalls.special = (
+            self.c_div.special - 1) * self.div_stats["special"]
+        self.div_stalls.common = (
+            self.c_div.common_overhead - 1) * self.div_stats["common"] + \
+            self.div_stats["common_bits"]
+        self.all_div_stalls = sum(vars(self.div_stalls).values())
 
         use_dep_analysis = (exec_log is not None)
         def find_hazards(win, src, dep="_any_"):
@@ -226,7 +256,6 @@ class perf:
         hazard_penalty = {
             "dcache": (self.c_dc_load - 1),
             "mul": (self.c_mul - 1),
-            "div": (self.c_div - 1),
             "simd_dot": (self.c_simd_dot - 1),
             "simd_mul": (self.c_simd_mul - 1),
         }
@@ -240,9 +269,6 @@ class perf:
             )
             self.hazards["mul"], _ = find_hazards(
                 hazard_penalty['mul'], fmt(icfg.INST_T[icfg.k_mul])
-            )
-            self.hazards["div"], _ = find_hazards(
-                hazard_penalty['div'], fmt(icfg.INST_T[icfg.k_div])
             )
             self.hazards["simd_dot"], dot_acc_hazards= find_hazards(
                 hazard_penalty['simd_dot'],
@@ -259,7 +285,6 @@ class perf:
                 (hw_dc["hits"]["reads"] + hw_dc["misses"]["reads"])
             self.hazards["dcache"] *= hazard_penalty['dcache']
             self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
-            self.hazards["div"] = (self.c_div - 1) * self.div_inst
             self.hazards["simd_dot"] = \
                 (self.c_simd_dot - 1) * self.simd_dot_inst
             self.hazards["simd_mul"] = \
@@ -280,12 +305,13 @@ class perf:
         #    self.mwpc_stalls = int(count_num * self.c_dc_miss * self.mwpc)
 
         self.fe_stalls = self.ic_stalls + self.j_stalls
-        self.be_stalls = self.dc_stalls + self.all_hazards
+        self.be_stalls = self.dc_stalls + self.all_hazards + self.all_div_stalls
 
         self._est_stalls()
 
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
         self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
+        self.div_perc = round((self.div_inst / self.inst_total) * 100, 2)
         self.t_clk_wc = int(np.ceil(self.t_clk_wc))
         self.t_clk_bc = int(np.ceil(self.t_clk_bc))
 
@@ -364,6 +390,7 @@ class perf:
         out_ic = []
         out_dc = []
         out_b = []
+        out_div = []
 
         out_ic.append(f"Instructions executed: {FMT(self.inst_total)}")
         out_ic.append(self._cache_stats_str(self.ic_name, self.ic_stats))
@@ -372,13 +399,13 @@ class perf:
             f"DMEM inst: {FMT(self.dc_inst)} - "
             f"L/S: {FMT(self.ld_inst)}/{FMT(self.st_inst)} "
             f"({self.ls_perc:.2f}% instructions)"
-            )
+        )
         out_dc.append(self._cache_stats_str(self.dc_name, self.dc_stats))
 
         out_b.append(
-            f"Branches: {self.b_inst} "
+            f"Branch inst: {self.b_inst} "
             f"({self.branches_perc:.2f}% instructions)"
-            )
+        )
         #out_b.append(
         #    f"Taken: {self.b['taken']}, "
         #    f"Forwards: {self.b['taken_fwd']}, "
@@ -390,12 +417,28 @@ class perf:
         #    f"Backwards: {self.b['not_taken_bwd']}"
         #    )
         out_b.append(
-            f"Branch Predictor ({self.bp_stats['type']}): "
+            f"bpred ({self.bp_stats['type']}): "
             f"Predicted: {FMT(self.bp_stats['pred'])}, "
             f"Mispredicted: {FMT(self.bp_stats['mispred'])}, "
             f"Accuracy: {self.bp_stats['acc']:.2f}%, "
             f"MPKI: {self.bp_stats['mpki']}"
-            )
+        )
+
+        out_div.append(
+            f"DIV/REM inst: {self.div_inst} "
+            f"({self.div_perc:.2f}% instructions)"
+        )
+        out_div.append(
+            f"divider ({self.div_stats['size']}B): "
+            f"Cache: {FMT(self.div_stats['cache'])} "
+            f"({self.div_stats['cache_f']}%), "
+            f"Special: {FMT(self.div_stats['special'])} "
+            f"({self.div_stats['special_f']}%), "
+            f"Common: {FMT(self.div_stats['common'])} "
+            f"({self.div_stats['common_f']}%), "
+            f"{self.div_stats['common_b']} b, "
+            f"{self.div_stats['common_bd']} b/d"
+        )
 
         out_stalls = f"\nPipeline stalls (max): " + \
             f"{DELIM}Bad spec: {FMT(self.b_stalls)}" + \
@@ -404,7 +447,8 @@ class perf:
             f"Core: {FMT(self.j_stalls)}" + \
             f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
             f"DCache: {FMT(self.dc_stalls)} (AMAT: {self.dc_amat}), " + \
-            f"Core: {FMT(self.all_hazards)}" #+ \
+            f"Core: {FMT(self.all_hazards + self.all_div_stalls)} " + \
+            f"(Divider {FMT(self.all_div_stalls)})"
             #f"{DELIM}Memory contention: " + \
             #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
@@ -414,6 +458,7 @@ class perf:
                 f"\n{DELIM.join(out_ic)}" + \
                 f"\n{DELIM.join(out_dc)}" + \
                 f"\n{DELIM.join(out_b)}" + \
+                f"\n{DELIM.join(out_div)}" + \
                 f"\n{out_stalls}"
 
         return f"{stats}\n{self.perf_str}"
