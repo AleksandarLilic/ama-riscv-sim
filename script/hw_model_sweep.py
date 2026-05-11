@@ -254,11 +254,12 @@ def run_workloads(wp: workload_params):
         prof_inst = hw_stats["profiled_inst"]
 
         branches_csv = os.path.join(out_dir, "branches.csv")
-        if os.path.exists(branches_csv):
+        has_branches_csv = os.path.exists(branches_csv)
+        if has_branches_csv:
             # if branches exist, remove everything else, save as pkl/gz and cont
             branches = pd.read_csv(branches_csv)
             subprocess.run(
-                ["rm", "-rf"] + glob.glob(f"{out_dir}/*"), check=True)
+                ["rm", "-r"] + glob.glob(f"{out_dir}/*"), check=True)
             branches.to_pickle(os.path.join(out_dir, "branches.pkl.gz"))
         else:
             # if not, remove the entire dir, nothing to keep
@@ -282,8 +283,9 @@ def run_workloads(wp: workload_params):
                 if not wp.ignore_thr:
                     # skip rest of workloads if acc/mpki is violated on any
                     bp_agg = {k: [] for k in bp_agg.keys()}
-                    # and remove entire dir, nothing to keep
-                    subprocess.run(["rm", "-r", out_dir])
+                    if has_branches_csv:
+                        # and remove entire dir, nothing to keep
+                        subprocess.run(["rm", "-r", out_dir])
                     break
 
             bp_agg['acc'].append(acc)
@@ -308,8 +310,9 @@ def run_workloads(wp: workload_params):
             hr = round(hits/references*100, 2)
             if hr < app_thr_hr and not wp.ignore_thr:
                 agg_hr = []
-                # and remove entire dir, nothing to keep
-                subprocess.run(["rm", "-r", out_dir])
+                if has_branches_csv:
+                    # and remove entire dir, nothing to keep
+                    subprocess.run(["rm", "-r", out_dir])
                 break
             agg_hr.append(hr)
             per_app_hr[get_test_name(app)] = hr
