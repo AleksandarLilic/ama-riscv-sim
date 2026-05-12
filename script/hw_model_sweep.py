@@ -1551,7 +1551,7 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
     sr_bin_all = sr[0]
     sr_best_all = sr[1]
 
-    def reformat_per_app(v_entry):
+    def reformat_per_app(v_entry, app):
         cr_bp_d = {}
         for bpsz,v_bpsz in v_entry.items(): # bp size, bits and res
             # get existing entry with bp params and per app results
@@ -1570,23 +1570,26 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
 
     figs = []
     for wl in workloads_all:
-        app, log = gen_sweep_log_name(
-            args.sweep, args.work_dir, [wl], True)
+        app, log = gen_sweep_log_name(args.sweep, args.work_dir, [wl], True)
         per_app_bin_sr = {}
         per_app_sr = {}
 
         for bpn,v_bpn in sr_bin_all.items(): # bp name, bp per size dict
-            per_app_bin_sr[bpn], prof_info = reformat_per_app(v_bpn)
+            if len(v_bpn) == 0:
+                continue
+            per_app_bin_sr[bpn], prof_info = reformat_per_app(v_bpn, app)
         per_app_bin_sr['_profiled_inst'] = prof_info[0]
         per_app_bin_sr['_branches'] = prof_info[1]
 
         for bpn,v_bpn in sr_best_all.items(): # bp name, bp per size dict
+            if len(v_bpn) == 0:
+                continue
             # need to add size as entry to fit the parser below
             # sort per key (also size) to fit the bin dict ordering
             v_entry = dict(sorted(
                 ((k, {**v, "size": k}) for k, v in v_bpn.items())
             ))
-            per_app_sr[bpn], prof_info = reformat_per_app(v_entry)
+            per_app_sr[bpn], prof_info = reformat_per_app(v_entry, app)
         per_app_sr['_profiled_inst'] = prof_info[0]
         per_app_sr['_branches'] = prof_info[1]
 
