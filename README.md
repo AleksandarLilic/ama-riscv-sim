@@ -140,44 +140,46 @@ SIMULATION STARTED
 === UART END ===
 SIMULATION FINISHED
 
-Instruction Counters: executed: 521118, profiled: 521118
+Instruction Counters: executed: 419327, profiled: 419327
     0x051e tohost       : 0x00000001
 Profiler - Inst:
-    All: 521118
-    Control: B: 63985(12.28%), JAL: 21746(4.17%), JALR: 22705(4.36%)
-    Memory: MEM: 166065(31.87%) - L/S: 87869/78196(16.86%/15.01%)
-    Compute: ALU: 245609(47.13%), MUL: 1000(0.19%), DIV: 0(0.00%)
+    All: 419327
+    Control: B: 40545(9.67%), JAL: 19585(4.67%), JALR: 20533(4.90%)
+    Memory: MEM: 162481(38.75%) - L/S: 85542/76939(20.40%/18.35%)
+    Compute: ALU: 174058(41.51%), MUL: 1004(0.24%), DIV: 1114(0.27%)
     Bitmanip: Zbb: 0(0.00%)
-    SIMD arith: ALU: 0(0.00%), WMUL: 0(0.00%), DOT: 0(0.00%)
+    SIMD arith: ALU: 0(0.00%), MUL: 0(0.00%), DOT: 0(0.00%)
     SIMD data fmt: WIDEN: 0(0.00%), NARROW: 0(0.00%), TXP: 0(0.00%)
     SIMD vector-scalar: DUP: 0(0.00%), VINS: 0(0.00%), VEXT: 0(0.00%)
     Hint: SCP: 0(0.00%)
-    Other: NOP: 0(0.00%), Misc: 8(0.00%)
+    Other: NOP: 0(0.00%), Misc: 7(0.00%)
 Profiler - Sparsity:
-    ANY: 355615/20719(5.83%)
-    ALU: 238689/16132(6.76%)
-    MEM_L: 87869/4583(5.22%)
-    MEM_S: 78196/0(0.00%)
+    ANY: 280683/17374(6.19%)
+    ALU: 169255/12833(7.58%)
+    MEM_L: 85542/4537(5.30%)
+    MEM_S: 76939/0(0.00%)
     SIMD_DOT: 0/0(0.00%)
     SIMD_ALU: 0/0(0.00%)
     SIMD_DATA_FMT: 0/0(0.00%)
 Profiler - Stack:
-    Peak usage: 368 B
-    Accesses: 80424(48.43%) - L/S: 40458/39966(24.36%/24.07%)
+    Peak usage: 352 B
+    Accesses: 78881(48.55%) - L/S: 40170/38711(24.72%/23.82%)
 Profiler - Perf:
-    Event: inst, Samples: 521118
+    Event: inst, Samples: 419327
 Profiler - Fusion:
     LEA opportunities: 1000
 Branch stats:
-    Unique branches: 110
+    Unique branches: 108
 bpred
-    bimodal (12 B): P: 55284, M: 8701, ACC: 86.40%, MPKI: 16.70
-icache (S/W: 32/2, D/T/M: 4096/41/33 B): 
-    Ref: 529819, H: 526687(526687/0), M: 3132(3132/0), R: 3068, HR: 99.41%; CT (R/W): core 2.0/0.0 MB, mem 195.8/0.0 KB
-dcache (S/W: 16/4, D/T/M: 4096/49/41 B): 
-    Ref: 162717, H: 162511(86166/76345), M: 206(29/177), R: 142, WB: 142, HR: 99.87%; CT (R/W): core 297/279 KB, mem 12.9/8.9 KB
+    combined (113 B): P: 40265, M: 280, ACC: 99.31%, MPKI: 0.67
+icache (S/W: 32/2, D/T/M: 4096/41/33 B):
+    Ref: 419607, H: 416454(416454/0), M: 3153(3153/0), R: 3089, HR: 99.25%, MPKI: 7.52; CT (R/W): core 1.6/0.0 MB, mem 197.1/0.0 KB
+dcache (S/W: 16/4, D/T/M: 4096/49/41 B):
+    Ref: 159133, H: 158926(83838/75088), M: 207(30/177), R: 143, WB: 143, HR: 99.87%, MPKI: 0.49; CT (R/W): core 292/278 KB, mem 12.9/8.9 KB
+divider (E: 1, S/ES: 16/16 B):
+    Div: 1114, Cache: 1024 (91.92%), Special: 70 (6.28%), Common: 20(1.80%), 180 b, 9.00 b/d
 
-Simulation performance: 0.42 MIPS (521118 instructions in 1.24s)
+Simulation performance: 1.25 MIPS (419327 instructions in 0.33s)
 ```
 
 Outputs:
@@ -410,41 +412,53 @@ Stats for three hardware models are available as `hw_stats.json`
 ```json
 {
 "icache": {
-    "references": 529819,
-    "hits": {"reads": 526687, "writes": 0},
-    "misses": {"reads": 3132, "writes": 0},
-    "replacements": 3068,
+    "references": 419607,
+    "hits": {"reads": 416454, "writes": 0}, 
+    "misses": {"reads": 3153, "writes": 0}, 
+    "replacements": 3089,
     "writebacks": 0,
-    "ct_core": {"reads": 2119276, "writes": 0},
-    "ct_mem": {"reads": 200448, "writes": 0},
+    "ct_core": {"reads": 1678428, "writes": 0}, 
+    "ct_mem": {"reads": 201792, "writes": 0},
+    "hr": 99.25, 
+    "mpki": 7.52, 
     "size": {"data": 4096, "tags": 41, "metadata": 33, "sets": 32, "ways": 2, "line_size": 64}
 },
 "dcache": {
-    "references": 162717,
-    "hits": {"reads": 86166, "writes": 76345},
-    "misses": {"reads": 29, "writes": 177},
-    "replacements": 142,
-    "writebacks": 142,
-    "ct_core": {"reads": 304181, "writes": 285631},
-    "ct_mem": {"reads": 13184, "writes": 9088},
+    "references": 159133,
+    "hits": {"reads": 83838, "writes": 75088}, 
+    "misses": {"reads": 30, "writes": 177}, 
+    "replacements": 143,
+    "writebacks": 143,
+    "ct_core": {"reads": 299165, "writes": 284607}, 
+    "ct_mem": {"reads": 13248, "writes": 9152},
+    "hr": 99.87, 
+    "mpki": 0.49, 
     "size": {"data": 4096, "tags": 49, "metadata": 41, "sets": 16, "ways": 4, "line_size": 64}
 },
 "bpred": {
-    "type": "bimodal",
-    "branches": 63985,
-    "predicted": 55284,
-    "predicted_fwd": 36173,
-    "predicted_bwd": 19111,
-    "mispredicted": 8701,
-    "mispredicted_fwd": 4412,
-    "mispredicted_bwd": 4289,
-    "accuracy": 86.40,
-    "mpki": 16.70,
-    "size": 12
+    "type": "combined",
+    "branches": 40545,
+    "predicted": 40265,
+    "predicted_fwd": 27622,
+    "predicted_bwd": 12643,
+    "mispredicted": 280,
+    "mispredicted_fwd": 147,
+    "mispredicted_bwd": 133,
+    "accuracy": 99.31,
+    "mpki": 0.67,
+    "size": 113
 },
-"profiled_inst": 521118,
-"_done": true
-} 
+"divider": {
+    "total": 1114,
+    "cache": {"count": 1024, "fraction": 91.92},
+    "special_cases": {"count": 70, "fraction": 6.28},
+    "special_cases_class": {"div_by_zero": 0, "overflow": 0, "abs_lt": 70, "divisor_pow2": 0},
+    "common_cases": {"count": 20, "fraction": 1.80},
+    "common_cases_info": {"total": 180, "min": 4, "max": 19, "avg": 9.00},
+    "size": {"total": 16, "entries": 1, "entry_size": 16}
+},
+"profiled_inst": 419327
+}
 ```
 
 Additionally, detailed breakdowns of all branches and predictor stats for each are available in `branches.csv`
@@ -685,65 +699,41 @@ It also backannotates the disassembly and saves it as `dhrystone.prof.dasm`
 
 ### Hardware performance estimates
 
-By default, it uses `script/hw_perf_metrics_v2.yaml`
-This microarchitecture description is based on the [ama-riscv](https://github.com/AleksandarLilic/ama-riscv) implementation
-
-Entires other than `*_mhz` and `*_name` specify the number of cycles/stages it takes for instruction or hardware block to produce the result. Value of 1 implies a single pipeline stage, while 0 would be equivalent of a fully combinational path
-``` yaml
-  cpu_frequency_mhz: 100
-  pipeline: 5
-  # bp and caches
-  bp_hit: 1
-  bp_miss: 3
-  icache_hit: 1
-  icache_miss: 5
-  dcache_hit: 1
-  dcache_miss: 5
-  dcache_writeback: 3
-  # pipeline latencies
-  jump_direct: 1
-  jump_indirect: 3 # latency to resolution
-  mem: 5
-  mul: 2
-  div: 6
-  dot: 2
-  dcache_load: 2 # on load-to-use, otherwise irrelevant
-  # names
-  icache_name: icache
-  dcache_name: dcache
-  bpred_name: bpred
-```
+The microarchitecture description at [script/hw_perf_metrics_v2.yaml](script/hw_perf_metrics_v2.yaml) is based on the [ama-riscv](https://github.com/AleksandarLilic/ama-riscv) implementation
 
 Run with positional arguments as
 ```sh
 ./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json -e examples/dhrystone_dhrystone_out/exec.log
 ```
 
-Since the hardware stats are collected from the ISA model, and simple microarchitecure description, there is some uncertainty on how much time exactly it would take to execute the workload. Estimates are therefore provided as a range between best and worst case.
+Since the hardware stats are collected from the ISA model, and simple microarchitecure description, there is some uncertainty on how much time exactly it would take to execute the workload. Estimates are therefore provided as a range between best and worst case.  
+Additionally, script assumes perfect correlation between hardware models and actual hardware implementation, which may not always be the case. This is especially noticeable for branch predictor due to back-to-back branches using stale GHR and/or PHT values, since updates to these require branch resolution, which currently happens 2 cycles after the branch is predicted (vs immediate update in the model). Therefore, anything in that 3-cycle window (2 for resolution, 1 to update predictor structures) will use stale values, which may have negative impact on the prediction correlation to the model.
 
 ```
 Performance estimate breakdown for: 
-    examples/dhrystone_dhrystone_out/inst_profile.json
-    examples/dhrystone_dhrystone_out/hw_stats.json
+    ../workdir/dhrystone_dhrystone_out/inst_profile.json
+    ../workdir/dhrystone_dhrystone_out/hw_stats.json
     <home_path>/sim/script/hw_perf_metrics_v2.yaml
 
-Peak Stack usage: 368 bytes
-Instructions executed: 521.1k
-    icache (32 sets, 2 ways, 4096B data): References: 529.8k, Hits: 526.7k, Misses: 3.13k, Hit Rate: 99.41%, MPKI: 6.01
-DMEM inst: 166.1k - L/S: 87.9k/78.2k (31.87% instructions)
-    dcache (16 sets, 4 ways, 4096B data): References: 162.7k, Hits: 162.5k, Misses: 206, Writebacks: 142, Hit Rate: 99.87%, MPKI: 0.40
-Branches: 63985 (12.28% instructions)
-    Branch Predictor (bimodal): Predicted: 55.3k, Mispredicted: 8.70k, Accuracy: 86.40%, MPKI: 16.7
+Peak Stack usage: 352 bytes
+Instructions executed: 419.3k
+    icache (32 sets, 2 ways, 4096B data): References: 419.6k, Hits: 416.5k, Misses: 3.15k, Hit Rate: 99.25%, MPKI: 7.52
+DMEM inst: 162.5k - L/S: 85.5k/76.9k (38.75% instructions)
+    dcache (16 sets, 4 ways, 4096B data): References: 159.1k, Hits: 158.9k, Misses: 207, Writebacks: 143, Hit Rate: 99.87%, MPKI: 0.49
+Branch inst: 40545 (9.67% instructions)
+    bpred (combined): Predicted: 40.3k, Mispredicted: 280, Accuracy: 99.31%, MPKI: 0.67
+DIV/REM inst: 1114 (0.27% instructions)
+    divider (16B): Cache: 1.02k (91.92%), Special: 70 (6.28%), Common: 20 (1.8%), 180 b, 9.0 b/d
 
 Pipeline stalls (max): 
-    Bad spec: 17.4k
-    FE bound: 61.1k - ICache: 15.7k (AMAT: 1.02), Core: 45.4k
-    BE bound: 6.30k - DCache: 1.46k (AMAT: 1.01), Core: 4.84k
+    Bad spec: 560
+    FE bound: 60.0k - ICache: 18.9k (AMAT: 1.05), Core: 41.1k
+    BE bound: 6.78k - DCache: 1.67k (AMAT: 1.01), Core: 5.11k (Divider 380)
 
 Estimated HW performance at 100MHz:
-    Best:  Cycles: 599.6k, CPI: 1.151 (IPC: 0.869), Time: 6.00ms, MIPS: 86.9
-    Worst: Cycles: 605.9k, CPI: 1.163 (IPC: 0.860), Time: 6.06ms, MIPS: 86.0
-    Estimated Cycles range: 6.30k cycles, midpoint: 602.7k, ratio: 1.04%
+    Best:  Cycles: 479.9k, CPI: 1.144 (IPC: 0.874), Time: 4.80ms, MIPS: 87.4
+    Worst: Cycles: 486.7k, CPI: 1.161 (IPC: 0.862), Time: 4.87ms, MIPS: 86.2
+    Estimated Cycles range: 6.78k cycles, midpoint: 483.3k, ratio: 1.40%
 ```
 
 # Hardware model sweeps
