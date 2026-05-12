@@ -172,7 +172,7 @@ struct hw_defs_t {
     static constexpr char bp2[] = "none"; // global
     // supported predictors configurations
     static constexpr char bp_static_method[] = "btfn";
-    static constexpr char bp_pc_bits[] = "5";
+    static constexpr char bp_pc_bits[] = "7";
     static constexpr char bp_cnt_bits[] = "3";
     static constexpr char bp_lhist_bits[] = "5";
     static constexpr char bp_ghr_bits[] = "5";
@@ -181,9 +181,9 @@ struct hw_defs_t {
     static constexpr char bp2_pc_bits[] = "5";
     static constexpr char bp2_cnt_bits[] = "1";
     static constexpr char bp2_lhist_bits[] = "5";
-    static constexpr char bp2_ghr_bits[] = "9";
+    static constexpr char bp2_ghr_bits[] = "8";
     static constexpr char bp2_fold_pc[] = "none";
-    static constexpr char bp_combined_pc_bits[] = "4";
+    static constexpr char bp_combined_pc_bits[] = "6";
     static constexpr char bp_combined_cnt_bits[] = "4";
     static constexpr char bp_combined_fold_pc[] = "all";
     // bp other configs
