@@ -107,12 +107,12 @@ cache_ref_t cache::reference(
         prof_perf->set_perf_event_flag(ref_event);
         #endif
     }
-    ccl.init(
+    ccl = {
         (addr>>CACHE_BYTE_ADDR_BITS) & index_mask,
         addr>>tag_off,
         {0, 0},
         addr & CACHE_BYTE_ADDR_MASK
-    );
+    };
 
     for (uint32_t way = 0; way < ways; way++) {
         auto& line = cache_entries[ccl.index][way];
@@ -451,7 +451,7 @@ void cache::show_stats(bool show_state) {
         int32_t n = 0;
         for (uint32_t set = 0; set < sets; set++) {
             for (uint32_t way = 0; way < ways; way++) {
-                uint32_t cnt = cache_entries[set][way].reference_cnt;
+                uint32_t cnt = cache_entries[set][way].get_ref();
                 n = std::max(n, TO_I32(std::to_string(cnt).size()));
             }
         }
@@ -461,7 +461,7 @@ void cache::show_stats(bool show_state) {
                       << ": " << std::right;
             for (uint32_t way = 0; way < ways; way++) {
                 std::cout << " w" << way << " [" << std::setw(n)
-                        << cache_entries[set][way].reference_cnt << "] ";
+                        << cache_entries[set][way].get_ref() << "] ";
             }
             std::cout << "\n";
         }
@@ -496,7 +496,7 @@ void cache::dump() const {
                       << ", scp: " << line.metadata.scp
                       << ", valid: " << line.metadata.valid
                       << ", dirty: " << line.metadata.dirty
-                      << ", reference_cnt: " << line.reference_cnt
+                      << ", reference_cnt: " << line.get_ref()
                       << "\n";
             #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line

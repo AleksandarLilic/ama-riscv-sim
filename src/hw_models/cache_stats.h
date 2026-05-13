@@ -69,8 +69,8 @@ struct cache_traffic_t {
     // TODO: this needs to be expanded when used with DPI (i.e. timing sim)
     // and should be able to show memory pressure as time series
     // for now, just keep track of the total data transferred
-    uint32_t reads; // bytes
-    uint32_t writes;
+    uint64_t reads; // bytes
+    uint64_t writes;
     cache_traffic_t() : reads(0), writes(0) {}
     std::string to_string() const {
         float rd = TO_F32(reads);

@@ -5,11 +5,13 @@
 #include "cache_stats.h"
 #include "profiler_perf.h"
 
-//#ifdef DPI
-//#define MEM_TYPE memory_dpi
-//#else
-#define MEM_TYPE main_memory
-//#endif
+#if CACHE_MODE == CACHE_MODE_FUNC
+// #ifdef DPI
+// using mem_t = memory_dpi;
+// #else
+using mem_t = main_memory;
+// #endif
+#endif
 
 #define MAX_CACHE_SETS 1024
 #define MAX_CACHE_WAYS 128
@@ -31,8 +33,8 @@ struct cache_line_t {
         #if CACHE_MODE == CACHE_MODE_FUNC
         std::array<uint8_t, CACHE_LINE_SIZE> data;
         #endif
-    //private:
-        uint32_t reference_cnt;
+    private:
+        uint64_t reference_cnt;
         //std::array<uint32_t, CACHE_LINE_SIZE> byte_reference_cnt;
     private:
         bool prof_active = false;
@@ -46,6 +48,7 @@ struct cache_line_t {
             //    byte_reference_cnt[(addr + i) & CACHE_BYTE_ADDR_MASK]++;
             //}
         }
+        uint64_t get_ref() const { return reference_cnt; }
 };
 
 struct victim_t {
@@ -60,14 +63,6 @@ struct current_cache_line {
     uint32_t tag;
     victim_t victim;
     uint32_t byte_addr;
-    public:
-        void init(
-            uint32_t index, uint32_t tag, victim_t victim, uint32_t byte_addr) {
-            this->index = index;
-            this->tag = tag;
-            this->victim = victim;
-            this->byte_addr = byte_addr;
-        }
 };
 
 class main_memory; // forward declaration
@@ -112,7 +107,9 @@ class cache {
         uint32_t metadata_bits_num;
         std::vector<std::vector<cache_line_t>> cache_entries;
         std::string cache_name;
-        MEM_TYPE* mem;
+        #if CACHE_MODE == CACHE_MODE_FUNC
+        mem_t* mem;
+        #endif
         cache_stats_t stats;
         cache_size_t size;
         region_of_interest_t roi;
@@ -143,7 +140,9 @@ class cache {
             cache_wr_policy_t wr_policy,
             std::string cache_name
         );
-        void set_mem(MEM_TYPE* mem) { this->mem = mem; }
+        #if CACHE_MODE == CACHE_MODE_FUNC
+        void set_mem(mem_t* mem) { this->mem = mem; }
+        #endif
         uint32_t rd(uint32_t addr, uint32_t size);
         void wr(uint32_t addr, uint32_t data, uint32_t size);
         scp_status_t scp_lcl(uint32_t addr);
