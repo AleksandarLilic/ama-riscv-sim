@@ -6,8 +6,8 @@ template <size_t vbits>
 uint32_t core::data_fmt_c_dup_t(uint32_t rs1) {
     // dup: broadcast low vbits of rs1 (sign-extended) into all lanes
     // rd.H[x] = int16_t(rs1) for x=0..LEN-1
-    constexpr size_t e = (32 / vbits);
-    constexpr uint32_t mask = ((1U << vbits) - 1);
+    constexpr size_t e = lane<vbits>::count;
+    constexpr uint32_t mask = lane<vbits>::mask;
 
     int32_t scalar = extract_val<vbits, true>(rs1);
     uint32_t lane_val = TO_U32(scalar) & mask;

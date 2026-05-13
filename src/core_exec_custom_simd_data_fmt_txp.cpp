@@ -8,8 +8,8 @@ reg_pair core::data_fmt_c_txp_t(uint32_t a, uint32_t b) {
     //           rdp = [rs1[1], rs2[1], rs1[3], rs2[3], ...]
     // rd gets even lanes interleaved rs1/rs2
     // rdp gets odd lanes interleaved rs1/rs2
-    constexpr size_t e = (32 / vbits);
-    constexpr uint32_t mask = ((1U << vbits) - 1);
+    constexpr size_t e = lane<vbits>::count;
+    constexpr uint32_t mask = lane<vbits>::mask;
     constexpr size_t half_e = (e / 2);
 
     uint32_t rd_val = 0;

@@ -5,7 +5,7 @@
 // vext: extract lane at idx from rs1, sign/zero extend to 32-bit scalar
 template <size_t vbits, bool vsigned>
 uint32_t core::data_fmt_c_vext_t(uint32_t rs1, uint8_t idx) {
-    constexpr size_t lanes = (32 / vbits);
+    constexpr size_t lanes = lane<vbits>::count;
     idx = TO_U8(idx & (lanes - 1));
     uint32_t lane_val = (rs1 >> (idx * vbits));
     int32_t res = extract_val<vbits, vsigned>(lane_val);

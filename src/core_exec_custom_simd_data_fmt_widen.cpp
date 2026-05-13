@@ -5,14 +5,13 @@
 template <size_t vbits, bool vsigned>
 reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
     // widen n-bit to 2n-bit elements
-    constexpr size_t e = (32 / vbits);
-    constexpr size_t s = vbits;
+    constexpr size_t e = lane<vbits>::count;
     constexpr size_t out_bits = (vbits * 2);
-    constexpr size_t half_e = (e / 2);
-    constexpr uint32_t mask = ((1ULL << out_bits) - 1);
+    constexpr uint32_t mask = TO_U32((1ULL << out_bits) - 1);
 
     int32_t vals[e];
     #ifdef DASM_EN
+    constexpr size_t half_e = (e / 2);
     simd_ss_init_ca();
     #endif
 
@@ -22,7 +21,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
         #ifdef DASM_EN
         simd_ss_append_a(vals[i]);
         #endif
-        a >>= s;
+        a >>= vbits;
     }
 
     #ifdef DASM_EN
@@ -34,15 +33,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
     simd_ss_finish_cas(shamt);
     #endif
 
-    uint32_t words[2] = {0, 0};
-
-    for (size_t i = 0; i < e; i++) {
-        size_t w_idx = (i / half_e);
-        size_t shift = ((i % half_e) * out_bits);
-        words[w_idx] |= (TO_U32(vals[i]) & mask) << shift;
-    }
-
-    return {words[0], words[1]};
+    return pack_wide<out_bits>(vals);
 }
 
 reg_pair core::data_fmt_c_widen16(uint32_t a, uint32_t shamt) {

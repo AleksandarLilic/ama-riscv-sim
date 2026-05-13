@@ -5,8 +5,8 @@
 // covers: left/right, logic/arith, any bit width
 template <size_t vbits, bool varith, alu_shift_op_t op>
 uint32_t core::alu_c_shift_op(uint32_t a, uint32_t shamt) {
-    constexpr size_t e = (32 / vbits);
-    constexpr uint32_t mask = ((1U << vbits) - 1);
+    constexpr size_t e = lane<vbits>::count;
+    constexpr uint32_t mask = lane<vbits>::mask;
     uint32_t res_packed = 0;
 
     #ifdef DASM_EN

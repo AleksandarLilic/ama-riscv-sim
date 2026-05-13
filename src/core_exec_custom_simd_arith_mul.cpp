@@ -6,8 +6,8 @@
 // upper (upper=true) vbits and pack back into the 32-bit output register.
 template <size_t vbits, bool vsigned, bool upper>
 uint32_t core::alu_c_mul_op(uint32_t a, uint32_t b) {
-    constexpr size_t e = (32 / vbits);
-    constexpr uint32_t lane_mask = ((1ULL << vbits) - 1);
+    constexpr size_t e = lane<vbits>::count;
+    constexpr uint32_t lane_mask = lane<vbits>::mask;
 
     uint32_t result = 0;
 

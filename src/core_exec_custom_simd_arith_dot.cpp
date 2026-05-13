@@ -4,7 +4,7 @@
 
 template <size_t vbits, bool vsigned>
 uint32_t core::alu_c_dot_op(uint32_t a, uint32_t b, uint32_t c) {
-    constexpr size_t e = (32 / vbits);
+    constexpr size_t e = lane<vbits>::count;
     int32_t res = 0;
     #ifdef DASM_EN
     simd_ss_init_ab();

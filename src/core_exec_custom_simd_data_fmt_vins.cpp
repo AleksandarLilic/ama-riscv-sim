@@ -5,8 +5,8 @@
 // vins: insert low vbits of rs1 into lane at idx of rd (RMW)
 template <size_t vbits>
 uint32_t core::data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx) {
-    constexpr size_t lanes = (32 / vbits);
-    constexpr uint32_t lane_mask_bits = ((1U << vbits) - 1);
+    constexpr size_t lanes = lane<vbits>::count;
+    constexpr uint32_t lane_mask_bits = lane<vbits>::mask;
     idx = TO_U8(idx & (lanes - 1));
     uint32_t clear_lane = (~(lane_mask_bits << (idx * vbits)));
     uint32_t insert = ((rs1 & lane_mask_bits) << (idx * vbits));

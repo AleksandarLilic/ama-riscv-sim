@@ -6,14 +6,13 @@ template <size_t vbits, bool vsigned>
 reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
     // multiply n-bit elements to 2n-bit results
     // e.g., 16-bit * 16-bit -> 32-bit result
-    constexpr size_t e = (32 / vbits);
+    constexpr size_t e = lane<vbits>::count;
     constexpr size_t out_bits = (vbits * 2);
-    constexpr size_t half_e = (e / 2);
-    constexpr uint32_t mask = ((1ULL << out_bits) - 1);
 
     int32_t results[e];
 
     #ifdef DASM_EN
+    constexpr size_t half_e = (e / 2);
     simd_ss_init_cab();
     #endif
 
@@ -45,18 +44,7 @@ reg_pair core::alu_c_wmul_op(uint32_t a, uint32_t b) {
     simd_ss_finish_cab();
     #endif
 
-    //  pack results into two 32-bit words
-    uint32_t words[2] = {0, 0};
-    for (size_t i = 0; i < e; i++) {
-        // determine which output word (0 or 1) gets this element
-        size_t w_idx = (i / half_e);
-        // calculate bit offset within that word
-        size_t shift = ((i % half_e) * out_bits);
-        // mask result to output width and shift into place
-        words[w_idx] |= ((TO_U32(results[i]) & mask) << shift);
-    }
-
-    return {words[0], words[1]};
+    return pack_wide<out_bits>(results);
 }
 
 // instantiations

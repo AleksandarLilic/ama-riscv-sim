@@ -7,21 +7,14 @@ uint32_t core::data_fmt_c_narrow_t(uint32_t a, uint32_t b) {
     // narrow 2 registers of n-bit elements into 1 register of n/2-bit elements
     // supports both truncation (vsat=false) and saturation (vsat=true)
     constexpr size_t out_bits = (vbits / 2);
-    constexpr size_t e = (32 / vbits); // elements per input reg
+    constexpr size_t e = lane<vbits>::count;
     #ifdef DASM_EN
     constexpr size_t out_e = (e * 2); // total elements in output
     #endif
     constexpr uint32_t out_mask = ((1ULL << out_bits) - 1);
 
-    // saturation bounds, optimized out if unused
-    int32_t max_val, min_val;
-    if constexpr (vsigned) {
-        max_val = ((1 << (out_bits - 1)) - 1);
-        min_val = (-(1 << (out_bits - 1)));
-    } else {
-        max_val = (1 << out_bits) - 1;
-        min_val = 0;
-    }
+    constexpr int32_t max_val = get_limit<out_bits, vsigned>(true);
+    constexpr int32_t min_val = get_limit<out_bits, vsigned>(false);
 
     #ifdef DASM_EN
     int32_t out_vals[out_e];
