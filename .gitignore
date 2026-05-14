@@ -39,6 +39,7 @@ analysis.gprof.ipynb
 *.grep
 script/analysis_all.py
 script/*.ipynb
+script/hw_model_sweep_params_dev_*.json
 
 # python files
 __pycache__/
