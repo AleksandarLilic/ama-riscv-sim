@@ -46,16 +46,13 @@ constexpr int const_log2(int n, int p = 0) {
 }
 
 // Memory
-#define BASE_ADDR 0x4'0000
-#define MEM_ADDR_BITWIDTH 5 // digits in hex printout
-//#define MEM_SIZE 16384
-//#define MEM_SIZE 32768
-#define MEM_SIZE 65536 // 0x1'0000
-//#define MEM_SIZE 131072
+#define BASE_ADDR 0x8000'0000
+#define MEM_ADDR_BITWIDTH 8 // digits in hex printout
+#define MEM_SIZE 131072 // 0x2'0000
 constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
-#define UART0_ADDR (BASE_ADDR + MEM_SIZE)
+#define UART0_ADDR 0x1001'3000
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
-#define CLINT_ADDR (BASE_ADDR + MEM_SIZE + 32)
+#define CLINT_ADDR 0x0200'0000
 #define CLINT_SIZE 32 // reserved for 4 64-bit registers
 
 // HW models

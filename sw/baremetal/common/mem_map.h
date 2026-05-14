@@ -3,9 +3,8 @@
 
 #include <stdint.h>
 
-#define BASE_ADDR 0x40000
-//#define RAM_SIZE 0x8000 // 32K
-#define RAM_SIZE 0x10000 // 64K
+#define BASE_ADDR 0x80000000
+#define RAM_SIZE 0x20000 // 128K
 
 typedef volatile struct __attribute__((packed, aligned(4))) {
     volatile uint32_t ctrl;
@@ -19,7 +18,7 @@ typedef volatile struct __attribute__((packed, aligned(8))) {
     volatile uint64_t mtime;
 } clint_t;
 
-#define UART0 ((uart_t*) (BASE_ADDR + RAM_SIZE))
-#define CLINT ((clint_t*) (BASE_ADDR + RAM_SIZE + 0x20))
+#define UART0 ((uart_t*) 0x10013000)
+#define CLINT ((clint_t*) 0x02000000)
 
 #endif

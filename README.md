@@ -122,7 +122,7 @@ make
 cd .. && mkdir workdir && cd workdir
 
 # run test, profile from the beginning, log executed instructions
-../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x40000 -tl
+../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x80000000 -tl
 
 # check the execution log
 vim dhrystone_dhrystone_out/exec.log
@@ -131,7 +131,7 @@ vim dhrystone_dhrystone_out/exec.log
 Simulator `stdout`
 ```
 Running: ../sw/baremetal/dhrystone/dhrystone.elf
-Profiling start PC: 0x40000
+Profiling start PC: 0x80000000
 Logging enabled
 
 SIMULATION STARTED
@@ -246,7 +246,7 @@ ISA sim and Dhrystone are assumed to have been built as described in the [Quick 
 ## Running Dhrystone
 To generate all available outputs, run
 ```sh
-../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x40000 -tl --rf_usage --bp_dump_csv
+../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x80000000 -tl --rf_usage --bp_dump_csv
 ```
 
 Outputs:

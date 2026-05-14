@@ -21,8 +21,8 @@ from utils import (FMT_AXIS, get_test_title, is_notebook, reformat_json,
                    smarter_eng_formatter)
 
 CACHE_LINE_BYTES = 64
-BASE_ADDR = 0x40000
-MEM_SIZE = 65536
+BASE_ADDR = 0x80000000
+MEM_SIZE = 131072
 
 FS_EXEC_X = 24.7
 FS_EXEC_Y = 13

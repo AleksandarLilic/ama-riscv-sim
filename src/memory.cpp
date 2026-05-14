@@ -24,11 +24,6 @@ memory::memory(
 
 uint32_t memory::set_addr(uint32_t address, mem_op_t mem_op, uint32_t size) {
     bool dev_set = false;
-    if (address < BASE_ADDR) {
-        tu->e_dmem_access_fault(address, "below base address", mem_op);
-        return 0;
-    }
-
     for (auto &entry : mem_map) {
         if (entry.base <= address && address < entry.base + entry.size) {
             dev_ptr = entry.ptr;

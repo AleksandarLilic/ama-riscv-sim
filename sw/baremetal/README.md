@@ -33,7 +33,7 @@ Shared startup and support code lives under [`common/`](./common/):
 | File | Purpose |
 |------|---------|
 | `crt0.S` | Entry point; sets up `gp`/`sp`, clears BSS, optional trap vector |
-| `link.ld` | Linker script; RAM at `0x40000`, 64 KB |
+| `link.ld` | Linker script; RAM at `0x80000000`, 128 KB |
 | `mem_map.h` | Memory map constants |
 | `csr.h` | CSR access helpers |
 | `common.{c,h}` | Shared utility functions |

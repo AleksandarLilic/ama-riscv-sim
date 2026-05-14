@@ -79,7 +79,7 @@ GCC_OPTS += -Wl,--no-warn-rwx-segments
 # optimizations not set - expected to come from test's Makefile
 
 OBJDUMP_OPTS := -Dhxtw --show-all-symbols
-OBJDUMP_OPTS += --start-address=0x40000 --stop-address=0x50000
+OBJDUMP_OPTS += --start-address=0x80000000 --stop-address=0x80020000
 OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 #OBJDUMP_OPTS += -z # show zero padding as well (complete dump)
 #OBJDUMP_OPTS += --visualize-jumps
