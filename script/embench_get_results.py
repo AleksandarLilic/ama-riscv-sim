@@ -199,6 +199,7 @@ def main():
     if args.output:
         with open(args.output, "w") as f:
             f.write(json_str + "\n")
+        print(f"Saved results to {args.output}")
     else:
         print(json_str)
 
@@ -211,6 +212,7 @@ def main():
     if args.report:
         with open(args.report, "w") as f:
             f.write(report)
+        print(f"Saved report to {args.report}")
     else:
         print(report)
 
