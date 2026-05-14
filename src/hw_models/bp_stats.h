@@ -20,13 +20,13 @@
 struct bi_app_stats_t {
     b_dir_t dir;
     uint8_t funct3;
-    uint32_t taken;
-    uint32_t total;
+    uint64_t taken;
+    uint64_t total;
     std::vector<bool> pattern;
 };
 
 struct bi_predictor_stats_t {
-    uint32_t predicted;
+    uint64_t predicted;
     // internal counters? predictor specific
 };
 
