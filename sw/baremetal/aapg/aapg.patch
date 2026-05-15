@@ -290,6 +290,18 @@ index 1c3303a..764194f 100644
      logger.addHandler(ch)
      logger.info("aapg started")
      logger.info(VERSION)
+diff --git a/aapg/requirements.txt b/aapg/requirements.txt
+index 597025b..0482272 100644
+--- a/aapg/requirements.txt
++++ b/aapg/requirements.txt
+@@ -9,4 +9,5 @@ six
+ pytest
+ pytest-runner
+ pytest-xdist
+-pytest-html
+\ No newline at end of file
++pytest-html
++pytz
 diff --git a/setup.py b/setup.py
 index 094f585..7a953b0 100644
 --- a/setup.py
