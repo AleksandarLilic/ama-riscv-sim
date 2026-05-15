@@ -1155,9 +1155,42 @@ Automated Assembly Program Generator repo: https://gitlab.com/shaktiproject/tool
 
 Requires applying the provided [aapg.patch](./sw/baremetal/aapg/aapg.patch) to add support for custom SIMD instructions and register pair destinations
 
+Patch commit
+```sh
+78374a5 (HEAD, tag: 2.4.2, origin/master, origin/HEAD, master) Merge branch '99-fix-version' into 'master'
+```
+
 ```sh
 git clone https://gitlab.com/shaktiproject/tools/aapg.git
 cd aapg
+git fetch origin tag 2.4.2
+git checkout 2.4.2
+
+# check must have no errors
+git apply --check <workdir>/ama-riscv-sim/sw/baremetal/aapg/aapg.patch
+
 git apply <workdir>/ama-riscv-sim/sw/baremetal/aapg/aapg.patch
-pip install .
+```
+
+On Ubuntu
+```sh
+# with sudo access, binary ends up under /usr/local/bin
+#pip3 install .
+
+# or locally under ~/.local/bin/aapg
+pip3 install --user .
+```
+
+On macOS
+```sh
+# install inside venv
+cd <workdir>/ama-riscv-sim
+source .venv/bin/activate
+cd - # back to aapg repo root
+uv pip install .
+```
+
+```sh
+# check installation with
+aapg --help
 ```
