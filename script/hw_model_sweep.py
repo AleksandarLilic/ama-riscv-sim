@@ -32,6 +32,7 @@ APPS_DIR = os.path.join(reporoot, "sw", "baremetal")
 FIG_SIZE = (7, 7)
 MK = "o"
 LW = .5
+PLOT_CT_REF_CHOICES = ["none", "fit", "always"]
 
 MARKERS_BP = {
     "any": ".",
@@ -499,10 +500,14 @@ def run_cache_sweep(
             ax.plot(sizes, hit_rate, label=lbl(cpolicy, cset),
                     marker=MK, lw=LW)
             min_size = min(min_size, min(sizes))
-    xticks_filtered = [x if x >= min_size else np.nan for x in XTICKS]
+
+    # keep only ticks/labels for sizes present in the data
+    xtick_pairs = [(x, l) for x, l in zip(XTICKS, XLABELS) if x >= min_size]
+    xticks_filtered = [x for x, _ in xtick_pairs]
+    xlabels_filtered = [l for _, l in xtick_pairs]
     ax.set_xlabel("Size [B]")
     ax.set_xticks(xticks_filtered)
-    ax.set_xticklabels(XLABELS, rotation=90)
+    ax.set_xticklabels(xlabels_filtered, rotation=90)
     ax.set_title(f"Hit Rate vs Size")
     ax.legend(loc="lower right", ncol=1)
 
@@ -511,6 +516,14 @@ def run_cache_sweep(
     if len(workloads) == 1:
         c2mt = "Cache to Memory Traffic"
         c2ct = "Core to Cache Traffic"
+
+        def plot_ct_ref(ax, y_ct, label):
+            if args.plot_ct_ref == "always":
+                ax.set_ylim(top=y_ct * 1.05)
+                ax.axhline(y=y_ct, color="r", linestyle="--", label=label)
+            elif args.plot_ct_ref == "fit" and ax.get_ylim()[1] >= y_ct * .95:
+                ax.axhline(y=y_ct, color="r", linestyle="--", label=label)
+
         for axs_d,direction in zip(axs[1:], ["reads", "writes"]):
             if ck == "icache" and direction == "writes":
                 continue # icache has no writes
@@ -531,12 +544,11 @@ def run_cache_sweep(
                         [se[way]["ct_mem"][direction]for way in se.keys()])
                     ax.plot(se.keys(), ct_mem_read, label=lbl(cpolicy, cset),
                             marker=MK, lw=LW)
+
             ax.set_xlabel("Ways")
             ax.set_xticks(sweep_params["ways"])
             y_ct = ct_core
-            if args.plot_no_ct_thr and ax.get_ylim()[1] < (y_ct * .95):
-                y_ct = np.nan
-            ax.axhline(y=y_ct, color="r", linestyle="--", label=ct_core_str)
+            plot_ct_ref(ax, y_ct, ct_core_str)
             scale_ax_for_ct(ax)
             ax.set_title(f"{c2mt} {direction.capitalize()} vs Number of Ways\n"\
                          f"({c2ct} = {ct_core_str})")
@@ -553,8 +565,8 @@ def run_cache_sweep(
                             label=lbl(cpolicy, cset), marker=MK, lw=LW)
             ax.set_xlabel("Size [B]")
             ax.set_xticks(xticks_filtered)
-            ax.set_xticklabels(XLABELS, rotation=90)
-            ax.axhline(y=y_ct, color="r", linestyle="--", label=ct_core_str)
+            ax.set_xticklabels(xlabels_filtered, rotation=90)
+            plot_ct_ref(ax, y_ct, ct_core_str)
             scale_ax_for_ct(ax)
             ax.set_title(f"{c2mt} {direction.capitalize()} vs Size\n" \
                          f"({c2ct} = {ct_core_str})")
@@ -1644,12 +1656,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--chart_title", type=str, default="", help="Adds this string to each chart's title")
     parser.add_argument("--save_png", action="store_true", help="Save chart(s) as PNG")
     parser.add_argument("--save_pdf", action="store_true", help="Save all charts as a single PDF")
-    parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window")
+    parser.add_argument("--silent", action="store_true", help="Don't display chart(s) in pop-up window. Charts are still drawn and can be saved as PNG or PDF.")
     parser.add_argument("--plot_skip_searched", action="store_true", help="Don't plot searched workloads. Applicable only when stats are loaded with --load_stats")
     # plot - caches
     parser.add_argument("--plot_hr_thr", type=int, default=None, help="Set the lower limit for the plot y-axis for cache hit rate")
     parser.add_argument("--plot_ct_thr", type=int, default=None, help="Set the upper limit for the plot y-axis for cache traffic")
-    parser.add_argument("--plot_no_ct_thr", action="store_true", help="Don't set the upper limit for the plot y-axis for cache traffic")
+    parser.add_argument("--plot_ct_ref", choices=PLOT_CT_REF_CHOICES, default="fit", help="CT reference line: none=skip, fit=show only if within data range, always=expand y-axis to include it")
     # plot - bp
     parser.add_argument("--plot_name_filter", type=str, default=None, help="Filter (regex) for this string only during plotting") # FIXME: should be applied to caches for completeness, but with so few cache configs, no real need?
     parser.add_argument("--plot_acc_thr_min", type=int, default=None, help="Override the lower limit for the plot y-axis for branch predictor accuracy")
@@ -1704,7 +1716,7 @@ def run_main(args: argparse.Namespace) -> List[plt.Figure]:
         sys.exit()
 
     single_wl_sweep = (len(workloads_sweep) == 1)
-    print(f"Sweep: '{args.sweep}'", end='')
+    print(f"Sweep: '{args.sweep}' ", end='')
     if single_wl_sweep:
         print(f"for {workloads_sweep[0]['app']}")
     else:
