@@ -2,6 +2,21 @@
 
 #include "defines.h"
 
+#define DIV_SPECIAL_STATS_JSON_ENTRY(stat_struct) \
+    JSON_N << "\"special_cases_class\": {" \
+    << "\"div_by_zero\": " << stat_struct->div_by_zero << ", " \
+    << "\"overflow\": " << stat_struct->overflow << ", " \
+    << "\"abs_lt\": " << stat_struct->abs_lt << ", " \
+    << "\"divisor_pow2\": " << stat_struct->divisor_pow2 \
+    << "}"
+
+#define DIV_SIZE_JSON_ENTRY(size_struct) \
+    JSON_N << "\"size\": {" \
+    << "\"total\": " << size_struct->total \
+    << ", \"entries\": " << size_struct->entries \
+    << ", \"entry_size\": " << size_struct->entry_size \
+    << "}"
+
 enum class div_special_t {
     none,
     div_by_zero,
@@ -29,12 +44,7 @@ struct div_special_stats_t {
         }
 
         void log(std::ofstream& log_file) const {
-            log_file << JSON_N << "\"special_cases_class\": {"
-                     << "\"div_by_zero\": " << div_by_zero << ", "
-                     << "\"overflow\": " << overflow << ", "
-                     << "\"abs_lt\": " << abs_lt << ", "
-                     << "\"divisor_pow2\": " << divisor_pow2
-                     << "}";
+            log_file << DIV_SPECIAL_STATS_JSON_ENTRY(this);
         }
 };
 
@@ -88,11 +98,7 @@ struct div_size_t {
         {}
 
         void log(std::ofstream& log_file) const {
-            log_file << JSON_N << "\"size\": {"
-                     << "\"total\": " << total
-                     << ", \"entries\": " << entries
-                     << ", \"entry_size\": " << entry_size
-                     << "}";
+            log_file << DIV_SIZE_JSON_ENTRY(this);
         }
 
         void show() const {
