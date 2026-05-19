@@ -4,6 +4,7 @@
     "asm_rv32i": ["test"],
     "asm_rv32i_branches": ["test"],
     "asm_rv32i_zicsr": ["test"],
+    "asm_rv32i_zifencei": ["test"],
     "asm_rv32i_zihpm": ["test"],
     "asm_rv32im": ["test"],
     "asm_rv32ic": ["test"],
