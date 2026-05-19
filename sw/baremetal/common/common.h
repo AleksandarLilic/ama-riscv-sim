@@ -207,6 +207,11 @@ inline __attribute__ ((always_inline))
 void pass() {
     asm volatile("li " TOSTR(TESTNUM_REG) ", 1");
     write_tohost_testnum();
+    NOP;
+    NOP;
+    NOP;
+    NOP;
+    NOP;
 }
 
 inline __attribute__ ((always_inline))
@@ -214,6 +219,11 @@ void fail() {
     asm volatile("sll " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
     asm volatile("or " TOSTR(TESTNUM_REG) ", " TOSTR(TESTNUM_REG) ", 1");
     write_tohost_testnum();
+    NOP;
+    NOP;
+    NOP;
+    NOP;
+    NOP;
 }
 
 inline __attribute__ ((always_inline))

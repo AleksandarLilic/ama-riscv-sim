@@ -5,6 +5,12 @@
 .endm
 .macro post_program_macro
     csrwi 0x51e, 0x1
+    nop
+    nop
+    nop
+    nop
+    nop
+    loop: j loop
 .endm
 
 .macro pre_branch_macro
