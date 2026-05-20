@@ -314,10 +314,7 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(hw_defs_t::roi_size))
         ("show_cache_state",
          "Show per cache line references at the end of simulation",
-         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state))
-        ("div_cache_entries",
-         "Number of entries in divider result cache",
-         CXXOPTS_VAL_STR->default_value(hw_defs_t::div_cache_entries));
+         CXXOPTS_VAL_BOOL->default_value(hw_defs_t::show_cache_state));
 
     options.add_options("HW model - Branch Predictor")
         ("bp",
@@ -383,6 +380,11 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_run_all))
         ("bp_dump_csv", "Dump branch predictor stats to CSV",
          CXXOPTS_VAL_BOOL->default_value(hw_defs_t::bp_dump_csv));
+
+    options.add_options("HW model - Divider")
+        ("div_cache_entries",
+         "Number of entries in divider result cache",
+         CXXOPTS_VAL_STR->default_value(hw_defs_t::div_cache_entries));
 
     #endif
 
