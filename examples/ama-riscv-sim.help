@@ -23,6 +23,7 @@ Usage:
   -e, --perf_event arg          Performance event to track. Options: bp_mispredict, dcache_reference, dcache_miss, 
                                 icache_reference, icache_miss, simd, mem, branch, inst (default: inst)
       --rf_usage                Enable profiling register file usage
+      --no_callstack            Disable callstack tracing
 
  Logging options:
   -l, --log            Enable logging
@@ -61,7 +62,7 @@ Usage:
                                   (default: none)
       --bp_static_method arg    Static predictor - method. 
                                 Options: btfn, ant, at (default: btfn)
-      --bp_pc_bits arg          Branch predictor - PC bits (default: 5)
+      --bp_pc_bits arg          Branch predictor - PC bits (default: 7)
       --bp_cnt_bits arg         Branch predictor - counter bits (default: 3)
       --bp_lhist_bits arg       Branch predictor - local history bits (default: 5)
       --bp_ghr_bits arg         Branch predictor - global register bits (default: 5)
@@ -72,11 +73,11 @@ Usage:
       --bp2_pc_bits arg         Branch predictor 2 - PC bits (default: 5)
       --bp2_cnt_bits arg        Branch predictor 2 - counter bits (default: 1)
       --bp2_lhist_bits arg      Branch predictor 2 - local history bits (default: 5)
-      --bp2_ghr_bits arg        Branch predictor 2 - global register bits (default: 9)
+      --bp2_ghr_bits arg        Branch predictor 2 - global register bits (default: 8)
       --bp2_fold_pc arg         Branch predictor 2 - Fold higher order PC bits for indexing
                                 Options: all, none (default: none)
       --bp_combined_pc_bits arg
-                                Combined predictor - PC bits (default: 4)
+                                Combined predictor - PC bits (default: 6)
       --bp_combined_cnt_bits arg
                                 Combined predictor - counter bits (default: 4)
       --bp_combined_fold_pc arg
@@ -84,6 +85,9 @@ Usage:
                                 Options: all, none (default: all)
       --bp_run_all              Run all branch predictors
       --bp_dump_csv             Dump branch predictor stats to CSV
+
+ HW model - Divider options:
+      --div_cache_entries arg  Number of entries in divider result cache (default: 1)
 
  Help options:
   -h, --help     Print usage

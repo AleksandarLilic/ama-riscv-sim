@@ -193,7 +193,7 @@ callstack_folded_inst.txt  exec.log  hw_stats.json  inst_profile.json  trace.bin
 Some simulator options depend on the build switches. This doc assumes default build switches which is the standalone mode with all available features included
 
 Core functionalities:
-1. Standalone ISA simulator capable of running applications targeting `RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd` ([rv drom](https://rv.drom.io/?RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd)) 
+1. Standalone ISA simulator capable of running M-mode applications targeting `RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd` ([rv drom](https://rv.drom.io/?RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd)) or any legal subset ([gcc `-march` options](https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/RISC-V-Options.html#index-march-14))
 2. API for single step execution, aimed at DPI verification environments
 
 Profilers:
@@ -212,16 +212,25 @@ Logging:
 
 Hardware models:
 1. Provides L1I and L1D caches as both statistical (metadata only) or functional (with data storage) models.
-    1. number of sets - parametrizable from the CLI
-    2. number of ways - parametrizable from the CLI
-    3. replacement policy - only LRU is available
+    1. number of sets and ways - parametrizable from the CLI
+    2. replacement policy - only LRU is available
+    3. write policy - write-back or write-through (dcache only)
 2. Records separate cache stats for the user defined region of interest (ROI)
-3. Provides various branch predictor models
+3. Provides branch predictor models
     1. The user specified one is completely configurable from the CLI
-    2. The rest are hardcoded (provides variety), and can optionally be run (in parallel)
-    3. Any number of branch predictors can be run in parallel, but only the user specified one will drive the L1I cache - the 'active' predictor
+    2. The rest are hardcoded (more can be added) and can optionally be run in parallel
+    3. Options include: `static`, `bimodal`, `local`, `global`, `gselect`, `gshare`, `ideal`, `none`, with their own parameter configs, and any of them can be combined for two-level prediction
+    4. Any number of branch predictors can be run in parallel, but only the user specified one will drive the L1I cache - the 'active' predictor
 4. Provides branch stats for the number of unique branches (`stdout`) and performance of each of the predictors for the given unique branch (`branches.csv`)
-5. Records runtime hardware statistics in the same region as the profilers (`hw_stats.json` and `stdout`)
+5. Provides an integer divider model with a configurable result cache
+    1. number of result cache entries - parametrizable from the CLI (default: 1)
+    2. classifies each operation as either
+       1. a cache hit
+       2. a special case (divide by zero, signed overflow, |dividend| < |divisor|, power-of-2 divisor), or 
+       3. a common case
+6. Records runtime hardware statistics in the same region as the profilers (`hw_stats.json` and `stdout`)
+
+Example output is shown under [Hardware models outputs](#hardware-models-outputs)
 
 Analysis scripts:
 1. FlameGraphs
@@ -408,7 +417,7 @@ Execution trace, saved as `trace.bin`, contains `trace_entry` struct for each ex
 Similarly, register file usage is saved as `rf_usage.bin`. As each instruction is executed, appropriate counters are incremented based on the used register(s), and the type of usage (destination or source)
 
 ## Hardware models outputs
-Stats for three hardware models are available as `hw_stats.json`
+Stats for four hardware models are available as `hw_stats.json`
 ```json
 {
 "icache": {
@@ -737,7 +746,7 @@ Estimated HW performance at 100MHz:
 ```
 
 # Hardware model sweeps
-ISA simulator provides two types of parametrizable hardware models - caches and branch predictors. It's useful to sweep across various configurations with chosen workloads and compare their performances, as well as size and hardware complexity tradeoffs. These results then drive the decision on which configuration to implement in hardware
+ISA simulator provides three types of parametrizable hardware models - caches, branch predictors, and divider. It's useful to sweep across various configurations with chosen workloads and compare their performances, as well as size and hardware complexity tradeoffs. These results then drive the decision on which configuration to implement in hardware. Divider model configuration is rather simple (just a number of result cache entries), so it's not included in the sweeps below.
 
 Full usage available in [examples/hw_model_sweep.help](examples/hw_model_sweep.help)
 
