@@ -195,6 +195,7 @@ Some simulator options depend on the build switches. This doc assumes default bu
 Core functionalities:
 1. Standalone ISA simulator capable of running M-mode applications targeting `RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd` ([rv drom](https://rv.drom.io/?RV32IMC_zicsr_zifencei_zicntr_zihpm_xsimd)) or any legal subset ([gcc `-march` options](https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/RISC-V-Options.html#index-march-14))
 2. API for single step execution, aimed at DPI verification environments
+   1. Used for verification of the SystemVerilog core: [ama-riscv](https://github.com/AleksandarLilic/ama-riscv)
 
 Profilers:
 1. Records the folded callstack based on the user-specified event source (`callstack_folded_inst.txt`)
@@ -233,12 +234,16 @@ Hardware models:
 Example output is shown under [Hardware models outputs](#hardware-models-outputs)
 
 Analysis scripts:
-1. FlameGraphs
-2. Detailed execution visualization
-3. Performance estimates
-4. Hardware models parameters sweep
-
-Emulator is used through DPI for verification of the SystemVerilog implementation: [ama-riscv](https://github.com/AleksandarLilic/ama-riscv)
+1. Flat profile - per-function execution breakdown
+2. FlameGraphs
+3. Call graphs
+4. Execution visualization
+    1. Timeline, execution breakdown, PC and DMEM histograms and traces
+    2. Rolling stats trace (instruction mix and hardware model metrics) with configurable window
+    3. Register file usage
+    4. Backannotated disassembly with per-instruction execution counts
+5. Hardware performance estimates (cycles, CPI/IPC, and time range) derived from ISS data and a microarchitecture description
+6. Hardware models parameters sweep for caches and branch predictors
 
 ## Usage
 The only required user argument is a path to the RISC-V executable, every other argument can use its default value
