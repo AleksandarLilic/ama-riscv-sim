@@ -308,7 +308,7 @@ class profiler {
         std::array<sparsity_cnt_t, TO_U32(sparsity_t::_count)> sparsity_cnt;
         bool trace_en;
         bool rf_usage;
-        uint32_t min_sp = BASE_ADDR + MEM_SIZE; // add offset
+        uint32_t min_sp = (BASE_ADDR + MEM_SIZE); // stack top on boot
 
     public:
         profiler() = delete;

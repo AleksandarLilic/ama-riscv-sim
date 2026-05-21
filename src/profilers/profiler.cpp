@@ -284,7 +284,12 @@ void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
 }
 
 void profiler::track_sp(const uint32_t sp) {
-    if (sp != 0 && sp < min_sp) min_sp = sp;
+    // rf[32] all initialized with 0xc0ffee by the isa sim
+    // rf[32] all initialized to 0x0 by the crt0.S
+    // sp is then initialized to stack top `BASE_ADDR + MEM_SIZE` by the crt0.S
+    // if the rest of the application respects the abi
+    // sp will grow downwards and therefore this will collect peak stack usage
+    if ((sp > BASE_ADDR) && (sp < min_sp)) min_sp = sp;
 }
 
 void profiler::log_to_file_and_print(bool silent) {
@@ -321,7 +326,7 @@ void profiler::log_to_file_and_print(bool silent) {
         }
     }
 
-    min_sp = BASE_ADDR + MEM_SIZE - min_sp; // remove offset
+    min_sp = (BASE_ADDR + MEM_SIZE - min_sp); // remove stack_top offset
     ofs << INDENT << "\"_max_sp_usage\": " << min_sp << ",\n" << INDENT;
     if (prof_src == profiler_source_t::clock) {
         ofs << "\"_profiled_cycles\": " << cnt.tot;
@@ -448,19 +453,20 @@ void profiler::log_to_file_and_print(bool silent) {
               << " Zbb: " << cnt.zbb << "(" << perc.zbb << "%)"
               << "\n";
 
-    std::cout << INDENT << "SIMD arith:"
+    std::cout << INDENT << "SIMD:\n";
+    std::cout << INDENT << INDENT << "arith:"
               << " ALU: " << cnt.alu_c << "(" << perc.alu_c << "%),"
               << " MUL: " << cnt.wmul_c << "(" << perc.wmul_c << "%),"
               << " DOT: " << cnt.dot_c << "(" << perc.dot_c << "%)"
               << "\n";
 
-    std::cout << INDENT << "SIMD data fmt:"
+    std::cout << INDENT << INDENT << "data fmt:"
               << " WIDEN: " << cnt.widen_c << "(" << perc.widen_c << "%),"
               << " NARROW: " << cnt.narrow_c << "(" << perc.narrow_c << "%),"
               << " TXP: " << cnt.txp_c << "(" << perc.txp_c << "%)"
               << "\n";
 
-    std::cout << INDENT << "SIMD vector-scalar:"
+    std::cout << INDENT << INDENT << "vector-scalar:"
               << " DUP: " << cnt.dup_c << "(" << perc.dup_c << "%),"
               << " VINS: " << cnt.vins_c << "(" << perc.vins_c << "%),"
               << " VEXT: " << cnt.vext_c << "(" << perc.vext_c << "%)"
