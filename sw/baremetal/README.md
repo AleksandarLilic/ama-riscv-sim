@@ -61,7 +61,7 @@ Or when built from source and not in `PATH`:
 export RV_GNU_LATEST=/home/tools/rv_gcc_2024-05-15/bin/riscv32-unknown-elf
 ```
 
-`bin2hex` (`riscv64-unknown-elf-bin2hex`) is also required for generating `.hex` files. It is not part of the standard toolchain.
+`bin2hex.py` (`sw/bin2hex.py`) is used for generating hex files needed for loading the app into the memory in the RTL environment.
 
 ## Makefile.inc
 
@@ -75,7 +75,7 @@ include ../Makefile.inc
 
 - **Source discovery**: picks up all `*.c` and `*.S` files in the test directory automatically, unless `EXPLICIT_SRCS=1` is set, in which case the test Makefile is responsible for setting `C_SRCS` / `S_SRCS`
 - **Common objects**: compiles and caches `crt0`, `memset`, `common`, `common_math`, `mini-printf` into `./common_build/`
-- **Outputs per target**: `.elf`, `.dasm` (full objdump), `.hex` (128-bit wide, via `bin2hex`); hex generation is on by default (`HEX=1`) and can be disabled with `HEX=0`
+- **Outputs per target**: `.elf`, `.dasm` (full objdump), `.mem` (128-bit wide hex, via `bin2hex.py`; `.mem` extension required by Xilinx `updatemem` for bitstream patching); hex generation is on by default (`HEX=1`) and can be disabled with `HEX=0`
 - **Verbosity**: `V=1` on the make command line enables full command echo
 
 Key variables a per-test `Makefile` may set before the `include`:
