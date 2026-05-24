@@ -682,6 +682,38 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_RF_ZERO(val) \
     prof_rf.te.rd_val_zero = ((val) == 0) ? 1u : 0u;
 
+#define PROF_C_RD_REGH \
+    prof_rf.log_reg_use(reg_use_t::rd,  ip.c_regh()); \
+    prof_rf.te.rd  = ip.c_regh();
+
+#define PROF_C_RD_REGL \
+    prof_rf.log_reg_use(reg_use_t::rd,  ip.c_regl()); \
+    prof_rf.te.rd  = ip.c_regl();
+
+#define PROF_C_RS1_RD \
+    prof_rf.log_reg_use(reg_use_t::rs1, ip.rd()); \
+    prof_rf.te.rs1 = ip.rd();
+
+#define PROF_C_RS1_REGH \
+    prof_rf.log_reg_use(reg_use_t::rs1, ip.c_regh()); \
+    prof_rf.te.rs1 = ip.c_regh();
+
+#define PROF_C_RS2_REGL \
+    prof_rf.log_reg_use(reg_use_t::rs2, ip.c_regl()); \
+    prof_rf.te.rs2 = ip.c_regl();
+
+#define PROF_C_RS2_RS2 \
+    prof_rf.log_reg_use(reg_use_t::rs2, ip.c_rs2()); \
+    prof_rf.te.rs2 = ip.c_rs2();
+
+#define PROF_C_RD_LIT(n) \
+    prof_rf.log_reg_use(reg_use_t::rd,  (n)); \
+    prof_rf.te.rd  = (n);
+
+#define PROF_C_RS1_LIT(n) \
+    prof_rf.log_reg_use(reg_use_t::rs1, (n)); \
+    prof_rf.te.rs1 = (n);
+
 #define PROF_RS3 \
     prof_rf.log_reg_use(reg_use_t::rs3, ip.rd());
 
@@ -756,6 +788,14 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_SPARSITY_SIMD_AB(a, b, t)
 #define PROF_SPARSITY_SIMD_R(res, t)
 #define PROF_RF_ZERO(val)
+#define PROF_C_RD_REGH
+#define PROF_C_RD_REGL
+#define PROF_C_RS1_RD
+#define PROF_C_RS1_REGH
+#define PROF_C_RS2_REGL
+#define PROF_C_RS2_RS2
+#define PROF_C_RD_LIT(n)
+#define PROF_C_RS1_LIT(n)
 #endif
 
 #define INDENT "    "

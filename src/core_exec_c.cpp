@@ -7,6 +7,8 @@ void core::c_addi() {
     write_rf(ip.rd(), res);
     DASM_OP(c.addi)
     PROF_G(c_addi)
+    PROF_RD
+    PROF_C_RS1_RD
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -21,6 +23,7 @@ void core::c_li() {
     write_rf(ip.rd(), res);
     DASM_OP(c.li)
     PROF_G(c_li)
+    PROF_RD
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -36,6 +39,7 @@ void core::c_lui() {
     write_rf(ip.rd(), res);
     DASM_OP(c.lui)
     PROF_G(c_lui)
+    PROF_RD
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -61,6 +65,8 @@ void core::c_addi16sp() {
     write_rf(2, res);
     DASM_OP(c.addi16sp)
     PROF_G(c_addi16sp)
+    PROF_C_RD_LIT(2)
+    PROF_C_RS1_LIT(2)
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -75,6 +81,8 @@ void core::c_srli() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.srli)
     PROF_G(c_srli)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -89,6 +97,8 @@ void core::c_srai() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.srai)
     PROF_G(c_srai)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -103,6 +113,8 @@ void core::c_andi() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.andi)
     PROF_G(c_andi)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -117,6 +129,9 @@ void core::c_and() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.and)
     PROF_G(c_and)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
+    PROF_C_RS2_REGL
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -131,6 +146,9 @@ void core::c_or() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.or)
     PROF_G(c_or)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
+    PROF_C_RS2_REGL
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -145,6 +163,9 @@ void core::c_xor() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.xor)
     PROF_G(c_xor)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
+    PROF_C_RS2_REGL
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -159,6 +180,9 @@ void core::c_sub() {
     write_rf(ip.c_regh(), res);
     DASM_OP(c.sub)
     PROF_G(c_sub)
+    PROF_C_RD_REGH
+    PROF_C_RS1_REGH
+    PROF_C_RS2_REGL
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -175,6 +199,8 @@ void core::c_addi4spn() {
     write_rf(ip.c_regl(), res);
     DASM_OP(c.addi4spn)
     PROF_G(c_addi4spn)
+    PROF_C_RD_REGL
+    PROF_C_RS1_LIT(2)
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -190,6 +216,8 @@ void core::c_slli() {
     write_rf(ip.rd(), res);
     DASM_OP(c.slli)
     PROF_G(c_slli)
+    PROF_RD
+    PROF_C_RS1_RD
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef PROFILERS_EN
@@ -207,6 +235,8 @@ void core::c_mv() {
     write_rf(ip.rd(), res);
     DASM_OP(c.mv)
     PROF_G(c_mv)
+    PROF_RD
+    PROF_C_RS2_RS2
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -221,6 +251,9 @@ void core::c_add() {
     write_rf(ip.rd(), res);
     DASM_OP(c.add)
     PROF_G(c_add)
+    PROF_RD
+    PROF_C_RS1_RD
+    PROF_C_RS2_RS2
     PROF_SPARSITY_ALU
     PROF_RF_ZERO(res)
     #ifdef DASM_EN
@@ -238,6 +271,8 @@ void core::c_lw() {
     write_rf(ip.c_regl(), loaded);
     DASM_OP(c.lw)
     PROF_G(c_lw)
+    PROF_C_RD_REGL
+    PROF_C_RS1_REGH
     PROF_SPARSITY_MEM_L
     PROF_RF_ZERO(loaded)
     #ifdef PROFILERS_EN
@@ -262,6 +297,8 @@ void core::c_lwsp() {
     write_rf(ip.rd(), loaded);
     DASM_OP(c.lwsp)
     PROF_G(c_lwsp)
+    PROF_RD
+    PROF_C_RS1_LIT(2)
     PROF_SPARSITY_MEM_L
     PROF_RF_ZERO(loaded)
     #ifdef PROFILERS_EN
@@ -286,6 +323,8 @@ void core::c_sw() {
     if (tu.is_trapped()) return;
     DASM_OP(c.sw)
     PROF_G(c_sw)
+    PROF_C_RS1_REGH
+    PROF_C_RS2_REGL
     PROF_SPARSITY_MEM_S
     #ifdef PROFILERS_EN
     prof.log_stack_access_store(
@@ -306,6 +345,8 @@ void core::c_swsp() {
     if (tu.is_trapped()) return;
     DASM_OP(c.swsp)
     PROF_G(c_swsp)
+    PROF_C_RS1_LIT(2)
+    PROF_C_RS2_RS2
     PROF_SPARSITY_MEM_S
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[2] + ip.c_imm_swsp()) > TO_U32(rf[2]));
@@ -330,6 +371,7 @@ void core::c_beqz() {
         next_pc = pc + 2;
         PROF_B_NT(c_beqz, target_pc)
     }
+    PROF_C_RS1_REGH
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
@@ -350,6 +392,7 @@ void core::c_bnez() {
         next_pc = pc + 2;
         PROF_B_NT(c_beqz, target_pc)
     }
+    PROF_C_RS1_REGH
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
@@ -380,6 +423,7 @@ void core::c_jal() {
     write_rf(1, pc + 2);
     DASM_OP(c.jal)
     PROF_J(c_jal)
+    PROF_C_RD_LIT(1)
     #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, false, false);
     branch_taken = true;
@@ -397,6 +441,7 @@ void core::c_jr() {
     next_pc = rf[ip.rd()];
     DASM_OP(c.jr)
     PROF_J(c_jr)
+    PROF_C_RS1_RD
 
     #if defined(PROFILERS_EN) || defined(DASM_EN)
     bool ret_inst = (inst == INST_C_RET);
@@ -420,6 +465,8 @@ void core::c_jalr() {
     write_rf(1, ra);
     DASM_OP(c.jalr)
     PROF_J(c_jalr)
+    PROF_C_RD_LIT(1)
+    PROF_C_RS1_RD
 
     #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, false, false, ra);
