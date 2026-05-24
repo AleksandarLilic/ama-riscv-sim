@@ -57,6 +57,8 @@ asm(                        \
 #define ICACHE_WAYS 2
 #define DCACHE_SETS 16
 #define DCACHE_WAYS 4
+#define L1I_CACHE_SIZE (CACHE_LINE_SIZE * ICACHE_WAYS * ICACHE_SETS)
+#define L1D_CACHE_SIZE (CACHE_LINE_SIZE * DCACHE_WAYS * DCACHE_SETS)
 
 // custom data types
 typedef union {

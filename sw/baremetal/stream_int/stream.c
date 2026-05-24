@@ -173,6 +173,12 @@
 #define STREAM_TYPE double
 #endif
 
+// check that the above 1) (a) requirement for array size is met
+_Static_assert(
+    (STREAM_ARRAY_SIZE * sizeof(STREAM_TYPE)) >= (4 * L1D_CACHE_SIZE),
+    "STREAM_ARRAY_SIZE must be >= 4x L1D cache size per STREAM requirements"
+);
+
 static STREAM_TYPE	a[STREAM_ARRAY_SIZE+OFFSET],
 			b[STREAM_ARRAY_SIZE+OFFSET],
 			c[STREAM_ARRAY_SIZE+OFFSET];
