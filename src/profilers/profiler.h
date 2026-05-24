@@ -286,9 +286,9 @@ static constexpr std::array<const char*, TO_U32(sparsity_t::_count)>
 class profiler {
     public:
         trace_entry te;
-        bool active;
 
     private:
+        bool active;
         std::string out_dir;
         profiler_source_t prof_src;
         std::ofstream ofs;
@@ -303,11 +303,8 @@ class profiler {
         #endif
         std::array<inst_prof_g, TO_U32(opc_g::_count)> prof_g_arr;
         std::array<inst_prof_b, TO_U32(opc_b::_count)> prof_b_arr;
-        std::array<std::array<uint64_t, TO_U32(reg_use_t::_count)>, 32>
-            prof_rf_usage = {{}};
         std::array<sparsity_cnt_t, TO_U32(sparsity_t::_count)> sparsity_cnt;
         bool trace_en;
-        bool rf_usage;
         uint32_t min_sp = (BASE_ADDR + MEM_SIZE); // stack top on boot
 
     public:
@@ -318,7 +315,6 @@ class profiler {
         void track_sp(const uint32_t sp);
         void log_inst(opc_g opc, uint64_t inc);
         void log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc);
-        void log_reg_use(reg_use_t reg_use, uint8_t reg);
         void log_sparsity(bool sparse, sparsity_t stype) {
             if (!active) return;
             sparsity_cnt[TO_U32(stype)].total++;
@@ -330,10 +326,8 @@ class profiler {
         void log_stack_access_store(bool in_range) {
             if (active) stack_access.storing(in_range);
         }
-        void set_prof_flags(bool trace_en, bool rf_usage) {
-            this->trace_en = trace_en;
-            this->rf_usage = rf_usage;
-        }
+        void set_active(bool active) { this->active = active; }
+        void set_trace_en(bool trace_en) { this->trace_en = trace_en; }
         void finish(bool silent) { log_to_file_and_print(silent); }
 
     private:

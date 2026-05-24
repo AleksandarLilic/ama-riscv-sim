@@ -279,10 +279,6 @@ void profiler::log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     }
 }
 
-void profiler::log_reg_use(reg_use_t reg_use, uint8_t reg) {
-    if (active && rf_usage) prof_rf_usage[reg][TO_U8(reg_use)]++;
-}
-
 void profiler::track_sp(const uint32_t sp) {
     // rf[32] all initialized with 0xc0ffee by the isa sim
     // rf[32] all initialized to 0x0 by the crt0.S
@@ -340,17 +336,6 @@ void profiler::log_to_file_and_print(bool silent) {
         ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
         ofs.write(reinterpret_cast<const char*>(trace.data()),
                 trace.size() * sizeof(trace_entry));
-        ofs.close();
-    }
-
-    if (rf_usage) {
-        ofs.open(out_dir + "rf_usage" +  pt + ".bin", std::ios::binary);
-        ofs.write(
-            reinterpret_cast<const char*>(prof_rf_usage.data()),
-            (prof_rf_usage.size() * // num of regs
-             prof_rf_usage[0].size() * // num of options for each reg
-             sizeof(prof_rf_usage[0][0])) // counter width
-        );
         ofs.close();
     }
 

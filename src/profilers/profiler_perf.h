@@ -3,10 +3,8 @@
 #include "defines.h"
 
 class profiler_perf {
-    public:
-        bool active;
-
     private:
+        bool active;
         std::string out_dir;
         symbol_tracking_t st;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
@@ -32,6 +30,7 @@ class profiler_perf {
         #ifdef DPI
         void set_clk_src (clock_source_t* src) { clk_src = src; }
         #endif
+        void set_active(bool active) { this->active = active; }
         void set_callstack_en(bool en) { callstack_en = en; }
         bool is_callstack_en() const { return callstack_en; }
         bool finish_inst(uint32_t next_pc);

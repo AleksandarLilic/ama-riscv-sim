@@ -31,12 +31,10 @@ struct inst_opt {
 
 class profiler_fusion {
     public:
-        bool active;
-
-    public:
         profiler_fusion() : current_state(state::START) {}
         void attack(inst_opt opt);
         void finish(bool silent);
+        void set_active(bool active) { this->active = active; }
 
     private:
         void transition();
@@ -45,6 +43,7 @@ class profiler_fusion {
         uint64_t lea_match_cnt = 0;
 
     private:
+        bool active;
         state current_state;
         inst_parser ip;
         inst_opt opt;

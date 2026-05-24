@@ -248,6 +248,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
         PROF_SPARSITY_ALU \
+        PROF_RF_ZERO(res) \
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
@@ -258,6 +259,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
         PROF_SPARSITY_ALU \
+        PROF_RF_ZERO(res) \
         break;
 
 #ifdef HW_MODELS_EN
@@ -275,6 +277,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
         PROF_SPARSITY_ALU \
+        PROF_RF_ZERO(res) \
         break;
 
 #define CASE_ALU_REG_ZBB_OP(op) \
@@ -285,6 +288,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
         PROF_SPARSITY_ALU \
+        PROF_RF_ZERO(res) \
         break;
 
 #define CASE_ALU_IMM_OP(op) \
@@ -295,6 +299,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1 \
         PROF_SPARSITY_ALU \
+        PROF_RF_ZERO(res) \
         break;
 
 #define CASE_LOAD(op) \
@@ -306,6 +311,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         PROF_G(op) \
         PROF_RD_RS1 \
         PROF_SPARSITY_MEM_L \
+        PROF_RF_ZERO(loaded) \
         break;
 
 #define CASE_STORE(op) \
@@ -640,34 +646,44 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #endif
 
 #define PROF_G(op) \
-    prof.log_inst(opc_g::i_##op, DIFF);
+    prof.log_inst(opc_g::i_##op, DIFF); \
+    prof_rf.te.opc_g_val = TO_U8(opc_g::i_##op);
 
 #define PROF_J(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_b::i_##op, true, b_dir_t(dir), DIFF);
+    prof.log_inst(opc_b::i_##op, true, b_dir_t(dir), DIFF); \
+    prof_rf.te.opc_b_val = TO_U8(opc_b::i_##op);
 
 #define PROF_B_T(op) \
     b_dir_t dir = (next_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_b::i_##op, true, b_dir_t(dir), DIFF);
+    prof.log_inst(opc_b::i_##op, true, b_dir_t(dir), DIFF); \
+    prof_rf.te.opc_b_val = TO_U8(opc_b::i_##op);
 
 #define PROF_B_NT(op, t_pc) \
     b_dir_t dir = (t_pc > pc) ? b_dir_t::forward : b_dir_t::backward; \
-    prof.log_inst(opc_b::i_##op, false, b_dir_t(dir), DIFF);
+    prof.log_inst(opc_b::i_##op, false, b_dir_t(dir), DIFF); \
+    prof_rf.te.opc_b_val = TO_U8(opc_b::i_##op);
 
 #define PROF_RD \
-    prof.log_reg_use(reg_use_t::rd, ip.rd());
+    prof_rf.log_reg_use(reg_use_t::rd, ip.rd()); \
+    prof_rf.te.rd = ip.rd();
 
 #define PROF_RDP \
-    prof.log_reg_use(reg_use_t::rdp, ip.rd()+1);
+    prof_rf.log_reg_use(reg_use_t::rdp, ip.rd()+1);
 
 #define PROF_RS1 \
-    prof.log_reg_use(reg_use_t::rs1, ip.rs1());
+    prof_rf.log_reg_use(reg_use_t::rs1, ip.rs1()); \
+    prof_rf.te.rs1 = ip.rs1();
 
 #define PROF_RS2 \
-    prof.log_reg_use(reg_use_t::rs2, ip.rs2());
+    prof_rf.log_reg_use(reg_use_t::rs2, ip.rs2()); \
+    prof_rf.te.rs2 = ip.rs2();
+
+#define PROF_RF_ZERO(val) \
+    prof_rf.te.rd_val_zero = ((val) == 0) ? 1u : 0u;
 
 #define PROF_RS3 \
-    prof.log_reg_use(reg_use_t::rs3, ip.rd());
+    prof_rf.log_reg_use(reg_use_t::rs3, ip.rd());
 
 #define PROF_RD_RS1_RS2 \
     PROF_RD \
@@ -739,6 +755,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define PROF_SPARSITY_MEM_S
 #define PROF_SPARSITY_SIMD_AB(a, b, t)
 #define PROF_SPARSITY_SIMD_R(res, t)
+#define PROF_RF_ZERO(val)
 #endif
 
 #define INDENT "    "

@@ -10,6 +10,7 @@
 #include "profiler.h"
 #include "profiler_perf.h"
 #include "profiler_fusion.h"
+#include "profiler_rf.h"
 #endif
 
 #ifdef HW_MODELS_EN
@@ -397,7 +398,7 @@ class core {
         bool end_dump_state;
         #ifdef PROFILERS_EN
         prof_pc_t prof_pc;
-        bool prof_act;
+        bool prof_active = false;
         #endif
 
         bool csr_updated = false;
@@ -470,6 +471,7 @@ class core {
         profiler prof;
         profiler_perf prof_perf;
         profiler_fusion prof_fusion;
+        profiler_rf prof_rf;
         bool branch_taken;
         #ifdef DPI
         clock_source_t clk_src;

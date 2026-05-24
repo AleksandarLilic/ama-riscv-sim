@@ -5,7 +5,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     mem(mem), pc(BASE_ADDR), next_pc(0), inst(0), inst_cnt(0),
     tu(&csr, &pc, &inst)
     #ifdef PROFILERS_EN
-    , prof_pc(cfg.prof_pc), prof_act(false)
+    , prof_pc(cfg.prof_pc)
     , prof(cfg.out_dir, PROF_SRC)
     , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
     #endif
@@ -27,18 +27,21 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
 
     #ifdef PROFILERS_EN
     tu.set_prof_perf(&prof_perf);
-    prof.set_prof_flags(cfg.prof_trace, cfg.rf_usage);
+    prof.set_trace_en(cfg.prof_trace);
     if (cfg.no_callstack) prof_perf.set_callstack_en(false);
     prof_trace = cfg.prof_trace;
+    prof_rf.set_trace_en(cfg.prof_trace);
+    prof_rf.set_rf_usage_en(cfg.rf_usage);
 
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
     // profiling active from the beginning instead of waiting for first PC exec
     bool prof_on_boot = (prof_pc.start == BASE_ADDR);
-    prof_act = prof_on_boot;
-    prof.active = prof_on_boot;
-    prof_perf.active = prof_on_boot;
-    prof_fusion.active = prof_on_boot;
+    prof_active = prof_on_boot;
+    prof.set_active(prof_on_boot);
+    prof_perf.set_active(prof_on_boot);
+    prof_fusion.set_active(prof_on_boot);
+    prof_rf.set_active(prof_on_boot);
     cosim_prof(prof_on_boot);
 
     #endif // DPI
@@ -84,10 +87,11 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
 uint64_t core::run() {
     std::cout << std::dec << "SIMULATION STARTED\n";
     #ifdef PROFILERS_EN
-    prof_act = false;
-    prof.active = false;
-    prof_perf.active = false;
-    prof_fusion.active = false;
+    prof_active = false;
+    prof.set_active(false);
+    prof_perf.set_active(false);
+    prof_fusion.set_active(false);
+    prof_rf.set_active(false);
     #endif
 
     #ifdef UART_EN
@@ -157,7 +161,7 @@ void core::single_step() {
     #endif
 
     #ifdef PROFILERS_EN
-    if (!tu.is_trapped() && (prof_act)) prof_pc.inst_cnt++;
+    if (!tu.is_trapped() && (prof_active)) prof_pc.inst_cnt++;
     #endif
 
     #ifdef DASM_EN
@@ -176,9 +180,9 @@ void core::single_step() {
         }
         log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
         // don't count instructions unless also profiling
-        //if (prof_act) log_ofstream << prof_pc.inst_cnt;
+        //if (prof_active) log_ofstream << prof_pc.inst_cnt;
         #ifdef PROFILERS_EN
-        if (prof_act) log_ofstream << inst_cnt + 1;
+        if (prof_active) log_ofstream << inst_cnt + 1;
         else log_ofstream << "";
         #else
         log_ofstream << inst_cnt + 1;
@@ -286,6 +290,7 @@ void core::finish(bool dump_regs) {
     prof.finish(cfg.silent);
     prof_perf.finish(cfg.silent);
     prof_fusion.finish(cfg.silent);
+    prof_rf.finish(cfg.out_dir);
     #endif
     #ifdef HW_MODELS_EN
     #ifdef PROFILERS_EN
@@ -307,10 +312,11 @@ void core::finish(bool dump_regs) {
 // profiler-related
 void core::prof_state([[maybe_unused]] bool enable) {
     #ifdef PROFILERS_EN
-    prof_act = enable;
-    prof.active = enable;
-    prof_perf.active = enable;
-    prof_fusion.active = enable;
+    prof_active = enable;
+    prof.set_active(enable);
+    prof_perf.set_active(enable);
+    prof_fusion.set_active(enable);
+    prof_rf.set_active(enable);
     #ifdef DPI
     cosim_prof(enable); // updates bp, cache, core stats
     #endif
@@ -333,7 +339,7 @@ void core::prof_state([[maybe_unused]] bool enable) {
 
 #if defined(PROFILERS_EN) && !defined(DPI)
 void core::save_trace_entry() {
-    if (prof_act && prof_trace) {
+    if (prof_active && prof_trace) {
         prof.te.inst = inst;
         prof.te.pc = pc;
         prof.te.next_pc = next_pc;
@@ -348,6 +354,7 @@ void core::save_trace_entry() {
         prof.te.bp_hm = TO_U8(hwrs.bp_hm);
         #endif
         prof.add_te();
+        prof_rf.add_te();
     }
 }
 #endif
@@ -355,7 +362,7 @@ void core::save_trace_entry() {
 #ifdef DPI
 // trace is saved on every cycle from dpi
 void core::save_trace_entry(trace_entry te) {
-    if (prof_act && prof_trace) {
+    if (prof_active && prof_trace) {
         prof.te = te;
         prof.add_te();
     }
@@ -1089,8 +1096,6 @@ void core::dump() {
               #ifdef PROFILERS_EN
               // profiled inst, depending on settings/triggers
               << ", profiled: " << prof_pc.inst_cnt
-              #else
-              << inst_cnt // app profiled from boot
               #endif
               << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
