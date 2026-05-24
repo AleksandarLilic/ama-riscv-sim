@@ -5,7 +5,7 @@ general:
   total_instructions: 4800
   regs_not_use: x1,x2
   custom_trap_handler: false
-  code_start_address: 0x40000
+  code_start_address: 0x0 # not used by the flow
   default_program_exit: false
   delegation: 0x000
 
