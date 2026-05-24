@@ -23,8 +23,8 @@ dcache_load: 2 # R2U
 
 div: # 3 classes: cache, special, common (as overhead + clk/dividend bit)
   cache: 1 # fully combinational
-  special: 3 # 1 + setup + flop result
-  common_overhead: 4 # 1 + setup + fixup + flop result; + #bits from stats
+  special: 3 # 1 + start + setup
+  common_overhead: 4 # 1 + start + setup + fixup; + #bits from hw_stats
 
 # main memory access contention, 0.0 .. 1.0 (fraction of cycles with contention)
 #mem_rd_port_contention: 0
