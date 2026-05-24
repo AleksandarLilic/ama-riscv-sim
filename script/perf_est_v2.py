@@ -134,36 +134,18 @@ class perf:
             "mpki": hw_bp["mpki"],
             "type": hw_bp["type"]
         }
-        hw_ic = self.hw_stats[self.ic_name]
-        hw_dc = self.hw_stats[self.dc_name]
+        hws_ic = self.hw_stats[self.ic_name]
+        hws_dc = self.hw_stats[self.dc_name]
 
         def get_hr(hits, tot):
             if tot == 0:
                 return 0
             return hits / tot * 100
 
-        self.ic_stats = {
-            "references": hw_ic["references"],
-            "hits": hw_ic["hits"]["reads"],
-            "misses": hw_ic["misses"]["reads"],
-            "hit_rate": get_hr(hw_ic["hits"]["reads"], hw_ic["references"]),
-            "mpki": (hw_ic["misses"]["reads"] / (self.inst_total/1000)),
-            "sets": hw_ic["size"]["sets"],
-            "ways": hw_ic["size"]["ways"],
-            "data": hw_ic["size"]["data"]
-        }
-        self.dc_stats = {
-            "references": hw_dc["references"],
-            "hits": sd(hw_dc["hits"]),
-            "misses": sd(hw_dc["misses"]),
-            "writebacks": hw_dc["writebacks"],
-            "hit_rate": get_hr(sd(hw_dc["hits"]), hw_dc["references"]),
-            "wb_rate": get_hr(hw_dc["writebacks"], hw_dc["references"]),
-            "mpki": (sd(hw_dc["misses"]) / (self.inst_total/1000)),
-            "sets": hw_dc["size"]["sets"],
-            "ways": hw_dc["size"]["ways"],
-            "data": hw_dc["size"]["data"]
-        }
+        self.ic_stats = hws_ic
+        self.dc_stats = hws_dc
+        self.dc_stats['wb_rate'] = get_hr(
+            hws_dc["writebacks"], hws_dc["references"])
 
         hw_div = self.hw_stats[self.div_name]
         self.div_stats = {
@@ -209,9 +191,9 @@ class perf:
         self.j_stalls = (self.c_jd_res - 1) * self.jd_inst
         self.j_stalls += (self.c_ji_res - 1) * self.ji_inst
 
-        self.ic_stalls = (self.c_ic_hit - 1) * hw_ic["hits"]["reads"]
-        self.ic_stalls += (self.c_ic_miss - 1) * hw_ic["misses"]["reads"]
-        ic_miss_rate = (100 - self.ic_stats['hit_rate']) / 100
+        self.ic_stalls = (self.c_ic_hit - 1) * hws_ic["hits"]["reads"]
+        self.ic_stalls += (self.c_ic_miss - 1) * hws_ic["misses"]["reads"]
+        ic_miss_rate = (100 - self.ic_stats['hr']) / 100
         ic_miss_penalty = self.c_ic_miss - self.c_ic_hit
         self.ic_amat = self.c_ic_hit + (ic_miss_rate * ic_miss_penalty)
         self.ic_amat = round(self.ic_amat, 2)
@@ -220,10 +202,10 @@ class perf:
         # if dc can't handle read and write to the same cache line at once
         # or main mem has only 1 R/W port to dc
         # writeback incurs c_dc_wb clk to first write back evicted cache line
-        self.dc_stalls = (self.c_dc_hit - 1) * sd(hw_dc["hits"])
-        self.dc_stalls += (self.c_dc_miss - 1) * sd(hw_dc["misses"])
-        self.dc_stalls += self.c_dc_wb * hw_dc["writebacks"]
-        dc_miss_rate = (100 - self.dc_stats['hit_rate']) / 100
+        self.dc_stalls = (self.c_dc_hit - 1) * sd(hws_dc["hits"])
+        self.dc_stalls += (self.c_dc_miss - 1) * sd(hws_dc["misses"])
+        self.dc_stalls += self.c_dc_wb * hws_dc["writebacks"]
+        dc_miss_rate = (100 - self.dc_stats['hr']) / 100
         dc_miss_penalty = self.c_dc_miss - self.c_dc_hit
         self.dc_amat = (
             self.c_dc_hit + \
@@ -283,7 +265,7 @@ class perf:
 
         else: # otherwise, estimate based on instruction count (pessimistic)
             self.hazards["dcache"] = \
-                (hw_dc["hits"]["reads"] + hw_dc["misses"]["reads"])
+                (hws_dc["hits"]["reads"] + hws_dc["misses"]["reads"])
             self.hazards["dcache"] *= hazard_penalty['dcache']
             self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
             self.hazards["simd_dot"] = \
@@ -358,32 +340,56 @@ class perf:
             self.b[key] += entry['breakdown'][key]
 
     def _estimated_perf(self, cycles, mode):
+        # core
         cycles = int(np.ceil(cycles))
         cpi = cycles / self.inst_total
         exec_time_us = cycles * self.period
         exec_time_s = exec_time_us / 1_000_000
-        mips = self.inst_total / exec_time_us
         self.est[mode] = {}
         self.est[mode]["cpi"] = round(cpi, 3)
         self.est[mode]["ipc"] = round(1/cpi, 3)
         self.est[mode]["clk"] = int(cycles)
         self.est[mode]["exec_time_us"] = round(exec_time_us, 2)
-        self.est[mode]["mips"] = round(mips, 2)
-        out = f"Cycles: {FMT(cycles)}, CPI: {cpi:.3f} (IPC: {1/cpi:.3f}), " + \
-              f"Time: {FMT_T(exec_time_s)}, MIPS: {mips:.1f}"
+
+        # memory
+        to_mb = lambda d: d / exec_time_s / 2**20
+        bw_ic = to_mb(self.ic_stats["ct_core"]["reads"])
+        bw_dc_r = to_mb(self.dc_stats["ct_core"]["reads"])
+        bw_dc_w = to_mb(self.dc_stats["ct_core"]["writes"])
+        bw_dc = bw_dc_r + bw_dc_w
+        bw_mem_r = to_mb(
+            self.ic_stats["ct_mem"]["reads"] + self.dc_stats["ct_mem"]["reads"])
+        bw_mem_w = to_mb(self.dc_stats["ct_mem"]["writes"])
+        bw_mem = bw_mem_r + bw_mem_w
+        self.est[mode]["bw_ic"] = {"read": bw_ic}
+        self.est[mode]["bw_dc"] = {"read": bw_dc_r, "write": bw_dc_w}
+        self.est[mode]["bw_mem"] = {"read": bw_mem_r, "write": bw_mem_w}
+
+        # print
+        out = f"{FMT(cycles)} cycles ({FMT_T(exec_time_s)}), " \
+              f"IPC: {1/cpi:.3f}; " \
+              f"BW (avg MB/s) - icache: {bw_ic:.1f}, " \
+              f"dcache (R/W): {bw_dc:.1f} ({bw_dc_r:.1f}/{bw_dc_w:.1f}), " \
+              f"mem (R/W): {bw_mem:.1f} ({bw_mem_r:.1f}/{bw_mem_w:.1f})"
+
         return out
 
     def _cache_stats_str(self, name, stats):
+        sd = lambda d: sum(d.values())
         out = f"{name} " + \
-              f"({stats['sets']} sets, {stats['ways']} ways, " + \
-              f"{stats['data']}B data): " + \
+              f"({stats['size']['sets']} sets, " + \
+              f"{stats['size']['ways']} ways, " + \
+              f"{stats['size']['data']}B data): " + \
               f"References: {FMT(stats['references'])}, " + \
-              f"Hits: {FMT(stats['hits'])}, " + \
-              f"Misses: {FMT(stats['misses'])}, "
+              f"Hits: {FMT(sd(stats['hits']))}, " + \
+              f"Misses: {FMT(sd(stats['misses']))}, "
+
         if "writebacks" in stats and stats['writebacks'] > 0:
             out += f"Writebacks: {FMT(stats['writebacks'])}, "
-        out += f"Hit Rate: {stats['hit_rate']:.2f}%, " + \
+
+        out += f"Hit Rate: {stats['hr']:.2f}%, " + \
                f"MPKI: {stats['mpki']:.2f}"
+
         return out
 
     def __str__(self):
