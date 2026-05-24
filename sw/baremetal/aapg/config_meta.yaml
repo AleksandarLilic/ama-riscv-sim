@@ -10,7 +10,7 @@
 
 rv32_generic:
   general:
-    total_instructions: 7000
+    total_instructions: 14000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 1
     rel_rv32i.compute: 20
@@ -19,7 +19,7 @@ rv32_generic:
 
 rv32_mem:
   general:
-    total_instructions: 4800
+    total_instructions: 9000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 1
     rel_rv32i.compute: 2
@@ -28,7 +28,7 @@ rv32_mem:
 
 rv32_branches:
   general:
-    total_instructions: 3500
+    total_instructions: 7000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 2
     rel_rv32i.compute: 10
@@ -40,7 +40,7 @@ rv32_branches:
 
 rv32_branches_short:
   general:
-    total_instructions: 9000
+    total_instructions: 16000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 1
     rel_rv32i.compute: 10
@@ -52,7 +52,7 @@ rv32_branches_short:
 
 rv32m:
   general:
-    total_instructions: 14000
+    total_instructions: 28000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 0
     rel_rv32i.compute: 10
@@ -63,7 +63,7 @@ rv32m:
 
 rv32m_mem:
   general:
-    total_instructions: 10000
+    total_instructions: 20000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 0
     rel_rv32i.compute: 10
@@ -74,7 +74,7 @@ rv32m_mem:
 
 rv32m_mem_ctrl:
   general:
-    total_instructions: 3900
+    total_instructions: 7600
   isa-instruction-distribution:
     rel_rv32i.ctrl: 5
     rel_rv32i.compute: 10
@@ -88,7 +88,7 @@ rv32m_mem_ctrl:
 
 rv32m_mem_ctrl2:
   general:
-    total_instructions: 3500
+    total_instructions: 7000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 5
     rel_rv32i.compute: 10
@@ -102,7 +102,7 @@ rv32m_mem_ctrl2:
 
 rv32m_mem_ctrl_short:
   general:
-    total_instructions: 7000
+    total_instructions: 14000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 5
     rel_rv32i.compute: 10
@@ -116,7 +116,7 @@ rv32m_mem_ctrl_short:
 
 rv32_custom-simd-alu_mem:
   general:
-    total_instructions: 11000
+    total_instructions: 22000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -128,7 +128,7 @@ rv32_custom-simd-alu_mem:
 
 rv32_custom-simd-alu-dot_mem_m_ctrl:
   general:
-    total_instructions: 7500
+    total_instructions: 15000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 2
@@ -145,7 +145,7 @@ rv32_custom-simd-alu-dot_mem_m_ctrl:
 
 rv32_custom-simd-mul:
   general:
-    total_instructions: 11000
+    total_instructions: 26000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -158,7 +158,7 @@ rv32_custom-simd-mul:
 
 rv32_custom-simd-mul-dot_mem_m:
   general:
-    total_instructions: 11000
+    total_instructions: 22000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -173,7 +173,7 @@ rv32_custom-simd-mul-dot_mem_m:
 
 rv32_custom-simd-dot:
   general:
-    total_instructions: 14000
+    total_instructions: 28000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -186,7 +186,7 @@ rv32_custom-simd-dot:
 
 rv32_custom-simd-dot_mem:
   general:
-    total_instructions: 10000
+    total_instructions: 20000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -197,7 +197,7 @@ rv32_custom-simd-dot_mem:
 
 rv32_custom-simd-dot_mem_m:
   general:
-    total_instructions: 11000
+    total_instructions: 22000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 0
@@ -210,7 +210,7 @@ rv32_custom-simd-dot_mem_m:
 
 rv32_custom-simd-dot_mem_m_ctrl:
   general:
-    total_instructions: 5000
+    total_instructions: 10000
   isa-instruction-distribution:
     rel_rv32i.ctrl: 5
     rel_rv32i.compute: 10
@@ -225,7 +225,7 @@ rv32_custom-simd-dot_mem_m_ctrl:
 
 rv32_custom-simd-dot_mem_m_ctrl_short:
   general:
-    total_instructions: 8000
+    total_instructions: 16000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 5
@@ -241,7 +241,7 @@ rv32_custom-simd-dot_mem_m_ctrl_short:
 
 rv32_custom-simd-widen:
   general:
-    total_instructions: 10000
+    total_instructions: 26000
     regs_not_use: x2 # because x1 used in widen on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
@@ -255,7 +255,7 @@ rv32_custom-simd-widen:
 
 rv32_custom-simd-widen_mem_m_ctrl:
   general:
-    total_instructions: 7700
+    total_instructions: 15000
     regs_not_use: x2 # because x1 used in widen on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
@@ -272,7 +272,7 @@ rv32_custom-simd-widen_mem_m_ctrl:
 
 rv32_custom-simd-txp:
   general:
-    total_instructions: 14000
+    total_instructions: 28000
     regs_not_use: x2 # because x1 used in txp on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
@@ -286,7 +286,7 @@ rv32_custom-simd-txp:
 
 rv32_custom-simd-txp_mem_m_ctrl:
   general:
-    total_instructions: 7400
+    total_instructions: 14500
     regs_not_use: x2 # because x1 used in txp on x0
   isa-instruction-distribution:
     rel_sys.csr: 0
@@ -303,7 +303,7 @@ rv32_custom-simd-txp_mem_m_ctrl:
 
 rv32_all:
   general:
-    total_instructions: 7500
+    total_instructions: 15000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 5
@@ -333,7 +333,7 @@ rv32_all:
 
 rv32_all2:
   general:
-    total_instructions: 6800
+    total_instructions: 13500
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 6
@@ -363,7 +363,7 @@ rv32_all2:
 
 rv32_all_isa_sim_only:
   general:
-    total_instructions: 7500
+    total_instructions: 20000
   isa-instruction-distribution:
     rel_sys.csr: 0
     rel_rv32i.ctrl: 5
