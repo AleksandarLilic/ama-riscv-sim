@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from collections import deque
+import struct
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
@@ -20,143 +20,106 @@ DOT_MNM = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
 
 MNM_ANY = "_any_"
 
+RF_ENTRY_FMT = 'BBBBBB' # opc_g_val, opc_b_val, rd, rs1, rs2, rd_val_zero
+RF_ENTRY_SIZE = struct.calcsize(RF_ENTRY_FMT)
+
 class dependency_results:
-    inst_idxs = []
+    n_inst = 0
     dep_arr_cnt = []
     dep_arr_cnt_dot_acc = []
-    dep_line_num = []
-    dep_line_num_dot_acc = []
-    line_fmt_issue = 0
-    src_s = {"mnm": [], "lst": ""}
-    dep_s = {"mnm": [], "lst": ""}
+    dep_inst_idx = []
+    dep_inst_idx_dot_acc = []
+    src_s = {"mnm": [], "str": ""}
+    dep_s = {"mnm": [], "str": ""}
 
     def __str__(self):
         return f"dependency_results(src={self.src_s}, dep={self.dep_s}, " + \
-               f"insts={len(self.inst_idxs)}, dep_cnt={self.dep_arr_cnt}, " + \
-               f"line_fmt_issue={self.line_fmt_issue})"
+               f"insts={self.n_inst}, dep_cnt={self.dep_arr_cnt})"
 
-def is_valid_line(line: str) -> bool:
-    """
-    Only consider executed-instruction lines: they start with whitespace
-    """
-    return len(line) > 0 and line[0].isspace()
+def read_rf_trace(path: str) -> list:
+    with open(path, 'rb') as f:
+        data = f.read()
+    n = len(data) // RF_ENTRY_SIZE
+    return [struct.unpack_from(RF_ENTRY_FMT, data, i * RF_ENTRY_SIZE)
+            for i in range(n)]
 
-def extract_seq_num(line: str) -> int | None:
-    """
-    Return the leftmost decimal instruction counter (e.g. 324 in '   324: ...')
-    """
-    return line.strip().split(" ")[0].split(":")[0]
+def decode_mnm(opc_g_val: int, opc_b_val: int) -> str:
+    if opc_g_val != icfg.OPC_NONE:
+        return icfg.OPC_G_NAMES[opc_g_val]
+    return icfg.OPC_B_NAMES[opc_b_val]
 
-def extract_mnemonic(line: str) -> str | None:
-    try:
-        parts = line.split(":")
-        # parts[2]: " fdd00593 addi x11,x0,-35          x11"
-        tokenized = parts[2].strip().split()
-        if len(tokenized) >= 2:
-            return tokenized[1].lower()
-    except Exception:
-        # couldn't parse line properly, dc about this line
-        return None
-
-def get_all_regs(line: str) -> list[int]:
+def valid_rd(rd):
     """
-    Return list of integer register IDs (0..31) matched in left-to-right order
+    instructions with REG_NONE in the trace don't have rd
+    rd == 0 is not a dependency
     """
-    if "nop" in line:
-        return []
-    regs = line.strip().split(" ")[4].split(",")
-    # for loads and stores, reg in parentheses
-    regs = [r.replace('(', ' ').replace(')', '').split() for r in regs]
-    regs = [item for sublist in regs for item in sublist] # flatten
-    regs = [int(r[1:]) for r in regs if r.startswith('x')]
-    if len(regs) == 0:
-        raise ValueError("No registers found."
-                         "Exec log was likely not using '--rf_names x' switch")
-    return regs
-
-def inst_writes_rd(mnemonic: str) -> bool:
-    """
-    Heuristic: most non-branch/non-store/non-fence GPR ops write rd
-    """
-    if mnemonic in ALL_NO_RD_MNM:
-        return False
-    # ECALL/EBREAK don't write; treat them as no-write
-    if mnemonic in {"ecall", "ebreak"}:
-        return False
-    # everything else in rv32im_zicsr assumed to write rd
-    # (e.g., jal, jalr, lui, auipc, addi, csrrw, etc.)
-    return True
+    return rd != icfg.REG_NONE and rd != 0
 
 def inst_writes_rdp(mnemonic: str) -> bool:
     if mnemonic in RDP_MNM:
         return True
     return False
 
-def dep_rs(mnemonic: str, ordered_regs: list[int]) -> list[int]:
+def dep_rs(rs1: int, rs2: int) -> list[int]:
     """
-    For dependent side:
-      - store/branch: first two x regs are sources
-      - dot: all x regs are sources
-      - other: first x is rd, sources are the remainder (rs1/rs2/…)
-    Always ignore x0 as a source (not a true dependency).
+    for dependent side, return source register indices
+    dot instructions handle their rd (accumulator = rs3) at the call site
+    always ignore x0 and REG_NONE as sources (not true dependencies)
     """
-    srcs = []
-    if (mnemonic in STORE_MNM) or (mnemonic in BRANCH_MNM):
-        srcs = ordered_regs[:2]
-    elif ordered_regs:
-        if (mnemonic in DOT_MNM): srcs = ordered_regs
-        else: srcs = ordered_regs[1:]
-    return [r for r in srcs if r != 0]
+    return [r for r in [rs1, rs2] if valid_rd(r)]
 
-def src_rd(mnemonic: str, inst_regs: list[int]) -> int | None:
+def src_rd(mnemonic: str, rd: int):
     """
-    Source rd is the first register on the line for writer instructions.
-    Skip stores/branches/fences and any rd==x0
+    return written register(s) for source instructions
+    skips instructions without write and writes to x0
     """
-    if not inst_writes_rd(mnemonic):
+    if not valid_rd(rd):
         return None
-    if not inst_regs:
-        return None
-    rd = inst_regs[0]
-    if rd == 0:
-        return None  # skip x0 sources
     if inst_writes_rdp(mnemonic):
         return [rd, rd + 1] # return both rd and rdp
     return [rd]
 
 @dataclass
 class search_args:
-    exec_log: str
+    rf_trace: str
     src: str
     dep: str
     window: int
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
-    parser.add_argument("exec_log", help="Path to exec.log")
+    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim rf_trace.bin.")
+    parser.add_argument("rf_trace", help="Path to rf_trace.bin")
     parser.add_argument("--src", required=True, help=f"Comma-separated list of source instruction mnemonics (e.g. 'addi,add,auipc') or '{MNM_ANY}' for any")
     parser.add_argument("--dep", required=True, help=f"Comma-separated list of dependent instruction mnemonics (e.g. 'add,bne,sw') or '{MNM_ANY}' for any")
     parser.add_argument("--window", type=int, default=8, help="Lookahead window size (number of subsequent executed instructions to inspect)")
-    parser.add_argument("--count_zeros", action="store_true", help="Count how many instructions wrote 0x00000000 to rd")
+    parser.add_argument("--count_zeros", action="store_true", help="Count how many instructions wrote 0x0 to rd")
     return parser.parse_args()
 
 def search(args):
     res = dependency_results()
     if args.src == MNM_ANY:
         res.src_s['mnm'] = [m.lower() for m in icfg.ALL_INST]
-        res.src_s['lst'] = "any"
+        res.src_s['str'] = "any"
     else:
         res.src_s['mnm'] = [m.strip().lower()
                             for m in args.src.split(",") if m.strip()]
-        res.src_s['lst'] = ", ".join(sorted(res.src_s['mnm']))
+        res.src_s['str'] = ", ".join(sorted(res.src_s['mnm']))
+        unknown = [m for m in res.src_s['mnm'] if m not in icfg.ALL_INST]
+        if unknown:
+            raise SystemExit(
+                f"--src: unknown instruction(s): {', '.join(unknown)}")
 
     if args.dep == MNM_ANY:
         res.dep_s['mnm'] = [m.lower() for m in icfg.ALL_INST]
-        res.dep_s['lst'] = "any"
+        res.dep_s['str'] = "any"
     else:
         res.dep_s['mnm'] = [m.strip().lower()
                             for m in args.dep.split(",") if m.strip()]
-        res.dep_s['lst'] = ", ".join(sorted(res.dep_s['mnm']))
+        res.dep_s['str'] = ", ".join(sorted(res.dep_s['mnm']))
+        unknown = [m for m in res.dep_s['mnm'] if m not in icfg.ALL_INST]
+        if unknown:
+            raise SystemExit(
+                f"--dep: unknown instruction(s): {', '.join(unknown)}")
 
     window = args.window
     if window < 1:
@@ -168,48 +131,30 @@ def search(args):
     # dep_arr: index i counts distance i (i==0 unused, 1..window used)
     res.dep_arr_cnt = [0] * (window + 1)
 
-    # dep_lines: index i holds a list of dep line numbers for that distance
-    res.dep_line_num = [[] for _ in range(window + 1)]
+    # dep_inst_idx: index i holds a list of trace indices for that distance
+    res.dep_inst_idx = [[] for _ in range(window + 1)]
 
     # dot acc: subset where dep is dot->dot with only rs3 (accumulator) matching
     res.dep_arr_cnt_dot_acc = [0] * (window + 1)
-    res.dep_line_num_dot_acc = [[] for _ in range(window + 1)]
+    res.dep_inst_idx_dot_acc = [[] for _ in range(window + 1)]
 
-    # load all lines (need lookahead)
-    with open(args.exec_log, "r", encoding="utf-8", errors="replace") as f:
-        lines = f.readlines()
+    entries = read_rf_trace(args.rf_trace)
+    n = len(entries)
+    res.n_inst = n
 
-    # pre-filter valid instruction line indices
-    # to define "next instruction" semantics cleanly
-    res.inst_idxs = [i for i, ln in enumerate(lines) if is_valid_line(ln)]
-
-    n = len(res.inst_idxs)
-    res.line_fmt_issue = 0
     rd_val_zero_cnt = 0
     #rd_val_zero_trace = []
-    for pos, li in enumerate(res.inst_idxs):
-        line = lines[li]
-        mnm = extract_mnemonic(line)
-        rd_val_zero = (": 0x00000000" in line) or ("(0x00000000)" in line)
-        rd_val_zero_cnt += rd_val_zero
-        #rd_val_zero_trace.append(rd_val_zero)
-
-        if mnm is None:
-            res.line_fmt_issue += 1
-            continue
+    for pos in range(n):
+        e_og, e_ob, e_rd, _, _, e_rdz = entries[pos]
+        mnm = decode_mnm(e_og, e_ob)
+        rd_val_zero_cnt += e_rdz
+        #rd_val_zero_trace.append(e_rdz)
 
         if mnm not in res.src_s['mnm']:
             continue
 
-        inst_regs = get_all_regs(line)
-        if not inst_regs:
-            # no registers parsed, dc about this line
-            #res.line_fmt_issue += 1
-            continue
-
-        #print(regs)
-        rd = src_rd(mnm, inst_regs)
-        if rd is None:
+        rd_l = src_rd(mnm, e_rd) # source reg destinations list
+        if rd_l is None:
             # either non-writer or x0 -> skip as a source
             continue
 
@@ -217,49 +162,42 @@ def search(args):
         # terminate early if a redefinition of rd occurs (kills dependency)
         max_pos = min(pos + window, n - 1)
         for nx_pos in range(pos + 1, max_pos + 1):
-            nx_idx = res.inst_idxs[nx_pos]
-            nx_line = lines[nx_idx]
-            nx_mnm = extract_mnemonic(nx_line)
-            if nx_mnm is None:
-                res.line_fmt_issue += 1
-                continue
+            nxe_og, nxe_ob, nxe_rd, nxe_rs1, nxe_rs2, _ = entries[nx_pos]
+            nx_mnm = decode_mnm(nxe_og, nxe_ob)
 
-            nx_regs = get_all_regs(nx_line)
-            if nx_regs is None:
-                res.line_fmt_issue += 1
-                continue
-
-            # check dependency before kill: an instruction that reads
-            # and writes the same register has a RAW dep on the prior writer
+            # check dep before kill:
+            # same-reg read+write counts as dependency, then ends the chain
+            # e.g. `add x1, x1, x2` checks for dep on x1, then kills it
             if nx_mnm in res.dep_s['mnm']:
-                srcs = dep_rs(nx_mnm, nx_regs)
-                if any((r in rd) for r in srcs):
-                    dist = nx_pos - pos # distance in executed-instruction steps
-                    if 1 <= dist <= window:
-                        res.dep_arr_cnt[dist] += 1
-                        seq = extract_seq_num(nx_line)
-                        if seq is not None:
-                            res.dep_line_num[dist].append(int(seq))
 
-                        is_dot_acc = (
-                            mnm in DOT_MNM and # src is dot
-                            nx_mnm in DOT_MNM and # dep is dot
-                            nx_regs[0] in rd and # dep rd is src rd (dot acc)
-                            # and no other src regs (rs1/2) in dep
-                            not any((r in rd) for r in nx_regs[1:] if r != 0)
+                nx_rs_l = dep_rs(nxe_rs1, nxe_rs2) # dependent reg sources list
+                if nx_mnm in DOT_MNM and valid_rd(nxe_rd):
+                    nx_rs_l = [nxe_rd] + nx_rs_l # dot: rd is also rs3/acc
+
+                if any((r in rd_l) for r in nx_rs_l):
+                    dist = nx_pos - pos # distance in executed-instruction steps
+                    res.dep_arr_cnt[dist] += 1
+                    res.dep_inst_idx[dist].append(nx_pos + 1)
+
+                    is_dot_acc = (
+                        mnm in DOT_MNM and # src is dot
+                        nx_mnm in DOT_MNM and # dep is dot
+                        nxe_rd in rd_l and # dep rd is src rd (dot acc)
+                        # and no other src regs (rs1/2) in dep
+                        not any(
+                            (r in rd_l)
+                            for r in [nxe_rs1, nxe_rs2] if valid_rd(r)
                         )
-                        if is_dot_acc:
-                            res.dep_arr_cnt_dot_acc[dist] += 1
-                            if seq is not None:
-                                res.dep_line_num_dot_acc[dist].append(int(seq))
-                    # only one increment per dep even if both rs1/rs2 == rd
+                    )
+                    if is_dot_acc:
+                        # only one increment per dep even if both rs1,rs2 == rd
+                        res.dep_arr_cnt_dot_acc[dist] += 1
+                        res.dep_inst_idx_dot_acc[dist].append(nx_pos + 1)
 
             # if this instruction writes the same rd,
             # kill the dependency search for this source
-            if inst_writes_rd(nx_mnm) and nx_regs:
-                nx_rd = nx_regs[0]
-                if nx_rd in rd:
-                    break
+            if valid_rd(nxe_rd) and nxe_rd in rd_l:
+                break
 
     #import pandas as pd
     #fig, ax = plt.subplots()
@@ -270,23 +208,24 @@ def main(args):
     win = args.window
     FMT = smarter_eng_formatter()
     res, zcnt = search(args)
-    exec_inst = len(res.inst_idxs)
+    exec_inst = res.n_inst
     if zcnt and args.count_zeros:
         perc = (zcnt / exec_inst) * 100
         print(f"Note: {zcnt} instructions had 0x0 written to rd ({perc:.2f}%)")
     # move forward only if there are dependencies found
     if sum(res.dep_arr_cnt) == 0:
-        print("No dependencies found for the given source/dependent mnemonics"+\
+        print("No dependencies found for the given source/dependent mnemonics "
+              f"(source: '{args.src}', dependent '{args.dep}')"
               f" for {FMT(exec_inst)} executed instructions and window {win}.")
         return
 
     LN = 5
-    print(f"Source inst ({len(res.src_s['mnm'])}): '{res.src_s['lst']}'\n" +
-          f"Dependent inst ({len(res.dep_s['mnm'])}): '{res.dep_s['lst']}'\n")
+    print(f"Source inst ({len(res.src_s['mnm'])}): '{res.src_s['str']}'\n" +
+          f"Dependent inst ({len(res.dep_s['mnm'])}): '{res.dep_s['str']}'\n")
     print(f"Dependency counts by distance " +
-          f"for '{get_test_title(args.exec_log)}': " +
+          f"for '{get_test_title(args.rf_trace)}': " +
           f"{FMT(exec_inst)} executed instructions, " +
-          f"window {win}, first {LN} sample line numbers:")
+          f"window {win}, first {LN} sample instruction indices:")
 
     max_digits = len(str(max(res.dep_arr_cnt))) + 1
     for d in range(1, win + 1):
@@ -294,7 +233,7 @@ def main(args):
         da = res.dep_arr_cnt_dot_acc[d]
         da_s = f"  dot_acc: {FMT(da)}" if da else ""
         print(f"{INDENT}{d:{2}}: {FMT(res.dep_arr_cnt[d]):>{max_digits}}" +
-              f" ({perc:5.2f}%){da_s}   {res.dep_line_num[d][:LN]}")
+              f" ({perc:5.2f}%){da_s}   {res.dep_inst_idx[d][:LN]}")
 
     total_dot_acc = sum(res.dep_arr_cnt_dot_acc)
     if total_dot_acc:
@@ -302,10 +241,7 @@ def main(args):
         print(f"\nOf {FMT(total_dep)} total deps, " +
               f"{FMT(total_dot_acc)} are dot acc (rd -> rs3 only)")
 
-    if res.line_fmt_issue:
-        print(f"\n(Skipped lines: {res.line_fmt_issue})")
-
-    fig, ax = plt.subplots(figsize=(2.2+win*.5, 4.5))
+    _, ax = plt.subplots(figsize=(2.2 + win * 0.5, 4.5))
     x = range(1, win + 1)
     has_dot_acc = sum(res.dep_arr_cnt_dot_acc) > 0
     if has_dot_acc:
@@ -323,7 +259,7 @@ def main(args):
 
     ax.set_ylim(0, max(res.dep_arr_cnt[1:]) * 1.1)
     ax.set_title(
-        f"Register dependency distances for\n'{get_test_title(args.exec_log)}'")
+        f"Register dependency distances for\n'{get_test_title(args.rf_trace)}'")
     ax.set_xlabel("Distance (next executed instruction = 1)")
     ax.set_ylabel("Count")
     ax.yaxis.set_major_formatter(EngFormatter(unit='', places=1, sep=''))

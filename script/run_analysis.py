@@ -148,7 +148,7 @@ class icfg:
             "c.mv",
             "c.lui",
         ],
-        k_mul: ["mul", "mulh", "mulsu", "mulu"],
+        k_mul: ["mul", "mulh", "mulhsu", "mulhu"],
         k_div: ["div", "divu", "rem", "remu"],
         k_bitmanip: ["max", "maxu", "min", "minu"],
         k_simd_arith:
@@ -167,7 +167,7 @@ class icfg:
             INST_T_SIMD_DATA_FMT[k_simd_vext],
 
         k_mem: INST_T_MEM[k_mem_s] + INST_T_MEM[k_mem_l],
-        k_mem_hint: ["scp.ld", "scp.rel"],
+        k_mem_hint: ["scp.lcl", "scp.rel"],
         k_branch: [
             "beq", "bne", "blt", "bge", "bltu", "bgeu",
             "c.beqz", "c.bnez"
@@ -237,6 +237,105 @@ class icfg:
     for k, v in BRANCH_DENSITY.items():
         for inst in v:
             INST_TO_BD_DICT[inst] = k
+
+    # defaults matching rf_trace_entry constants in profiler_rf.h
+    OPC_NONE = 0xFF
+    REG_NONE = 0xFF
+
+    # mirrors of C++ opc_g/opc_b enums
+    # order must match the enum exactly - it determines the binary encoding
+    # in rf_trace.bin
+    # update here when the C++ enum changes
+    OPC_G_NAMES = [
+        # RV32I
+        # reg-reg
+        'add', 'sub', 'sll', 'srl', 'sra',
+        'slt', 'sltu', 'xor', 'or', 'and',
+        # imm
+        'nop', 'addi', 'slli', 'srli', 'srai',
+        'slti', 'sltiu', 'xori', 'ori', 'andi',
+        # mem
+        'lb', 'lh', 'lw', 'lbu', 'lhu', 'sb', 'sh', 'sw', 'fence_i', 'fence',
+        # upper imm
+        'lui', 'auipc',
+        # system
+        'ecall', 'ebreak',
+        # hints
+        'hint',
+        # trap
+        'mret', 'wfi',
+
+        # custom
+        # add/sub
+        'add16', 'add8', 'sub16', 'sub8',
+        # add/sub sat
+        'qadd16', 'qadd16u', 'qadd8', 'qadd8u',
+        'qsub16', 'qsub16u', 'qsub8', 'qsub8u',
+        # mul
+        'mul16', 'mul8', 'mulh16', 'mulh16u', 'mulh8', 'mulh8u',
+        # widening mul
+        'wmul16', 'wmul16u', 'wmul8', 'wmul8u',
+        # dot
+        'dot16', 'dot16u', 'dot8', 'dot8u', 'dot4', 'dot4u', 'dot2', 'dot2u',
+        # min/max
+        'min16', 'min16u', 'min8', 'min8u',
+        'max16', 'max16u', 'max8', 'max8u',
+        # shift
+        'slli16', 'slli8', 'srli16', 'srli8', 'srai16', 'srai8',
+
+        # custom data fmt
+        # widen
+        'widen16', 'widen16u', 'widen8', 'widen8u',
+        'widen4', 'widen4u', 'widen2', 'widen2u',
+        # narrow truncating
+        'narrow32', 'narrow16', 'narrow8', 'narrow4',
+        # narrow saturating
+        'qnarrow32', 'qnarrow32u', 'qnarrow16', 'qnarrow16u',
+        'qnarrow8', 'qnarrow8u', 'qnarrow4', 'qnarrow4u',
+        # swap anti-diagonal
+        'txp16', 'txp8', 'txp4', 'txp2',
+        # scalar-vector dup
+        'dup16', 'dup8', 'dup4', 'dup2',
+        # scalar-vector vins
+        'vins16', 'vins8', 'vins4', 'vins2',
+        # scalar-vector vext (extract)
+        'vext16', 'vext16u', 'vext8', 'vext8u',
+        'vext4', 'vext4u', 'vext2', 'vext2u',
+        # custom hints
+        'scp_lcl', 'scp_rel',
+
+        # Zicsr extension
+        'csrrw', 'csrrs', 'csrrc', 'csrrwi', 'csrrsi', 'csrrci',
+
+        # M extension
+        'mul', 'mulh', 'mulhsu', 'mulhu', 'div', 'divu', 'rem', 'remu',
+
+        # Zbb extension
+        'max', 'maxu', 'min', 'minu',
+
+        # C extension
+        # reg-reg
+        'c.add', 'c.mv', 'c.and', 'c.or', 'c.xor', 'c.sub',
+        # reg-imm
+        'c.addi', 'c.addi16sp', 'c.addi4spn', 'c.andi', 'c.srli', 'c.slli',
+        'c.srai', 'c.nop',
+        # sp-based mem, reg-based mem
+        'c.lwsp', 'c.swsp', 'c.lw', 'c.sw',
+        # upper imm
+        'c.li', 'c.lui',
+        # system
+        'c.ebreak',
+    ]
+
+    OPC_B_NAMES = [
+        # RV32I
+        'beq', 'bne', 'blt', 'bge', 'bltu', 'bgeu', 'jalr', 'jal',
+        # C extension
+        'c.j', 'c.jal', 'c.jr', 'c.jalr', 'c.beqz', 'c.bnez',
+    ]
+
+    INST_TO_OPC_G = {n: i for i, n in enumerate(OPC_G_NAMES)}
+    INST_TO_OPC_B = {n: i for i, n in enumerate(OPC_B_NAMES)}
 
     # groups of instructions to highlight by default
     HL_DEFAULT = [

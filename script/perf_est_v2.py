@@ -54,9 +54,11 @@ class perf:
         "icache_name", "dcache_name", "bpred_name"
     ]
 
-    def __init__(self, inst_profile, hw_stats, hw_perf_metrics, exec_log=None):
+    def __init__(self, inst_profile, hw_stats, hw_perf_metrics, rf_trace=None):
         self.inst_profile = inst_profile
         self.inputs = [inst_profile, hw_stats, hw_perf_metrics]
+        if rf_trace is not None:
+            self.inputs.append(rf_trace)
         df = load_inst_prof(inst_profile, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
@@ -240,13 +242,12 @@ class perf:
             self.div_stats["common_bits"]
         self.all_div_stalls = sum(vars(self.div_stalls).values())
 
-        use_dep_analysis = (exec_log is not None)
+        use_dep_analysis = (rf_trace is not None)
         def find_hazards(win, src, dep="_any_"):
-            r, _ = search(search_args(exec_log, src=src, dep=dep, window=win))
+            r, _ = search(search_args(rf_trace, src=src, dep=dep, window=win))
             #print(r)
             #print(r.dep_arr_cnt)
             #print(r.dep_arr_cnt_dot_acc)
-            #print(r.line_fmt_issue)
             return sum(r.dep_arr_cnt), sum(r.dep_arr_cnt_dot_acc)
 
         self.hazards = {
@@ -477,11 +478,11 @@ class perf:
               f"{self.inst_profile.replace('.json', '_perf_est.csv')}")
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Count register dependencies within a lookahead window from an ISA sim exec log.")
+    parser = argparse.ArgumentParser(description="Performance estimates based on the ISA sim results and the microarchitectural description.")
     parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
     parser.add_argument("--hw", "--hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration", default=DEFAULT_HW_YAML)
-    parser.add_argument("-e", "--exec_log", help="Optional argument to provide 'exec.log' path for depndency/hazard analysis", default=None)
+    parser.add_argument("-r", "--rf_trace", help="Optional argument to provide 'rf_trace.bin' path for depndency/hazard analysis", default=None)
     parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
     return parser.parse_args()
@@ -490,17 +491,17 @@ def main(args: argparse.Namespace):
     p_inst = args.inst_profile
     p_hws = args.hw_stats
     p_met = args.hw
-    p_exec = args.exec_log
+    p_rft = args.rf_trace
     corr = args.corr
     paths = [p_inst, p_hws, p_met]
-    if p_exec:
-        paths.append(args.exec_log)
+    if p_rft:
+        paths.append(args.rf_trace)
 
     for p in paths:
         if not os.path.isfile(p):
             raise ValueError(f"File {p} not found")
 
-    res = perf(p_inst, p_hws, p_met, p_exec)
+    res = perf(p_inst, p_hws, p_met, p_rft)
     print(res)
 
     if corr:
