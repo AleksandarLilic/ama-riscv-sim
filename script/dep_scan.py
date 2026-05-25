@@ -93,6 +93,8 @@ def parse_args():
     parser.add_argument("--dep", required=True, help=f"Comma-separated list of dependent instruction mnemonics (e.g. 'add,bne,sw') or '{MNM_ANY}' for any")
     parser.add_argument("--window", type=int, default=8, help="Lookahead window size (number of subsequent executed instructions to inspect)")
     parser.add_argument("--count_zeros", action="store_true", help="Count how many instructions wrote 0x0 to rd")
+    parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
+    parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
     return parser.parse_args()
 
 def search(args):
@@ -241,7 +243,7 @@ def main(args):
         print(f"\nOf {FMT(total_dep)} total deps, " +
               f"{FMT(total_dot_acc)} are dot acc (rd -> rs3 only)")
 
-    _, ax = plt.subplots(figsize=(2.2 + win * 0.5, 4.5))
+    fig, ax = plt.subplots(figsize=(2.2 + win * 0.5, 4.5))
     x = range(1, win + 1)
     has_dot_acc = sum(res.dep_arr_cnt_dot_acc) > 0
     if has_dot_acc:
@@ -268,6 +270,18 @@ def main(args):
     ax.margins(x=0.01)
     plt.tight_layout()
     plt.show()
+
+    name = args.rf_trace.replace(" ", "_") \
+               .replace("_trace", "_dependency") \
+               .replace(".bin", "")
+    if args.save_png:
+        out = f"{name}.png"
+        fig.savefig(out)
+        print(f"Saved PNG chart to: '{out}'")
+    if args.save_svg:
+        out = f"{name}.svg"
+        fig.savefig(out)
+        print(f"Saved SVG chart to: '{out}'")
 
 if __name__ == "__main__":
     args = parse_args()
