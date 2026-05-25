@@ -148,9 +148,10 @@ Profiler - Inst:
     Memory: MEM: 162481(38.75%) - L/S: 85542/76939(20.40%/18.35%)
     Compute: ALU: 174058(41.51%), MUL: 1004(0.24%), DIV: 1114(0.27%)
     Bitmanip: Zbb: 0(0.00%)
-    SIMD arith: ALU: 0(0.00%), MUL: 0(0.00%), DOT: 0(0.00%)
-    SIMD data fmt: WIDEN: 0(0.00%), NARROW: 0(0.00%), TXP: 0(0.00%)
-    SIMD vector-scalar: DUP: 0(0.00%), VINS: 0(0.00%), VEXT: 0(0.00%)
+    SIMD:
+        arith: ALU: 0(0.00%), MUL: 0(0.00%), DOT: 0(0.00%)
+        data fmt: WIDEN: 0(0.00%), NARROW: 0(0.00%), TXP: 0(0.00%)
+        vector-scalar: DUP: 0(0.00%), VINS: 0(0.00%), VEXT: 0(0.00%)
     Hint: SCP: 0(0.00%)
     Other: NOP: 0(0.00%), Misc: 7(0.00%)
 Profiler - Sparsity:
@@ -595,8 +596,9 @@ Optionally, save symbols found in `dasm` with `--save_symbols`
 > [!NOTE]
 > Any time `./script/run_analysis.py` is invoked with `--dasm` arg, backannotated dasm will be saved, e.g `dhrystone.prof.dasm`
 
-Generate register file usage plots and save csv
+Generate register file dependency and usage plots
 ```sh
+./script/dep_scan.py examples/dhrystone_dhrystone_out/rf_trace.bin
 ./script/rf_usage.py examples/dhrystone_dhrystone_out/rf_usage.bin --save_csv
 ```
 
@@ -621,6 +623,10 @@ Generate register file usage plots and save csv
 
 ![](examples/dhrystone_dhrystone_out/trace_pc_exec.png)
 ![](examples/dhrystone_dhrystone_out/trace_dmem_exec.png)
+
+***Register file dependency***
+
+![](examples/dhrystone_dhrystone_out/rf_dependency.png)
 
 ***Register file usage***
 
@@ -717,7 +723,7 @@ The microarchitecture description at [script/hw_perf_metrics_v2.yaml](script/hw_
 
 Run with positional arguments as
 ```sh
-./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json -e examples/dhrystone_dhrystone_out/exec.log
+./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json -r examples/dhrystone_dhrystone_out/rf_trace.bin
 ```
 
 Since the hardware stats are collected from the ISA model, and simple microarchitecure description, there is some uncertainty on how much time exactly it would take to execute the workload. Estimates are therefore provided as a range between best and worst case.  
@@ -728,26 +734,27 @@ Performance estimate breakdown for:
     ../workdir/dhrystone_dhrystone_out/inst_profile.json
     ../workdir/dhrystone_dhrystone_out/hw_stats.json
     <home_path>/sim/script/hw_perf_metrics_v2.yaml
+    ../workdir/dhrystone_dhrystone_out/rf_trace.bin
 
 Peak Stack usage: 352 bytes
-Instructions executed: 419.3k
-    icache (32 sets, 2 ways, 4096B data): References: 419.6k, Hits: 416.5k, Misses: 3.15k, Hit Rate: 99.25%, MPKI: 7.52
-DMEM inst: 162.5k - L/S: 85.5k/76.9k (38.75% instructions)
-    dcache (16 sets, 4 ways, 4096B data): References: 159.1k, Hits: 158.9k, Misses: 207, Writebacks: 143, Hit Rate: 99.87%, MPKI: 0.49
-Branch inst: 40545 (9.67% instructions)
-    bpred (combined): Predicted: 40.3k, Mispredicted: 280, Accuracy: 99.31%, MPKI: 0.67
-DIV/REM inst: 1114 (0.27% instructions)
-    divider (16B): Cache: 1.02k (91.92%), Special: 70 (6.28%), Common: 20 (1.8%), 180 b, 9.0 b/d
+Instructions executed: 419.5k
+    icache (32 sets, 2 ways, 4096B data): References: 419.8k, Hits: 416.7k, Misses: 3.15k, Hit Rate: 99.25%, MPKI: 7.52
+DMEM inst: 162.5k - L/S: 85.6k/77.0k (38.74% instructions)
+    dcache (16 sets, 4 ways, 4096B data): References: 159.2k, Hits: 159.0k, Misses: 207, Writebacks: 143, Hit Rate: 99.87%, MPKI: 0.49
+Branch inst: 40589 (9.67% instructions)
+    bpred (combined): Predicted: 40.3k, Mispredicted: 286, Accuracy: 99.30%, MPKI: 0.68
+DIV/REM inst: 1130 (0.27% instructions)
+    divider (16B): Cache: 1.03k (91.33%), Special: 70 (6.19%), Common: 28 (2.48%), 388 b, 13.86 b/d
 
 Pipeline stalls (max): 
-    Bad spec: 560
-    FE bound: 60.0k - ICache: 18.9k (AMAT: 1.05), Core: 41.1k
-    BE bound: 6.78k - DCache: 1.67k (AMAT: 1.01), Core: 5.11k (Divider 380)
+    Bad spec: 572
+    FE bound: 60.0k - ICache: 18.9k (AMAT: 1.04), Core: 41.1k
+    BE bound: 7.03k - DCache: 1.67k (AMAT: 1.01), Core: 5.36k (Divider 612)
 
 Estimated HW performance at 100MHz:
-    Best:  Cycles: 479.9k, CPI: 1.144 (IPC: 0.874), Time: 4.80ms, MIPS: 87.4
-    Worst: Cycles: 486.7k, CPI: 1.161 (IPC: 0.862), Time: 4.87ms, MIPS: 86.2
-    Estimated Cycles range: 6.78k cycles, midpoint: 483.3k, ratio: 1.40%
+    Best:  480.1k cycles (4.80ms), IPC: 0.874; BW (avg MB/s) - icache: 333.6, dcache (R/W): 116.0 (59.4/56.5), mem (R/W): 44.6 (42.7/1.8)
+    Worst: 487.2k cycles (4.87ms), IPC: 0.861; BW (avg MB/s) - icache: 328.7, dcache (R/W): 114.3 (58.6/55.7), mem (R/W): 43.9 (42.1/1.8)
+    Estimated Cycles range: 7.03k cycles, midpoint: 483.6k, ratio: 1.45%
 ```
 
 # Hardware model sweeps
