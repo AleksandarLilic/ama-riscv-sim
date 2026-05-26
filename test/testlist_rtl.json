@@ -46,7 +46,7 @@
     "dot_product_peak": ["int8"],
 
     "uart_direct_send": ["hello_world"],
-    "uart_printf_mini": ["hello_world"],
+    "uart_printf_nano": ["hello_world"],
 
     "mlp": ["all"],
 

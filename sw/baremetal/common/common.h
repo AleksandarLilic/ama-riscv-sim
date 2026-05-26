@@ -8,14 +8,13 @@
 
 #include "csr.h"
 #include "mem_map.h"
-#include "mini-printf.h"
+#include "nanoprintf/nanoprintf.h"
 
 #define UART0_TX_READY (UART0->ctrl & 0x1)
 #define UART0_RX_VALID (UART0->ctrl & 0x2)
 
 #ifndef FORCE_NEWLIB_PRINTF
-// not exactly the same as libc printf, but close enough for the purpose
-#define printf mini_printf
+#define printf npf_printf
 #endif
 
 #define STRINGIFY(x) #x
@@ -238,8 +237,7 @@ void write_mismatch(uint32_t res, uint32_t ref, uint32_t idx) {
 // function prototypes
 void send_byte_uart0(char byte);
 int _write(int fd, char* ptr, int len);
-int __puts_uart(char* s, int len, void *buf);
-int mini_printf(const char* format, ...);
+int npf_printf(const char* format, ...);
 
 uint64_t get_cpu_time();
 uint64_t get_cpu_cycles();

@@ -1,7 +1,6 @@
 #include <stdint.h>
 
 #include "common.h"
-#include "mini-printf.h"
 
 void timer_interrupt_handler() {
     CLINT->mtimecmp += 1000;

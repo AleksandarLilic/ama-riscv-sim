@@ -16,16 +16,15 @@ int _write(int fd, char* ptr, int len) {
     return len;
 }
 
-int __puts_uart(char *s, int len, void* buf) {
-    (void)buf;
-    _write(0, s, len);
-    return len;
+static void npf_putc_uart(int c, void *ctx) {
+    (void)ctx;
+    send_byte_uart0((char)c);
 }
 
-int mini_printf(const char* format, ...) {
+int npf_printf(const char* format, ...) {
     va_list args;
     va_start(args, format);
-    int count = mini_vpprintf(__puts_uart, NULL, format, args);
+    int count = npf_vpprintf(npf_putc_uart, NULL, format, args);
     va_end(args);
     return count;
 }
@@ -109,11 +108,8 @@ void print_ipc(const uint64_t cycles, const uint64_t ret) {
     uint32_t ipc_x = ((ret * sf_ipc) / cycles);
     printf(
         "Stats:\n"
-        INDENT "Cycles: %u, Retired: %u, Empty: %u, IPC: %u.%03u\n",
-        (uint32_t)cycles,
-        (uint32_t)ret,
-        (uint32_t)(cycles - ret),
-        (ipc_x / sf_ipc), (ipc_x % sf_ipc)
+        INDENT "Cycles: %llu, Retired: %llu, Empty: %llu, IPC: %u.%03u\n",
+        cycles, ret, (cycles - ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
     );
 }
 
@@ -121,60 +117,57 @@ void print_tda_counters(const tda_cnt_t* p) {
     print_ipc(p->cycles, p->ret);
     printf(
         "TDA:\n"
-        INDENT "L1: Retired: %u, FE: %u, BE: %u, Lost: %u\n",
-        (uint32_t)p->ret,
-        (uint32_t)p->stall_fe,
-        (uint32_t)p->stall_be,
-        (uint32_t)p->lost
+        INDENT "L1: Retired: %llu, FE: %llu, BE: %llu, Lost: %llu\n",
+        p->ret, p->stall_fe, p->stall_be, p->lost
     );
     printf(
         INDENT "L2: "
-        "INT: %u, SIMD: %u, "
-        "FE ICache: %u, FE Core: %u, "
-        "BE DCache: %u, BE Core: %u, "
-        "Bad Spec: %u, Other: %u"
+        "INT: %llu, SIMD: %llu, "
+        "FE ICache: %llu, FE Core: %llu, "
+        "BE DCache: %llu, BE Core: %llu, "
+        "Bad Spec: %llu, Other: %llu"
         "\n\n",
-        (uint32_t)p->ret, (uint32_t)p->ret_simd,
-        (uint32_t)p->stall_l1i, (uint32_t)p->stall_fe_core,
-        (uint32_t)p->stall_l1d, (uint32_t)p->stall_be_core,
-        (uint32_t)p->bad_spec, (uint32_t)p->lost_other
+        p->ret, p->ret_simd,
+        p->stall_l1i, p->stall_fe_core,
+        p->stall_l1d, p->stall_be_core,
+        p->bad_spec, p->lost_other
     );
 }
 
 void print_tda_counters_json(const tda_cnt_t* p) {
     printf(
         "{"
-        "\"cycles\": %u, "
-        "\"empty\": %u, "
-        "\"stalls\": %u, "
-        "\"lost\": %u, "
-        "\"lost_other\": %u, "
-        "\"bad_spec\": %u, "
-        "\"stall_be\": %u, "
-        "\"stall_l1d\": %u, "
-        "\"stall_be_core\": %u, "
-        "\"stall_fe\": %u, "
-        "\"stall_l1i\": %u, "
-        "\"stall_fe_core\": %u, "
-        "\"ret\": %u, "
-        "\"ret_simd\": %u, "
-        "\"ret_int\": %u"
+        "\"cycles\": %llu, "
+        "\"empty\": %llu, "
+        "\"stalls\": %llu, "
+        "\"lost\": %llu, "
+        "\"lost_other\": %llu, "
+        "\"bad_spec\": %llu, "
+        "\"stall_be\": %llu, "
+        "\"stall_l1d\": %llu, "
+        "\"stall_be_core\": %llu, "
+        "\"stall_fe\": %llu, "
+        "\"stall_l1i\": %llu, "
+        "\"stall_fe_core\": %llu, "
+        "\"ret\": %llu, "
+        "\"ret_simd\": %llu, "
+        "\"ret_int\": %llu"
         "}\n\n",
-        (uint32_t)p->cycles,
-        (uint32_t)p->empty,
-        (uint32_t)p->stalls,
-        (uint32_t)p->lost,
-        (uint32_t)p->lost_other,
-        (uint32_t)p->bad_spec,
-        (uint32_t)p->stall_be,
-        (uint32_t)p->stall_l1d,
-        (uint32_t)p->stall_be_core,
-        (uint32_t)p->stall_fe,
-        (uint32_t)p->stall_l1i,
-        (uint32_t)p->stall_fe_core,
-        (uint32_t)p->ret,
-        (uint32_t)p->ret_simd,
-        (uint32_t)p->ret_int
+        p->cycles,
+        p->empty,
+        p->stalls,
+        p->lost,
+        p->lost_other,
+        p->bad_spec,
+        p->stall_be,
+        p->stall_l1d,
+        p->stall_be_core,
+        p->stall_fe,
+        p->stall_l1i,
+        p->stall_fe_core,
+        p->ret,
+        p->ret_simd,
+        p->ret_int
     );
 }
 
@@ -239,32 +232,32 @@ void print_hw_counters(const hw_cnt_t* p) {
 
     print_ipc(p->cycles, p->ret);
 
-    uint32_t bp_hit = (uint32_t)((p->bp_miss < p->ret_ctrl_flow_br) ?
-        (p->ret_ctrl_flow_br - p->bp_miss) : 0u);
+    uint64_t bp_hit = (p->bp_miss < p->ret_ctrl_flow_br) ?
+        (p->ret_ctrl_flow_br - p->bp_miss) : 0u;
     printf(
         "bpred:\n"
-        INDENT "P: %u, M: %u, ACC: %u.%02u%%, MPKI: %u.%02u\n",
-        (uint32_t)bp_hit, (uint32_t)p->bp_miss,
+        INDENT "P: %llu, M: %llu, ACC: %u.%02u%%, MPKI: %u.%02u\n",
+        bp_hit, p->bp_miss,
         (bp_hr_x / print_sc), (bp_hr_x % print_sc),
         (bp_mpki_x / print_sc), (bp_mpki_x % print_sc)
     );
 
-    uint32_t l1i_hit = (uint32_t)((p->l1i_miss < p->l1i_ref) ?
-        (p->l1i_ref - p->l1i_miss) : 0u);
+    uint64_t l1i_hit = (p->l1i_miss < p->l1i_ref) ?
+        (p->l1i_ref - p->l1i_miss) : 0u;
     printf(
         "icache:\n"
-        INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
-        (uint32_t)p->l1i_ref, (uint32_t)l1i_hit, (uint32_t)p->l1i_miss,
+        INDENT "Ref: %llu, H: %llu, M: %llu, HR: %u.%02u%%, MPKI: %u.%02u\n",
+        p->l1i_ref, l1i_hit, p->l1i_miss,
         (l1i_hr_x / print_sc), (l1i_hr_x % print_sc),
         (l1i_mpki_x / print_sc), (l1i_mpki_x % print_sc)
     );
 
-    uint32_t l1d_hit = (uint32_t)((p->l1d_miss < p->l1d_ref) ?
-        (p->l1d_ref - p->l1d_miss) : 0u);
+    uint64_t l1d_hit = (p->l1d_miss < p->l1d_ref) ?
+        (p->l1d_ref - p->l1d_miss) : 0u;
     printf(
         "dcache:\n"
-        INDENT "Ref: %u, H: %u, M: %u, HR: %u.%02u%%, MPKI: %u.%02u\n",
-        (uint32_t)p->l1d_ref, (uint32_t)l1d_hit, (uint32_t)p->l1d_miss,
+        INDENT "Ref: %llu, H: %llu, M: %llu, HR: %u.%02u%%, MPKI: %u.%02u\n",
+        p->l1d_ref, l1d_hit, p->l1d_miss,
         (l1d_hr_x / print_sc), (l1d_hr_x % print_sc),
         (l1d_mpki_x / print_sc), (l1d_mpki_x % print_sc)
     );
@@ -273,18 +266,24 @@ void print_hw_counters(const hw_cnt_t* p) {
 
 void print_hw_counters_json(const hw_cnt_t* p) {
     printf(
-        "{\"cycles\": %u, \"ret\": %u, "
-        "\"ret_ctrl_flow_br\": %u, \"bp_miss\": %u, "
-        "\"l1i_ref\": %u, \"l1i_miss\": %u, "
-        "\"l1d_ref\": %u, \"l1d_miss\": %u}\n\n",
-        (uint32_t)p->cycles,
-        (uint32_t)p->ret,
-        (uint32_t)p->ret_ctrl_flow_br,
-        (uint32_t)p->bp_miss,
-        (uint32_t)p->l1i_ref,
-        (uint32_t)p->l1i_miss,
-        (uint32_t)p->l1d_ref,
-        (uint32_t)p->l1d_miss
+        "{"
+        "\"cycles\": %llu, "
+        "\"ret\": %llu, "
+        "\"ret_ctrl_flow_br\": %llu, "
+        "\"bp_miss\": %llu, "
+        "\"l1i_ref\": %llu, "
+        "\"l1i_miss\": %llu, "
+        "\"l1d_ref\": %llu, "
+        "\"l1d_miss\": %llu"
+        "}\n\n",
+        p->cycles,
+        p->ret,
+        p->ret_ctrl_flow_br,
+        p->bp_miss,
+        p->l1i_ref,
+        p->l1i_miss,
+        p->l1d_ref,
+        p->l1d_miss
     );
 }
 

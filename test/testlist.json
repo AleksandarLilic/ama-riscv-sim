@@ -55,7 +55,7 @@
     "sorting_str": [["all"], ["LOOPS=2"]],
 
     "uart_direct_send": ["hello_world"],
-    "uart_printf_mini": ["hello_world"],
+    "uart_printf_nano": ["hello_world"],
     "timer_interrupt": ["test"],
 
     "mlp": ["all"],

@@ -2,7 +2,7 @@ TARGET := arena
 
 # libc needed for assert.h only
 LIBS += -lc
-COMMON_OBJ_NAMES = crt0.o memset.o common.o common_math.o mini-printf.o newlib_defs.o
+COMMON_OBJ_NAMES = crt0.o memset.o common.o common_math.o nanoprintf.o newlib_defs.o
 
 CFLAGS +=  $(MATH_LIB_FLAGS)
 CFLAGS += -D_USE_NEWLIB

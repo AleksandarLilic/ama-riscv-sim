@@ -2,7 +2,6 @@
 
 #include "common.h"
 #include "mem_map.h"
-#include "mini-printf.h"
 
 void main(void) {
     while (!UART0_TX_READY);

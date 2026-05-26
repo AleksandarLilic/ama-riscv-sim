@@ -39,7 +39,7 @@ Shared startup and support code lives under [`common/`](./common/):
 | `common.{c,h}` | Shared utility functions |
 | `common_math.{c,h}` | Shared math utilities, including custom SIMD ISA wrappers |
 | `c_test_common.h` | Macros for C test assertions |
-| `mini-printf.{c,h}` | Embedded printf |
+| `nanoprintf.{c,h}` | Embedded printf |
 | `memset.S` | Optimized memset |
 | `newlib_defs.c` | Newlib syscall stubs, when newlib is used |
 | `arena_alloc.h` | Simple arena allocator |
@@ -74,7 +74,7 @@ include ../Makefile.inc
 `Makefile.inc` handles source discovery, compilation, linking, disassembly, and hex generation. Key behaviors:
 
 - **Source discovery**: picks up all `*.c` and `*.S` files in the test directory automatically, unless `EXPLICIT_SRCS=1` is set, in which case the test Makefile is responsible for setting `C_SRCS` / `S_SRCS`
-- **Common objects**: compiles and caches `crt0`, `memset`, `common`, `common_math`, `mini-printf` into `./common_build/`
+- **Common objects**: compiles and caches `crt0`, `memset`, `common`, `common_math`, `nanoprintf` into `./common_build/`
 - **Outputs per target**: `.elf`, `.dasm` (full objdump), `.mem` (128-bit wide hex, via `bin2hex.py`; `.mem` extension required by Xilinx `updatemem` for bitstream patching); hex generation is on by default (`HEX=1`) and can be disabled with `HEX=0`
 - **Verbosity**: `V=1` on the make command line enables full command echo
 
