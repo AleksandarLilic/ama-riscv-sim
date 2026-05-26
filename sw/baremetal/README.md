@@ -33,13 +33,14 @@ Shared startup and support code lives under [`common/`](./common/):
 | File | Purpose |
 |------|---------|
 | `crt0.S` | Entry point; sets up `gp`/`sp`, clears BSS, optional trap vector |
-| `link.ld` | Linker script; RAM at `0x80000000`, 128 KB |
+| `link.ld` | Linker script |
 | `mem_map.h` | Memory map constants |
 | `csr.h` | CSR access helpers |
 | `common.{c,h}` | Shared utility functions |
 | `common_math.{c,h}` | Shared math utilities, including custom SIMD ISA wrappers |
 | `c_test_common.h` | Macros for C test assertions |
-| `nanoprintf.{c,h}` | Embedded printf |
+| `nanoprintf/` | [nanoprintf](https://github.com/charlesnicholson/nanoprintf) library |
+| `nanoprintf.c` | nanoprintf configuration |
 | `memset.S` | Optimized memset |
 | `newlib_defs.c` | Newlib syscall stubs, when newlib is used |
 | `arena_alloc.h` | Simple arena allocator |
@@ -61,7 +62,7 @@ Or when built from source and not in `PATH`:
 export RV_GNU_LATEST=/home/tools/rv_gcc_2024-05-15/bin/riscv32-unknown-elf
 ```
 
-`bin2hex.py` (`sw/bin2hex.py`) is used for generating hex files needed for loading the app into the memory in the RTL environment.
+[`bin2hex.py`](../bin2hex.py) is used for generating hex files needed for loading the app into the memory in the RTL environment.
 
 ## Makefile.inc
 
@@ -130,13 +131,11 @@ Test categories:
 
 ## LOOPS
 
-All tests accept a `LOOPS` variable to extend execution time by repeating the workload:
+Most tests accept a `LOOPS` variable to extend execution time by repeating the workload:
 
 ```sh
 make LOOPS=5
 ```
-
-Default is `1`.
 
 ## Multi-binary tests
 
@@ -203,7 +202,7 @@ aapg/
 cd aapg
 python3 config_gen.py                   # recreate all aapg_rv32_*/ directories
 python3 config_gen.py -f rv32_mem       # filter by name (regex)
-python3 config_gen.py -m                # generate directories and build
+python3 config_gen.py -m                # also build (i.e. `make`) the binary
 ```
 
 `config_gen.py` copies `template/` to `aapg_<name>/` and merges the overrides into `config.yaml`. Existing directories are removed and recreated.
@@ -227,6 +226,8 @@ From the `sim/` root:
 ```sh
 cd test
 make prepare
+# or explicilty with testlist
+./prepare_riscv_tests.py --testlist testlist_rtl.json --clean_first
+# for first build (and any changes to codegen afterwards), rerun with codegen
+./prepare_riscv_tests.py --testlist testlist_rtl.json --clean_first --rebuild_codegen
 ```
-
-`testlist.json` maps each test directory to its make targets and optional extra make variables. `prepare_riscv_tests.py` compiles the common objects once (`make build_common`), then builds every listed test. For tests with a codegen step (`aapg`, `vector_ew_basic`, `sorting_*`, `matmul`, `memcpy`) it runs `make clean_codegen` before regenerating, so artifacts from a previous run do not persist.
