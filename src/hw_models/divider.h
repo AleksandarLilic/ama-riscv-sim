@@ -58,7 +58,7 @@ class divider {
             if (special != div_special_t::none) {
                 stats.special(special);
             } else {
-                stats.common(count_common_bits(a, op_uns));
+                stats.common(count_common_bits(a, b, op_uns));
                 div_cache.at(div_cache_wr_ptr).update(a, b, op_uns);
                 div_cache_wr_ptr = ((div_cache_wr_ptr + 1) % div_cache_entries);
             }
@@ -115,11 +115,15 @@ class divider {
             uint32_t abs_b = abs_val(b, op_uns);
 
             if ((abs_a == 0) || (abs_a < abs_b)) return div_special_t::abs_lt;
+
             if (is_pow2(abs_b)) return div_special_t::divisor_pow2;
+
             return div_special_t::none;
         }
 
-        static uint8_t count_common_bits(uint32_t a, bool op_uns) {
-            return TO_U8(32 - clz32(abs_val(a, op_uns)));
+        static uint8_t count_common_bits(uint32_t a, uint32_t b, bool op_uns) {
+            uint8_t bits_a = TO_U8(32 - clz32(abs_val(a, op_uns)));
+            uint8_t bits_b = TO_U8(32 - clz32(abs_val(b, op_uns)));
+            return TO_U8(bits_a - (bits_b - 1));
         }
 };
