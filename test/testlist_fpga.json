@@ -31,7 +31,7 @@
     "embench/wikisort": [["embench"], ["CPU_MHZ=50", "WARMUP=5"]],
 
     "uart_direct_send": ["hello_world"],
-    "uart_printf_mini": ["hello_world"],
+    "uart_printf_nano": ["hello_world"],
     "uart_direct_loopback": ["test"]
 
 }
