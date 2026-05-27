@@ -22,7 +22,7 @@ dcache_load: 2 # R2U
 #dcache_store: 1
 
 div: # 3 classes: cache, special, common (as overhead + clk/dividend bit)
-  cache: 1 # fully combinational
+  cache: 2 # 1 + 1 (extra clk due to integration, cache hit is combinational)
   special: 3 # 1 + start + setup
   common_overhead: 4 # 1 + start + setup + fixup; + #bits from hw_stats
 
