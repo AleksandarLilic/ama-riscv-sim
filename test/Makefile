@@ -12,7 +12,7 @@ CXXFLAGS := -g -std=gnu++17
 GTEST_LIBS := -lgtest -lgtest_main -pthread
 LDFLAGS := -lgcov
 SIM_FLAGS := CXX=$(CXX) # use the same compiler as for tests
-SIM_FLAGS += DEFINES="-DTEST_BUILD -DRV32C"
+SIM_FLAGS += DEFINES="-DTEST_BUILD -DRV32C -DPROFILERS_EN -DHW_MODELS_EN"
 SIM_FLAGS += USER_DEFINES=--coverage LDFLAGS=-lgcov
 
 TIMESTAMP := $(shell date +"%Y-%m-%d_%H-%M-%S")
