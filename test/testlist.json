@@ -58,6 +58,8 @@
     "uart_printf_nano": ["hello_world"],
     "timer_interrupt": ["test"],
 
+    "cpp_smoke": ["test"],
+
     "mlp": ["all"],
 
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=20"]],

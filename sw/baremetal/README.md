@@ -1,6 +1,6 @@
 # Baremetal tests
 
-C and ASM programs targeting the RV32 core, used by both the ISA simulator and the RTL testbench. All programs are freestanding.
+C, C++, and ASM programs targeting the RV32 core, used by both the ISA simulator and the RTL testbench. All programs are freestanding.
 
 - [Baremetal tests](#baremetal-tests)
 - [Pass/fail protocol](#passfail-protocol)
@@ -74,7 +74,7 @@ include ../Makefile.inc
 
 `Makefile.inc` handles source discovery, compilation, linking, disassembly, and hex generation. Key behaviors:
 
-- **Source discovery**: picks up all `*.c` and `*.S` files in the test directory automatically, unless `EXPLICIT_SRCS=1` is set, in which case the test Makefile is responsible for setting `C_SRCS` / `S_SRCS`
+- **Source discovery**: picks up all `*.c`, `*.S`, and `*.cpp` files in the test directory automatically, unless `EXPLICIT_SRCS=1` is set, in which case the test Makefile is responsible for setting `C_SRCS` / `S_SRCS` / `CPP_SRCS`
 - **Common objects**: compiles and caches `crt0`, `memset`, `common`, `common_math`, `nanoprintf` into `./common_build/`
 - **Outputs per target**: `.elf`, `.dasm` (full objdump), `.mem` (128-bit wide hex, via `bin2hex.py`; `.mem` extension required by Xilinx `updatemem` for bitstream patching); hex generation is on by default (`HEX=1`) and can be disabled with `HEX=0`
 - **Verbosity**: `V=1` on the make command line enables full command echo
@@ -122,6 +122,7 @@ Test categories:
 
 - **Hand-written ASM**: `asm_rv32i*`, `asm_rv32im`, `asm_rv32ic` - instruction-level correctness
 - **C functional**: `fibonacci`, `factorial`, `gcd_lcm`, `prime_numbers`, `rd_pairing`, etc.
+- **C++ smoke**: `cpp_smoke` - C++ language features (templates, `constexpr`, `enum class`, `namespace`)
 - **Memory / cache**: `dcache_*`, `memcpy`, `stream_int`
 - **Numeric / SIMD**: `vector_ew_*`, `matmul*`, `dot_product*`, `conv1d`, `sorting_*`
 - **Benchmarks**: `dhrystone`, `coremark`, `embench`, `ustress`

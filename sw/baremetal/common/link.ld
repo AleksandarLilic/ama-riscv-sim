@@ -19,6 +19,16 @@ SECTIONS
         *(.rodata.*)
         . = ALIGN(4);
     } > ram
+    .init_array : {
+        __init_array_start = .;
+        KEEP (*(.init_array*))
+        __init_array_end = .;
+    } > ram
+    .fini_array : {
+        __fini_array_start = .;
+        KEEP (*(.fini_array*))
+        __fini_array_end = .;
+    } > ram
     .data : {
         __DATA_BEGIN__ = .;
         *(.data)

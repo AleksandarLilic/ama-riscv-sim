@@ -312,3 +312,13 @@ void __attribute__((weak))
 timer_interrupt_handler() {
     CLINT->mtimecmp += 10000; // 10ms slices
 }
+
+// for crt0 init
+extern void (*__init_array_start[])(void);
+extern void (*__init_array_end[])(void);
+
+__attribute__((weak)) void __libc_init_array(void) {
+    for (void (**fn)(void) = __init_array_start; fn < __init_array_end; fn++) {
+        (*fn)();
+    }
+}

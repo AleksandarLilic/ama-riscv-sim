@@ -3,6 +3,10 @@
 #ifndef ARENA_H
 #define ARENA_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 
 void *memset(void *dst, int c, size_t n); // fwd decl., available as memset.S
@@ -99,6 +103,10 @@ static inline void
     ((T*)arena_alloc((arena_ptr), sizeof(T)*(size_t)(count), _Alignof(T)))
 #define ARENA_ALLOC_ZERO_T(arena_ptr, T, count) \
     ((T*)arena_alloc_zero((arena_ptr), sizeof(T)*(size_t)(count), _Alignof(T)))
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif // ARENA_H

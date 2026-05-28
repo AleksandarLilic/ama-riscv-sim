@@ -72,8 +72,7 @@ clear_bss_b_loop:
     bnez a4, clear_bss_b_loop
 
 call_main:
-    #ifdef _USE_NEWLIB
-    # optionally, initialize the C library if used
+    #ifndef BASIC_ASM_TEST
     call __libc_init_array
     #endif
     call main

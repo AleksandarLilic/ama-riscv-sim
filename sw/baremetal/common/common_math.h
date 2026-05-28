@@ -1,6 +1,10 @@
 #ifndef COMMON_MATH_H
 #define COMMON_MATH_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "common.h"
 
 #define INLINE inline __attribute__((always_inline))
@@ -843,5 +847,9 @@ int32_t dot_product_int8_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
 #endif // __riscv_xsimd
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // COMMON_MATH_H

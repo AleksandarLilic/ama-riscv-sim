@@ -40,9 +40,10 @@ vpath %.S $(COMMON_SRC_PATH)
 ifneq ($(EXPLICIT_SRCS), 1)
 C_SRCS += $(wildcard *.c)
 S_SRCS += $(wildcard *.S)
+CPP_SRCS += $(wildcard *.cpp)
 endif
 LD_SRC := $(COMMON_SRC_PATH)/link.ld
-SRCS := $(C_SRCS) $(S_SRCS)
+SRCS := $(C_SRCS) $(S_SRCS) $(CPP_SRCS)
 INC_PATHS += $(COMMON_SRC_PATH)
 INC_H := $(wildcard $(addsuffix /*.h, $(INC_PATHS)))
 INC := $(addprefix -I, $(INC_PATHS))
@@ -78,12 +79,19 @@ GCC_OPTS += -Wl,--no-warn-rwx-segments
 #GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
 
+CXX_OPTS += -fno-exceptions -fno-rtti
+CXX_OPTS += -fno-threadsafe-statics -fno-use-cxa-atexit
+
 OBJDUMP_OPTS := -Dhxtw --show-all-symbols
 OBJDUMP_OPTS += --start-address=0x80000000 --stop-address=0x80020000
 OBJDUMP_OPTS += -Mnumeric -Mno-aliases # rv specific
 #OBJDUMP_OPTS += -z # show zero padding as well (complete dump)
 #OBJDUMP_OPTS += --visualize-jumps
-#OBJDUMP_OPTS += -S # inline C source code in disassembly
+
+OD_SRC ?= 0
+ifeq ($(OD_SRC), 1)
+OBJDUMP_OPTS += -S # inline source code in disassembly
+endif
 
 HEX ?= 1
 MEM_WIDTH := 128
@@ -93,9 +101,17 @@ define GET_DEFINES
 $(wordlist 2,999,$(subst :, ,$(filter $1:%,$(TEST_DEFINES))))
 endef
 
+ifeq ($(CPP_SRCS),)
+    CC_DRIVER := $(RV_GNU)-gcc
+    CXX_FLAGS :=
+else
+    CC_DRIVER := $(RV_GNU)-g++
+    CXX_FLAGS := $(CXX_OPTS)
+endif
+
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-    $(RV_GNU)-gcc $(GCC_OPTS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
+    $(CC_DRIVER) $(GCC_OPTS) $(CXX_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
     $(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
