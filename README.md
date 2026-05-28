@@ -897,16 +897,30 @@ By default, use
 make
 ```
 
-Options can be passed to make by using `USER_DEFINES=` argument, e.g.
+Or with preferred gcc version
+```sh
+CXX=g++-12 make
 ```
-make USER_DEFINES=-DRV32C
-```
+Alternatively, `export CXX=g++-12` and run just `make`
 
-Optional build switches  
-`-DDASM_EN` - allows recording of the execution log, enabled by default with `DEFINES` make variable  
-`-DRV32C`- enables support for compressed RISC-V instructions (C ext.), disabled by default  
-`-DUART_INPUT_EN` - enables user interaction through UART, disabled by default  
-`-DDPI` - build targetting DPI environment, disabled by default
+Optional build switches can be passed as make variables, e.g.:
+```sh
+make DASM=1 RV32C=1
+```
+If binary already exists, either add `-B` to force rebuild, or run `make clean` first  
+
+| Make variable | Preprocessor define | Description | Default |
+|---|---|---|---|
+| `PROFILERS=1` | `-DPROFILERS_EN` | Enable execution profiling and tracing | on |
+| `HW_MODELS=1` | `-DHW_MODELS_EN` | Enable hardware models | on |
+| `DASM=1` | `-DDASM_EN` | Enable execution log recording | off |
+| `RV32C=1` | `-DRV32C` | Enable compressed ISA (C extension) | off |
+| `UART_IN=1` | `-DUART_INPUT_EN` | Enable user interaction through UART | off |
+| `DEBUG=1` | `-DDEBUG` | Enable additional checks | off |
+
+Additional/new defines can be passed via `USER_DEFINES=` if needed.
+
+`BDIR` make variable can be used for specifying separate build directory, making use of multiple binaries easy, e.g. building one fast binary and one with logging.  
 
 # Building RISC-V Toolchain
 

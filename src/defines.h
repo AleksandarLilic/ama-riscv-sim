@@ -2,10 +2,8 @@
 
 // default defines
 #ifndef DPI
-#define UART_EN // some tests require UART, will wait for ready indefinitely
-#define PROFILERS_EN
-#define HW_MODELS_EN
-#else // DPI mode
+#define UART_EN // apps may need UART, will hang waiting for ready indefinitely
+#else // DPI mode - defines based on the cosim needs
 #define PROFILERS_EN
 #define DASM_EN
 #define UART_EN

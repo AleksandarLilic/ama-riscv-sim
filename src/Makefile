@@ -15,6 +15,39 @@ ifeq ($(shell [ $(CXX_VERSION) -ge $(CXX_REQ) ] && echo ok),)
 $(error "GCC >= $(CXX_REQ) required")
 endif
 
+USER_DEFINES ?=
+DEFINES :=
+
+PROFILERS ?= 1
+ifeq ($(PROFILERS), 1)
+DEFINES += -DPROFILERS_EN
+endif
+
+HW_MODELS ?= 1
+ifeq ($(HW_MODELS), 1)
+DEFINES += -DHW_MODELS_EN
+endif
+
+DASM ?= 0
+ifeq ($(DASM), 1)
+DEFINES += -DDASM_EN
+endif
+
+RV32C ?= 0
+ifeq ($(RV32C), 1)
+DEFINES += -DRV32C
+endif
+
+UART_IN ?= 0
+ifeq ($(UART_IN), 1)
+DEFINES += -DUART_INPUT_EN
+endif
+
+DEBUG ?= 0
+ifeq ($(DEBUG), 1)
+DEFINES += -DDEBUG
+endif
+
 CXXFLAGS := -Wall -Wextra
 CXXFLAGS += -Wcast-qual -Wold-style-cast
 CXXFLAGS += -Wunreachable-code -Wnull-dereference
@@ -72,12 +105,6 @@ INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
 INC += $(INC_EXT)
 
 COSIM_OBJECTS := $(filter-out $(BDIR)/hw_models/%.o $(BDIR)/main.o, $(OBJECTS))
-
-USER_DEFINES =
-DEFINES := -DDASM_EN
-DEFINES += -DDEBUG
-#DEFINES += -DRV32C
-#DEFINES += -DUART_INPUT_EN
 
 all: $(TARGET)
 

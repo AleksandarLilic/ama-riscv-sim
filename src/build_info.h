@@ -61,12 +61,11 @@ inline constexpr const char* cpp_standard() {
 #endif
 }
 
-// not used currently, defaults to 'Debug'
 inline const char* build_type() {
-#ifdef NDEBUG
-  return "Release";
-#else
+#ifdef DEBUG
   return "Debug";
+#else
+  return "Release";
 #endif
 }
 
