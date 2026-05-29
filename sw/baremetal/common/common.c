@@ -29,10 +29,6 @@ int npf_printf(const char* format, ...) {
     return count;
 }
 
-void set_cpu_time(uint64_t value) {
-    write_csr_wide(CSR_TIME, CSR_TIMEH, value);
-}
-
 // cpu perf counters
 uint64_t get_cpu_time() {
     uint64_t time;
