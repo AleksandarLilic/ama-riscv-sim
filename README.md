@@ -569,6 +569,11 @@ Get timeline plot
 ./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --timeline
 ```
 
+Get just the symbol counts and backannotated dasm
+```sh
+./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --symbols_only
+```
+
 Get stats trace (adjust window sizes as needed)
 ```sh
 ./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --stats_trace --win_size_stats 512 --win_size_hw 64 --save_decoded_trace
@@ -637,83 +642,74 @@ Generate register file dependency and usage plots
 Adding `--print_symbols` to any of the commands using `-t` will print all found symbols to `stdout`
 ```
 Symbols found in ../sw/baremetal/dhrystone/dhrystone.dasm in 'text' section:
-0x430EC - 0x433D8: _free_r (0)
-0x42FAC - 0x430E8: _malloc_trim_r (0)
-0x42F08 - 0x42FA8: strcpy (86.2k)
-0x42E7C - 0x42F04: __libc_init_array (20)
-0x42E20 - 0x42E78: _sbrk_r (30)
-0x42E1C - 0x42E1C: __malloc_unlock (2)
-0x42E18 - 0x42E18: __malloc_lock (2)
-0x42608 - 0x42E14: _malloc_r (198)
-0x425FC - 0x42604: malloc (6)
-0x425D4 - 0x425F8: _sbrk (17)
-0x42298 - 0x425D0: mini_vpprintf (21.5k)
-0x42224 - 0x42294: _puts (0)
-0x42018 - 0x42220: mini_pad (819)
-0x41EB0 - 0x42014: mini_itoa (2.46k)
-0x41E88 - 0x41EAC: mini_strlen (500)
-0x41E2C - 0x41E84: trap_handler (0)
-0x41E00 - 0x41E28: timer_interrupt_handler (0)
-0x41DEC - 0x41DFC: get_cpu_time (10)
-0x41D98 - 0x41DE8: mini_printf (1.26k)
-0x41D64 - 0x41D94: __puts_uart (20.0k)
-0x41D14 - 0x41D60: _write (31.3k)
-0x41CFC - 0x41D10: send_byte_uart0 (10.0k)
-0x41CD4 - 0x41CF8: time_s (20)
-0x41C14 - 0x41CD0: Proc_6 (20.0k)
-0x41C08 - 0x41C10: Func_3 (3.00k)
-0x41B8C - 0x41C04: Func_2 (28.0k)
-0x41B6C - 0x41B88: Func_1 (15.0k)
-0x41B08 - 0x41B68: Proc_8 (25.0k)
-0x41AF8 - 0x41B04: Proc_7 (12.0k)
-0x41478 - 0x41AF4: main (63.3k)
-0x41468 - 0x41474: Proc_5 (4.00k)
-0x41444 - 0x41464: Proc_4 (9.00k)
-0x412F4 - 0x41440: Proc_1 (54.0k)
-0x412D0 - 0x412F0: Proc_3 (9.00k)
-0x412A8 - 0x412CC: Proc_2 (9.00k)
-0x4125C - 0x412A4: __clzsi2 (0)
-0x4122C - 0x41258: __modsi3 (0)
-0x411F8 - 0x41228: __umodsi3 (228)
-0x411B0 - 0x411F4: __hidden___udivsi3 (25.4k)
-0x411A8 - 0x411AC: __divsi3 (2.00k)
-0x41184 - 0x411A4: __mulsi3 (32)
-0x41074 - 0x41180: __floatsisf (0)
-0x41004 - 0x41070: __fixsfsi (0)
-0x40CB8 - 0x41000: __mulsf3 (0)
-0x40944 - 0x40CB4: __divsf3 (0)
-0x4037C - 0x40940: __udivdi3 (194)
-0x40200 - 0x40378: strcmp (57.0k)
-0x400EC - 0x401FC: trap_entry (0)
-0x400E8 - 0x400E8: forever (0)
-0x400DC - 0x400E4: call_main (2)
-0x400CC - 0x400D8: clear_bss_b_loop (0)
-0x400C8 - 0x400C8: clear_bss_b_check (1)
-0x400B8 - 0x400C4: clear_bss_w_loop (10.6k)
-0x40000 - 0x400B4: _start (46)
+0x80003AE0 - 0x80003DCC: _free_r (0) (0.00%)
+0x800039A0 - 0x80003ADC: _malloc_trim_r (0) (0.00%)
+0x800038FC - 0x8000399C: strcpy (86.2k) (18.73%)
+0x800038A0 - 0x800038F8: _sbrk_r (30) (0.01%)
+0x8000389C - 0x8000389C: __malloc_unlock (2) (0.00%)
+0x80003898 - 0x80003898: __malloc_lock (2) (0.00%)
+0x80003088 - 0x80003894: _malloc_r (198) (0.04%)
+0x8000307C - 0x80003084: malloc (6) (0.00%)
+0x80003040 - 0x80003064: _sbrk (17) (0.00%)
+0x80002640 - 0x80002FF0: npf_vpprintf (20.6k) (4.48%)
+0x800025C0 - 0x800025D8: npf_putc_cnt (11.8k) (2.56%)
+0x800024C0 - 0x800025BC: npf_utoa_rev (2.36k) (0.51%)
+0x80002200 - 0x80002480: npf_parse_format_spec (2.00k) (0.43%)
+0x80002140 - 0x80002188: __libc_init_array (14) (0.00%)
+0x800020C0 - 0x800020D0: get_cpu_time (10) (0.00%)
+0x80002040 - 0x80002090: npf_printf (1.26k) (0.27%)
+0x80002000 - 0x80002004: npf_putc_uart (3.37k) (0.73%)
+0x80001F80 - 0x80001F94: send_byte_uart0 (10.1k) (2.20%)
+0x80001F40 - 0x80001F64: time_s (20) (0.00%)
+0x80001E40 - 0x80001EFC: Proc_6 (20.0k) (4.35%)
+0x80001DC0 - 0x80001DC8: Func_3 (3.00k) (0.65%)
+0x80001D00 - 0x80001D78: Func_2 (28.0k) (6.09%)
+0x80001CC0 - 0x80001CDC: Func_1 (15.0k) (3.26%)
+0x80001C40 - 0x80001CA0: Proc_8 (25.0k) (5.44%)
+0x80001BC0 - 0x80001BCC: Proc_7 (12.0k) (2.61%)
+0x80001500 - 0x80001B84: main (60.3k) (13.11%)
+0x800014C0 - 0x800014CC: Proc_5 (4.00k) (0.87%)
+0x80001480 - 0x800014A0: Proc_4 (9.00k) (1.96%)
+0x80001300 - 0x8000144C: Proc_1 (54.0k) (11.74%)
+0x800012C0 - 0x800012E0: Proc_3 (9.00k) (1.96%)
+0x80001280 - 0x800012A4: Proc_2 (9.00k) (1.96%)
+0x80001220 - 0x80001268: __clzsi2 (0) (0.00%)
+0x80001110 - 0x8000121C: __floatsisf (0) (0.00%)
+0x800010A0 - 0x8000110C: __fixsfsi (0) (0.00%)
+0x80000D84 - 0x8000109C: __mulsf3 (0) (0.00%)
+0x80000A68 - 0x80000D80: __divsf3 (0) (0.00%)
+0x80000688 - 0x80000A64: __umoddi3 (2.87k) (0.62%)
+0x8000025C - 0x80000684: __udivdi3 (3.22k) (0.70%)
+0x800000E0 - 0x80000258: strcmp (57.0k) (12.39%)
+0x800000DC - 0x800000DC: forever (0) (0.00%)
+0x800000D0 - 0x800000D8: call_main (2) (0.00%)
+0x800000C0 - 0x800000CC: clear_bss_b_loop (0) (0.00%)
+0x800000BC - 0x800000BC: clear_bss_b_check (1) (0.00%)
+0x800000AC - 0x800000B8: clear_bss_w_loop (10.6k) (2.31%)
+0x80000000 - 0x800000A8: _start (43) (0.01%)
 ```
 
 It also backannotates the disassembly and saves it as `dhrystone.prof.dasm`
 ```
-00040000 <_start>:
-    1    40000:	00000093          	addi	x1,x0,0
-    1    40004:	00000113          	addi	x2,x0,0
-    1    40008:	00000193          	addi	x3,x0,0
-    1    4000c:	00000213          	addi	x4,x0,0
-    1    40010:	00000293          	addi	x5,x0,0
-    1    40014:	00000313          	addi	x6,x0,0
+80000000 <_start>: ( 0.01%)
+    1 ( 0.00%) 80000000:	00000093          	addi	x1,x0,0
+    1 ( 0.00%) 80000004:	00000113          	addi	x2,x0,0
+    1 ( 0.00%) 80000008:	00000193          	addi	x3,x0,0
+    1 ( 0.00%) 8000000c:	00000213          	addi	x4,x0,0
+    1 ( 0.00%) 80000010:	00000293          	addi	x5,x0,0
+    1 ( 0.00%) 80000014:	00000313          	addi	x6,x0,0
 ...
-000400b8 <clear_bss_w_loop>:
- 2654    400b8:	00052023          	sw	x0,0(x10)
- 2654    400bc:	00450513          	addi	x10,x10,4
- 2654    400c0:	fff68693          	addi	x13,x13,-1
- 2654    400c4:	fe069ae3          	bne	x13,x0,400b8 <clear_bss_w_loop>
+800000ac <clear_bss_w_loop>: ( 2.31%)
+ 2654 ( 0.58%) 800000ac:	00052023          	sw	x0,0(x10)
+ 2654 ( 0.58%) 800000b0:	00450513          	addi	x10,x10,4
+ 2654 ( 0.58%) 800000b4:	fff68693          	addi	x13,x13,-1
+ 2654 ( 0.58%) 800000b8:	fe069ae3          	bne	x13,x0,800000ac <clear_bss_w_loop>
 ...
-00041468 <Proc_5>:
- 1000    41468:	04100693          	addi	x13,x0,65
- 1000    4146c:	82d186a3          	sb	x13,-2003(x3) # 44145 <Ch_1_Glob>
- 1000    41470:	8201a823          	sw	x0,-2000(x3) # 44148 <Bool_Glob>
- 1000    41474:	00008067          	jalr	x0,0(x1)
+800014c0 <Proc_5>: ( 0.87%)
+ 1000 ( 0.22%) 800014c0:	04100693          	addi	x13,x0,65
+ 1000 ( 0.22%) 800014c4:	82d186a3          	sb	x13,-2003(x3) # 80004b8d <Ch_1_Glob>
+ 1000 ( 0.22%) 800014c8:	8201a823          	sw	x0,-2000(x3) # 80004b90 <Bool_Glob>
+ 1000 ( 0.22%) 800014cc:	00008067          	jalr	x0,0(x1)
 ...
 ```
 

@@ -643,17 +643,21 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         new_dasm_ext = ".dummy" + dasm_ext
     if section == "text":
         PADDING = len(str(int(df['count'].max()))) + 1
+        total_count = int(df['count'].sum())
 
     outfile_name = dasm_name.replace(dasm_ext, new_dasm_ext)
     outfile_name = os.path.join(logs_path, outfile_name)
-    with open(args.dasm, 'r') as infile, open(outfile_name, 'w') as outfile:
+    # buffer output so symbol-header percentages can be resolved after all
+    # exec_counts are accumulated from the instructions below each symbol
+    out_buf = [] # list of ('line', str) or ('sym_hdr', sym_name, orig_line)
+    with open(args.dasm, 'r') as infile:
         current_sym = None
         append = False
         prev_addr = None
         for line in infile:
             if line.startswith('Disassembly of section .') and section in line:
                 append = True
-                outfile.write(line)
+                out_buf.append(('line', line))
                 continue
             elif line.startswith('Disassembly of section .'):
                 append = False
@@ -678,12 +682,18 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                         "exec_count": 0
                     }
                     prev_addr = addr_start
+                    if section == "text":
+                        out_buf.append(('sym_hdr', symbol_name, line))
+                    else:
+                        out_buf.append(('line', line))
 
-                if len(parts) == 2 and parts[1].startswith('\t'):
+                elif len(parts) == 2 and parts[1].startswith('\t'):
                     if section == "text":
                         # detected instruction
                         count, prev_addr = get_count(parts, df)
-                        outfile.write("{:{}} {}".format(count, PADDING, line))
+                        pct = count / total_count * 100 if total_count else 0.0
+                        out_buf.append(('line', "{:{}} ({:5.2f}%) {}".format(
+                            count, PADDING, pct, line)))
                         symbols[current_sym]['exec_count'] += count
 
                         inst_mn = line.split('\t')
@@ -695,18 +705,27 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                         ])
 
                     elif section == "data":
-                        # outfile.write(line) # not annotating data section
                         prev_addr = hex2int(parts[0].strip())
 
                 else: # no instruction/data in line
-                    outfile.write(line)
+                    out_buf.append(('line', line))
 
             else: # not .text/.data section
-                outfile.write(line)
+                out_buf.append(('line', line))
 
         # write the last symbol
         if prev_addr:
             symbols[current_sym]['addr_end'] = prev_addr
+
+    with open(outfile_name, 'w') as outfile:
+        for entry in out_buf:
+            if entry[0] == 'sym_hdr':
+                _, sym_name, orig_line = entry
+                sym_pct = symbols[sym_name]['exec_count'] / total_count * 100 \
+                    if total_count else 0.0
+                outfile.write(f"{orig_line.rstrip()} ({sym_pct:5.2f}%)\n")
+            else:
+                outfile.write(entry[1])
 
     filter_str = []
     if section == "text":
@@ -727,7 +746,8 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     for k,v in symbols.items():
         v['symbol_text'] = f"{k}"
         if section == "text":
-            v['symbol_text'] += f" ({fmt(v['exec_count'])})"
+            pct = v['exec_count'] / total_count * 100 if total_count else 0.0
+            v['symbol_text'] += f" ({fmt(v['exec_count'])}) ({pct:.2f}%)"
 
         sym_log.append(f"{int2hex(v['addr_start'], None)} - " + \
                        f"{int2hex(v['addr_end'], None)}: " + \
@@ -745,6 +765,9 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         for k,v in symbols.items():
             symbols_py[k] = {}
             symbols_py[k]['exec_count'] = v['exec_count']
+            symbols_py[k]['exec_fraction'] = \
+                round(v['exec_count'] / total_count * 100, 2) if total_count \
+                else 0.0
             symbols_py[k]['addr_start'] = int2hex(v['addr_start'], None)
             symbols_py[k]['addr_end'] = int2hex(v['addr_end'], None)
 
@@ -2236,16 +2259,18 @@ def run_main(args) -> None:
     if (args.symbols_only or args.save_symbols) and not args.dasm:
         raise ValueError("--symbols_only requires --dasm")
 
-    at_least_one = ( \
+    is_time_series = ( \
         args.timeline or args.pc_hist or args.pc_trace or \
         args.dmem_hist or args.dmem_trace or \
         args.stats_trace
     )
 
-    data_run = \
-        (args.save_pc_hist or args.save_dmem_hist or args.save_decoded_trace)
+    is_histogram = (args.save_pc_hist or args.save_dmem_hist)
 
-    if (run_trace and (not at_least_one) and (not data_run)):
+    valid_trace_opts = (is_time_series or is_histogram or \
+        args.save_decoded_trace or args.symbols_only)
+
+    if (run_trace and (not valid_trace_opts)):
         raise ValueError("At least one trace-based plot needs to be specified "
                          "or trace needs to be saved for trace run")
 
