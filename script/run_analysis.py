@@ -1912,9 +1912,8 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
         for m in mem_stats: # from bytes/cycle to bytes/sec
             df[m] = df[m].astype(np.uint64) * args.freq * 1_000_000
 
-    df['sp_real'] = BASE_ADDR + MEM_SIZE - df['sp']
-    df['sp_real'] = df['sp_real'].apply(
-        lambda x: 0 if x >= BASE_ADDR + MEM_SIZE else x)
+    valid_sp = (df['sp'] >= BASE_ADDR) & (df['sp'] <= BASE_ADDR + MEM_SIZE)
+    df['sp_real'] = np.where(valid_sp, BASE_ADDR + MEM_SIZE - df['sp'], 0)
 
     df.inst = df.inst.replace(0, np.nan) # replace NOP/bubbles with NaN
     df.pc = df.pc.replace(0, np.nan) # same as for inst
