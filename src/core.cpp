@@ -1074,7 +1074,7 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_EN
-    if (!cfg.sink_uart) std::cout << "=== UART END ===\n";
+    if (!cfg.sink_uart) std::cout << "\n=== UART END ===\n";
     #endif
     std::cout << "SIMULATION FINISHED\n\n";
 

@@ -49,6 +49,8 @@ constexpr int const_log2(int n, int p = 0) {
 #define MEM_SIZE 131072 // 0x2'0000
 constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define UART0_ADDR 0x1001'3000
+#define UART0_RX_DATA_ADDR (UART0_ADDR + 0x04)
+#define UART0_TX_DATA_ADDR (UART0_ADDR + 0x08)
 #define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
 #define CLINT_ADDR 0x0200'0000
 #define CLINT_SIZE 32 // reserved for 4 64-bit registers
@@ -599,12 +601,24 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         } \
     }
 
+inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
+    if ((addr != UART0_TX_DATA_ADDR) && (addr != UART0_RX_DATA_ADDR)) return "";
+    if (val >= 0x20 && val <= 0x7e) { // printable ASCII characters
+        return std::string(" # '") + char(val) + "'";
+    }
+    if (val == '\n') return " # '\\n'";
+    if (val == '\r') return " # '\\r'";
+    if (val == '\t') return " # '\\t'";
+    return "";
+}
+
 // parametrized
 #define DASM_MEM_UPDATE_P(addr, rs) \
     DASM_ALIGN << "mem[" \
                << MEM_ADDR_FORMAT(addr) \
                << "] <- " << rf_names[rs][rf_names_idx] \
-               << " (" << FHEXZ(rf[rs], 8) << ")"
+               << " (" << FHEXZ(rf[rs], 8) << ")" \
+               << dasm_ascii_hint(rf[rs], (addr))
 
 // generic
 #define DASM_MEM_UPDATE \
