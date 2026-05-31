@@ -4,6 +4,7 @@
 *.dasm
 *.map
 *.elf*
+*.su*
 *.hex*
 *.mem*
 *.o

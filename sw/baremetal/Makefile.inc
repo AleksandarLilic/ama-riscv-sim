@@ -62,6 +62,7 @@ GCC_OPTS += -g
 # aligning code and data
 CACHE_LINE_BYTES := 64
 GCC_OPTS += -ffunction-sections -fdata-sections -msmall-data-limit=8
+#GCC_OPTS += -fstack-usage
 #GCC_OPTS += -specs=nano.specs
 #GCC_OPTS += -falign-functions=$(CACHE_LINE_BYTES)
 #GCC_OPTS += -falign-loops=$(CACHE_LINE_BYTES)
@@ -145,7 +146,7 @@ $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
 
 clean:
-	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map
+	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map *.su
 
 clean_common:
 	rm -rf $(COMMON_BUILD_DIR)
