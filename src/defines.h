@@ -38,6 +38,7 @@ static_assert(0, "DPI requires DASM");
 //#define TO_I4(x) static_cast<int8_t>(((x) & 0xF) | (((x) & 0x8) ? 0xF0 :0x00))
 //#define TO_U2(x) static_cast<uint8_t>((x) & 0x3)
 //#define TO_I2(x) static_cast<int8_t>(((x) & 0x3) | (((x) & 0x2) ? 0xFC :0x00))
+#define TO_BOOL(x) static_cast<bool>((x))
 
 constexpr int const_log2(int n, int p = 0) {
     return (n <= 1) ? p : const_log2(n >> 1, p + 1);

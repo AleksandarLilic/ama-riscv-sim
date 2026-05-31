@@ -8,10 +8,18 @@
 #include "cache.h"
 #endif
 
+struct mem_region_t {
+    uint32_t base; // offset from BASE_ADDR
+    uint32_t size;
+    bool r, w, x;
+};
+
 class main_memory : public dev {
     private:
         void burn_bin(std::string test_bin);
         void burn_elf(std::string test_elf);
+        void check_access(uint32_t addr, bool is_r, bool is_w, bool is_x) const;
+        std::vector<mem_region_t> regions;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
         #ifdef HW_MODELS_EN
         cache icache;

@@ -23,9 +23,9 @@
 #define CXXOPTS_VAL_STR cxxopts::value<std::string>()
 #define CXXOPTS_VAL_BOOL cxxopts::value<bool>()
 
-#define TO_HEX(x) std::stoul(x.as<std::string>(), nullptr, 16)
-#define TO_SIZE(x) std::stoul(x.as<std::string>(), nullptr, 10)
-#define TO_BOOL(x) x.as<bool>()
+#define ARG2HEX(x) std::stoul(x.as<std::string>(), nullptr, 16)
+#define ARG2SIZE(x) std::stoul(x.as<std::string>(), nullptr, 10)
+#define ARG2BOOL(x) x.as<bool>()
 
 #define RESOLVE_ARG(str, map) \
     resolve_arg(str, result[str].as<std::string>(), map)
@@ -242,8 +242,9 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(defs_t::prof_pc_sm))
         ("exit_on_prof_stop",
          "Exit simulation immediately after profiling finishes. "
-         "Exits on the first 'prof_pc_stop' if 'prof_pc_single_match' is unused"
-         "Otherwise exits on the 'prof_pc_stop' of the 'prof_pc_single_match'",
+         "Exits on the first 'prof_pc_stop' if 'prof_pc_single_match' is not "
+         "set, otherwise exits on the 'prof_pc_stop' that matched "
+         "'prof_pc_single_match' count",
          CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_prof_stop))
         ("t,prof_trace", "Record profiler trace",
          CXXOPTS_VAL_BOOL->default_value(defs_t::prof_trace))
@@ -319,11 +320,12 @@ int main(int argc, char* argv[]) {
     options.add_options("HW model - Branch Predictor")
         ("bp",
          "First branch predictor. Defaults as active, driving the I$. "
-         "For combined predictor, counters will be weakly biased towards this" "predictor (impacts warm-up period)\n"
+         "For combined predictor, counters will be weakly biased towards this "
+         "predictor (impacts warm-up period)\n"
          "Options: " + gen_help_list(bp_names_map) + "\n ",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp))
         ("bp2",
-         "Second branch predictor, only for combined predictor. If provided,"
+         "Second branch predictor, only for combined predictor. If provided, "
          "combined predictor becomes active\n"
          "Options: " + gen_help_list(bp_names_map) + "\n ",
          CXXOPTS_VAL_STR->default_value(hw_defs_t::bp2))
@@ -421,53 +423,53 @@ int main(int argc, char* argv[]) {
 
     try {
         test_elf = result["path"].as<std::string>();
-        cfg.show_state = TO_BOOL(result["show_state"]);
-        cfg.exit_on_trap = TO_BOOL(result["exit_on_trap"]);
-        cfg.mem_dump_start = TO_HEX(result["mem_dump_start"]);
-        cfg.mem_dump_size = TO_SIZE(result["mem_dump_size"]);
-        cfg.run_insts = TO_SIZE(result["run_insts"]);
+        cfg.show_state = ARG2BOOL(result["show_state"]);
+        cfg.exit_on_trap = ARG2BOOL(result["exit_on_trap"]);
+        cfg.mem_dump_start = ARG2HEX(result["mem_dump_start"]);
+        cfg.mem_dump_size = ARG2SIZE(result["mem_dump_size"]);
+        cfg.run_insts = ARG2SIZE(result["run_insts"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
-        cfg.silent = TO_BOOL(result["silent"]);
+        cfg.silent = ARG2BOOL(result["silent"]);
         #ifdef UART_EN
-        cfg.sink_uart = TO_BOOL(result["sink_uart"]);
+        cfg.sink_uart = ARG2BOOL(result["sink_uart"]);
         #endif
 
         #ifdef PROFILERS_EN
-        cfg.prof_pc.start = TO_HEX(result["prof_pc_start"]);
-        cfg.prof_pc.stop = TO_HEX(result["prof_pc_stop"]);
-        cfg.prof_pc.single_match_num = TO_SIZE(result["prof_pc_single_match"]);
-        cfg.prof_pc.exit_on_prof_stop = TO_BOOL(result["exit_on_prof_stop"]);
-        cfg.prof_trace = TO_BOOL(result["prof_trace"]);
+        cfg.prof_pc.start = ARG2HEX(result["prof_pc_start"]);
+        cfg.prof_pc.stop = ARG2HEX(result["prof_pc_stop"]);
+        cfg.prof_pc.single_match_num = ARG2SIZE(result["prof_pc_single_match"]);
+        cfg.prof_pc.exit_on_prof_stop = ARG2BOOL(result["exit_on_prof_stop"]);
+        cfg.prof_trace = ARG2BOOL(result["prof_trace"]);
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
-        cfg.rf_usage = TO_BOOL(result["rf_usage"]);
-        cfg.no_callstack = TO_BOOL(result["no_callstack"]);
+        cfg.rf_usage = ARG2BOOL(result["rf_usage"]);
+        cfg.no_callstack = ARG2BOOL(result["no_callstack"]);
         #endif
 
         #ifdef DASM_EN
-        cfg.log = TO_BOOL(result["log"]);
+        cfg.log = ARG2BOOL(result["log"]);
         #ifdef PROFILERS_EN
-        cfg.log_always = TO_BOOL(result["log_always"]);
+        cfg.log_always = ARG2BOOL(result["log_always"]);
         #else
         cfg.log_always = true;
         #endif
-        cfg.log_state = TO_BOOL(result["log_state"]);
+        cfg.log_state = ARG2BOOL(result["log_state"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         #ifdef HW_MODELS_EN
-        cfg.log_hw_models = TO_BOOL(result["log_hw_models"]);
+        cfg.log_hw_models = ARG2BOOL(result["log_hw_models"]);
         #endif
         #endif
 
         #ifdef HW_MODELS_EN
         // icache
-        hw_cfg.icache_sets = TO_SIZE(result["icache_sets"]);
-        hw_cfg.icache_ways = TO_SIZE(result["icache_ways"]);
+        hw_cfg.icache_sets = ARG2SIZE(result["icache_sets"]);
+        hw_cfg.icache_ways = ARG2SIZE(result["icache_ways"]);
         hw_cfg.icache_re_policy =
             RESOLVE_ARG("icache_re_policy", cache_re_policy_map);
         hw_cfg.icache_in_policy =
             RESOLVE_ARG("icache_in_policy", cache_in_policy_map);
         // dcache
-        hw_cfg.dcache_sets = TO_SIZE(result["dcache_sets"]);
-        hw_cfg.dcache_ways = TO_SIZE(result["dcache_ways"]);
+        hw_cfg.dcache_sets = ARG2SIZE(result["dcache_sets"]);
+        hw_cfg.dcache_ways = ARG2SIZE(result["dcache_ways"]);
         hw_cfg.dcache_re_policy =
             RESOLVE_ARG("dcache_re_policy", cache_re_policy_map);
         hw_cfg.dcache_in_policy =
@@ -475,10 +477,10 @@ int main(int argc, char* argv[]) {
         hw_cfg.dcache_wr_policy =
             RESOLVE_ARG("dcache_wr_policy", cache_wr_policy_map);
         // caches other configs
-        hw_cfg.roi_start = TO_HEX(result["roi_start"]);
-        hw_cfg.roi_size = TO_SIZE(result["roi_size"]);
-        hw_cfg.show_cache_state = TO_BOOL(result["show_cache_state"]);
-        hw_cfg.div_cache_entries = TO_SIZE(result["div_cache_entries"]);
+        hw_cfg.roi_start = ARG2HEX(result["roi_start"]);
+        hw_cfg.roi_size = ARG2SIZE(result["roi_size"]);
+        hw_cfg.show_cache_state = ARG2BOOL(result["show_cache_state"]);
+        hw_cfg.div_cache_entries = ARG2SIZE(result["div_cache_entries"]);
 
         // branch predictors
         hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);
@@ -492,27 +494,27 @@ int main(int argc, char* argv[]) {
         }
         // per predictor configurations
         hw_cfg.bp_static_method = RESOLVE_ARG("bp_static_method",bp_sttc_map);
-        hw_cfg.bp_pc_bits = TO_SIZE(result["bp_pc_bits"]);
-        hw_cfg.bp_cnt_bits = TO_SIZE(result["bp_cnt_bits"]);
-        hw_cfg.bp_lhist_bits = TO_SIZE(result["bp_lhist_bits"]);
-        hw_cfg.bp_ghr_bits = TO_SIZE(result["bp_ghr_bits"]);
+        hw_cfg.bp_pc_bits = ARG2SIZE(result["bp_pc_bits"]);
+        hw_cfg.bp_cnt_bits = ARG2SIZE(result["bp_cnt_bits"]);
+        hw_cfg.bp_lhist_bits = ARG2SIZE(result["bp_lhist_bits"]);
+        hw_cfg.bp_ghr_bits = ARG2SIZE(result["bp_ghr_bits"]);
         hw_cfg.bp_fold_pc = RESOLVE_ARG("bp_fold_pc", bp_pc_folds_map);
 
         hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
-        hw_cfg.bp2_pc_bits = TO_SIZE(result["bp2_pc_bits"]);
-        hw_cfg.bp2_cnt_bits = TO_SIZE(result["bp2_cnt_bits"]);
-        hw_cfg.bp2_lhist_bits = TO_SIZE(result["bp2_lhist_bits"]);
-        hw_cfg.bp2_ghr_bits = TO_SIZE(result["bp2_ghr_bits"]);
+        hw_cfg.bp2_pc_bits = ARG2SIZE(result["bp2_pc_bits"]);
+        hw_cfg.bp2_cnt_bits = ARG2SIZE(result["bp2_cnt_bits"]);
+        hw_cfg.bp2_lhist_bits = ARG2SIZE(result["bp2_lhist_bits"]);
+        hw_cfg.bp2_ghr_bits = ARG2SIZE(result["bp2_ghr_bits"]);
         hw_cfg.bp2_fold_pc = RESOLVE_ARG("bp2_fold_pc", bp_pc_folds_map);
 
-        hw_cfg.bp_combined_pc_bits = TO_SIZE(result["bp_combined_pc_bits"]);
-        hw_cfg.bp_combined_cnt_bits = TO_SIZE(result["bp_combined_cnt_bits"]);
+        hw_cfg.bp_combined_pc_bits = ARG2SIZE(result["bp_combined_pc_bits"]);
+        hw_cfg.bp_combined_cnt_bits = ARG2SIZE(result["bp_combined_cnt_bits"]);
         hw_cfg.bp_combined_fold_pc =
             RESOLVE_ARG("bp_combined_fold_pc", bp_pc_folds_map);
 
         // bp other configs
-        hw_cfg.bp_run_all = TO_BOOL(result["bp_run_all"]);
-        hw_cfg.bp_dump_csv = TO_BOOL(result["bp_dump_csv"]);
+        hw_cfg.bp_run_all = ARG2BOOL(result["bp_run_all"]);
+        hw_cfg.bp_dump_csv = ARG2BOOL(result["bp_dump_csv"]);
         #endif
 
     } catch (const cxxopts::exceptions::option_has_no_value& e) {

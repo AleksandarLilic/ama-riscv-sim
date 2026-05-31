@@ -70,6 +70,7 @@ void main_memory::burn_elf(std::string test_elf) {
 
     // load segment
     ELFIO::segment* load_seg = nullptr;
+    uint32_t end_of_loaded = 0;
     for (const auto& seg : reader.segments) {
         if (seg->get_type() != ELFIO::PT_LOAD) continue;
         load_seg = seg.get();
@@ -83,6 +84,25 @@ void main_memory::burn_elf(std::string test_elf) {
             }
         uint64_t off = (paddr - BASE_ADDR);
         std::memcpy(&mem[off], seg->get_data(), size);
+
+        // permissions
+        uint32_t flags = seg->get_flags();
+        uint32_t memsz = TO_U32(seg->get_memory_size());
+        regions.push_back({
+            TO_U32(off),
+            memsz,
+            TO_BOOL(flags & ELFIO::PF_R),
+            TO_BOOL(flags & ELFIO::PF_W),
+            TO_BOOL(flags & ELFIO::PF_X)
+        });
+        end_of_loaded = std::max(end_of_loaded, TO_U32(off) + memsz);
+    }
+
+    // implicit stack/heap region: everything above loaded segments is rw-
+    if (end_of_loaded < MEM_SIZE) {
+        regions.push_back({
+            end_of_loaded, (MEM_SIZE - end_of_loaded), true, true, false
+        });
     }
 
     if (load_seg == nullptr) {
@@ -140,7 +160,26 @@ void main_memory::burn_elf(std::string test_elf) {
     #endif
 }
 
+void main_memory::check_access(
+        uint32_t addr, bool is_r, bool is_w, bool is_x) const
+{
+    for (const auto& rgn : regions) {
+        if ((addr >= rgn.base) && (addr < (rgn.base + rgn.size))) {
+            if ((is_r && !rgn.r) || (is_w && !rgn.w) || (is_x && !rgn.x)) {
+                const char* type = is_w ? "write" : (is_x ? "exec" : "read");
+                std::cerr << "ERROR: Memory access violation."
+                          << " Address: 0x" << std::hex << (BASE_ADDR + addr)
+                          << " Type: " << type
+                          << std::dec << std::endl;
+                throw std::runtime_error("Memory access violation.");
+            }
+            return;
+        }
+    }
+}
+
 uint32_t main_memory::rd_inst(uint32_t addr) {
+    check_access(addr, false, false, true);
     uint32_t inst = dev::rd_32(addr);
     #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
@@ -171,6 +210,7 @@ scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
 #endif
 
 uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
+    check_access(addr, true, false, false);
     uint32_t data = dev::rd(addr, size);
     #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
@@ -192,6 +232,7 @@ uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
 }
 
 void main_memory::wr(uint32_t addr, uint32_t data, uint32_t size) {
+    check_access(addr, false, true, false);
     #ifdef HW_MODELS_EN
     dcache.wr(BASE_ADDR + addr, data, size);
     #endif
