@@ -13,7 +13,7 @@
 
 #include "support.h"
 
-uint32_t start_time, end_time, clks, time_diff;
+uint32_t start_time;
 
 void initialise_board (void) {};
 
