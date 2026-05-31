@@ -1,5 +1,6 @@
 TARGET := ustress
-CFLAGS += -DLOOPS=1000
+LOOPS ?= 1000
+CFLAGS += -DLOOPS=$(LOOPS)
 
 LIBS += -lc
 COMMON_OBJ_NAMES = crt0.o common.o nanoprintf.o newlib_defs.o

@@ -21,6 +21,9 @@
 
 static int kernel(long runs, int32_t result, int32_t divider) {
   for(long n=runs; n>0; n--) {
+    #ifdef CPU_AMA_RISCV
+    result |= ((int32_t)n ^ 0x7F4A7C15);
+    #endif
     result /= divider;
     result /= divider;
     result /= divider;

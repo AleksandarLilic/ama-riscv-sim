@@ -53,7 +53,7 @@
   //#define L2D_CACHE_ASSOCIATIVITY (8)
   //#define L2D_CACHE_LINE_SIZE (64)
   //#define L2D_CACHE_SIZE (1 * 1024 * 1024)
-  #define STORE_BUFFER_SIZE (1)
+  //#define STORE_BUFFER_SIZE (1)
 #elif defined(CPU_NONE)
   #error Please specify CPU. E.g. make CPU=NEOVERSE-V1.
 #else

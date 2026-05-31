@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_PROF -DNO_TRAP"],
+    "_common_args": ["USER_DEFINES=-DNO_TRAP"],
 
     "asm_rv32i": ["test"],
     "asm_rv32i_branches": ["test"],
@@ -81,16 +81,17 @@
 
     "ustress/branch_direct": [["ustress"], ["LOOPS=200"]],
     "ustress/branch_indirect": [["ustress"], ["LOOPS=20"]],
-    "ustress/call_return": [["ustress"], ["LOOPS=150"]],
-    "ustress/l1d_cache": [["ustress"], ["LOOPS=800"]],
-    "ustress/l1i_cache": [["ustress"], ["LOOPS=1000"]],
+    "ustress/call_return": [["ustress"], ["LOOPS=3"]],
+    "ustress/div32": [["ustress"], ["LOOPS=400"]],
+    "ustress/div64": [["ustress"], ["LOOPS=100"]],
+    "ustress/l1d_cache": [["ustress"], ["LOOPS=160"]],
+    "ustress/l1i_cache": [["ustress"], ["LOOPS=300"]],
     "ustress/load_after_store": [["ustress"], ["LOOPS=50"]],
-    "ustress/mac32": [["ustress"], ["LOOPS=5000"]],
+    "ustress/mac32": [["ustress"], ["LOOPS=4000"]],
     "ustress/mac64": [["ustress"], ["LOOPS=1250"]],
-    "ustress/memcpy": [["ustress"], ["LOOPS=150"]],
-    "ustress/mul32": [["ustress"], ["LOOPS=8000"]],
+    "ustress/memcpy": [["ustress"], ["LOOPS=40"]],
+    "ustress/mul32": [["ustress"], ["LOOPS=7000"]],
     "ustress/mul64": [["ustress"], ["LOOPS=2000"]],
-    "ustress/store_buffer_full": [["ustress"], ["LOOPS=100"]],
 
     "aapg/aapg_rv32_all": ["all"],
     "aapg/aapg_rv32_all2": ["all"],

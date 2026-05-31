@@ -30,6 +30,20 @@
     "embench/ud": [["embench"], ["CPU_MHZ=50"]],
     "embench/wikisort": [["embench"], ["CPU_MHZ=50", "WARMUP=5"]],
 
+    "ustress/branch_direct": [["ustress"], ["LOOPS=200000"]],
+    "ustress/branch_indirect": [["ustress"], ["LOOPS=20000"]],
+    "ustress/call_return": [["ustress"], ["LOOPS=3000"]],
+    "ustress/div32": [["ustress"], ["LOOPS=400000"]],
+    "ustress/div64": [["ustress"], ["LOOPS=100000"]],
+    "ustress/l1d_cache": [["ustress"], ["LOOPS=160000"]],
+    "ustress/l1i_cache": [["ustress"], ["LOOPS=300000"]],
+    "ustress/load_after_store": [["ustress"], ["LOOPS=50000"]],
+    "ustress/mac32": [["ustress"], ["LOOPS=4000000"]],
+    "ustress/mac64": [["ustress"], ["LOOPS=1250000"]],
+    "ustress/memcpy": [["ustress"], ["LOOPS=40000"]],
+    "ustress/mul32": [["ustress"], ["LOOPS=7000000"]],
+    "ustress/mul64": [["ustress"], ["LOOPS=2000000"]],
+
     "uart_direct_send": ["hello_world"],
     "uart_printf_nano": ["hello_world"],
     "uart_direct_loopback": ["test"]

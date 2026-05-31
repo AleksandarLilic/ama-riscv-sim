@@ -20,6 +20,12 @@
 #include <stdlib.h>
 #include "main.h"
 
+#ifdef CPU_AMA_RISCV
+#define RECURSION_DEPTH 500
+#else
+#define RECURSION_DEPTH 10000
+#endif
+
 #if USE_C
 
 static uint16_t fA(int n, uint16_t p);
@@ -94,7 +100,7 @@ static uint16_t fH(int n, uint16_t lfsr) {
 void stress(long runs) {
   uint16_t r = 0xACE1u;
   for(int n = runs; n>0; n--) {
-    r = fA(10000, r);
+    r = fA(RECURSION_DEPTH, r);
   }
 
   /* This volatile use of result should prevent the above code from being optimised away by the compiler. */

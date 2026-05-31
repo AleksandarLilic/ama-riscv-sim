@@ -30,6 +30,23 @@
 
 #ifdef CPU_AMA_RISCV
 #include "common.h"
+
+#ifndef LOOPS
+#define LOOPS 100
+#endif
+
+#ifndef USTRESS_TEST_NAME
+#define USTRESS_TEST_NAME "branch_indirect"
+#endif
+
+#ifdef MHPM
+#ifdef MHPM_TDA
+tda_cnt_t tda_pe = {0ul};
+#else
+hw_cnt_t hw_pe = {0ul};
+#endif
+#endif
+
 #endif
 
 #if USE_C
@@ -39,6 +56,21 @@ static volatile int v = 0;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 int main(void) {
+
+  #ifdef CPU_AMA_RISCV
+  uint32_t start_time, end_time, clks, time_diff;
+  printf("\nRunning ustress %s...\n", USTRESS_TEST_NAME);
+  #ifdef MHPM
+  #ifdef MHPM_TDA
+  init_tda_counters();
+  #else
+  init_hw_counters();
+  #endif
+  #endif
+  start_time = get_cpu_time();
+  PROF_START;
+  #endif
+
   void* labels[] = {
     &&l0, &&l1, &&l2, &&l3, &&l4, &&l5, &&l6, &&l7,
     &&l8, &&l9, &&l10, &&l11, &&l12, &&l13, &&l14, &&l15,
@@ -48,7 +80,7 @@ int main(void) {
   for(unsigned int mask = 0x1F; mask > 0; mask >>= 1) {
     uint16_t lfsr = 0xACE1u;
     #ifdef CPU_AMA_RISCV
-    long n=100;
+    long n=LOOPS;
     #else
     long n=3000000;
     #endif
@@ -94,6 +126,28 @@ int main(void) {
   }
 
   #ifdef CPU_AMA_RISCV
+	PROF_STOP;
+  end_time = get_cpu_time();
+
+  #ifdef MHPM
+  #ifdef MHPM_TDA
+  save_tda_counters(&tda_pe);
+  //print_tda_counters(&tda_pe);
+  print_tda_counters_json(&tda_pe);
+  clks = tda_pe.cycles;
+  #else
+  save_hw_counters(&hw_pe);
+  //print_hw_counters(&hw_pe);
+  print_hw_counters_json(&hw_pe);
+  clks = hw_pe.cycles;
+  #endif
+  #else // !MHPM
+  clks = get_cpu_cycles();
+  #endif
+
+  time_diff = ((end_time - start_time) / 1000);
+  printf("Ran for %d cycles and %d ms\n", clks, time_diff);
+
   pass();
   #endif
 

@@ -1,4 +1,5 @@
 TARGET := ustress
-CFLAGS += -DLOOPS=150
+LOOPS ?= 10
+CFLAGS += -DLOOPS=$(LOOPS)
 OPT += -O1
 include ../Makefile.ustress.inc

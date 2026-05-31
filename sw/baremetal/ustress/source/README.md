@@ -1,7 +1,7 @@
 > [!NOTE]
-> Cloned from https://gitlab.arm.com/telemetry-solution/telemetry-solution/-/tree/main/tools/ustress
-> Changes are made to workloads used for this project, guarding with `#ifdef`
-> The writeup below is for the source repo only
+> Cloned from https://gitlab.arm.com/telemetry-solution/telemetry-solution/-/tree/main/tools/ustress  
+> Changes are made to workloads used for this project, guarding with `#ifdef`  
+> The writeup below is for the source repo only  
 
 # UStress Validation Suite
 
