@@ -295,17 +295,17 @@ class perf:
         self.branches_perc = round((self.b_inst / self.inst_total) * 100, 2)
         self.ls_perc = round((self.dc_inst / self.inst_total) * 100, 2)
         self.div_perc = round((self.div_inst / self.inst_total) * 100, 2)
-        self.t_clk_wc = int(np.ceil(self.t_clk_wc))
+        self.t_clk_ec = int(np.ceil(self.t_clk_ec))
         self.t_clk_bc = int(np.ceil(self.t_clk_bc))
 
         self.perf_str = f"\nEstimated HW performance at {self.freq}MHz:"
-        self.perf_str += f"{DELIM}Best:  "
+        self.perf_str += f"{DELIM}Best:     "
         self.perf_str += self._estimated_perf(self.t_clk_bc, "best")
-        self.perf_str += f"{DELIM}Worst: "
-        self.perf_str += self._estimated_perf(self.t_clk_wc, "worst")
+        self.perf_str += f"{DELIM}Expected: "
+        self.perf_str += self._estimated_perf(self.t_clk_ec, "exp")
 
-        width = self.est["worst"]["clk"] - self.est["best"]["clk"]
-        midpoint = (self.est["best"]["clk"] + self.est["worst"]["clk"]) >> 1
+        width = self.est["exp"]["clk"] - self.est["best"]["clk"]
+        midpoint = (self.est["best"]["clk"] + self.est["exp"]["clk"]) >> 1
         est_ratio = width / midpoint
         self.perf_str += (
             f"{DELIM}Estimated Cycles range: {FMT(width)} cycles, " +
@@ -316,13 +316,13 @@ class perf:
     # TODO:
     # D$ and COMP stalls can technically overlap, but unlikely in current uarch
     def _est_stalls(self):
-        # worst case:
+        # expected case:
         #   fe stalls never overlap with be stalls
-        self.t_clk_wc = self.ipc_1_cycles
-        self.t_clk_wc += self.bp_stalls
-        self.t_clk_wc += self.fe_stalls
-        self.t_clk_wc += self.be_stalls
-        #self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
+        self.t_clk_ec = self.ipc_1_cycles
+        self.t_clk_ec += self.bp_stalls
+        self.t_clk_ec += self.fe_stalls
+        self.t_clk_ec += self.be_stalls
+        #self.t_clk_ec += self.mrpc_stalls + self.mwpc_stalls
 
         # best case:
         #   fe stalls overlap with be stalls completely
@@ -466,7 +466,7 @@ class perf:
 
         return f"{stats}\n{self.perf_str}"
 
-    def save_as_json(self) -> None:
+    def _core_dict(self) -> dict:
         stall_fe = self.fe_stalls
         stall_be = self.be_stalls
         bad_spec = self.bp_stalls
@@ -474,8 +474,8 @@ class perf:
         lost_other = 0
         lost = bad_spec + lost_other
         ret_int = self.inst_total - self.simd_dot_inst - self.simd_mul_inst
-        core = {
-            "cycles":           int(self.t_clk_wc),
+        return {
+            "cycles":           int(self.t_clk_ec),
             "cycles_opt":       int(self.t_clk_bc),
             "empty":            int(stalls + lost),
             "stalls":           int(stalls),
@@ -498,11 +498,13 @@ class perf:
             "l1d_ref":          int(self.dc_stats['references']),
             "l1d_miss":         int(sum(self.dc_stats['misses'].values())),
         }
+
+    def save_as_json(self) -> None:
         out_path = os.path.join(
             os.path.dirname(self.inst_profile), "perf_est.json"
         )
         with open(out_path, "w") as f:
-            json.dump({"core": core}, f, indent=4)
+            json.dump({"core": self._core_dict()}, f, indent=4)
         print(f"\nSaved performance estimation as JSON to {out_path}")
 
     def save_as_df(self) -> None:
@@ -524,7 +526,7 @@ def parse_args():
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
     parser.add_argument("rf_trace", help="Path to 'rf_trace.bin' for depndency/hazard analysis")
     parser.add_argument("--hw", "--hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration", default=DEFAULT_HW_YAML)
-    parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
+    parser.add_argument("-c", "--corr", type=str, default=None, help="Path to RTL hw_stats JSON for cycles range and per-metric correlation analysis")
     parser.add_argument("-j", "--json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
     parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output except the JSON save path; requires -j")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
@@ -535,13 +537,15 @@ def main(args: argparse.Namespace):
     p_hws = args.hw_stats
     p_met = args.hw
     p_rft = args.rf_trace
-    corr = args.corr
+    p_corr = args.corr
     paths = [p_inst, p_hws, p_met]
     if p_rft:
-        paths.append(args.rf_trace)
+        paths.append(p_rft)
+    if p_corr:
+        paths.append(p_corr)
 
-    if args.silent and not args.json:
-        raise ValueError("--silent requires --json")
+    if args.silent and not (args.json or args.corr):
+        raise ValueError("--silent requires --json or --corr")
 
     for p in paths:
         if not os.path.isfile(p):
@@ -554,40 +558,22 @@ def main(args: argparse.Namespace):
     if args.json:
         res.save_as_json()
 
-    if corr:
+    if p_corr:
         import matplotlib.pyplot as plt
-        print("\nCycles Correlation")
+        with open(p_corr, 'r') as f:
+            hw_stats_rtl = json.load(f)
+        rtl_core = hw_stats_rtl['core']
+        corr = rtl_core['cycles']
+
+        # --- Cycles range plot ---
+        if not args.silent:
+            print("\nCycles Correlation")
         clk_best = res.est["best"]["clk"]
-        clk_worst = res.est["worst"]["clk"]
-        midpoint = (clk_best + clk_worst) >> 1
-        edge_diff = None
-        if corr < clk_best:
-            inout_str = "OUTSIDE (BELOW)"
-            edge_diff = clk_best - corr
-            edge_perc_diff = (edge_diff / clk_best) * 100
-            ref_str = "best"
-        elif corr > clk_worst:
-            inout_str = "OUTSIDE (ABOVE)"
-            edge_diff = corr - clk_worst
-            edge_perc_diff = (edge_diff / clk_worst) * 100
-            ref_str = "worst"
-        else:
-            inout_str = "INSIDE"
-        print(f"{INDENT}Achieved cycles: {FMT(corr)} - " +
-              f"result is {inout_str} estimated range")
+        clk_exp = res.est["exp"]["clk"]
 
-        if edge_diff is not None:
-            mid_diff = abs(corr - midpoint)
-            mid_perc_diff = (mid_diff / midpoint) * 100
-            print(f"{INDENT}Edge diff: {edge_diff} cycles " +
-                  f"({edge_perc_diff:.2f}% of {ref_str} estimate)")
-            print(f"{INDENT}Mid diff : {mid_diff} cycles " +
-                  f"({mid_perc_diff:.2f}% of midpoint estimate)")
-
-        # --- Plot ---
         fig, ax = plt.subplots(figsize=(8, 2))
         xmin = min(clk_best, corr)
-        xmax = max(clk_worst, corr)
+        xmax = max(clk_exp, corr)
         xrange = xmax - xmin
         ax.set_xlim(xmin - xrange*.1, xmax + xrange*.1)
 
@@ -597,32 +583,59 @@ def main(args: argparse.Namespace):
                   color='lightgray', linewidth=15, label='Estimate range')
 
         # add markers
-        ax.vlines(clk_worst, -0.1, 0.1,
-                  color='tab:red', linewidth=2, label='Worst')
+        ax.vlines(clk_exp, -0.1, 0.1,
+                  color='k', linewidth=2, label='Expected')
         ax.vlines(clk_best, -0.1, 0.1,
                   color='tab:green', linewidth=2, label='Best')
         ax.vlines(corr, -0.15, 0.15,
                   color='tab:blue', linewidth=2, label='Achieved')
 
         # annotate
-        ax.text(clk_worst, 0.13, f'Worst:\n{FMT(clk_worst)}',
-                ha='center', color='tab:red')
+        ax.text(clk_exp, 0.13, f'Expected:\n{FMT(clk_exp)}',
+                ha='center', color='k')
         ax.text(clk_best, 0.13, f'Best:\n{FMT(clk_best)}',
                 ha='center', color='tab:green')
         ax.text(corr, -0.37, f'Achieved:\n{FMT(corr)}',
                 ha='center', color='tab:blue')
 
         # style
-        ax.margins(0,0)
+        ax.margins(0, 0)
         ax.set_ylim(-0.42, 0.42)
         ax.set_yticks([])
         ax.grid(axis='x', linestyle='--', alpha=0.5)
         ax.set_xlabel('Cycles')
         ax.xaxis.set_major_formatter(FMT)
         #ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
-        ax.set_title('Estimate vs Achieved Cycles')
+        ax.set_title('Correlation - Estimated vs Achieved Cycles')
+        fig.tight_layout()
 
-        plt.tight_layout()
+        # --- Per-metric correlation ---
+        est_core = res._core_dict()
+
+        comp = []
+        for k, e in est_core.items():
+            if k not in rtl_core:
+                continue
+            r = rtl_core[k]
+            diff = e - r
+            diff_p = round(diff / r * 100, 3) if r else 0
+            comp.append([k, e, r, diff, diff_p])
+
+        dfc = pd.DataFrame(
+            comp, columns=["metric", "est", "rtl", "diff", "diff%"]
+        )
+        if not args.silent:
+            print(dfc.to_string(index=False))
+
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
+        rect = ax2.bar(dfc['metric'], dfc['diff%'].round(2))
+        ax2.bar_label(rect, padding=4, size=8)
+        ax2.tick_params(axis='x', labelrotation=90)
+        ax2.grid(which='major', axis='y')
+        ax2.set_title("Correlation - Per metric difference [%]")
+        fig2.tight_layout()
+        ax2.margins(0.02, 0.08)
+
         plt.show()
 
 if __name__ == "__main__":
