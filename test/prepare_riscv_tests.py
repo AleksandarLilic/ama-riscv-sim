@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--clean_first", default=False, action='store_true', help="Clean all targets before building. Otherwise, just run make to build")
     parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
     parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
-    parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter to only generate specific tests.")
+    parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter (as a whitespace separated list) to only build the subset of tests that exist in the testlist and match this filter list.")
     parser.add_argument("-a", "--append", default=False, action='store_true', help="Append to existing gtest_testlist.txt")
     return parser.parse_args()
 
