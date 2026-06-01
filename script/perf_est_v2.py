@@ -185,8 +185,8 @@ class perf:
         ### 'stalls' are non-negotiable - they will happen, but can overlap
         ### 'hazards' may (will stall) or may not happen (won't stall)
 
-        self.b_stalls = (self.c_bp_hit - 1) * self.bp_stats['pred']
-        self.b_stalls += (self.c_bp_miss - 1) * self.bp_stats['mispred']
+        self.bp_stalls = (self.c_bp_hit - 1) * self.bp_stats['pred']
+        self.bp_stalls += (self.c_bp_miss - 1) * self.bp_stats['mispred']
 
         self.j_stalls = (self.c_jd_res - 1) * self.jd_inst
         self.j_stalls += (self.c_ji_res - 1) * self.ji_inst
@@ -318,20 +318,16 @@ class perf:
     def _est_stalls(self):
         # worst case:
         #   fe stalls never overlap with be stalls
-        #   alu hazard stall on each multi cycle instruction
-        #   dcache hazard stall on each load instruction
         self.t_clk_wc = self.ipc_1_cycles
-        self.t_clk_wc += self.b_stalls
+        self.t_clk_wc += self.bp_stalls
         self.t_clk_wc += self.fe_stalls
         self.t_clk_wc += self.be_stalls
         #self.t_clk_wc += self.mrpc_stalls + self.mwpc_stalls
 
         # best case:
         #   fe stalls overlap with be stalls completely
-        #   no alu hazard stall (e.g. best possible inst scheduling)
-        #   no dcache hazard stall (quite unlikely on some workloads)
         self.t_clk_bc = self.ipc_1_cycles
-        self.t_clk_bc += self.b_stalls
+        self.t_clk_bc += self.bp_stalls
         self.t_clk_bc += max(self.be_stalls, self.fe_stalls)
         #self.t_clk_bc += self.mrpc_stalls + self.mwpc_stalls
 
@@ -448,7 +444,7 @@ class perf:
         )
 
         out_stalls = f"\nPipeline stalls (max): " + \
-            f"{DELIM}Bad spec: {FMT(self.b_stalls)}" + \
+            f"{DELIM}Bad spec: {FMT(self.bp_stalls)}" + \
             f"{DELIM}FE bound: {FMT(self.fe_stalls)} - " + \
             f"ICache: {FMT(self.ic_stalls)} (AMAT: {self.ic_amat}), " + \
             f"Core: {FMT(self.j_stalls)}" + \
@@ -470,6 +466,45 @@ class perf:
 
         return f"{stats}\n{self.perf_str}"
 
+    def save_as_json(self) -> None:
+        stall_fe = self.fe_stalls
+        stall_be = self.be_stalls
+        bad_spec = self.bp_stalls
+        stalls = stall_fe + stall_be
+        lost_other = 0
+        lost = bad_spec + lost_other
+        ret_int = self.inst_total - self.simd_dot_inst - self.simd_mul_inst
+        core = {
+            "cycles":           int(self.t_clk_wc),
+            "cycles_opt":       int(self.t_clk_bc),
+            "empty":            int(stalls + lost),
+            "stalls":           int(stalls),
+            "lost":             int(lost),
+            "lost_other":       int(lost_other),
+            "bad_spec":         int(bad_spec),
+            "stall_be":         int(stall_be),
+            "stall_l1d":        int(self.dc_stalls),
+            "stall_be_core":    int(self.all_hazards + self.all_div_stalls),
+            "stall_fe":         int(stall_fe),
+            "stall_l1i":        int(self.ic_stalls),
+            "stall_fe_core":    int(self.j_stalls),
+            "ret":              int(self.inst_total),
+            "ret_simd":         int(self.simd_dot_inst + self.simd_mul_inst),
+            "ret_int":          int(ret_int),
+            "ret_ctrl_flow_br": int(self.b_inst),
+            "bp_miss":          int(self.bp_stats['mispred']),
+            "l1i_ref":          int(self.ic_stats['references']),
+            "l1i_miss":         int(sum(self.ic_stats['misses'].values())),
+            "l1d_ref":          int(self.dc_stats['references']),
+            "l1d_miss":         int(sum(self.dc_stats['misses'].values())),
+        }
+        out_path = os.path.join(
+            os.path.dirname(self.inst_profile), "perf_est.json"
+        )
+        with open(out_path, "w") as f:
+            json.dump({"core": core}, f, indent=4)
+        print(f"\nSaved performance estimation as JSON to {out_path}")
+
     def save_as_df(self) -> None:
         attrs = vars(self).copy()
         branches = attrs.pop('b')
@@ -487,9 +522,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Performance estimates based on the ISA sim results and the microarchitectural description.")
     parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
+    parser.add_argument("rf_trace", help="Path to 'rf_trace.bin' for depndency/hazard analysis")
     parser.add_argument("--hw", "--hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration", default=DEFAULT_HW_YAML)
-    parser.add_argument("-r", "--rf_trace", help="Optional argument to provide 'rf_trace.bin' path for depndency/hazard analysis", default=None)
     parser.add_argument("-c", "--corr", type=int, default=0, help="If specified, run cycles correlation analysis with the given achieved cycles value")
+    parser.add_argument("-j", "--json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
+    parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output except the JSON save path; requires -j")
     parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
     return parser.parse_args()
 
@@ -503,12 +540,19 @@ def main(args: argparse.Namespace):
     if p_rft:
         paths.append(args.rf_trace)
 
+    if args.silent and not args.json:
+        raise ValueError("--silent requires --json")
+
     for p in paths:
         if not os.path.isfile(p):
             raise ValueError(f"File {p} not found")
 
     res = perf(p_inst, p_hws, p_met, p_rft)
-    print(res)
+    if not args.silent:
+        print(res)
+
+    if args.json:
+        res.save_as_json()
 
     if corr:
         import matplotlib.pyplot as plt

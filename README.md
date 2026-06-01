@@ -717,9 +717,9 @@ It also backannotates the disassembly and saves it as `dhrystone.prof.dasm`
 
 The microarchitecture description at [script/hw_perf_metrics_v2.yaml](script/hw_perf_metrics_v2.yaml) is based on the [ama-riscv](https://github.com/AleksandarLilic/ama-riscv) implementation
 
-Run with positional arguments as
+Run with positional arguments and also save as json file with estimates
 ```sh
-./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json -r examples/dhrystone_dhrystone_out/rf_trace.bin
+./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json examples/dhrystone_dhrystone_out/rf_trace.bin -j
 ```
 
 Since the hardware stats are collected from the ISA model, and simple microarchitecure description, there is some uncertainty on how much time exactly it would take to execute the workload. Estimates are therefore provided as a range between best and worst case.  
