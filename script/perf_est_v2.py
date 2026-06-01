@@ -565,9 +565,10 @@ def main(args: argparse.Namespace):
         rtl_core = hw_stats_rtl['core']
         corr = rtl_core['cycles']
 
-        # --- Cycles range plot ---
         if not args.silent:
-            print("\nCycles Correlation")
+            print("\nCorrelation:")
+
+        # --- Cycles range plot ---
         clk_best = res.est["best"]["clk"]
         clk_exp = res.est["exp"]["clk"]
 
