@@ -1,0 +1,38 @@
+# shared CLI args appended to every workload run
+# each list item is split on whitespace, so "--arg value" pairs can share a line
+isa_sim_args:
+  - --prof_pc_start 80000000
+  - -t
+  - --bp2 global
+  - --no_callstack
+
+# absolute (literal) or repo-root-relative .elf paths
+workloads:
+  - sw/baremetal/coremark/coremark.elf
+  - sw/baremetal/dhrystone/dhrystone.elf
+  - sw/baremetal/stream_int/stream.elf
+  - sw/baremetal/embench/aha-mont64/embench.elf
+  - sw/baremetal/embench/crc32/embench.elf
+  - sw/baremetal/embench/cubic/embench.elf
+  - sw/baremetal/embench/edn/embench.elf
+  - sw/baremetal/embench/huffbench/embench.elf
+  - sw/baremetal/embench/matmult-int/embench.elf
+  - sw/baremetal/embench/md5sum/embench.elf
+  - sw/baremetal/embench/minver/embench.elf
+  - sw/baremetal/embench/nbody/embench.elf
+  - sw/baremetal/embench/nettle-aes/embench.elf
+  - sw/baremetal/embench/nettle-sha256/embench.elf
+  - sw/baremetal/embench/nsichneu/embench.elf
+  - sw/baremetal/embench/picojpeg/embench.elf
+  - sw/baremetal/embench/primecount/embench.elf
+  - sw/baremetal/embench/qrduino/embench.elf
+  - sw/baremetal/embench/sglib-combined/embench.elf
+  - sw/baremetal/embench/slre/embench.elf
+  - sw/baremetal/embench/st/embench.elf
+  - sw/baremetal/embench/statemate/embench.elf
+  - sw/baremetal/embench/tarfind/embench.elf
+  - sw/baremetal/embench/ud/embench.elf
+  - sw/baremetal/embench/wikisort/embench.elf
+  - sw/baremetal/mlp/w8a8.elf
+  - sw/baremetal/mlp/w4a8.elf
+  - sw/baremetal/mlp/w2a8.elf
