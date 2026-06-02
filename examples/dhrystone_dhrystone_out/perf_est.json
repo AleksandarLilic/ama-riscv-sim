@@ -1,0 +1,26 @@
+{
+    "core": {
+        "cycles": 572103,
+        "cycles_opt": 564027,
+        "empty": 82722,
+        "stalls": 82128,
+        "lost": 594,
+        "lost_other": 0,
+        "bad_spec": 594,
+        "stall_be": 8076,
+        "stall_l1d": 1662,
+        "stall_be_core": 6414,
+        "stall_fe": 74052,
+        "stall_l1i": 30972,
+        "stall_fe_core": 43080,
+        "ret": 489376,
+        "ret_simd": 0,
+        "ret_int": 489376,
+        "ret_ctrl_flow_br": 52653,
+        "bp_miss": 297,
+        "l1i_ref": 489673,
+        "l1i_miss": 5162,
+        "l1d_ref": 162019,
+        "l1d_miss": 206
+    }
+}

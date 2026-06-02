@@ -26,6 +26,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
     - [Call Graph](#call-graph)
     - [Execution visualization](#execution-visualization)
     - [Hardware performance estimates](#hardware-performance-estimates)
+    - [TDA](#tda)
 - [Hardware model sweeps](#hardware-model-sweeps)
   - [Caches](#caches)
   - [Branch predictors](#branch-predictors)
@@ -719,7 +720,10 @@ The microarchitecture description at [script/hw_perf_metrics_v2.yaml](script/hw_
 
 Run with positional arguments and also save as json file with estimates
 ```sh
-./script/perf_est_v2.py examples/dhrystone_dhrystone_out/inst_profile.json examples/dhrystone_dhrystone_out/hw_stats.json examples/dhrystone_dhrystone_out/rf_trace.bin -j
+./script/perf_est_v2.py \
+    examples/dhrystone_dhrystone_out/inst_profile.json \
+    examples/dhrystone_dhrystone_out/hw_stats.json \
+    examples/dhrystone_dhrystone_out/rf_trace.bin -j
 ```
 
 Since the hardware stats are collected from the ISA model, and simple microarchitecure description, there is some uncertainty on how much time exactly it would take to execute the workload. Estimates are therefore provided as a range between best and worst case.  
@@ -733,25 +737,75 @@ Performance estimate breakdown for:
     ../workdir/dhrystone_dhrystone_out/rf_trace.bin
 
 Peak Stack usage: 352 bytes
-Instructions executed: 419.5k
-    icache (32 sets, 2 ways, 4096B data): References: 419.8k, Hits: 416.7k, Misses: 3.15k, Hit Rate: 99.25%, MPKI: 7.52
-DMEM inst: 162.5k - L/S: 85.6k/77.0k (38.74% instructions)
-    dcache (16 sets, 4 ways, 4096B data): References: 159.2k, Hits: 159.0k, Misses: 207, Writebacks: 143, Hit Rate: 99.87%, MPKI: 0.49
-Branch inst: 40589 (9.67% instructions)
-    bpred (combined): Predicted: 40.3k, Mispredicted: 286, Accuracy: 99.30%, MPKI: 0.68
-DIV/REM inst: 1130 (0.27% instructions)
-    divider (16B): Cache: 1.03k (91.33%), Special: 70 (6.19%), Common: 28 (2.48%), 388 b, 13.86 b/d
+Instructions executed: 489.4k
+    icache (32 sets, 2 ways, 4096B data): References: 489.7k, Hits: 484.5k, Misses: 5.16k, Hit Rate: 98.95%, MPKI: 10.55
+DMEM inst: 165.4k - L/S: 87.5k/77.9k (33.80% instructions)
+    dcache (16 sets, 4 ways, 4096B data): References: 162.0k, Hits: 161.8k, Misses: 206, Writebacks: 142, Hit Rate: 99.87%, MPKI: 0.42
+Branch inst: 52653 (10.76% instructions)
+    bpred (combined): Predicted: 52.4k, Mispredicted: 297, Accuracy: 99.44%, MPKI: 0.61
+DIV/REM inst: 1130 (0.23% instructions)
+    divider (16B): Cache: 1.03k (91.33%), Special: 70 (6.19%), Common: 28 (2.48%), 305 b, 10.89 b/d
 
 Pipeline stalls (max): 
-    Bad spec: 572
-    FE bound: 60.0k - ICache: 18.9k (AMAT: 1.04), Core: 41.1k
-    BE bound: 7.03k - DCache: 1.67k (AMAT: 1.01), Core: 5.36k (Divider 612)
+    Bad spec: 594
+    FE bound: 74.1k - ICache: 31.0k (AMAT: 1.06), Core: 43.1k
+    BE bound: 8.08k - DCache: 1.66k (AMAT: 1.01), Core: 6.41k (Divider 1.56k)
 
 Estimated HW performance at 100MHz:
-    Best:  480.1k cycles (4.80ms), IPC: 0.874; BW (avg MB/s) - icache: 333.6, dcache (R/W): 116.0 (59.4/56.5), mem (R/W): 44.6 (42.7/1.8)
-    Worst: 487.2k cycles (4.87ms), IPC: 0.861; BW (avg MB/s) - icache: 328.7, dcache (R/W): 114.3 (58.6/55.7), mem (R/W): 43.9 (42.1/1.8)
-    Estimated Cycles range: 7.03k cycles, midpoint: 483.6k, ratio: 1.45%
+    Best:     564.0k cycles (5.64ms), IPC: 0.868; BW (avg MB/s) - icache: 331.2, dcache (R/W): 99.2 (51.2/48.1), mem (R/W): 59.6 (58.1/1.5)
+    Expected: 572.1k cycles (5.72ms), IPC: 0.855; BW (avg MB/s) - icache: 326.5, dcache (R/W): 97.8 (50.5/47.4), mem (R/W): 58.8 (57.3/1.5)
+    Estimated Cycles range: 8.08k cycles, midpoint: 568.1k, ratio: 1.42%
 ```
+
+### TDA
+Top-down analysis can be run based on the estimated performance counters  
+By default, script will open up plots in the default browser. The `-r <arg>` passes argument straight to `plotly`'s renderer argument. Using `-r notebook` or `-r png` is useful when running form jupyter notebook. The `-r png` simply streams png contents to stdout
+
+```sh
+./script/tda.py examples/dhrystone_dhrystone_out/perf_est.json
+```
+
+```
+dhrystone_dhrystone_out
+IPC: 0.855
+         L1        L2  cycles cycles_e
+0      lost  bad_spec     594    594.0
+1      lost     other       0      0.0
+2  frontend    icache   30972    31.0k
+3  frontend      core   43080    43.1k
+4   backend    dcache    1662     1.7k
+5   backend      core    6414     6.4k
+6  retiring   integer  489376   489.4k
+7  retiring      simd       0      0.0
+```
+
+![](examples/dhrystone_dhrystone_out/dhrystone_dhrystone_out_tda.png)
+
+```
+Performance Counters for 'dhrystone_dhrystone_out'
+   class          counter  count count_e
+  cycles           cycles 572103  572.1k
+     ret              ret 489376  489.4k
+   stall           stalls  82128   82.1k
+    lost             lost    594   594.0
+   ret_*          ret_int 489376  489.4k
+   ret_* ret_ctrl_flow_br  52653   52.7k
+   ret_*         ret_simd      0     0.0
+ stall_*         stall_be   8076    8.1k
+ stall_*    stall_be_core   6414    6.4k
+ stall_*         stall_fe  74052   74.1k
+ stall_*    stall_fe_core  43080   43.1k
+ stall_*        stall_l1d   1662    1.7k
+ stall_*        stall_l1i  30972   31.0k
+bad_spec         bad_spec    594   594.0
+   l1i_*          l1i_ref 489673  489.7k
+   l1i_*         l1i_miss   5162    5.2k
+   l1d_*          l1d_ref 162019  162.0k
+   l1d_*         l1d_miss    206   206.0
+    bp_*          bp_miss    297   297.0
+```
+
+![](examples/dhrystone_dhrystone_out/dhrystone_dhrystone_out_all_counters.png)
 
 # Hardware model sweeps
 ISA simulator provides three types of parametrizable hardware models - caches, branch predictors, and divider. It's useful to sweep across various configurations with chosen workloads and compare their performances, as well as size and hardware complexity tradeoffs. These results then drive the decision on which configuration to implement in hardware. Divider model configuration is rather simple (just a number of result cache entries), so it's not included in the sweeps below.
