@@ -185,7 +185,7 @@ struct hw_defs_t {
     static constexpr char bp2_fold_pc[] = "none";
     static constexpr char bp_combined_pc_bits[] = "6";
     static constexpr char bp_combined_cnt_bits[] = "4";
-    static constexpr char bp_combined_fold_pc[] = "all";
+    static constexpr char bp_combined_fold_pc[] = "none";
     // bp other configs
     static constexpr char bp_run_all[] = "false";
     static constexpr char bp_dump_csv[] = "false";
