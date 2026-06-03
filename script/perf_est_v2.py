@@ -9,7 +9,7 @@ from dep_scan import search, search_args
 from ruamel.yaml import YAML
 from run_analysis import icfg, load_inst_prof
 from types import SimpleNamespace
-from utils import DELIM, INDENT, smarter_eng_formatter
+from utils import DELIM, INDENT, smarter_eng_formatter, get_test_title
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -500,12 +500,12 @@ class perf:
         }
 
     def save_as_json(self) -> None:
-        out_path = os.path.join(
+        p = os.path.join(
             os.path.dirname(self.inst_profile), "perf_est.json"
         )
-        with open(out_path, "w") as f:
+        with open(p, "w") as f:
             json.dump({"core": self._core_dict()}, f, indent=4)
-        print(f"\nSaved performance estimation as JSON to {out_path}")
+        print(f"\nSaved performance estimation as JSON to {p}")
 
     def save_as_df(self) -> None:
         attrs = vars(self).copy()
@@ -527,9 +527,13 @@ def parse_args():
     parser.add_argument("rf_trace", help="Path to 'rf_trace.bin' for depndency/hazard analysis")
     parser.add_argument("--hw", "--hw_perf_metrics", help="Path to 'hw_perf_metrics.yaml' for the given hardware configuration", default=DEFAULT_HW_YAML)
     parser.add_argument("-c", "--corr", type=str, default=None, help="Path to RTL hw_stats JSON for cycles range and per-metric correlation analysis")
-    parser.add_argument("-j", "--json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
-    parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output except the JSON save path; requires -j")
-    parser.add_argument("-p", "--places", type=int, default=1, help="Number of decimal places for formatted output (default: 1)")
+    parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output to stdout. Requires running with -j/--save_json or -c/--corr")
+    parser.add_argument("--plot", action="store_true", help="Show plots. Applicable only for correlation runs")
+    parser.add_argument("-p", "--places", type=int, default=2, help="Number of decimal places for formatted output (default: 2)")
+    parser.add_argument("-j", "--save_json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
+    parser.add_argument("--save_corr_csv", action="store_true", help="Save correlation stats as csv")
+    parser.add_argument("--save_corr_png", action="store_true", help="Save correlation plots as png")
+    parser.add_argument("--save_corr_svg", action="store_true", help="Save correlation plots as svg")
     return parser.parse_args()
 
 def main(args: argparse.Namespace):
@@ -544,31 +548,66 @@ def main(args: argparse.Namespace):
     if p_corr:
         paths.append(p_corr)
 
-    if args.silent and not (args.json or args.corr):
-        raise ValueError("--silent requires --json or --corr")
+    valid_corr_run = args.corr and (
+        args.save_corr_csv or \
+        args.plot or args.save_corr_png or args.save_corr_svg
+    )
+    if args.silent and not (args.save_json or valid_corr_run):
+        raise ValueError(
+            "--silent without --save_json or --corr with at least one output" \
+            " has nothing to do"
+        )
 
     for p in paths:
         if not os.path.isfile(p):
             raise ValueError(f"File {p} not found")
 
     res = perf(p_inst, p_hws, p_met, p_rft)
+
     if not args.silent:
         print(res)
 
-    if args.json:
+    if args.save_json:
         res.save_as_json()
 
     if p_corr:
-        import matplotlib.pyplot as plt
         with open(p_corr, 'r') as f:
             hw_stats_rtl = json.load(f)
         rtl_core = hw_stats_rtl['core']
         corr = rtl_core['cycles']
 
+        # --- Per-metric correlation ---
+        est_core = res._core_dict()
+
+        comp = []
+        for k, e in est_core.items():
+            if k not in rtl_core:
+                continue
+            r = rtl_core[k]
+            diff = e - r
+            diff_p = round(diff / r * 100, 3) if r else 0
+            comp.append([k, e, r, diff, diff_p])
+
+        dfc = pd.DataFrame(
+            comp, columns=["metric", "est", "rtl", "diff", "diff%"]
+        )
+
         if not args.silent:
             print("\nCorrelation:")
+            print(dfc.to_string(index=False), "\n")
 
-        # --- Cycles range plot ---
+        if args.save_corr_csv:
+            p = os.path.join(os.path.dirname(p_inst), "correlation.csv")
+            dfc.to_csv(p, index=False)
+            print(f"Saved correlation stats as CSV to {p}")
+
+        if not (args.plot or args.save_corr_png or args.save_corr_svg):
+            return
+
+        import matplotlib.pyplot as plt
+        testname = get_test_title(p_corr)
+
+        # --- Cycles correlation range plot ---
         clk_best = res.est["best"]["clk"]
         clk_exp = res.est["exp"]["clk"]
 
@@ -607,37 +646,35 @@ def main(args: argparse.Namespace):
         ax.set_xlabel('Cycles')
         ax.xaxis.set_major_formatter(FMT)
         #ax.legend(loc='upper right', bbox_to_anchor=(1.35, 1))
-        ax.set_title('Correlation - Estimated vs Achieved Cycles')
+        ax.set_title(
+            f"Correlation for '{testname}' - Estimated vs Achieved Cycles")
         fig.tight_layout()
 
-        # --- Per-metric correlation ---
-        est_core = res._core_dict()
-
-        comp = []
-        for k, e in est_core.items():
-            if k not in rtl_core:
-                continue
-            r = rtl_core[k]
-            diff = e - r
-            diff_p = round(diff / r * 100, 3) if r else 0
-            comp.append([k, e, r, diff, diff_p])
-
-        dfc = pd.DataFrame(
-            comp, columns=["metric", "est", "rtl", "diff", "diff%"]
-        )
-        if not args.silent:
-            print(dfc.to_string(index=False))
-
+        # --- Per-metric correlation plot ---
         fig2, ax2 = plt.subplots(figsize=(8, 6))
         rect = ax2.bar(dfc['metric'], dfc['diff%'].round(2))
         ax2.bar_label(rect, padding=4, size=8)
         ax2.tick_params(axis='x', labelrotation=90)
         ax2.grid(which='major', axis='y')
-        ax2.set_title("Correlation - Per metric difference [%]")
+        ax2.set_title(
+            f"Correlation for '{testname}' - Per metric difference [%]")
         fig2.tight_layout()
         ax2.margins(0.02, 0.08)
 
-        plt.show()
+        plot_args = [("png", args.save_corr_png), ("svg", args.save_corr_svg)]
+        for ext, do_save in plot_args:
+            if not do_save:
+                continue
+            pairs = [(fig, "correlation_cycles"), (fig2, "correlation_metrics")]
+            for fig_obj, stem in pairs:
+                p = os.path.join(os.path.dirname(p_inst), f"{stem}.{ext}")
+                fig_obj.savefig(p)
+                print(f"Saved correlation plot as {ext.upper()} to {p}")
+
+        if not args.plot:
+            plt.close('all')
+        else:
+            plt.show()
 
 if __name__ == "__main__":
     args = parse_args()
