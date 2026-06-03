@@ -85,6 +85,8 @@ def run_one(app: str, sim_args, work_dir: str, save_log: bool):
         insts = f" - executed: {executed:,}, profiled: {profiled:,}"
         if executed == profiled:
             insts += " (all)"
+        else:
+            insts += f", diff: {profiled - executed:,}"
 
     if save_log:
         with open(os.path.join(work_dir, f"{name}.log"), "w") as f:
