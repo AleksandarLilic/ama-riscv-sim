@@ -942,30 +942,29 @@ void core::d_csr_access() {
         #endif
         SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3) << "\n";
     } else {
-        #ifdef DPI
-        if (is_rtl_trusted(csr_addr)) {
-            write_rf(ip.rd(), get_rtl_rf_value(ip.rd()));
-        } else
+        #ifndef DPI
+        csr_cnt_update(csr_addr);
         #endif
-        {
-            #ifndef DPI
-            csr_cnt_update(csr_addr);
-            #endif
-            // using temp in case rd and rs1 are the same register
-            uint32_t init_val_rs1 = rf[ip.rs1()];
-            // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
-            write_rf(ip.rd(), it->second.value);
-            switch (ip.funct3()) {
-                CASE_CSR(rw)
-                CASE_CSR(rs)
-                CASE_CSR(rc)
-                CASE_CSR_I(rwi)
-                CASE_CSR_I(rsi)
-                CASE_CSR_I(rci)
-                default: tu.e_unsupported_inst("sys");
-            }
-            if (csr.at(CSR_TOHOST).value & 0x1) running = false;
+        // using temp in case rd and rs1 are the same register
+        uint32_t init_val_rs1 = rf[ip.rs1()];
+        // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
+        #ifdef DPI
+        uint32_t val = is_rtl_trusted(csr_addr) ?
+            get_rtl_rf_value(ip.rd()) : it->second.value;
+        write_rf(ip.rd(), val);
+        #else
+        write_rf(ip.rd(), it->second.value);
+        #endif
+        switch (ip.funct3()) {
+            CASE_CSR(rw)
+            CASE_CSR(rs)
+            CASE_CSR(rc)
+            CASE_CSR_I(rwi)
+            CASE_CSR_I(rsi)
+            CASE_CSR_I(rci)
+            default: tu.e_unsupported_inst("sys");
         }
+        if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
 
     #ifdef DASM_EN
