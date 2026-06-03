@@ -37,6 +37,9 @@ class perf:
     div_inst_a = icfg.INST_T[icfg.k_div]
     simd_dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
     simd_mul_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul]
+    simd_add_sub_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_add_sub]
+    simd_arith_a = icfg.INST_T[icfg.k_simd_arith]
+    simd_data_fmt_a = icfg.INST_T[icfg.k_simd_data_fmt]
     csr_inst_a = icfg.INST_T[icfg.k_csr]
     expected_hw_metrics = [
         "cpu_frequency_mhz", "pipeline",
@@ -56,9 +59,7 @@ class perf:
 
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, rf_trace=None):
         self.inst_profile = inst_profile
-        self.inputs = [inst_profile, hw_stats, hw_perf_metrics]
-        if rf_trace is not None:
-            self.inputs.append(rf_trace)
+        self.inputs = [inst_profile, hw_stats, hw_perf_metrics, rf_trace]
         df = load_inst_prof(inst_profile, allow_internal=True)
         # get internal keys into dfi and remove from df
         dfi = df.loc[df['name'].str.startswith('_')]
@@ -177,6 +178,9 @@ class perf:
         self.div_inst = sum_up(self.div_inst_a)
         self.simd_dot_inst = sum_up(self.simd_dot_inst_a)
         self.simd_mul_inst = sum_up(self.simd_mul_inst_a)
+        self.simd_add_sub_inst = sum_up(self.simd_add_sub_inst_a)
+        self.simd_arith = sum_up(self.simd_arith_a)
+        self.simd_data_fmt = sum_up(self.simd_data_fmt_a)
 
         # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
@@ -224,7 +228,6 @@ class perf:
             self.div_stats["common_bits"]
         self.all_div_stalls = sum(vars(self.div_stalls).values())
 
-        use_dep_analysis = (rf_trace is not None)
         def find_hazards(win, src, dep="_any_"):
             r, _ = search(search_args(rf_trace, src=src, dep=dep, window=win))
             #print(r)
@@ -243,37 +246,32 @@ class perf:
             "simd_mul": (self.c_simd_mul - 1),
         }
 
-        if (use_dep_analysis):
-            fmt = lambda x: ','.join(x)
-            # hazards occur when a 2+ clk inst is followed up by an instruction
-            # that uses rd of that instruction as its rs1/2
-            self.hazards["dcache"], _ = find_hazards(
-                hazard_penalty['dcache'], fmt(icfg.INST_T_MEM[icfg.k_mem_l])
-            )
-            self.hazards["mul"], _ = find_hazards(
-                hazard_penalty['mul'], fmt(icfg.INST_T[icfg.k_mul])
-            )
-            self.hazards["simd_dot"], dot_acc_hazards= find_hazards(
-                hazard_penalty['simd_dot'],
-                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot])
-            )
-            self.hazards["simd_dot"] -= dot_acc_hazards # late_c fwd in RTL
-            self.hazards["simd_mul"], _ = find_hazards(
-                hazard_penalty['simd_mul'],
-                fmt(icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul])
-            )
-
-        else: # otherwise, estimate based on instruction count (pessimistic)
-            self.hazards["dcache"] = \
-                (hws_dc["hits"]["reads"] + hws_dc["misses"]["reads"])
-            self.hazards["dcache"] *= hazard_penalty['dcache']
-            self.hazards["mul"] = (self.c_mul - 1) * self.mul_inst
-            self.hazards["simd_dot"] = \
-                (self.c_simd_dot - 1) * self.simd_dot_inst
-            self.hazards["simd_mul"] = \
-                (self.c_simd_mul - 1) * self.simd_mul_inst
+        fmt = lambda x: ','.join(x)
+        # hazards occur when inst that take >=2 clk is followed up by
+        # an instruction that uses rd of that instruction as its rs1/2
+        self.hazards["dcache"], _ = find_hazards(
+            hazard_penalty['dcache'], fmt(self.ld_inst_a)
+        )
+        self.hazards["mul"], _ = find_hazards(
+            hazard_penalty['mul'], fmt(self.mul_inst_a)
+        )
+        self.hazards["simd_dot"], dot_acc_hazards = find_hazards(
+            hazard_penalty['simd_dot'], fmt(self.simd_dot_inst_a)
+        )
+        self.hazards["simd_dot"] -= dot_acc_hazards # late_c fwd in RTL
+        self.hazards["simd_mul"], _ = find_hazards(
+            hazard_penalty['simd_mul'], fmt(self.simd_mul_inst_a)
+        )
+        self.hazards["simd_add_sub"], _ = find_hazards(
+            hazard_penalty['simd_mul'], fmt(self.simd_add_sub_inst_a)
+        )
 
         self.all_hazards = sum(self.hazards.values())
+        self.simd_mul_hazards = (
+            self.hazards["mul"] + \
+            self.hazards["simd_dot"] + \
+            self.hazards["simd_add_sub"]
+        )
 
         # FIXME: this needs to be reworked, heavily dependent of main mem ports
         # memory read/write port contention stalls
@@ -451,7 +449,9 @@ class perf:
             f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
             f"DCache: {FMT(self.dc_stalls)} (AMAT: {self.dc_amat}), " + \
             f"Core: {FMT(self.all_hazards + self.all_div_stalls)} " + \
-            f"(Divider {FMT(self.all_div_stalls)})"
+            f"(SIMD {FMT(self.simd_mul_hazards)}, " + \
+            f"DIV {FMT(self.all_div_stalls)}, " + \
+            f"Load {FMT(self.hazards['dcache'])})"
             #f"{DELIM}Memory contention: " + \
             #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
@@ -473,7 +473,8 @@ class perf:
         stalls = stall_fe + stall_be
         lost_other = 0
         lost = bad_spec + lost_other
-        ret_int = self.inst_total - self.simd_dot_inst - self.simd_mul_inst
+        ret_simd = self.simd_data_fmt + self.simd_arith
+        ret_int = self.inst_total - ret_simd
         return {
             "cycles":           int(self.t_clk_ec),
             "cycles_opt":       int(self.t_clk_bc),
@@ -489,7 +490,7 @@ class perf:
             "stall_l1i":        int(self.ic_stalls),
             "stall_fe_core":    int(self.j_stalls),
             "ret":              int(self.inst_total),
-            "ret_simd":         int(self.simd_dot_inst + self.simd_mul_inst),
+            "ret_simd":         int(ret_simd),
             "ret_int":          int(ret_int),
             "ret_ctrl_flow_br": int(self.b_inst),
             "bp_miss":          int(self.bp_stats['mispred']),
