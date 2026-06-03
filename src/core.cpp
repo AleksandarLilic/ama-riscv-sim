@@ -47,11 +47,6 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #endif // DPI
     #endif // PROFILERS_EN
 
-    #ifdef DPI
-    // init to diff so it matches RTL going forward
-    inst_cnt_csr = csr_to_ret;
-    #endif
-
     #ifdef DASM_EN
     #ifdef HW_MODELS_EN
     mem->set_hwmi(&hwmi);
@@ -73,6 +68,11 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #else
     mem->set_perf_profiler(&prof_perf);
     #endif
+    #endif
+
+    #ifdef DPI
+    static_assert(csr_rtl_trusted_all_supported(),
+        "every csr_rtl_trusted entry must be present in supported_csrs");
     #endif
 
     // initialize CSRs
@@ -942,21 +942,30 @@ void core::d_csr_access() {
         #endif
         SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3) << "\n";
     } else {
-        csr_cnt_update(csr_addr);
-        // using temp in case rd and rs1 are the same register
-        uint32_t init_val_rs1 = rf[ip.rs1()];
-        // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
-        write_rf(ip.rd(), it->second.value);
-        switch (ip.funct3()) {
-            CASE_CSR(rw)
-            CASE_CSR(rs)
-            CASE_CSR(rc)
-            CASE_CSR_I(rwi)
-            CASE_CSR_I(rsi)
-            CASE_CSR_I(rci)
-            default: tu.e_unsupported_inst("sys");
+        #ifdef DPI
+        if (is_rtl_trusted(csr_addr)) {
+            write_rf(ip.rd(), get_rtl_rf_value(ip.rd()));
+        } else
+        #endif
+        {
+            #ifndef DPI
+            csr_cnt_update(csr_addr);
+            #endif
+            // using temp in case rd and rs1 are the same register
+            uint32_t init_val_rs1 = rf[ip.rs1()];
+            // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
+            write_rf(ip.rd(), it->second.value);
+            switch (ip.funct3()) {
+                CASE_CSR(rw)
+                CASE_CSR(rs)
+                CASE_CSR(rc)
+                CASE_CSR_I(rwi)
+                CASE_CSR_I(rsi)
+                CASE_CSR_I(rci)
+                default: tu.e_unsupported_inst("sys");
+            }
+            if (csr.at(CSR_TOHOST).value & 0x1) running = false;
         }
-        if (csr.at(CSR_TOHOST).value & 0x1) running = false;
     }
 
     #ifdef DASM_EN

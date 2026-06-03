@@ -37,13 +37,8 @@ void core::csr_cnt_update(uint16_t csr_addr) {
     // if current inst actually writes to mcycle, skip this cycle in diff
     skip = csr_updated;
     skip &= ((csr_addr == CSR_MCYCLE) || (csr_addr == CSR_MCYCLEH));
-    #ifdef DPI
-    uint64_t cycle_elapsed = clk_src.get_cr() - cycle_cnt_csr;
-    cycle_cnt_csr = clk_src.get_cr() + skip;
-    #else
     uint64_t cycle_elapsed = inst_cnt - cycle_cnt_csr; // inst=cycle in isa sim
     cycle_cnt_csr = inst_cnt + skip;
-    #endif
 
     csr.at(CSR_MINSTRET).value += (inst_elapsed & 0xFFFFFFFF);
     csr.at(CSR_MINSTRETH).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
@@ -56,20 +51,7 @@ void core::csr_cnt_update(uint16_t csr_addr) {
     csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
     csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
 
-    #ifdef DPI
-    uint64_t mtime_shadow;
-    csr_sync_t csr;
-    cosim_sync_csrs(&csr);
-    mtime_shadow = csr.mtime;
-    csr_wide_assign(CSR_MHPMCOUNTER3, csr.mhpmcounter[3]);
-    csr_wide_assign(CSR_MHPMCOUNTER4, csr.mhpmcounter[4]);
-    csr_wide_assign(CSR_MHPMCOUNTER5, csr.mhpmcounter[5]);
-    csr_wide_assign(CSR_MHPMCOUNTER6, csr.mhpmcounter[6]);
-    csr_wide_assign(CSR_MHPMCOUNTER7, csr.mhpmcounter[7]);
-    csr_wide_assign(CSR_MHPMCOUNTER8, csr.mhpmcounter[8]);
-    #else
     uint64_t mtime_shadow = mem->get_mtime_shadow();
-    // no pref counters sync, they don't exist in ISA sim
-    #endif
     csr_wide_assign(CSR_TIME, mtime_shadow);
+    // no perf counters update, events don't exist in the standalone ISA sim
 }

@@ -479,8 +479,36 @@ class core {
         #endif
 
         #ifdef DPI
-        // pipeline diff form csr read to retirement
-        static constexpr uint64_t csr_to_ret = 2;
+        // CSRs that increment via core logic (time, cycles, uarch counters);
+        // these can't be emulated in cosim's timed environment, so the ISA sim
+        // trusts the RTL on them (get_rtl_val in the testbench)
+        // must be a subset of supported_csrs (below)
+        static constexpr std::array<uint16_t, 22> csr_rtl_trusted = {{
+            CSR_TIME, CSR_TIMEH,
+            CSR_CYCLE, CSR_CYCLEH, CSR_INSTRET, CSR_INSTRETH,
+            CSR_MCYCLE, CSR_MCYCLEH, CSR_MINSTRET, CSR_MINSTRETH,
+            CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER5,
+            CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER8,
+            CSR_MHPMCOUNTER3H, CSR_MHPMCOUNTER4H, CSR_MHPMCOUNTER5H,
+            CSR_MHPMCOUNTER6H, CSR_MHPMCOUNTER7H, CSR_MHPMCOUNTER8H,
+        }};
+
+        static constexpr bool is_rtl_trusted(uint16_t addr) {
+            for (uint16_t a : csr_rtl_trusted) if (a == addr) return true;
+            return false;
+        }
+
+        // every rtl-trusted CSR must be a supported CSR
+        // asserted at compile time in the constructor
+        static constexpr bool csr_rtl_trusted_all_supported() {
+            for (uint16_t a : csr_rtl_trusted) {
+                bool found = false;
+                for (const auto& e : supported_csrs)
+                    if (e.csr_addr == a) found = true;
+                if (!found) return false;
+            }
+            return true;
+        }
         #endif
 
         #ifdef HW_MODELS_EN
