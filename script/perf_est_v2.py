@@ -17,6 +17,9 @@ yaml.preserve_quotes = True
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_HW_YAML = f"{SCRIPT_PATH}/hw_perf_metrics_v2.yaml"
 
+FMT   = smarter_eng_formatter(unit='', places=2, sep="")
+FMT_T = smarter_eng_formatter(unit='s', places=2, sep="")
+
 # main mem configuration assumptions based on the port contention from hwpm
 
 # | rd  | wr  | mem cfg |
@@ -521,7 +524,7 @@ class perf:
         print(f"\nSaved performance estimation as CSV to " +
               f"{self.inst_profile.replace('.json', '_perf_est.csv')}")
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Performance estimates based on the ISA sim results and the microarchitectural description.")
     parser.add_argument("inst_profile", help="Path to 'inst_profile.json' for the given workload")
     parser.add_argument("hw_stats", help="Path to 'hw_stats.json' for the given workload")
@@ -535,9 +538,12 @@ def parse_args():
     parser.add_argument("--save_corr_csv", action="store_true", help="Save correlation stats as csv")
     parser.add_argument("--save_corr_png", action="store_true", help="Save correlation plots as png")
     parser.add_argument("--save_corr_svg", action="store_true", help="Save correlation plots as svg")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 def main(args: argparse.Namespace):
+    global FMT, FMT_T
+    FMT = smarter_eng_formatter(unit='', places=args.places, sep="")
+    FMT_T = smarter_eng_formatter(unit='s', places=args.places, sep="")
     p_inst = args.inst_profile
     p_hws = args.hw_stats
     p_met = args.hw
@@ -586,7 +592,8 @@ def main(args: argparse.Namespace):
                 continue
             r = rtl_core[k]
             diff = e - r
-            diff_p = round(diff / r * 100, 3) if r else 0
+            dn = e if e else r # denominator
+            diff_p = round(diff / dn * 100, 3) if dn else 0
             comp.append([k, e, r, diff, diff_p])
 
         dfc = pd.DataFrame(
@@ -678,7 +685,4 @@ def main(args: argparse.Namespace):
             plt.show()
 
 if __name__ == "__main__":
-    args = parse_args()
-    FMT = smarter_eng_formatter(unit='', places=args.places, sep="")
-    FMT_T = smarter_eng_formatter(unit='s', places=args.places, sep="")
-    main(args)
+    main(parse_args())
