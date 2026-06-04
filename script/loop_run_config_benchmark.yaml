@@ -36,3 +36,16 @@ workloads:
   - sw/baremetal/mlp/w8a8.elf
   - sw/baremetal/mlp/w4a8.elf
   - sw/baremetal/mlp/w2a8.elf
+  - sw/baremetal/ustress/branch_direct/ustress.elf
+  - sw/baremetal/ustress/branch_indirect/ustress.elf
+  - sw/baremetal/ustress/call_return/ustress.elf
+  - sw/baremetal/ustress/div32/ustress.elf
+  - sw/baremetal/ustress/div64/ustress.elf
+  - sw/baremetal/ustress/l1d_cache/ustress.elf
+  - sw/baremetal/ustress/l1i_cache/ustress.elf
+  - sw/baremetal/ustress/load_after_store/ustress.elf
+  - sw/baremetal/ustress/mac32/ustress.elf
+  - sw/baremetal/ustress/mac64/ustress.elf
+  - sw/baremetal/ustress/memcpy/ustress.elf
+  - sw/baremetal/ustress/mul32/ustress.elf
+  - sw/baremetal/ustress/mul64/ustress.elf
