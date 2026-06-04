@@ -96,6 +96,7 @@ start_time(void)
     #endif
     #endif
     GETMYTIME(&start_time_val);
+    PROF_START;
 }
 /* Function : stop_time
         This function will be called right after ending the timed portion of the
@@ -108,6 +109,7 @@ start_time(void)
 void
 stop_time(void)
 {
+    PROF_STOP;
     GETMYTIME(&stop_time_val);
     #ifdef MHPM
     #ifdef MHPM_TDA

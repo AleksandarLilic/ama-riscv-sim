@@ -41,11 +41,11 @@ void start_trigger (void) {
   #endif
 
   start_time = get_cpu_time();
-  //PROF_START;
+  PROF_START;
 }
 
 void stop_trigger (void) {
-   //PROF_STOP;
+   PROF_STOP;
    uint32_t end_time = get_cpu_time();
    uint32_t clks;
 

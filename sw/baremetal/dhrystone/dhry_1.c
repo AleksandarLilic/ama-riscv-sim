@@ -160,6 +160,7 @@ init_hw_counters();
 #ifdef MSC_CLOCK
   Begin_Time = clock();
 #endif
+PROF_START;
 
   for (Run_Index = 1; Run_Index <= Number_Of_Runs; ++Run_Index)
   {
@@ -211,6 +212,7 @@ init_hw_counters();
   /* Stop timer */
   /**************/
 
+PROF_STOP;
 #ifdef TIMES
   times (&time_info);
   End_Time = (long) time_info.tms_utime;

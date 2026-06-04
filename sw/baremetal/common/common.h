@@ -29,12 +29,12 @@ extern "C" {
 #define NOP asm volatile ("nop")
 
 // profiling features
-#ifdef NO_PROF
-#define PROF_START
-#define PROF_STOP
-#else
+#ifdef USE_PROF_MARKERS
 #define PROF_START asm volatile ("slti x0, x0, 0x10")
 #define PROF_STOP asm volatile ("slti x0, x0, 0x11")
+#else
+#define PROF_START
+#define PROF_STOP
 #endif
 
 // add symbol for callstack
