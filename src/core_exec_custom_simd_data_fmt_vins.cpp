@@ -2,15 +2,15 @@
 #include "core.h"
 #include "core_exec_custom_simd.h"
 
-// vins: insert low vbits of rs1 into lane at idx of rd (RMW)
+// vins: insert low vbits of rs1 into lane at idx of rd/rs3 (RMW)
 template <size_t vbits>
-uint32_t core::data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx) {
+uint32_t core::data_fmt_c_vins_t(uint32_t rs3, uint32_t rs1, uint8_t idx) {
     constexpr size_t lanes = lane<vbits>::count;
     constexpr uint32_t lane_mask_bits = lane<vbits>::mask;
     idx = TO_U8(idx & (lanes - 1));
     uint32_t clear_lane = (~(lane_mask_bits << (idx * vbits)));
     uint32_t insert = ((rs1 & lane_mask_bits) << (idx * vbits));
-    uint32_t res = ((rd & clear_lane) | insert);
+    uint32_t res = ((rs3 & clear_lane) | insert);
 
     #ifdef DASM_EN
     // RD = result vector; RS1 = scalar (inserted value); RS2 = lane index
@@ -25,18 +25,18 @@ uint32_t core::data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx) {
     return res;
 }
 
-uint32_t core::data_fmt_c_vins16(uint32_t rd, uint32_t rs1, uint8_t idx) {
-    return data_fmt_c_vins_t<16>(rd, rs1, idx);
+uint32_t core::data_fmt_c_vins16(uint32_t rs3, uint32_t rs1, uint8_t idx) {
+    return data_fmt_c_vins_t<16>(rs3, rs1, idx);
 }
 
-uint32_t core::data_fmt_c_vins8(uint32_t rd, uint32_t rs1, uint8_t idx) {
-    return data_fmt_c_vins_t<8>(rd, rs1, idx);
+uint32_t core::data_fmt_c_vins8(uint32_t rs3, uint32_t rs1, uint8_t idx) {
+    return data_fmt_c_vins_t<8>(rs3, rs1, idx);
 }
 
-uint32_t core::data_fmt_c_vins4(uint32_t rd, uint32_t rs1, uint8_t idx) {
-    return data_fmt_c_vins_t<4>(rd, rs1, idx);
+uint32_t core::data_fmt_c_vins4(uint32_t rs3, uint32_t rs1, uint8_t idx) {
+    return data_fmt_c_vins_t<4>(rs3, rs1, idx);
 }
 
-uint32_t core::data_fmt_c_vins2(uint32_t rd, uint32_t rs1, uint8_t idx) {
-    return data_fmt_c_vins_t<2>(rd, rs1, idx);
+uint32_t core::data_fmt_c_vins2(uint32_t rs3, uint32_t rs1, uint8_t idx) {
+    return data_fmt_c_vins_t<2>(rs3, rs1, idx);
 }
