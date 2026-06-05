@@ -274,13 +274,20 @@ struct sparsity_cnt_t {
 };
 
 enum class sparsity_t {
-    any, alu, mem_l, mem_s, simd_dot, simd_alu, simd_data_fmt, _count
+    sp_any,
+    sp_mem_l, sp_mem_s,
+    sp_alu, sp_mul, sp_div_a, sp_div_b,
+    sp_simd_dot, sp_simd_mul, sp_simd_alu,
+    _count
 };
 
 static constexpr std::array<const char*, TO_U32(sparsity_t::_count)>
     sparsity_cnt_names =
     {{
-        "ANY", "ALU", "MEM_L", "MEM_S", "SIMD_DOT", "SIMD_ALU", "SIMD_DATA_FMT"
+        "(1) ANY",
+        "(2) MEM_L", "(2) MEM_S",
+        "(3) ALU", "(3) MUL", "(3) DIV_A", "(3) DIV_B",
+        "(3) SIMD_DOT", "(3) SIMD_MUL", "(3) SIMD_ALU"
     }};
 
 class profiler {

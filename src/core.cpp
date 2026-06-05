@@ -483,7 +483,7 @@ void core::d_load() {
 }
 
 void core::d_store() {
-    uint32_t val;
+    uint32_t addr;
     switch (ip.funct3()) {
         CASE_STORE(sb)
         CASE_STORE(sh)
@@ -701,53 +701,54 @@ void core::d_misc_mem() {
 void core::d_custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
+    uint32_t shamt = ip.rs2();
     uint32_t res;
     reg_pair rp;
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_ALU_CUSTOM_OP(add16, alu)
-                CASE_ALU_CUSTOM_OP(add8, alu)
-                CASE_ALU_CUSTOM_OP(sub16, alu)
-                CASE_ALU_CUSTOM_OP(sub8, alu)
-                default: tu.e_unsupported_inst("alu_custom"); return;
+                CASE_ADDSUB_CUSTOM_OP(add16, alu)
+                CASE_ADDSUB_CUSTOM_OP(add8, alu)
+                CASE_ADDSUB_CUSTOM_OP(sub16, alu)
+                CASE_ADDSUB_CUSTOM_OP(sub8, alu)
+                default: tu.e_unsupported_inst("alu_addsub_custom"); return;
             }
             break;
         case TO_U8(custom_op_t::type_qalu):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_ALUQ_CUSTOM_OP(qadd16, alu)
-                CASE_ALUQ_CUSTOM_OP(qadd8, alu)
-                CASE_ALUQ_CUSTOM_OP(qadd16u, alu)
-                CASE_ALUQ_CUSTOM_OP(qadd8u, alu)
-                CASE_ALUQ_CUSTOM_OP(qsub16, alu)
-                CASE_ALUQ_CUSTOM_OP(qsub8, alu)
-                CASE_ALUQ_CUSTOM_OP(qsub16u, alu)
-                CASE_ALUQ_CUSTOM_OP(qsub8u, alu)
-                default: tu.e_unsupported_inst("qalu_custom"); return;
+                CASE_QADDSUB_CUSTOM_OP(qadd16, alu)
+                CASE_QADDSUB_CUSTOM_OP(qadd8, alu)
+                CASE_QADDSUB_CUSTOM_OP(qadd16u, alu)
+                CASE_QADDSUB_CUSTOM_OP(qadd8u, alu)
+                CASE_QADDSUB_CUSTOM_OP(qsub16, alu)
+                CASE_QADDSUB_CUSTOM_OP(qsub8, alu)
+                CASE_QADDSUB_CUSTOM_OP(qsub16u, alu)
+                CASE_QADDSUB_CUSTOM_OP(qsub8u, alu)
+                default: tu.e_unsupported_inst("alu_qaddsub_custom"); return;
             }
             break;
         case TO_U8(custom_op_t::type_mul):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mul16, alu)
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mul8, alu)
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh16, alu)
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh16u, alu)
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh8, alu)
-                CASE_ALU_SIMD_MUL_CUSTOM_OP(mulh8u, alu)
-                default: tu.e_unsupported_inst("alu_simd_mul_custom"); return;
+                CASE_MUL_CUSTOM_OP(mul16, mul)
+                CASE_MUL_CUSTOM_OP(mul8, mul)
+                CASE_MUL_CUSTOM_OP(mulh16, mul)
+                CASE_MUL_CUSTOM_OP(mulh16u, mul)
+                CASE_MUL_CUSTOM_OP(mulh8, mul)
+                CASE_MUL_CUSTOM_OP(mulh8u, mul)
+                default: tu.e_unsupported_inst("alu_mul_custom"); return;
             }
             break;
         case TO_U8(custom_op_t::type_wmul):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_ALU_MUL_CUSTOM_OP(wmul16, alu)
-                CASE_ALU_MUL_CUSTOM_OP(wmul16u, alu)
-                CASE_ALU_MUL_CUSTOM_OP(wmul8, alu)
-                CASE_ALU_MUL_CUSTOM_OP(wmul8u, alu)
-                default: tu.e_unsupported_inst("alu_mul_custom"); return;
+                CASE_WMUL_CUSTOM_OP(wmul16, mul)
+                CASE_WMUL_CUSTOM_OP(wmul16u, mul)
+                CASE_WMUL_CUSTOM_OP(wmul8, mul)
+                CASE_WMUL_CUSTOM_OP(wmul8u, mul)
+                default: tu.e_unsupported_inst("alu_wmul_custom"); return;
             }
             break;
         case TO_U8(custom_op_t::type_dot):
@@ -793,77 +794,77 @@ void core::d_custom_ext() {
         case TO_U8(custom_op_t::type_data_fmt_widen):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16u, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8u, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4u, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2, data_fmt)
-                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2u, data_fmt)
-                default: tu.e_unsupported_inst("data_fmt_custom");
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen16u)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen8u)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen4u)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2)
+                CASE_DATA_FMT_WIDEN_CUSTOM_OP(widen2u)
+                default: tu.e_unsupported_inst("data_fmt_widen_custom");
             }
             break;
         case TO_U8(custom_op_t::type_data_fmt_narrow):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow32, data_fmt)
-                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow16, data_fmt)
-                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow8, data_fmt)
-                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow4, data_fmt)
-                default: tu.e_unsupported_inst("data_fmt_custom");
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow32)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow16)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow8)
+                CASE_DATA_FMT_NARROW_CUSTOM_OP(narrow4)
+                default: tu.e_unsupported_inst("data_fmt_narrow_custom");
             }
             break;
         case TO_U8(custom_op_t::type_data_fmt_qnarrow):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32u, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16u, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8u, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4, data_fmt)
-                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4u, data_fmt)
-                default: tu.e_unsupported_inst("data_fmt_custom");
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow32u)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow16u)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow8u)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4)
+                CASE_DATA_FMT_QNARROW_CUSTOM_OP(qnarrow4u)
+                default: tu.e_unsupported_inst("data_fmt_qnarrow_custom");
             }
             break;
         case TO_U8(custom_op_t::type_data_fmt_txp):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_DATA_FMT_TXP_CUSTOM_OP(txp16, data_fmt)
-                CASE_DATA_FMT_TXP_CUSTOM_OP(txp8, data_fmt)
-                CASE_DATA_FMT_TXP_CUSTOM_OP(txp4, data_fmt)
-                CASE_DATA_FMT_TXP_CUSTOM_OP(txp2, data_fmt)
-                default: tu.e_unsupported_inst("data_fmt_txp");
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp16)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp8)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp4)
+                CASE_DATA_FMT_TXP_CUSTOM_OP(txp2)
+                default: tu.e_unsupported_inst("data_fmt_txp_custom");
             }
             break;
         case TO_U8(custom_op_t::type_sv_dup_vins):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_SV_DUP_CUSTOM_OP(dup16, data_fmt)
-                CASE_SV_VINS_CUSTOM_OP(vins16, data_fmt, 0x1)
-                CASE_SV_DUP_CUSTOM_OP(dup8, data_fmt)
-                CASE_SV_VINS_CUSTOM_OP(vins8, data_fmt, 0x3)
-                CASE_SV_DUP_CUSTOM_OP(dup4, data_fmt)
-                CASE_SV_VINS_CUSTOM_OP(vins4, data_fmt, 0x7)
-                CASE_SV_DUP_CUSTOM_OP(dup2, data_fmt)
-                CASE_SV_VINS_CUSTOM_OP(vins2, data_fmt, 0xf)
-                default: tu.e_unsupported_inst("sv_dup");
+                CASE_SV_DUP_CUSTOM_OP(dup16)
+                CASE_SV_VINS_CUSTOM_OP(vins16, 0x1)
+                CASE_SV_DUP_CUSTOM_OP(dup8)
+                CASE_SV_VINS_CUSTOM_OP(vins8, 0x3)
+                CASE_SV_DUP_CUSTOM_OP(dup4)
+                CASE_SV_VINS_CUSTOM_OP(vins4, 0x7)
+                CASE_SV_DUP_CUSTOM_OP(dup2)
+                CASE_SV_VINS_CUSTOM_OP(vins2, 0xf)
+                default: tu.e_unsupported_inst("sv_dup_vins_custom");
             }
             break;
         case TO_U8(custom_op_t::type_sv_vext):
             PROF_SET_PERF_EVENT_SIMD
             switch (funct3) {
-                CASE_SV_VEXT_CUSTOM_OP(vext16, data_fmt, 0x1)
-                CASE_SV_VEXT_CUSTOM_OP(vext16u, data_fmt, 0x1)
-                CASE_SV_VEXT_CUSTOM_OP(vext8, data_fmt, 0x3)
-                CASE_SV_VEXT_CUSTOM_OP(vext8u, data_fmt, 0x3)
-                CASE_SV_VEXT_CUSTOM_OP(vext4, data_fmt, 0x7)
-                CASE_SV_VEXT_CUSTOM_OP(vext4u, data_fmt, 0x7)
-                CASE_SV_VEXT_CUSTOM_OP(vext2, data_fmt, 0xf)
-                CASE_SV_VEXT_CUSTOM_OP(vext2u, data_fmt, 0xf)
-                default: tu.e_unsupported_inst("sv_vext");
+                CASE_SV_VEXT_CUSTOM_OP(vext16, 0x1)
+                CASE_SV_VEXT_CUSTOM_OP(vext16u, 0x1)
+                CASE_SV_VEXT_CUSTOM_OP(vext8, 0x3)
+                CASE_SV_VEXT_CUSTOM_OP(vext8u, 0x3)
+                CASE_SV_VEXT_CUSTOM_OP(vext4, 0x7)
+                CASE_SV_VEXT_CUSTOM_OP(vext4u, 0x7)
+                CASE_SV_VEXT_CUSTOM_OP(vext2, 0xf)
+                CASE_SV_VEXT_CUSTOM_OP(vext2u, 0xf)
+                default: tu.e_unsupported_inst("sv_vext_custom");
             }
             break;
         case TO_U8(custom_op_t::type_hints):

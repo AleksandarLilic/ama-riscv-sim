@@ -125,14 +125,14 @@ enum class custom_op_t {
     type_hints = 0x7f,
 };
 
-enum class alu_custom_op_t {
+enum class alu_addsub_custom_op_t {
     op_add16 = 0x0,
     op_add8 = 0x2,
     op_sub16 = 0x4,
     op_sub8 = 0x6,
 };
 
-enum class qalu_custom_op_t {
+enum class alu_qaddsub_custom_op_t {
     op_qadd16 = 0x0,
     op_qadd16u = 0x1,
     op_qadd8 = 0x2,
@@ -147,14 +147,14 @@ enum class alu_add_sub_op_t { add, sub };
 enum class alu_min_max_op_t { min, max };
 enum class alu_shift_op_t { left, right };
 
-enum class alu_mul_custom_op_t {
+enum class alu_wmul_custom_op_t {
     op_wmul16 = 0x0,
     op_wmul16u = 0x1,
     op_wmul8 = 0x2,
     op_wmul8u = 0x3,
 };
 
-enum class alu_simd_mul_custom_op_t {
+enum class alu_mul_custom_op_t {
     op_mul16   = 0x0,
     op_mul8    = 0x2,
     op_mulh16  = 0x4,
