@@ -17,6 +17,7 @@ struct rf_trace_entry {
     uint8_t rs1; // source register 1 index, REG_NONE if no rs1
     uint8_t rs2; // source register 2 index, REG_NONE if no rs2
     uint8_t rd_val_zero; // 1 if written rd value == 0, else 0
+    uint8_t rdp_val_zero; // 1 if written rdp value == 0, else 0
     void rst() {
         opc_g_val = OPC_NONE;
         opc_b_val = OPC_NONE;
@@ -24,9 +25,10 @@ struct rf_trace_entry {
         rs1 = REG_NONE;
         rs2 = REG_NONE;
         rd_val_zero = 0;
+        rdp_val_zero = 0;
     }
 };
-static_assert(sizeof(rf_trace_entry) == 6, "rf_trace_entry layout changed");
+static_assert(sizeof(rf_trace_entry) == 7, "rf_trace_entry layout changed");
 
 class profiler_rf {
 public:

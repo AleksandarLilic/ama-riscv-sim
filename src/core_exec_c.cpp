@@ -10,7 +10,7 @@ void core::c_addi() {
     PROF_G(c_addi)
     PROF_RD
     PROF_C_RS1_RD
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
@@ -25,7 +25,7 @@ void core::c_li() {
     DASM_OP(c.li)
     PROF_G(c_li)
     PROF_RD
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE;
@@ -66,7 +66,7 @@ void core::c_addi16sp() {
     PROF_G(c_addi16sp)
     PROF_C_RD_LIT(2)
     PROF_C_RS1_LIT(2)
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_16sp());
     DASM_RD_UPDATE_P(2);
@@ -82,7 +82,7 @@ void core::c_srli() {
     PROF_G(c_srli)
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -98,7 +98,7 @@ void core::c_srai() {
     PROF_G(c_srai)
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -114,7 +114,7 @@ void core::c_andi() {
     PROF_G(c_andi)
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << TO_I32(ip.c_imm_arith());
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -131,7 +131,7 @@ void core::c_and() {
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
     PROF_C_RS2_REGL
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -148,7 +148,7 @@ void core::c_or() {
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
     PROF_C_RS2_REGL
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -165,7 +165,7 @@ void core::c_xor() {
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
     PROF_C_RS2_REGL
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -182,7 +182,7 @@ void core::c_sub() {
     PROF_C_RD_REGH
     PROF_C_RS1_REGH
     PROF_C_RS2_REGL
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_CREGH << "," << DASM_CREGL;
     DASM_RD_UPDATE_P(ip.c_regh());
@@ -200,7 +200,7 @@ void core::c_addi4spn() {
     PROF_G(c_addi4spn)
     PROF_C_RD_REGL
     PROF_C_RS1_LIT(2)
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << ",x2,"
                 << TO_I32(ip.c_imm_4spn());
@@ -217,7 +217,7 @@ void core::c_slli() {
     PROF_G(c_slli)
     PROF_RD
     PROF_C_RS1_RD
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef PROFILERS_EN
     prof_fusion.attack({trigger::slli_lea, inst, mem->just_inst(pc + 2), true});
     #endif
@@ -236,7 +236,7 @@ void core::c_mv() {
     PROF_G(c_mv)
     PROF_RD
     PROF_C_RS2_RS2
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
@@ -253,7 +253,7 @@ void core::c_add() {
     PROF_RD
     PROF_C_RS1_RD
     PROF_C_RS2_RS2
-    PROF_RF_ZERO(res)
+    PROF_RD_ZERO(res)
     #ifdef DASM_EN
     DASM_OP_RD << "," << rf_names[ip.c_rs2()][rf_names_idx];
     DASM_RD_UPDATE;
@@ -272,7 +272,7 @@ void core::c_lw() {
     PROF_G(c_lw)
     PROF_C_RD_REGL
     PROF_C_RS1_REGH
-    PROF_RF_ZERO(loaded)
+    PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.c_imm_mem()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);
@@ -298,7 +298,7 @@ void core::c_lwsp() {
     PROF_G(c_lwsp)
     PROF_RD
     PROF_C_RS1_LIT(2)
-    PROF_RF_ZERO(loaded)
+    PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rf[2] + ip.c_imm_lwsp()) > TO_U32(rf[2]));
     prof_perf.set_perf_event_flag(perf_event_t::mem);

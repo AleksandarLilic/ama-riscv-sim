@@ -65,6 +65,7 @@ class icfg:
     k_simd_min_max = "SIMD_MIN_MAX"
     k_simd_shift = "SIMD_SHIFT"
     k_simd_mul = "SIMD_MUL"
+    k_simd_wmul = "SIMD_WMUL"
     k_simd_widen = "SIMD_WIDEN"
     k_simd_narrow = "SIMD_NARROW"
     k_simd_txp = "SIMD_TXP"
@@ -98,6 +99,8 @@ class icfg:
         ],
         k_simd_mul: [
             "mul16", "mul8", "mulh16", "mulh16u", "mulh8", "mulh8u",
+        ],
+        k_simd_wmul: [
             "wmul16", "wmul16u", "wmul8", "wmul8u",
         ],
         k_simd_dot: [
@@ -154,6 +157,7 @@ class icfg:
         k_simd_arith:
             INST_T_SIMD_ARITH[k_simd_add_sub] + \
             INST_T_SIMD_ARITH[k_simd_mul] + \
+            INST_T_SIMD_ARITH[k_simd_wmul] + \
             INST_T_SIMD_ARITH[k_simd_dot] + \
             INST_T_SIMD_ARITH[k_simd_min_max] + \
             INST_T_SIMD_ARITH[k_simd_shift],

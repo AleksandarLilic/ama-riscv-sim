@@ -14,13 +14,15 @@ FENCE_MNM = icfg.INST_T[icfg.k_fence]
 ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
 
 RDP_MNM = icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_widen] + \
-    icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul]
+    icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_txp] + \
+    icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
 
 DOT_MNM = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
 
 MNM_ANY = "_any_"
 
-RF_ENTRY_FMT = 'BBBBBB' # opc_g_val, opc_b_val, rd, rs1, rs2, rd_val_zero
+# opc_g_val, opc_b_val, rd, rs1, rs2, rd_val_zero, rdp_val_zero
+RF_ENTRY_FMT = 'BBBBBBB'
 RF_ENTRY_SIZE = struct.calcsize(RF_ENTRY_FMT)
 
 class dependency_results:
@@ -144,13 +146,17 @@ def search(args):
     n = len(entries)
     res.n_inst = n
 
-    rd_val_zero_cnt = 0
-    #rd_val_zero_trace = []
+    rd_val_zero_cnt = {'rd': 0, 'rdp': 0}
+    #rd_val_zero_trace = {'rd': [], 'rdp': [] }
     for pos in range(n):
-        e_og, e_ob, e_rd, _, _, e_rdz = entries[pos]
+        e_og, e_ob, e_rd, _, _, e_rdz, e_rdpz = entries[pos]
         mnm = decode_mnm(e_og, e_ob)
-        rd_val_zero_cnt += e_rdz
-        #rd_val_zero_trace.append(e_rdz)
+        if valid_rd(e_rd):
+            rd_val_zero_cnt['rd'] += e_rdz
+            #rd_val_zero_trace['rd'].append(e_rdz)
+            if inst_writes_rdp(mnm):
+                rd_val_zero_cnt['rdp'] += e_rdpz
+                #rd_val_zero_trace['rdp'].append(e_rdpz)
 
         if mnm not in res.src_s['mnm']:
             continue
@@ -164,7 +170,7 @@ def search(args):
         # terminate early if a redefinition of rd occurs (kills dependency)
         max_pos = min(pos + window, n - 1)
         for nx_pos in range(pos + 1, max_pos + 1):
-            nxe_og, nxe_ob, nxe_rd, nxe_rs1, nxe_rs2, _ = entries[nx_pos]
+            nxe_og, nxe_ob, nxe_rd, nxe_rs1, nxe_rs2, _, _ = entries[nx_pos]
             nx_mnm = decode_mnm(nxe_og, nxe_ob)
 
             # check dep before kill:
@@ -203,7 +209,8 @@ def search(args):
 
     #import pandas as pd
     #fig, ax = plt.subplots()
-    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace), 128))
+    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace['rd']), 128))
+    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace['rdp']), 128))
     return res, rd_val_zero_cnt
 
 def main(args):
@@ -211,9 +218,13 @@ def main(args):
     FMT = smarter_eng_formatter()
     res, zcnt = search(args)
     exec_inst = res.n_inst
+
     if zcnt and args.count_zeros:
-        perc = (zcnt / exec_inst) * 100
-        print(f"Note: {zcnt} instructions had 0x0 written to rd ({perc:.2f}%)")
+        perc_rd = (zcnt['rd'] / exec_inst) * 100
+        perc_rdp = (zcnt['rdp'] / exec_inst) * 100
+        print(f"Note: {zcnt['rd']} insts wrote 0x0 to rd ({perc_rd:.2f}%), "
+            f"{zcnt['rdp']} wrote 0x0 to rdp ({perc_rdp:.2f}%)")
+
     # move forward only if there are dependencies found
     if sum(res.dep_arr_cnt) == 0:
         print("No dependencies found for the given source/dependent mnemonics "

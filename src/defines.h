@@ -249,7 +249,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_RF_ZERO(res) \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_ALU_REG_MUL_OP(op) \
@@ -260,7 +260,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_RF_ZERO(res) \
+        PROF_RD_ZERO(res) \
         break;
 
 #ifdef HW_MODELS_EN
@@ -279,7 +279,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_RF_ZERO(res) \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_ALU_REG_ZBB_OP(op) \
@@ -290,7 +290,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
-        PROF_RF_ZERO(res) \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_ALU_IMM_OP(op) \
@@ -301,7 +301,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
-        PROF_RF_ZERO(res) \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_LOAD(op) \
@@ -313,7 +313,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
-        PROF_RF_ZERO(loaded) \
+        PROF_RD_ZERO(loaded) \
         break;
 
 #define CASE_STORE(op) \
@@ -348,6 +348,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_QADDSUB_CUSTOM_OP(op, t) \
@@ -358,6 +359,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_WMUL_CUSTOM_OP(op, t) \
@@ -368,6 +370,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1_RS2 \
+        PROF_RD_ZERO(rp.a) \
+        PROF_RDP_ZERO(rp.b) \
         break;
 
 #define CASE_MUL_CUSTOM_OP(op, t) \
@@ -378,6 +382,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_ALU_CUSTOM_DOT(op, t) \
@@ -388,6 +393,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2_RS3 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_MIN_MAX_CUSTOM_OP(op, t) \
@@ -398,6 +404,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_SHIFT_CUSTOM_OP(op, t) \
@@ -408,6 +415,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_DATA_FMT_WIDEN_CUSTOM_OP(op) \
@@ -417,6 +425,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1 \
+        PROF_RD_ZERO(rp.a) \
+        PROF_RDP_ZERO(rp.b) \
         break;
 
 #define CASE_DATA_FMT_NARROW_CUSTOM_OP(op) \
@@ -426,6 +436,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_DATA_FMT_QNARROW_CUSTOM_OP(op) \
@@ -435,6 +446,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1_RS2 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_DATA_FMT_TXP_CUSTOM_OP(op) \
@@ -444,6 +456,8 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RDP_RS1_RS2 \
+        PROF_RD_ZERO(rp.a) \
+        PROF_RDP_ZERO(rp.b) \
         break;
 
 #define CASE_SV_DUP_CUSTOM_OP(op) \
@@ -453,6 +467,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_SV_VINS_CUSTOM_OP(op, lane_mask) \
@@ -463,6 +478,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_SV_VEXT_CUSTOM_OP(op, lane_mask) \
@@ -472,6 +488,7 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
+        PROF_RD_ZERO(res) \
         break;
 
 #define CASE_SCP_CUSTOM(op) \
@@ -686,8 +703,11 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof_rf.log_reg_use(reg_use_t::rs2, ip.rs2()); \
     prof_rf.te.rs2 = ip.rs2();
 
-#define PROF_RF_ZERO(val) \
+#define PROF_RD_ZERO(val) \
     prof_rf.te.rd_val_zero = ((val) == 0) ? 1u : 0u;
+
+#define PROF_RDP_ZERO(val) \
+    prof_rf.te.rdp_val_zero = ((val) == 0) ? 1u : 0u;
 
 #define PROF_C_RD_REGH \
     prof_rf.log_reg_use(reg_use_t::rd,  ip.c_regh()); \
@@ -786,7 +806,8 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
 #define PROF_SET_PERF_EVENT_SIMD
 #define PROF_SPARSITY_ANY(res)
 #define PROF_SPARSITY(a, b, cls)
-#define PROF_RF_ZERO(val)
+#define PROF_RD_ZERO(val)
+#define PROF_RDP_ZERO(val)
 #define PROF_C_RD_REGH
 #define PROF_C_RD_REGL
 #define PROF_C_RS1_RD

@@ -39,7 +39,8 @@ class perf:
     mul_inst_a = icfg.INST_T[icfg.k_mul]
     div_inst_a = icfg.INST_T[icfg.k_div]
     simd_dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
-    simd_mul_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul]
+    simd_mul_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul] + \
+        icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
     simd_add_sub_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_add_sub]
     simd_arith_a = icfg.INST_T[icfg.k_simd_arith]
     simd_data_fmt_a = icfg.INST_T[icfg.k_simd_data_fmt]
