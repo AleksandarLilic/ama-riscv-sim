@@ -81,8 +81,8 @@ void main() {
                 int8_t a[] = {10, -10, 2, -2};
                 int8_t b[] = {5, 5, 3, 3};
                 int16x4_t c = _wmul8(v_load_int8x4(a), v_load_int8x4(b));
-                int32x2_t r_lo = _widen16(c.w.lo);
-                int32x2_t r_hi = _widen16(c.w.hi);
+                int32x2_t r_lo = _widen16(c.w.lo, 0);
+                int32x2_t r_hi = _widen16(c.w.hi, 0);
                 CHECK(r_lo.w.lo, 50, 201);
                 CHECK(r_lo.w.hi, -50, 202);
                 CHECK(r_hi.w.lo, 6, 203);
@@ -95,8 +95,8 @@ void main() {
                 int8_t a[] = {-1, -1, -1, -1};
                 int8_t b[] = {100, 100, 100, 100};
                 int16x4_t c = _wmul8(v_load_int8x4(a), v_load_int8x4(b));
-                int32x2_t r_lo = _widen16(c.w.lo);
-                int32x2_t r_hi = _widen16(c.w.hi);
+                int32x2_t r_lo = _widen16(c.w.lo, 0);
+                int32x2_t r_hi = _widen16(c.w.hi, 0);
                 CHECK(r_lo.w.lo, -100, 211);
                 CHECK(r_lo.w.hi, -100, 212);
                 CHECK(r_hi.w.lo, -100, 213);
@@ -108,8 +108,8 @@ void main() {
                 int8_t a[] = {-128, -128, 0, 0};
                 int8_t b[] = {-128, -128, 0, 0};
                 int16x4_t c = _wmul8(v_load_int8x4(a), v_load_int8x4(b));
-                int32x2_t r_lo = _widen16(c.w.lo);
-                int32x2_t r_hi = _widen16(c.w.hi);
+                int32x2_t r_lo = _widen16(c.w.lo, 0);
+                int32x2_t r_hi = _widen16(c.w.hi, 0);
                 CHECK(r_lo.w.lo, 16384, 221);
                 CHECK(r_lo.w.hi, 16384, 222);
                 CHECK(r_hi.w.lo, 0, 223);
@@ -123,8 +123,8 @@ void main() {
                 uint8_t a[] = {10, 20, 30, 40};
                 uint8_t b[] = {10, 20, 30, 40};
                 uint16x4_t c = _wmul8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                uint32x2_t r_lo = _widen16u(c.w.lo);
-                uint32x2_t r_hi = _widen16u(c.w.hi);
+                uint32x2_t r_lo = _widen16u(c.w.lo, 0);
+                uint32x2_t r_hi = _widen16u(c.w.hi, 0);
                 CHECK(r_lo.w.lo, 100, 241);
                 CHECK(r_lo.w.hi, 400, 242);
                 CHECK(r_hi.w.lo, 900, 243);
@@ -137,8 +137,8 @@ void main() {
                 uint8_t a[] = {255, 0, 0, 0};
                 uint8_t b[] = {1, 0, 0, 0};
                 uint16x4_t c = _wmul8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                uint32x2_t r_lo = _widen16u(c.w.lo);
-                uint32x2_t r_hi = _widen16u(c.w.hi);
+                uint32x2_t r_lo = _widen16u(c.w.lo, 0);
+                uint32x2_t r_hi = _widen16u(c.w.hi, 0);
                 CHECK(r_lo.w.lo, 255, 251);
                 CHECK(r_lo.w.hi, 0, 252);
                 CHECK(r_hi.w.lo, 0, 253);
@@ -150,8 +150,8 @@ void main() {
                 uint8_t a[] = {255, 255, 0, 0};
                 uint8_t b[] = {255, 255, 0, 0};
                 uint16x4_t c = _wmul8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                uint32x2_t r_lo = _widen16u(c.w.lo);
-                uint32x2_t r_hi = _widen16u(c.w.hi);
+                uint32x2_t r_lo = _widen16u(c.w.lo, 0);
+                uint32x2_t r_hi = _widen16u(c.w.hi, 0);
                 CHECK(r_lo.w.lo, 65025, 261);
                 CHECK(r_lo.w.hi, 65025, 262);
                 CHECK(r_hi.w.lo, 0, 263);

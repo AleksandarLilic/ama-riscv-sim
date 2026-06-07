@@ -94,19 +94,7 @@ simd_shift:
 #endif
 
 simd_widening:
-    // v1
-    widen16 x14, x18
-    widen16u x14, x18
-    widen8 x14, x18
-    widen8u x14, x18
-    widen4 x14, x18
-    widen4u x14, x18
-    widen2 x14, x18
-    widen2u x14, x18
-
-/*
 unsupported_simd_widening:
-    // v2
     widen16 x14, x18, 8
     widen16u x14, x18, 3
     widen8 x14, x18, 8
@@ -115,7 +103,6 @@ unsupported_simd_widening:
     widen4u x14, x18, 3
     widen2 x14, x18, 8
     widen2u x14, x18, 3
-*/
 
 #ifndef RTL_PARTIAL_SUPPORT
 simd_narrowing:

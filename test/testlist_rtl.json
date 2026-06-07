@@ -116,6 +116,7 @@
     "aapg/aapg_rv32_custom-simd-dot_mem_m_ctrl": ["all"],
     "aapg/aapg_rv32_custom-simd-dot_mem_m_ctrl_short": ["all"],
     "aapg/aapg_rv32_custom-simd-minmax_mem": ["all"],
+    "aapg/aapg_rv32_custom-simd-shift": ["all"],
     "aapg/aapg_rv32_custom-simd-widen": ["all"],
     "aapg/aapg_rv32_custom-simd-widen_mem_m_ctrl": ["all"],
     "aapg/aapg_rv32_custom-simd-txp": ["all"],

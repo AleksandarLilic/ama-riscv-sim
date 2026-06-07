@@ -516,58 +516,58 @@ int8x4_t _srai8(const int8x4_t a, const int32_t imm) {
 // -----------------------------------------------------------------------------
 // data formatting - widen
 static INLINE
-int32x2_t _widen16(const int16x2_t a) {
+int32x2_t _widen16(const int16x2_t a, const int32_t imm) {
     int32x2_t c;
-    asm volatile("widen16 %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen16 %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-uint32x2_t _widen16u(const uint16x2_t a) {
+uint32x2_t _widen16u(const uint16x2_t a, const int32_t imm) {
     uint32x2_t c;
-    asm volatile("widen16u %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen16u %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-int16x4_t _widen8(const int8x4_t a) {
+int16x4_t _widen8(const int8x4_t a, const int32_t imm) {
     int16x4_t c;
-    asm volatile("widen8 %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen8 %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-uint16x4_t _widen8u(const uint8x4_t a) {
+uint16x4_t _widen8u(const uint8x4_t a, const int32_t imm) {
     uint16x4_t c;
-    asm volatile("widen8u %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen8u %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-int8x8_t _widen4(const int4x8_t a) {
+int8x8_t _widen4(const int4x8_t a, const int32_t imm) {
     int8x8_t c;
-    asm volatile("widen4 %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen4 %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-uint8x8_t _widen4u(const uint4x8_t a) {
+uint8x8_t _widen4u(const uint4x8_t a, const int32_t imm) {
     uint8x8_t c;
-    asm volatile("widen4u %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen4u %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-int4x16_t _widen2(const int2x16_t a) {
+int4x16_t _widen2(const int2x16_t a, const int32_t imm) {
     int4x16_t c;
-    asm volatile("widen2 %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen2 %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 
 static INLINE
-uint4x16_t _widen2u(const uint2x16_t a) {
+uint4x16_t _widen2u(const uint2x16_t a, const int32_t imm) {
     uint4x16_t c;
-    asm volatile("widen2u %0, %1" : "=r"(c.d) : "r"(a));
+    asm volatile("widen2u %0, %1, %2" : "=r"(c.d) : "r"(a), "i"(imm));
     return c;
 }
 

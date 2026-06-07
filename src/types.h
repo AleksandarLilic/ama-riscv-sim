@@ -195,14 +195,14 @@ enum class alu_shift_custom_op_t {
 };
 
 enum class data_fmt_widen_custom_op_t {
-    op_widen16 = 0x0,
-    op_widen16u = 0x1,
-    op_widen8 = 0x2,
-    op_widen8u = 0x3,
-    op_widen4 = 0x4,
-    op_widen4u = 0x5,
-    op_widen2 = 0x6,
-    op_widen2u = 0x7,
+    op_widen16 = 0x6,
+    op_widen16u = 0x7,
+    op_widen8 = 0x0,
+    op_widen8u = 0x1,
+    op_widen4 = 0x2,
+    op_widen4u = 0x3,
+    op_widen2 = 0x4,
+    op_widen2u = 0x5,
 };
 
 enum class data_fmt_narrow_custom_op_t {

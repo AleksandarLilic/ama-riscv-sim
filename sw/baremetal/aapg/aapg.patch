@@ -108,10 +108,10 @@ index f112a44..45a8f62 100644
      with open(output_file_path, "w") as outfile:
        outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..1501382 100644
+index 6ff3c0e..ebec554 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
-@@ -453,6 +453,140 @@ inst_store_by_set = {
+@@ -453,6 +453,130 @@ inst_store_by_set = {
      ]
  }
  
@@ -184,25 +184,15 @@ index 6ff3c0e..1501382 100644
 +        'srai8   rd rs1 31..25=0x09 shamtb 14..12=0x7 6..2=0x02 1..0=3',
 +    ],
 +    'rv32simd.widen' : [
-+        'widen16   rdp rs1 31..25=0x20 24..20=0 14..12=0x0 6..2=0x02 1..0=3',
-+        'widen16u  rdp rs1 31..25=0x20 24..20=0 14..12=0x1 6..2=0x02 1..0=3',
-+        'widen8    rdp rs1 31..25=0x20 24..20=0 14..12=0x2 6..2=0x02 1..0=3',
-+        'widen8u   rdp rs1 31..25=0x20 24..20=0 14..12=0x3 6..2=0x02 1..0=3',
-+        'widen4    rdp rs1 31..25=0x20 24..20=0 14..12=0x4 6..2=0x02 1..0=3',
-+        'widen4u   rdp rs1 31..25=0x20 24..20=0 14..12=0x5 6..2=0x02 1..0=3',
-+        'widen2    rdp rs1 31..25=0x20 24..20=0 14..12=0x6 6..2=0x02 1..0=3',
-+        'widen2u   rdp rs1 31..25=0x20 24..20=0 14..12=0x7 6..2=0x02 1..0=3',
++        'widen16   rdp rs1 31..25=0x20 shamtw 14..12=0x0 6..2=0x02 1..0=3',
++        'widen16u  rdp rs1 31..25=0x20 shamtw 14..12=0x1 6..2=0x02 1..0=3',
++        'widen8    rdp rs1 31..25=0x20 shamth 14..12=0x2 6..2=0x02 1..0=3',
++        'widen8u   rdp rs1 31..25=0x20 shamth 14..12=0x3 6..2=0x02 1..0=3',
++        'widen4    rdp rs1 31..25=0x20 shamtb 14..12=0x4 6..2=0x02 1..0=3',
++        'widen4u   rdp rs1 31..25=0x20 shamtb 14..12=0x5 6..2=0x02 1..0=3',
++        'widen2    rdp rs1 31..25=0x20 shamtn 14..12=0x6 6..2=0x02 1..0=3',
++        'widen2u   rdp rs1 31..25=0x20 shamtn 14..12=0x7 6..2=0x02 1..0=3',
 +    ],
-+    #'rv32simd.widen' : [
-+    #    'widen16   rdp rs1 31..25=0x20 shamtw 14..12=0x0 6..2=0x02 1..0=3',
-+    #    'widen16u  rdp rs1 31..25=0x20 shamtw 14..12=0x1 6..2=0x02 1..0=3',
-+    #    'widen8    rdp rs1 31..25=0x20 shamth 14..12=0x2 6..2=0x02 1..0=3',
-+    #    'widen8u   rdp rs1 31..25=0x20 shamth 14..12=0x3 6..2=0x02 1..0=3',
-+    #    'widen4    rdp rs1 31..25=0x20 shamtb 14..12=0x4 6..2=0x02 1..0=3',
-+    #    'widen4u   rdp rs1 31..25=0x20 shamtb 14..12=0x5 6..2=0x02 1..0=3',
-+    #    'widen2    rdp rs1 31..25=0x20 shamtn 14..12=0x6 6..2=0x02 1..0=3',
-+    #    'widen2u   rdp rs1 31..25=0x20 shamtn 14..12=0x7 6..2=0x02 1..0=3',
-+    #],
 +    'rv32simd.narrow' : [
 +        'narrow32  rd rs1 rs2 31..25=0x22 14..12=0x0 6..2=0x02 1..0=3',
 +        'narrow16  rd rs1 rs2 31..25=0x22 14..12=0x2 6..2=0x02 1..0=3',
@@ -252,7 +242,7 @@ index 6ff3c0e..1501382 100644
  comp_insts_subs = {
      'addi4spn': 'addi',
      'c.fld': 'fld',
-@@ -543,6 +677,7 @@ ctrl_insts = [x.split(' ')[0] for x in inst_store_by_set['rv32i.ctrl']]
+@@ -543,6 +667,7 @@ ctrl_insts = [x.split(' ')[0] for x in inst_store_by_set['rv32i.ctrl']]
  
  args_list = [
      'rd', 'rdf', 'rdprime', 'rdprimef',
@@ -260,7 +250,7 @@ index 6ff3c0e..1501382 100644
      'rs1', 'rs1f','rsprime1', 'rsprime1f',
      'rs2', 'rs2f','rsprime2', 'rsprime2f',
      'rs3', 'rs3f',
-@@ -553,6 +688,7 @@ args_list = [
+@@ -553,6 +678,7 @@ args_list = [
      'imm12hi',
      'shamtw',
      'shamt',

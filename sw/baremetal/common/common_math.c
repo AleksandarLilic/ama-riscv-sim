@@ -330,7 +330,7 @@ int32_t _simd_dot_product_int16_int8(
         const int16x2_t a_slice_2 = v_load_int16x2(a + k + 2);
         int16x4_t b_slice_wide;
         asm volatile (
-            "widen8 %[bw], %[b]\n\t"
+            "widen8 %[bw], %[b], 0\n\t"
             // bw.w.lo = 2 lower halves, bw.w.hi = 2 upper halves
             : [bw] "=r" (b_slice_wide.d)
             : [b] "r" (b_slice)
@@ -364,12 +364,12 @@ int32_t _simd_dot_product_int16_int4(
         int8x8_t b_slice_wide_b;
         int16x4_t b_slice_wide_h;
         asm volatile (
-            "widen4 %[bw], %[b]\n\t"
+            "widen4 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_b.d)
             : [b] "r" (b_slice) // nibbles to bytes
         );
         asm volatile (
-            "widen8 %[bw], %[b]\n\t"
+            "widen8 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_h.d)
             : [b] "r" (b_slice_wide_b.w.lo) // low bytes to halfwords
         );
@@ -382,7 +382,7 @@ int32_t _simd_dot_product_int16_int4(
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
         asm volatile (
-            "widen8 %[bw], %[b]\n\t"
+            "widen8 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_h.d)
             : [b] "r" (b_slice_wide_b.w.hi) // high bytes to halfwords
         );
@@ -430,7 +430,7 @@ int32_t _simd_dot_product_int8_int4(
             a_slice_2 = v_load_int8x4(a + k + 4 + i * 8);    // 4, 12, 20, 28
 
             asm volatile (
-                "widen4 %[bw], %[b]\n\t"
+                "widen4 %[bw], %[b], 0\n\t"
                 : [bw] "=r" (b_slice_wide.d)
                 : [b] "r" (b_slice)
             );
@@ -476,7 +476,7 @@ int32_t _simd_dot_product_int8_int4_core(
         const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
         int8x8_t b_slice_wide;
         asm volatile (
-            "widen4 %[bw], %[b]\n\t"
+            "widen4 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide.d)
             : [b] "r" (b_slice)
         );
@@ -526,12 +526,12 @@ int32_t _simd_dot_product_int8_int2(
             a_slice_4 = v_load_int8x4(a + k + 12 + i * 16);    // 12, 28, 44
 
             asm volatile (
-                "widen2 %[bw], %[b]\n\t"
+                "widen2 %[bw], %[b], 0\n\t"
                 : [bw] "=r" (b_slice_wide_n.d)
                 : [b] "r" (b_slice) // crumbs to nibbles
             );
             asm volatile (
-                "widen4 %[bw], %[b]\n\t"
+                "widen4 %[bw], %[b], 0\n\t"
                 : [bw] "=r" (b_slice_wide_b.d)
                 : [b] "r" (b_slice_wide_n.w.lo) // low nibbles to bytes
             );
@@ -544,7 +544,7 @@ int32_t _simd_dot_product_int8_int2(
                   [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
             );
             asm volatile (
-                "widen4 %[bw], %[b]\n\t"
+                "widen4 %[bw], %[b], 0\n\t"
                 : [bw] "=r" (b_slice_wide_b.d)
                 : [b] "r" (b_slice_wide_n.w.hi) // high nibbles to bytes
             );
@@ -592,12 +592,12 @@ int32_t _simd_dot_product_int8_int2_core(
         int4x16_t b_slice_wide_n;
         int8x8_t b_slice_wide_b;
         asm volatile (
-            "widen2 %[bw], %[b]\n\t"
+            "widen2 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_n.d)
             : [b] "r" (b_slice) // crumbs to nibbles
         );
         asm volatile (
-            "widen4 %[bw], %[b]\n\t"
+            "widen4 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_b.d)
             : [b] "r" (b_slice_wide_n.w.lo) // low nibbles to bytes
         );
@@ -610,7 +610,7 @@ int32_t _simd_dot_product_int8_int2_core(
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
         asm volatile (
-            "widen4 %[bw], %[b]\n\t"
+            "widen4 %[bw], %[b], 0\n\t"
             : [bw] "=r" (b_slice_wide_b.d)
             : [b] "r" (b_slice_wide_n.w.hi) // high nibbles to bytes
         );

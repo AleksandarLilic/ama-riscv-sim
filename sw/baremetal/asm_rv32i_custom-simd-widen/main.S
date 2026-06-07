@@ -29,7 +29,7 @@ op_add:
 op_widen16:
     lla x11, dat1
     lw x12, 0(x11)
-    widen16 RD, x12
+    widen16 RD, x12, 0
     mv x26, RD
     OP_END(0x00000605)
     mv x26, RDP
@@ -38,7 +38,7 @@ op_widen16:
 op_widen16_fwd: // test operand forwarding in RTL
     lla x11, dat3 # 0x01020304
     lw x12, 0(x11)
-    widen16 RD, x12
+    widen16 RD, x12, 0
     mv x26, RDP
     OP_END(0x00000102)
     mv x26, RD
@@ -47,7 +47,7 @@ op_widen16_fwd: // test operand forwarding in RTL
 op_widen16_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    widen16 RD, x12
+    widen16 RD, x12, 0
     mv x26, RD
     OP_END(0xffffa701)
     mv x26, RDP
@@ -56,7 +56,7 @@ op_widen16_msb_set:
 op_widen16u:
     lla x11, dat1
     lw x12, 0(x11)
-    widen16u RD, x12
+    widen16u RD, x12, 0
     mv x26, RD
     OP_END(0x00000605)
     mv x26, RDP
@@ -65,7 +65,7 @@ op_widen16u:
 op_widen16u_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    widen16u RD, x12
+    widen16u RD, x12, 0
     mv x26, RD
     OP_END(0x0000a701)
     mv x26, RDP
@@ -74,7 +74,7 @@ op_widen16u_msb_set:
 op_widen8:
     lla x11, dat1
     lw x12, 0(x11)
-    widen8 RD, x12
+    widen8 RD, x12, 0
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
@@ -83,7 +83,7 @@ op_widen8:
 op_widen8_fwd:
     lla x11, dat3 # 0x01020304
     lw x12, 0(x11)
-    widen8 RD, x12
+    widen8 RD, x12, 0
     nop
     mv x26, RDP
     OP_END(0x00010002)
@@ -93,7 +93,7 @@ op_widen8_fwd:
 op_widen8_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    widen8 RD, x12
+    widen8 RD, x12, 0
     mv x26, RD
     OP_END(0xffa70001)
     mv x26, RDP
@@ -102,7 +102,7 @@ op_widen8_msb_set:
 op_widen8u:
     lla x11, dat1
     lw x12, 0(x11)
-    widen8u RD, x12
+    widen8u RD, x12, 0
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
@@ -111,7 +111,7 @@ op_widen8u:
 op_widen8u_msb_set:
     lla x11, dat2
     lw x12, 0(x11)
-    widen8u RD, x12
+    widen8u RD, x12, 0
     mv x26, RD
     OP_END(0x00a70001)
     mv x26, RDP
@@ -120,7 +120,7 @@ op_widen8u_msb_set:
 op_widen4:
     lla x11, dat3
     lw x12, 0(x11)
-    widen4 RD, x12
+    widen4 RD, x12, 0
     mv x26, RD
     OP_END(0x00030004)
     mv x26, RDP
@@ -129,7 +129,7 @@ op_widen4:
 op_widen4_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    widen4 RD, x12
+    widen4 RD, x12, 0
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
@@ -138,7 +138,7 @@ op_widen4_msb_set:
 op_widen4u:
     lla x11, dat3
     lw x12, 0(x11)
-    widen4u RD, x12
+    widen4u RD, x12, 0
     mv x26, RD
     OP_END(0x00030004)
     mv x26, RDP
@@ -147,7 +147,7 @@ op_widen4u:
 op_widen4u_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    widen4u RD, x12
+    widen4u RD, x12, 0
     mv x26, RD
     OP_END(0x00060005)
     mv x26, RDP
@@ -156,7 +156,7 @@ op_widen4u_msb_set:
 op_widen2:
     lla x11, dat4
     lw x12, 0(x11)
-    widen2 RD, x12
+    widen2 RD, x12, 0
     mv x26, RD
     OP_END(0x01100010)
     mv x26, RDP
@@ -165,7 +165,7 @@ op_widen2:
 op_widen2_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    widen2 RD, x12
+    widen2 RD, x12, 0
     mv x26, RD
     OP_END(0x001e0011)
     mv x26, RDP
@@ -174,7 +174,7 @@ op_widen2_msb_set:
 op_widen2u:
     lla x11, dat4
     lw x12, 0(x11)
-    widen2u RD, x12
+    widen2u RD, x12, 0
     mv x26, RD
     OP_END(0x01100010)
     mv x26, RDP
@@ -183,7 +183,7 @@ op_widen2u:
 op_widen2u_msb_set:
     lla x11, dat1
     lw x12, 0(x11)
-    widen2u RD, x12
+    widen2u RD, x12, 0
     mv x26, RD
     OP_END(0x00120011)
     mv x26, RDP

@@ -29,7 +29,7 @@ index 9a121b47121..c7af5984640 100644
        rps->error_handler
          (_("internal: unreachable INSN_CLASS_*"));
 diff --git a/include/opcode/riscv-opc.h b/include/opcode/riscv-opc.h
-index e77b49a6298..af45c3f8990 100644
+index e77b49a6298..eed84b49e21 100644
 --- a/include/opcode/riscv-opc.h
 +++ b/include/opcode/riscv-opc.h
 @@ -3473,6 +3473,115 @@
@@ -95,14 +95,14 @@ index e77b49a6298..af45c3f8990 100644
 +#define MATCH_SRAI16 0x1200500b
 +#define MATCH_SRAI8  0x1200700b
 +
-+#define MATCH_WIDEN16  0x4000000b
-+#define MATCH_WIDEN16U 0x4000100b
-+#define MATCH_WIDEN8   0x4000200b
-+#define MATCH_WIDEN8U  0x4000300b
-+#define MATCH_WIDEN4   0x4000400b
-+#define MATCH_WIDEN4U  0x4000500b
-+#define MATCH_WIDEN2   0x4000600b
-+#define MATCH_WIDEN2U  0x4000700b
++#define MATCH_WIDEN16  0x4000600b
++#define MATCH_WIDEN16U 0x4000700b
++#define MATCH_WIDEN8   0x4000000b
++#define MATCH_WIDEN8U  0x4000100b
++#define MATCH_WIDEN4   0x4000200b
++#define MATCH_WIDEN4U  0x4000300b
++#define MATCH_WIDEN2   0x4000400b
++#define MATCH_WIDEN2U  0x4000500b
 +
 +#define MATCH_NARROW32 0x4400000b
 +#define MATCH_NARROW16 0x4400200b
