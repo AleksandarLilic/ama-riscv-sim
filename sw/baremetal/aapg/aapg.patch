@@ -108,7 +108,7 @@ index f112a44..45a8f62 100644
      with open(output_file_path, "w") as outfile:
        outfile.write("".join(lines))
 diff --git a/aapg/isa_funcs.py b/aapg/isa_funcs.py
-index 6ff3c0e..f56f3f2 100644
+index 6ff3c0e..1501382 100644
 --- a/aapg/isa_funcs.py
 +++ b/aapg/isa_funcs.py
 @@ -453,6 +453,140 @@ inst_store_by_set = {
@@ -125,13 +125,13 @@ index 6ff3c0e..f56f3f2 100644
 +
 +# custom isa
 +inst_store_by_set.update({
-+    'rv32simd.alu' : [
++    'rv32simd.addsub' : [
 +        'add16  rd rs1 rs2 31..25=0x00 14..12=0x0 6..2=0x02 1..0=3',
 +        'add8   rd rs1 rs2 31..25=0x00 14..12=0x2 6..2=0x02 1..0=3',
 +        'sub16  rd rs1 rs2 31..25=0x00 14..12=0x4 6..2=0x02 1..0=3',
 +        'sub8   rd rs1 rs2 31..25=0x00 14..12=0x6 6..2=0x02 1..0=3',
 +    ],
-+    'rv32simd.qalu' : [
++    'rv32simd.qaddsub' : [
 +        'qadd16   rd rs1 rs2 31..25=0x01 14..12=0x0 6..2=0x02 1..0=3',
 +        'qadd16u  rd rs1 rs2 31..25=0x01 14..12=0x1 6..2=0x02 1..0=3',
 +        'qadd8    rd rs1 rs2 31..25=0x01 14..12=0x2 6..2=0x02 1..0=3',

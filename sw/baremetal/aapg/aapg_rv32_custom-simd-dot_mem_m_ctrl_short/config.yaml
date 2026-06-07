@@ -10,37 +10,12 @@ general:
   delegation: 0x000
 
 isa-instruction-distribution:
-  rel_sys.csr: 0
   rel_rv32i.ctrl: 5
   rel_rv32i.compute: 10
   rel_rv32i.data: 20
+
   rel_rv32m: 20
-  rel_rv32simd.alu: 0
-  rel_rv32simd.qalu: 0
-  rel_rv32simd.mul: 0
-  rel_rv32simd.wmul: 0
   rel_rv32simd.dot: 20
-  rel_rv32simd.minmax: 0
-  rel_rv32simd.shift: 0
-  rel_rv32simd.widen: 0
-  rel_rv32simd.narrow: 0
-  rel_rv32simd.qnarrow: 0
-  rel_rv32simd.txp: 0
-  rel_rv32simd.dup: 0
-  rel_rv32simd.vins: 0
-  rel_rv32simd.vext: 0
-
-# Compressed instructions
-  rel_rvc.ctrl: 0
-  rel_rvc.compute: 0
-  rel_rvc.sp: 0
-  rel_rvc.data: 0
-  rel_rvc.fdata: 0
-
-  rel_rv32c.compute: 0
-  rel_rv32c.ctrl: 0
-  rel_rv32c.fdata: 0
-
 branch-control:
   backward-probability: 0.5
   block-size: 2
