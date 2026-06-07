@@ -15,11 +15,20 @@ isa-instruction-distribution:
   rel_rv32i.data: 20
 
   rel_rv32m: 20
+  rel_rv32simd.addsub: 10
+  rel_rv32simd.qaddsub: 10
   rel_rv32simd.mul: 10
   rel_rv32simd.wmul: 10
   rel_rv32simd.dot: 20
+  rel_rv32simd.minmax: 10
+  rel_rv32simd.shift: 5
   rel_rv32simd.widen: 5
+  rel_rv32simd.narrow: 5
+  rel_rv32simd.qnarrow: 5
   rel_rv32simd.txp: 5
+  rel_rv32simd.dup: 5
+  rel_rv32simd.vins: 5
+  rel_rv32simd.vext: 5
 branch-control:
   backward-probability: 0.6
   block-size: 3

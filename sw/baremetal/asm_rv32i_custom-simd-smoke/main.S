@@ -30,7 +30,6 @@ set_up_vars:
     li x18, 0x2
     li x19, 0x21
 
-#ifndef RTL_PARTIAL_SUPPORT
 simd_add_sub:
     add16 x14, x18, x19
     add8 x14, x18, x19
@@ -46,7 +45,6 @@ simd_saturating_add_sub:
     qsub16u x14, x18, x19
     qsub8 x14, x18, x19
     qsub8u x14, x18, x19
-#endif
 
 simd_mul:
     mul16 x14, x18, x19
@@ -72,7 +70,6 @@ simd_dot:
     dot2 x14, x18, x19
     dot2u x14, x18, x19
 
-#ifndef RTL_PARTIAL_SUPPORT
 simd_compare:
     min16 x14, x18, x19
     min16u x14, x18, x19
@@ -91,10 +88,8 @@ simd_shift:
     srli8 x14, x18, 3
     srai16 x14, x18, 8
     srai8 x14, x18, 3
-#endif
 
 simd_widening:
-unsupported_simd_widening:
     widen16 x14, x18, 8
     widen16u x14, x18, 3
     widen8 x14, x18, 8
@@ -104,7 +99,6 @@ unsupported_simd_widening:
     widen2 x14, x18, 8
     widen2u x14, x18, 3
 
-#ifndef RTL_PARTIAL_SUPPORT
 simd_narrowing:
     li x18, 0x12345678
     li x19, 0x0000FFFF
@@ -122,7 +116,6 @@ simd_saturating_narrowing:
     qnarrow8u x14, x18, x19
     qnarrow4 x14, x18, x19
     qnarrow4u x14, x18, x19
-#endif
 
 simd_transpose_across_pair:
     txp16 x14, x18, x19
@@ -130,7 +123,6 @@ simd_transpose_across_pair:
     txp4 x14, x18, x19
     txp2 x14, x18, x19
 
-#ifndef RTL_PARTIAL_SUPPORT
 simd_duplicate_scalar_to_vector:
     li x18, 0x109
     dup16 x14, x18
@@ -161,7 +153,6 @@ simd_extract_scalar:
     li x18, 0xffffffff
     vext2 x14, x18, 11
     vext2u x14, x18, 15
-#endif
 
 loop_end:
     li x24, 0x123456
