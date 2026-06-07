@@ -50,7 +50,7 @@
     "matmul": ["all"],
     "matmul_opt": ["all"],
     "dot_product": ["all"],
-    "dot_product_peak": ["int8"],
+    "dot_product_peak": ["all"],
 
     "uart_direct_send": ["hello_world"],
     "uart_printf_nano": ["hello_world"],

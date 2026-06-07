@@ -18,14 +18,14 @@ int8_t b[ARR_LEN] = {
 
 const int32_t ref = -18060;
 
+#if defined(MULTIPLE_ACC)
 #define ASM_BLOCK \
     asm volatile ( \
         "dot8 %[p1], %[a0], %[b0];" \
         "dot8 %[p2], %[a1], %[b1];" \
         "dot8 %[p3], %[a2], %[b2];" \
         "dot8 %[p4], %[a3], %[b3];" \
-        : [c] "+r" (c), \
-          [p1] "+r" (p_arr[0]), \
+        : [p1] "+r" (p_arr[0]), \
           [p2] "+r" (p_arr[1]), \
           [p3] "+r" (p_arr[2]), \
           [p4] "+r" (p_arr[3]) \
@@ -35,6 +35,22 @@ const int32_t ref = -18060;
           [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3]) \
         : \
     );
+
+#elif defined(SINGLE_ACC)
+#define ASM_BLOCK \
+    asm volatile ( \
+        "dot8 %[c], %[a0], %[b0];" \
+        "dot8 %[c], %[a1], %[b1];" \
+        "dot8 %[c], %[a2], %[b2];" \
+        "dot8 %[c], %[a3], %[b3];" \
+        : [c] "+r" (c) \
+        : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]), \
+          [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]), \
+          [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]), \
+          [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3]) \
+        : \
+    );
+#endif
 
 #define ASM_BLOCK_8 \
     ASM_BLOCK; \
