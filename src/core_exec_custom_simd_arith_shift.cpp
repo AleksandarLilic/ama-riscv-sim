@@ -8,6 +8,7 @@ uint32_t core::alu_c_shift_op(uint32_t a, uint32_t shamt) {
     constexpr size_t e = lane<vbits>::count;
     constexpr uint32_t mask = lane<vbits>::mask;
     uint32_t res_packed = 0;
+    shamt &= (vbits - 1);
 
     #ifdef DASM_EN
     simd_ss_init_ca();

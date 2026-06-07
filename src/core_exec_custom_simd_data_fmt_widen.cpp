@@ -7,7 +7,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
     // widen n-bit to 2n-bit elements
     constexpr size_t e = lane<vbits>::count;
     constexpr size_t out_bits = (vbits * 2);
-    constexpr uint32_t mask = TO_U32((1ULL << out_bits) - 1);
+    shamt &= (out_bits - 1); // shift is in the widened (out_bits) domain
 
     int32_t vals[e];
     #ifdef DASM_EN
@@ -17,7 +17,7 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
 
     for (size_t i = 0; i < e; i++) {
         vals[i] = extract_val<vbits, vsigned>(a);
-        vals[i] <<= (shamt & mask);
+        vals[i] <<= shamt;
         #ifdef DASM_EN
         simd_ss_append_a(vals[i]);
         #endif
