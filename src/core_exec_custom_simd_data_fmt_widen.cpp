@@ -17,10 +17,10 @@ reg_pair core::data_fmt_c_widen_t(uint32_t a, uint32_t shamt) {
 
     for (size_t i = 0; i < e; i++) {
         vals[i] = extract_val<vbits, vsigned>(a);
-        vals[i] <<= shamt;
         #ifdef DASM_EN
         simd_ss_append_a(vals[i]);
         #endif
+        vals[i] <<= shamt;
         a >>= vbits;
     }
 
