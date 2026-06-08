@@ -3,17 +3,9 @@ LENGTHS := small large
 ALGS := bubble insertion selection merge quick heap quicker
 LOOPS := 1
 
-TARGETS_BUBBLE := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 1, $(ALGS))))
-TARGETS_INSERTION := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 2, $(ALGS))))
-TARGETS_SELECTION := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 3, $(ALGS))))
-TARGETS_MERGE := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 4, $(ALGS))))
-TARGETS_QUICK := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 5, $(ALGS))))
-TARGETS_HEAP := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 6, $(ALGS))))
-TARGETS_QUICKER := $(foreach len, $(LENGTHS), $(addsuffix _$(len).elf, $(word 7, $(ALGS))))
-
-TEST_DEFINES := $(foreach l,$(LENGTHS), \
-				$(foreach a,$(ALGS), \
-                $(a)_$(l):-DLEN_$(shell echo $(l) | tr a-z A-Z):-DALG_$(shell echo $(a) | tr a-z A-Z)))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py --groups "$(ALGS):ALG" "$(LENGTHS):LEN" > $@
 
 HEADER_PREFIX := test_arrays_
 HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(LENGTHS)))

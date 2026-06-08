@@ -1,12 +1,10 @@
-
 # optimization variants
 OPT_V := load_b tiling txp_b
 LOOPS := 1
 
-TARGETS := $(addsuffix .elf, $(addprefix int8_, $(OPT_V)))
-
-TEST_DEFINES := $(foreach t,$(OPT_V), \
-				int8_$(t):-DOPT_V_$(shell echo $(t) | tr a-z A-Z))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "int8:-" "$(OPT_V):OPT_V" > $@
 
 OPT := -O3 -flto
 CFLAGS += -DLOOPS=$(LOOPS)

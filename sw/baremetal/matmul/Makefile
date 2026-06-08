@@ -1,10 +1,9 @@
 LOOP_ORDERS := ijk jik jki ikj kij kji
 LOOPS := 1
 
-TARGETS := $(addsuffix .elf, $(addprefix int8_, $(LOOP_ORDERS)))
-
-TEST_DEFINES := $(foreach t,$(LOOP_ORDERS), \
-				int8_$(t):-DLOOP_ORDER_$(shell echo $(t) | tr a-z A-Z))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "int8:-" "$(LOOP_ORDERS):LOOP_ORDER" > $@
 
 OPT := -O1 -flto
 CFLAGS += -DLOOPS=$(LOOPS)

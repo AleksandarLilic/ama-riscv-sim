@@ -97,11 +97,6 @@ endif
 HEX ?= 1
 MEM_WIDTH := 128
 
-# for tests that are parameterized by defines
-define GET_DEFINES
-$(wordlist 2,999,$(subst :, ,$(filter $1:%,$(TEST_DEFINES))))
-endef
-
 ifeq ($(CPP_SRCS),)
     CC_DRIVER := $(RV_GNU)-gcc
     CXX_FLAGS :=
@@ -112,7 +107,7 @@ endif
 
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-    $(CC_DRIVER) $(GCC_OPTS) $(CXX_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(call GET_DEFINES,$*) \
+    $(CC_DRIVER) $(GCC_OPTS) $(CXX_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(EXTRA_DEFINES) \
     $(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
@@ -152,5 +147,6 @@ clean_common:
 	rm -rf $(COMMON_BUILD_DIR)
 
 cleanall: clean clean_common
+	parametrize.mk
 
 .PHONY: all build_common clean clean_common cleanall

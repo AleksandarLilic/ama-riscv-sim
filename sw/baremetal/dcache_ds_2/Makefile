@@ -2,10 +2,10 @@ DS := aos soa
 LOOPS := 1
 
 BASE_NAME := test
-TARGETS := $(addsuffix .elf, $(addprefix $(BASE_NAME)_, $(DS)))
 
-TEST_DEFINES := $(foreach d,$(DS), \
-				$(BASE_NAME)_$(d):-DDS_$(shell echo $(d) | tr a-z A-Z))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "$(BASE_NAME):-" "$(DS):DS" > $@
 
 HEADERS := test_arrays.h
 CODEGEN_PY := ./codegen.py

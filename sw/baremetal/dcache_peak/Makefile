@@ -1,11 +1,10 @@
 #TARGET := n_$(N_IN)
 LOOPS := 100
 TYPES := load store mixed
-TARGETS := $(addsuffix .elf, $(TYPES))
 
-TEST_DEFINES := $(foreach t,$(TYPES), $(t):-D$(shell echo $(t) | tr a-z A-Z))
-
-$(info $(TEST_DEFINES))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "$(TYPES):" > $@
 
 CACHE_ALIGNED := 1
 

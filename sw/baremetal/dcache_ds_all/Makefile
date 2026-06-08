@@ -1,13 +1,11 @@
 LOOPS := 1
 
-BASE_NAME := test
 DS := aos soa
 ALG := staged combined
-TARGETS := $(foreach ds, $(DS), $(addsuffix _$(ds).elf, $(ALG)))
 
-TEST_DEFINES := $(foreach a,$(ALG), \
-				$(foreach d,$(DS), \
-				$(a)_$(d):-DALG_$(shell echo $(a) | tr a-z A-Z):-DDS_$(shell echo $(d) | tr a-z A-Z)))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "$(ALG):ALG" "$(DS):DS" > $@
 
 HEADERS := test_arrays.h
 CODEGEN_PY := ./codegen.py

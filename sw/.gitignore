@@ -21,6 +21,8 @@ baremetal/aapg/*/work/
 
 baremetal/mlp/model*.h
 
+parametrize.mk
+
 # dev dir
 local/
 NN/

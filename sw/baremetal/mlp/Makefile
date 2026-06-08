@@ -1,8 +1,9 @@
 TYPES := w8a8 w4a8 w2a8
-TARGETS := $(addsuffix .elf, $(TYPES))
 OPT := -O3 -flto
 
-TEST_DEFINES := $(foreach t,$(TYPES), $(t):-D$(shell echo $(t) | tr a-z A-Z))
+-include parametrize.mk
+parametrize.mk: ../parametrize.py
+	python3 ../parametrize.py "$(TYPES):" > $@
 
 # so the icache is happy
 #CODE_ALIGN := -falign-loops=64 # -falign-functions=64
