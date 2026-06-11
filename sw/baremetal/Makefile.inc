@@ -147,6 +147,6 @@ clean_common:
 	rm -rf $(COMMON_BUILD_DIR)
 
 cleanall: clean clean_common
-	parametrize.mk
+	rm -rf parametrize.mk
 
 .PHONY: all build_common clean clean_common cleanall
