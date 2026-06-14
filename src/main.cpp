@@ -55,6 +55,10 @@ std::string gen_help_list(const std::unordered_map<std::string, T>& map) {
     return oss.str();
 }
 
+inline std::string saved_as(const std::string& s) {
+    return "Saved as '" + s + "' under run directory";
+}
+
 // args maps
 // available rf names
 const std::unordered_map<std::string, rf_names_t> rf_names_map = {
@@ -246,13 +250,15 @@ int main(int argc, char* argv[]) {
          "set, otherwise exits on the 'prof_pc_stop' that matched "
          "'prof_pc_single_match' count",
          CXXOPTS_VAL_BOOL->default_value(defs_t::exit_on_prof_stop))
-        ("t,prof_trace", "Record profiler trace",
+        ("t,prof_trace",
+         "Record profiler traces. " + saved_as("trace.bin/rf_trace.bin"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::prof_trace))
         ("e,perf_event",
          "Performance event to track. Options: " +
          gen_help_list(perf_event_map),
          CXXOPTS_VAL_STR->default_value(defs_t::perf_event))
-        ("rf_usage", "Enable profiling register file usage",
+        ("rf_usage",
+         "Enable profiling register file usage. " + saved_as("rf_usage.bin"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
         ("no_callstack", "Disable callstack tracing",
          CXXOPTS_VAL_BOOL->default_value("false"));
@@ -261,7 +267,7 @@ int main(int argc, char* argv[]) {
     #ifdef DASM_EN
     options.add_options("Logging")
         ("l,log",
-         "Enable logging",
+         "Enable logging of each executed instrucion. " + saved_as("exec.log"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::log))
         #ifdef PROFILERS_EN
         ("log_always",
