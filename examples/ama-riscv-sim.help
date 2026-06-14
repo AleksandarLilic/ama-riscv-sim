@@ -1,6 +1,6 @@
 ama-riscv-sim
 Usage:
-  ../src/build/ama-riscv-sim <path_to_elf_file> [OPTION...]
+  ./src/build/ama-riscv-sim <path_to_elf_file> [OPTION...]
 
       --show_state          Show architectural state at the end of simulation
       --exit_on_trap        Exit sim on trap instead of going to trap handler
@@ -17,16 +17,16 @@ Usage:
       --prof_pc_single_match arg
                                 Run profiling only for match number (0 for all matches) (default: 0)
       --exit_on_prof_stop       Exit simulation immediately after profiling finishes. Exits on the first 
-                                'prof_pc_stop' if 'prof_pc_single_match' is unusedOtherwise exits on the 
-                                'prof_pc_stop' of the 'prof_pc_single_match'
-  -t, --prof_trace              Record profiler trace
+                                'prof_pc_stop' if 'prof_pc_single_match' is not set, otherwise exits on the 
+                                'prof_pc_stop' that matched 'prof_pc_single_match' count
+  -t, --prof_trace              Record profiler traces. Saved as 'trace.bin/rf_trace.bin' under run directory
   -e, --perf_event arg          Performance event to track. Options: bp_mispredict, dcache_reference, dcache_miss, 
                                 icache_reference, icache_miss, simd, mem, branch, inst (default: inst)
-      --rf_usage                Enable profiling register file usage
+      --rf_usage                Enable profiling register file usage. Saved as 'rf_usage.bin' under run directory
       --no_callstack            Disable callstack tracing
 
  Logging options:
-  -l, --log            Enable logging
+  -l, --log            Enable logging of each executed instrucion. Saved as 'exec.log' under run directory
       --log_always     Always log execution. Otherwise, log during profiling only
       --log_state      Log state after each executed instruction
       --rf_names arg   Register file names used for output. Options: x, abi (default: x)
@@ -53,10 +53,10 @@ Usage:
 
  HW model - Branch Predictor options:
       --bp arg                  First branch predictor. Defaults as active, driving the I$. For combined predictor, 
-                                counters will be weakly biased towards thispredictor (impacts warm-up period)
+                                counters will be weakly biased towards this predictor (impacts warm-up period)
                                 Options: none, gselect, ideal, global, gshare, local, bimodal, static
                                   (default: bimodal)
-      --bp2 arg                 Second branch predictor, only for combined predictor. If provided,combined 
+      --bp2 arg                 Second branch predictor, only for combined predictor. If provided, combined 
                                 predictor becomes active
                                 Options: none, gselect, ideal, global, gshare, local, bimodal, static
                                   (default: none)
@@ -82,7 +82,7 @@ Usage:
                                 Combined predictor - counter bits (default: 4)
       --bp_combined_fold_pc arg
                                 Combined predictor - Fold higher order PC bits for indexing
-                                Options: all, none (default: all)
+                                Options: all, none (default: none)
       --bp_run_all              Run all branch predictors
       --bp_dump_csv             Dump branch predictor stats to CSV
 

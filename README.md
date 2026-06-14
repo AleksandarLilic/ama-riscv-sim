@@ -110,6 +110,8 @@ cd -
 
 # build ISA sim
 cd src
+
+export DASM=1 # to enable logging options (-l and the rest), off by default
 make
 # or use non-default gcc, e.g.
 # make CXX=g++-12
@@ -262,7 +264,8 @@ ISA sim and Dhrystone are assumed to have been built as described in the [Quick 
 ## Running Dhrystone
 To generate all available outputs, run
 ```sh
-../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x80000000 -tl --rf_usage --bp_dump_csv
+../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf \
+    --prof_pc_start 0x80000000 -tl --rf_usage --bp_dump_csv
 ```
 
 Outputs:
@@ -274,7 +277,8 @@ branches.csv  callstack_folded_inst.txt  exec.log  hw_stats.json  inst_profile.j
 A more common way of profiling is to only focus on one part of the workload at the time. In case of Dhrystone, the following will profile only a single loop, 500th iteration
 
 ``` sh
-../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 41570 --prof_pc_stop 41644 --prof_pc_single_match 500
+../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf \
+    --prof_pc_start 800015f8 --prof_pc_stop 800016c0 --prof_pc_single_match 500
 ```
 Dropping `--prof_pc_single_match 500` would profile all iterations
 
@@ -283,12 +287,14 @@ Cache and branch predictor models are still running while profiling is inactive,
 Another useful option when analyzing cache behavior is to profile a specific memory region. For example, `mlp` benefits from having high hit rate for the input image in the first layer, and its hit rate can be analyzed with
 
 ```sh
-../src/build/ama-riscv-sim ../sw/baremetal/mlp/w8a8.elf --roi_start 0x00017900 --roi_size 256
+../src/build/ama-riscv-sim ../sw/baremetal/mlp/w8a8.elf \
+    --prof_pc_start 80000000 \
+    --roi_start 80007ec0 --roi_size 256
 ```
 After the simulations finishes, the `stdout` has one more line with ROI stats:
 ```
 ...
-ROI: (0x17900 - 0x17a00): R: 4100, H: 4096, M: 4, E: 4, WB: 0, HR: 99.90%; CT (R/W): core 16.0/0.0 KB, mem 256.0/0.0 B
+    ROI: (0x80007ec0 - 0x80007fc0): Ref: 4096, H: 4092(4092/0), M: 4(4/0), R: 0, WB: 0, HR: 99.90%, MPKI: 0.15; CT (R/W): core 16.0/0.0 KB, mem 256.0/0.0 B
 ...
 ```
 
@@ -567,17 +573,28 @@ Register file usage. Full usage available in [examples/rf_usage.help](examples/r
 
 Get timeline plot
 ```sh
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --timeline
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --timeline
 ```
 
 Get just the symbol counts and backannotated dasm
 ```sh
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --symbols_only
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --symbols_only
 ```
 
-Get stats trace (adjust window sizes as needed)
+Get stats trace (adjust window sizes as needed) and save decoded trace as csv
 ```sh
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --stats_trace --win_size_stats 512 --win_size_hw 64 --save_decoded_trace
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --stats_trace \
+    --win_size_stats 512 --win_size_hw 64 \
+    --save_decoded_trace
 ```
 
 Get execution breakdown
@@ -587,14 +604,28 @@ Get execution breakdown
 
 Get execution histograms
 ```sh
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --pc_hist --add_cache_lines
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --dmem_hist --add_cache_lines
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --pc_hist --add_cache_lines
+
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --dmem_hist --add_cache_lines
 ```
 
 Get execution trace
 ```sh
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --pc_trace --add_cache_lines
-./script/run_analysis.py -t examples/dhrystone_dhrystone_out/trace.bin --dasm sw/baremetal/dhrystone/dhrystone.dasm --dmem_trace --add_cache_lines
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --pc_trace --add_cache_lines
+
+./script/run_analysis.py \
+    -t examples/dhrystone_dhrystone_out/trace.bin \
+    --dasm sw/baremetal/dhrystone/dhrystone.dasm \
+    --dmem_trace --add_cache_lines
 ```
 
 Optionally, save symbols found in `dasm` with `--save_symbols`
@@ -820,11 +851,19 @@ Icache and Dcache share the config file for workloads, but have separate hardwar
 
 Sweep for Icache can be run with
 ```sh
-./script/hw_model_sweep.py -p ./script/hw_model_sweep_params_caches.json --save_stats --sweep icache --track
+./script/hw_model_sweep.py \
+    -p ./script/hw_model_sweep_params_caches.json \
+    --sweep icache \
+    --track \
+    --save_stats
 ```
 Dcache only needs `--sweep` parameter change
 ```sh
-./script/hw_model_sweep.py -p ./script/hw_model_sweep_params_caches.json --save_stats --sweep dcache --track
+./script/hw_model_sweep.py \
+    -p ./script/hw_model_sweep_params_caches.json \
+    --sweep dcache \
+    --track \
+    --save_stats
 ```
 Add `--load_stats` if the sweep has already been run and only charts need to be regenerated
 
@@ -849,7 +888,12 @@ Branch predictors are evaluated both for accuracy and MPKI (misses per 1k instru
 
 Sweep for branch predictors can be run with
 ```sh
-./script/hw_model_sweep.py -p ./script/hw_model_sweep_params_bp.json --save_stats --sweep bpred --track --bp_top_acc_thr 70 --save_png
+./script/hw_model_sweep.py \
+    -p ./script/hw_model_sweep_params_bp.json \
+    --sweep bpred \
+    --track \
+    --bp_top_acc_thr 70 \
+    --save_stats
 ```
 This also ignores all predictors with accuracy below 70%
 
@@ -893,7 +937,7 @@ Quantized MLP NN is available under [mlp](./sw/baremetal/mlp) in three flavors:
 - w4a8.elf
 - w8a8.elf
 
-NN is used as a showcase of [Custom packed SIMD ISA](#custom-simd-isa) capabilities and speed-up
+NN is used as a showcase of [Custom packed SIMD ISA](#custom-packed-simd-isa) capabilities and speed-up
 
 ## RISC-V ISA tests
 [Official RISC-V ISA tests](https://github.com/riscv-software-src/riscv-tests) are also provided
