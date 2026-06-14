@@ -80,9 +80,9 @@ void conv1d_int16(
 void main(void) {
     for (size_t i = 0; i < LOOPS; i++) {
         PROF_START;
-        SCP_LCL(in);
+        //SCP_LCL(in);
         conv1d_int16(in, IN_LEN, filter, F_LEN, out);
-        SCP_REL(in);
+        //SCP_REL(in);
         PROF_STOP;
 
         for (size_t j = 0; j < OUT_LEN; j++) {
