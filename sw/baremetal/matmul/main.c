@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include "common.h"
 
-#include "test_matrices.h"
+#include "test_matrices_int8.h"
 
 #ifndef LOOPS
 #define LOOPS 1

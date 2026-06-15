@@ -2,7 +2,13 @@
 #include "common.h"
 #include "common_math.h"
 
-#include "test_matrices.h"
+#ifdef NF_INT8
+#include "test_matrices_int8.h"
+#endif
+
+#ifdef NF_INT16
+#include "test_matrices_int16.h"
+#endif
 
 #if OPT_V_LOAD_B
 #include "load_b.h"
@@ -28,7 +34,7 @@ void main(void) {
 
         PROF_START;
         #if OPT_V_TXP_B
-        GLOBAL_SYMBOL("transpose_b");
+        GLOBAL_SYMBOL("transpose_matrix_b");
         transpose();
         #endif
 
@@ -46,8 +52,7 @@ void main(void) {
         }
         */
 
-        asm(".global check");
-        asm("check:");
+        GLOBAL_SYMBOL("check");
         for (size_t i = 0; i < A_ROWS; i++) {
             for (size_t j = 0; j < B_COLS; j++) {
                 if (c[i][j] != ref[i][j]) {
