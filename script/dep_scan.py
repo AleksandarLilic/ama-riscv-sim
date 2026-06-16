@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import struct
+import numpy as np
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
@@ -8,22 +8,34 @@ from matplotlib.ticker import EngFormatter
 from run_analysis import icfg, rolling_mean
 from utils import INDENT, get_test_title, smarter_eng_formatter
 
-BRANCH_MNM = icfg.INST_T[icfg.k_branch]
-STORE_MNM = icfg.INST_T_MEM[icfg.k_mem_s]
-FENCE_MNM = icfg.INST_T[icfg.k_fence]
-ALL_NO_RD_MNM = set(BRANCH_MNM + STORE_MNM + FENCE_MNM)
-
-RDP_MNM = icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_widen] + \
-    icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_txp] + \
-    icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
-
-DOT_MNM = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
-
 MNM_ANY = "_any_"
+DOT_MNM = set(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot])
+RDP_MNM = set(
+    icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_widen] +
+    icfg.INST_T_SIMD_DATA_FMT[icfg.k_simd_txp] +
+    icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
+)
 
-# opc_g_val, opc_b_val, rd, rs1, rs2, rd_val_zero, rdp_val_zero
-RF_ENTRY_FMT = 'BBBBBBB'
-RF_ENTRY_SIZE = struct.calcsize(RF_ENTRY_FMT)
+RF_DTYPE = np.dtype([
+    ('opc_g', np.uint8), ('opc_b', np.uint8), ('rd', np.uint8),
+    ('rs1', np.uint8), ('rs2', np.uint8), ('rdz', np.uint8), ('rdpz', np.uint8),
+])
+
+LUT_SIZE = np.iinfo(np.uint8).max + 1
+
+def build_bool_lut(mnm_set: set):
+    """Map each opcode ID -> bool for fast numpy indexed lookup."""
+    g = np.zeros(LUT_SIZE, dtype=bool)
+    b = np.zeros(LUT_SIZE, dtype=bool)
+    for i, name in enumerate(icfg.OPC_G_NAMES):
+        g[i] = name in mnm_set
+    for i, name in enumerate(icfg.OPC_B_NAMES):
+        b[i] = name in mnm_set
+    return g, b
+
+# B LUTs are all-zero for DOT/RDP: custom SIMD -> always General opcode
+DOT_G_LUT, DOT_B_LUT = build_bool_lut(DOT_MNM)
+RDP_G_LUT, RDP_B_LUT = build_bool_lut(RDP_MNM)
 
 class dependency_results:
     n_inst = 0
@@ -38,12 +50,8 @@ class dependency_results:
         return f"dependency_results(src={self.src_s}, dep={self.dep_s}, " + \
                f"insts={self.n_inst}, dep_cnt={self.dep_arr_cnt})"
 
-def read_rf_trace(path: str) -> list:
-    with open(path, 'rb') as f:
-        data = f.read()
-    n = len(data) // RF_ENTRY_SIZE
-    return [struct.unpack_from(RF_ENTRY_FMT, data, i * RF_ENTRY_SIZE)
-            for i in range(n)]
+def read_rf_trace(path: str) -> np.ndarray:
+    return np.fromfile(path, dtype=RF_DTYPE)
 
 def decode_mnm(opc_g_val: int, opc_b_val: int) -> str:
     if opc_g_val != icfg.OPC_NONE:
@@ -105,8 +113,9 @@ def search(args):
         res.src_s['mnm'] = [m.lower() for m in icfg.ALL_INST]
         res.src_s['str'] = "any"
     else:
-        res.src_s['mnm'] = [m.strip().lower()
-                            for m in args.src.split(",") if m.strip()]
+        res.src_s['mnm'] = [
+            m.strip().lower() for m in args.src.split(",") if m.strip()
+        ]
         res.src_s['str'] = ", ".join(sorted(res.src_s['mnm']))
         unknown = [m for m in res.src_s['mnm'] if m not in icfg.ALL_INST]
         if unknown:
@@ -117,8 +126,9 @@ def search(args):
         res.dep_s['mnm'] = [m.lower() for m in icfg.ALL_INST]
         res.dep_s['str'] = "any"
     else:
-        res.dep_s['mnm'] = [m.strip().lower()
-                            for m in args.dep.split(",") if m.strip()]
+        res.dep_s['mnm'] = [
+            m.strip().lower() for m in args.dep.split(",") if m.strip()
+        ]
         res.dep_s['str'] = ", ".join(sorted(res.dep_s['mnm']))
         unknown = [m for m in res.dep_s['mnm'] if m not in icfg.ALL_INST]
         if unknown:
@@ -146,56 +156,75 @@ def search(args):
     n = len(entries)
     res.n_inst = n
 
+    opc_g = entries['opc_g']
+    opc_b = entries['opc_b']
+    use_g = opc_g != icfg.OPC_NONE  # True where entry uses General opcode table
+
+    # element-wise: select G or B LUT result per entry depending on opcode type
+    def apply_lut(g_lut, b_lut):
+        return np.where(use_g, g_lut[opc_g], b_lut[opc_b])
+
+    is_rdp = apply_lut(RDP_G_LUT, RDP_B_LUT)
+    is_dot = apply_lut(DOT_G_LUT, DOT_B_LUT)
+    rd_arr = entries['rd']
+    is_valid_rd = (rd_arr != icfg.REG_NONE) & (rd_arr != 0)
+
     rd_val_zero_cnt = {'rd': 0, 'rdp': 0}
-    #rd_val_zero_trace = {'rd': [], 'rdp': [] }
+    rd_val_zero_cnt['rd'] = int(entries['rdz'][is_valid_rd].sum())
+    rd_val_zero_cnt['rdp'] = int(entries['rdpz'][is_valid_rd & is_rdp].sum())
+
+    # query-specific LUTs: built per call, unlike DOT/RDP which are module-level
+    src_g_lut, src_b_lut = build_bool_lut(set(res.src_s['mnm']))
+    dep_g_lut, dep_b_lut = build_bool_lut(set(res.dep_s['mnm']))
+    is_src = apply_lut(src_g_lut, src_b_lut)
+    is_dep = apply_lut(dep_g_lut, dep_b_lut)
+
+    # column views and local aliases to avoid per-iteration attribute lookups
+    all_rd = rd_arr
+    all_rs1 = entries['rs1']
+    all_rs2 = entries['rs2']
+    REG_NONE = icfg.REG_NONE
+
     for pos in range(n):
-        e_og, e_ob, e_rd, _, _, e_rdz, e_rdpz = entries[pos]
-        mnm = decode_mnm(e_og, e_ob)
-        if valid_rd(e_rd):
-            rd_val_zero_cnt['rd'] += e_rdz
-            #rd_val_zero_trace['rd'].append(e_rdz)
-            if inst_writes_rdp(mnm):
-                rd_val_zero_cnt['rdp'] += e_rdpz
-                #rd_val_zero_trace['rdp'].append(e_rdpz)
-
-        if mnm not in res.src_s['mnm']:
+        if not is_src[pos]:
             continue
 
-        rd_l = src_rd(mnm, e_rd) # source reg destinations list
-        if rd_l is None:
-            # either non-writer or x0 -> skip as a source
+        e_rd = int(all_rd[pos])
+        if not is_valid_rd[pos]:
             continue
+
+        # rdp writes consecutive reg pair
+        rd_l = [e_rd, e_rd + 1] if is_rdp[pos] else [e_rd]
 
         # scan lookahead window over subsequent executed instructions
         # terminate early if a redefinition of rd occurs (kills dependency)
         max_pos = min(pos + window, n - 1)
         for nx_pos in range(pos + 1, max_pos + 1):
-            nxe_og, nxe_ob, nxe_rd, nxe_rs1, nxe_rs2, _, _ = entries[nx_pos]
-            nx_mnm = decode_mnm(nxe_og, nxe_ob)
+            nxe_rd = int(all_rd[nx_pos])
+            nxe_rs1 = int(all_rs1[nx_pos])
+            nxe_rs2 = int(all_rs2[nx_pos])
 
             # check dep before kill:
             # same-reg read+write counts as dependency, then ends the chain
             # e.g. `add x1, x1, x2` checks for dep on x1, then kills it
-            if nx_mnm in res.dep_s['mnm']:
-
-                nx_rs_l = dep_rs(nxe_rs1, nxe_rs2) # dependent reg sources list
-                if nx_mnm in DOT_MNM and valid_rd(nxe_rd):
+            if is_dep[nx_pos]:
+                nx_rs_l = [r for r in (nxe_rs1, nxe_rs2)
+                           if r != REG_NONE and r != 0]
+                if is_dot[nx_pos] and nxe_rd != REG_NONE and nxe_rd != 0:
                     nx_rs_l = [nxe_rd] + nx_rs_l # dot: rd is also rs3/acc
 
-                if any((r in rd_l) for r in nx_rs_l):
+                if any(r in rd_l for r in nx_rs_l):
                     dist = nx_pos - pos # distance in executed-instruction steps
                     res.dep_arr_cnt[dist] += 1
                     res.dep_inst_idx[dist].append(nx_pos + 1)
 
                     is_dot_acc = (
-                        mnm in DOT_MNM and # src is dot
-                        nx_mnm in DOT_MNM and # dep is dot
+                        is_dot[pos] and # src is dot
+                        is_dot[nx_pos] and # dep is dot
                         nxe_rd in rd_l and # dep rd is src rd (dot acc)
                         # and no other src regs (rs1/2) in dep
-                        not any(
-                            (r in rd_l)
-                            for r in [nxe_rs1, nxe_rs2] if valid_rd(r)
-                        )
+                        not any(r in rd_l for r in (nxe_rs1, nxe_rs2)
+                                if r != REG_NONE and r != 0)
                     )
                     if is_dot_acc:
                         # only one increment per dep even if both rs1,rs2 == rd
@@ -204,13 +233,15 @@ def search(args):
 
             # if this instruction writes the same rd,
             # kill the dependency search for this source
-            if valid_rd(nxe_rd) and nxe_rd in rd_l:
+            if nxe_rd != REG_NONE and nxe_rd != 0 and nxe_rd in rd_l:
                 break
 
     #import pandas as pd
     #fig, ax = plt.subplots()
-    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace['rd']), 128))
-    #ax.plot(rolling_mean(pd.Series(rd_val_zero_trace['rdp']), 128))
+    #ax.plot(rolling_mean(
+    #    pd.Series(entries['rdz'][is_valid_rd].astype(float)), 128))
+    #ax.plot(rolling_mean(
+    #    pd.Series(entries['rdpz'][is_valid_rd & is_rdp].astype(float)), 128))
     return res, rd_val_zero_cnt
 
 def main(args):
