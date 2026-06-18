@@ -53,3 +53,4 @@ __pycache__/
 
 # untracked files
 local/
+*.md
