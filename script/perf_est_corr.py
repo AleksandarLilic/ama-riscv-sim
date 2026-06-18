@@ -3,6 +3,7 @@
 import argparse
 import os
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from hw_model_sweep import get_test_name
@@ -68,6 +69,7 @@ def main():
     _, workloads = load_config(args.config)
     workloads = resolve_workloads(workloads, args.filter)
 
+    t_start = time.time()
     for wl in workloads:
         test_name = get_test_name(wl)
         try:
@@ -95,6 +97,9 @@ def main():
         print("\nFailures:")
         for name, err in failures:
             print(f"{INDENT}{name}: {err}")
+
+    runtime = time.time() - t_start
+    print(f"\nRuntime {runtime:.2f}s")
 
     sys.exit(1 if failures else 0)
 
