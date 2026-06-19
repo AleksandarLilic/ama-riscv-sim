@@ -44,7 +44,7 @@ CPP_SRCS += $(wildcard *.cpp)
 endif
 LD_SRC := $(COMMON_SRC_PATH)/link.ld
 SRCS := $(C_SRCS) $(S_SRCS) $(CPP_SRCS)
-INC_PATHS += $(COMMON_SRC_PATH)
+INC_PATHS += $(COMMON_SRC_PATH) .
 INC_H := $(wildcard $(addsuffix /*.h, $(INC_PATHS)))
 INC := $(addprefix -I, $(INC_PATHS))
 LIBS += -lgcc
@@ -107,8 +107,8 @@ endif
 
 # define as variable so it's not broken up across lines for stdout
 BUILD_APP = \
-    $(CC_DRIVER) $(GCC_OPTS) $(CXX_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) $(EXTRA_DEFINES) \
-    $(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
+    $(CC_DRIVER) $(GCC_OPTS) $(CXX_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) \
+		$(EXTRA_DEFINES) $(INC) $(SRCS) $(COMMON_OBJS) -o $@ $(LIBS)
 
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
@@ -129,16 +129,16 @@ COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
 COMMON_FLAGS += -Werror -pedantic
 
 BUILD_COMMON = \
-	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) -c $< -o $@
-
-$(COMMON_BUILD_DIR)/%.o: %.c %.h
-	$(BUILD_COMMON)
+	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) \
+		$(USER_DEFINES) -MMD -MP -c $< -o $@
 
 $(COMMON_BUILD_DIR)/%.o: %.c
 	$(BUILD_COMMON)
 
 $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
+
+-include $(wildcard $(COMMON_BUILD_DIR)/*.d)
 
 clean:
 	rm -f *.elf* *.dasm *.hex* *.mem* *.bin *.o *.d *.i *.s *.map *.su
