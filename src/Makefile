@@ -130,10 +130,7 @@ $(BDIR)/%.o: %.cpp | $(VER_H)
 
 -include $(DEPS)
 
-cleanbuild:
+clean:
 	rm -rf $(BDIR)
 
-clean: cleanlogs cleanbuild
-	rm -rf $(TARGET)
-
-.PHONY: all obj strip clean cleanlogs cleanbuild
+.PHONY: all obj obj_for_cosim strip clean
