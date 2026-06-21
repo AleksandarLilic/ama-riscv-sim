@@ -135,18 +135,7 @@ void core::single_step() {
     }
     #endif
 
-    // TODO: DPI needs to handle this separately based on the simulation time
-    mem->update_mtime();
-    bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE) >> 3;
-    bool mie_MTIE = (csr.at(CSR_MIE).value & MIE_MTIE) >> 7;
-    bool mip_MTIP = (csr.at(CSR_MIP).value & MIP_MTIP) >> 7;
-    if (mstatus_MIE && mie_MTIE && mip_MTIP) {
-        tu.e_timer_interrupt();
-        #ifdef HW_MODELS_EN
-        last_inst_branch = false;
-        #endif
-    }
-
+    check_interrupts();
     if (!tu.is_trapped()) {
         fetch();
         #ifdef PROFILERS_EN
@@ -158,9 +147,6 @@ void core::single_step() {
 
     #ifdef PROFILERS_EN
     [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
-    #endif
-
-    #ifdef PROFILERS_EN
     if (!tu.is_trapped() && (prof_active)) prof_pc.inst_cnt++;
     #endif
 
@@ -168,42 +154,9 @@ void core::single_step() {
     // dasm string always available, logged to the file conditionally
     DASM_ALIGN;
     dasm.finish_inst();
-    if (logf.act) {
-        if (tu.is_trapped()) {
-            // log changed callstack and return
-            log_ofstream << dasm.asm_str << "\n";
-            #ifdef PROFILERS_EN
-            if (log_symbol) LOG_SYMBOL_TO_FILE;
-            #endif
-            if (cfg.exit_on_trap) running = false;
-            return;
-        }
-        log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
-        // don't count instructions unless also profiling
-        //if (prof_active) log_ofstream << prof_pc.inst_cnt;
-        #ifdef PROFILERS_EN
-        if (prof_active) log_ofstream << inst_cnt + 1;
-        else log_ofstream << "";
-        #else
-        log_ofstream << inst_cnt + 1;
-        #endif
-        log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
-                     << dasm.asm_str;
-
-        #ifdef HW_MODELS_EN
-        if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
-        #endif
-        log_ofstream << "\n";
-        #ifdef DEBUG
-        log_ofstream << std::flush;
-        #endif
-
-        if (logf.state) {
-            log_ofstream << print_state(dasm_update_csr) << "\n";
-            dasm_update_csr = false;
-        }
-    }
+    if (logf.act) log_inst(tu.is_trapped(), log_symbol);
     #endif
+
     if (tu.is_trapped()) {
         if (cfg.exit_on_trap) running = false;
         return;
@@ -225,6 +178,36 @@ void core::single_step() {
     inst_cnt++;
 
     if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
+}
+
+void core::check_interrupts() {
+    // TODO: DPI needs to handle this separately based on the simulation time
+    mem->update_mtime();
+    #ifdef UART_INPUT_EN
+    mem->update_uart_input(inst_cnt);
+    #endif
+    uint32_t mie_val = csr.at(CSR_MIE).value;
+    uint32_t mip_val = csr.at(CSR_MIP).value;
+    bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE);
+    bool mti = ((mie_val & MIE_MTIE) && (mip_val & MIP_MTIP));
+
+    #ifdef UART_INPUT_EN
+    // priv spec: external (MEI) before timer (MTI), one trap per step
+    // UART RX is the sole MEI source, so MEI lives under UART_INPUT_EN
+    bool mei = ((mie_val & MIE_MEIE) && (mip_val & MIP_MEIP));
+    if (mstatus_MIE && mei) {
+        tu.e_external_interrupt();
+        #ifdef HW_MODELS_EN
+        last_inst_branch = false;
+        #endif
+    } else
+    #endif
+    if (mstatus_MIE && mti) {
+        tu.e_timer_interrupt();
+        #ifdef HW_MODELS_EN
+        last_inst_branch = false;
+        #endif
+    }
 }
 
 void core::fetch() {
@@ -280,6 +263,45 @@ void core::exec() {
         }
     }
 }
+
+#ifdef DASM_EN
+void core::log_inst(bool trapped, bool log_symbol) {
+    if (trapped) {
+        // log changed callstack and return
+        log_ofstream << dasm.asm_str << "\n";
+        #ifdef PROFILERS_EN
+        if (log_symbol) LOG_SYMBOL_TO_FILE;
+        #endif
+        if (cfg.exit_on_trap) running = false;
+        return;
+    }
+
+    log_ofstream << INDENT << std::setw(6) << std::setfill(' ');
+    // don't count instructions unless also profiling
+    //if (prof_active) log_ofstream << prof_pc.inst_cnt;
+    #ifdef PROFILERS_EN
+    if (prof_active) log_ofstream << inst_cnt + 1;
+    else log_ofstream << "";
+    #else
+    log_ofstream << inst_cnt + 1;
+    #endif
+    log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
+                    << dasm.asm_str;
+
+    #ifdef HW_MODELS_EN
+    if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
+    #endif
+    log_ofstream << "\n";
+    #ifdef DEBUG
+    log_ofstream << std::flush;
+    #endif
+
+    if (logf.state) {
+        log_ofstream << print_state(dasm_update_csr) << "\n";
+        dasm_update_csr = false;
+    }
+}
+#endif
 
 void core::finish(bool dump_regs) {
     if (dump_regs) dump();

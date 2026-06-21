@@ -297,6 +297,10 @@ trap_handler(unsigned int mcause, void* mepc, void* sp) {
             timer_interrupt_handler();
             return;
         }
+        if (mcause == MCAUSE_MACHINE_EXT_INT) {
+            external_interrupt_handler();
+            return;
+        }
         // other unsupported atm
         write_mismatch(0, 0, 2000 + mcause);
         fail();
@@ -307,6 +311,14 @@ trap_handler(unsigned int mcause, void* mepc, void* sp) {
 void __attribute__((weak))
 timer_interrupt_handler() {
     CLINT->mtimecmp += 10000; // 10ms slices
+}
+
+void __attribute__((weak))
+external_interrupt_handler() {
+    // MEIP is level-sensitive:
+    // read RX_DATA to consume the byte and clearRX_VALID, which deasserts MEIP
+    // otherwise the interrupt re-fires
+    (void)UART0->rx_data;
 }
 
 // for crt0 init

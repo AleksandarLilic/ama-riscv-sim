@@ -1,0 +1,8 @@
+{
+    "asm_rv32i_exceptions": ["all"],
+
+    "uart_direct_loopback": ["test"],
+    "uart_direct_loopback_buffered": ["test"],
+    "uart_interrupt": ["test"]
+
+}

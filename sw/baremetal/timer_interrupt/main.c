@@ -3,15 +3,17 @@
 #include "common.h"
 
 void timer_interrupt_handler() {
-    CLINT->mtimecmp += 1000;
+    CLINT->mtimecmp += 100;
 }
 
 void main(void) {
     CLINT->mtime = 0x0;
-    CLINT->mtimecmp = 200;
+    CLINT->mtimecmp = 10;
     set_csr(CSR_MIE, MIE_MTIE); // Enable machine timer interrupt
     set_csr(CSR_MSTATUS, MSTATUS_MIE); // Enable machine interrupts globally
     while (!UART0_TX_READY);
+    volatile int32_t c = 30;
+    while (c--) {};
     sliced64_t mtime;
     mtime = (sliced64_t)CLINT->mtime;
     //CLINT->mtime = 0x100;

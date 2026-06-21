@@ -8,6 +8,7 @@ TYPES := trap_ecall trap_ebreak trap_unsupported \
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):" > $@
 
+COMMON_OBJ_NAMES = crt0.o common.o
 MARCH := rv32i_zicsr
 OPT := -O1 -flto
 

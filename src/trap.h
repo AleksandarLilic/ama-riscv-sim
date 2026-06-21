@@ -48,6 +48,7 @@ class trap {
 
         // interrupts
         void e_timer_interrupt();
+        void e_external_interrupt();
 
     private:
         void trap_inst(uint32_t cause, uint32_t tval);

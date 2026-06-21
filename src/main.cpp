@@ -132,6 +132,9 @@ struct defs_t {
     static constexpr char silent[] = "false";
     #ifdef UART_EN
     static constexpr char sink_uart[] = "false";
+    #ifdef UART_INPUT_EN
+    static constexpr char uart_in[] = "";
+    #endif
     #endif
     #ifdef PROFILERS_EN
     static constexpr char prof_pc_start[] = "0";
@@ -232,6 +235,12 @@ int main(int argc, char* argv[]) {
         ("sink_uart",
          "Don't print UART output to stdout. UART still fully operational",
          CXXOPTS_VAL_BOOL->default_value(defs_t::sink_uart))
+        #ifdef UART_INPUT_EN
+        ("uart_in",
+         "UART RX input bytes, drained at the baud-rate instruction stride "
+         "(e.g. --uart_in \"$(cat in.txt)\"). If omitted, reads stdin non-blocking",
+         CXXOPTS_VAL_STR->default_value(defs_t::uart_in))
+        #endif
         #endif
         ;
 
@@ -438,6 +447,9 @@ int main(int argc, char* argv[]) {
         cfg.silent = ARG2BOOL(result["silent"]);
         #ifdef UART_EN
         cfg.sink_uart = ARG2BOOL(result["sink_uart"]);
+        #ifdef UART_INPUT_EN
+        cfg.uart_in = result["uart_in"].as<std::string>();
+        #endif
         #endif
 
         #ifdef PROFILERS_EN

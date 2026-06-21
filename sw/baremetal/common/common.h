@@ -261,6 +261,7 @@ void print_hw_counters_json(const hw_cnt_t* pe);
 
 void trap_handler(unsigned int mcause, void* mepc, void* sp);
 void timer_interrupt_handler();
+void external_interrupt_handler();
 
 #ifdef __cplusplus
 }

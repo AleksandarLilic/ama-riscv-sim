@@ -1,24 +1,26 @@
 #include "uart.h"
 
-uart::uart(cfg_t cfg) : dev(UART_SIZE), sink_uart(cfg.sink_uart) {
+#ifdef UART_INPUT_EN
+#include <poll.h>
+#include <unistd.h>
+#endif
+
+uart::uart(cfg_t cfg) :
+    dev(UART_SIZE),
+    sink_uart(cfg.sink_uart)
+    #ifdef UART_INPUT_EN
+    , uart_in(cfg.uart_in)
+    , uart_in_idx(0)
+    , next_rx_inst(BAUD_STRIDE)
+    , csr_mip(nullptr)
+    #endif
+{
     std::fill(mem.begin(), mem.end(), 0);
     mem[UART_STATUS] |= UART_TX_READY; // always ready to transmit
-    #ifdef UART_INPUT_EN
-    uart_running = true;
-    uart_in_ready = false;
-    uart_thread = std::thread(&uart::uart_stdin, this, uart_baud_rate::_115200);
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [this] () { return uart_in_ready.load(); });
-    #endif
     uart_ofs.open(cfg.out_dir + "uart.log");
 }
 
-uart::~uart() {
-    #ifdef UART_INPUT_EN
-    uart_running = false;
-    if (uart_thread.joinable()) uart_thread.join();
-    #endif
-}
+uart::~uart() {}
 
 #ifdef DPI
 // force flush to file on every character, unreliable output otherwise
@@ -42,52 +44,54 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
 uint32_t uart::rd(uint32_t address, uint32_t size) {
     // reads from status register
     if (address < UART_RX_DATA) return dev::rd(address, size);
-    // reads from rx_data register with lock
+    // reads from rx_data register consuming the byte clears RX_VALID (and MEIP)
     if (address == UART_RX_DATA) {
-        std::lock_guard<std::mutex> lock(mtx);
         mem[UART_STATUS] &= ~UART_RX_VALID;
+        refresh_meip();
         return dev::rd(address, size);
     }
     return 0; // tx data not readable, return 0
 }
 
-void uart::uart_stdin(uart_baud_rate baud_rate) {
-    // assuming 10 bits per character for 8N1
-    auto delay = std::chrono::microseconds(1'000'000 * 10 / TO_I32(baud_rate));
-    {
-        std::lock_guard<std::mutex> lock(mtx);
-        uart_in_ready = true;
-    }
-    cv.notify_one();
+void uart::refresh_meip() {
+    if (csr_mip == nullptr) return;
+    if (mem[UART_STATUS] & UART_RX_VALID) *csr_mip |= MIP_MEIP;
+    else *csr_mip &= ~MIP_MEIP;
+}
 
-    std::string input_buffer;
-    char c;
-    while (uart_running) {
-        c = std::getchar();
-        if (c == '\n') {
-            // input characters
-            for (char c : input_buffer) {
-                {
-                    std::lock_guard<std::mutex> lock(mtx);
-                    mem[UART_RX_DATA] = c;
-                    mem[UART_STATUS] |= UART_RX_VALID;
-                }
-                std::this_thread::sleep_for(delay);
-            }
-            // newline for end
-            /*
-            {
-                std::lock_guard<std::mutex> lock(mtx);
-                mem[UART_RX_DATA] = '\n';
+int32_t uart::next_byte() {
+    if (!uart_in.empty()) {
+        // preloaded source: deterministic, exhausts at end of string
+        if (uart_in_idx < uart_in.size())
+            return TO_U8(uart_in[uart_in_idx++]);
+        return -1;
+    }
+    // live source: non-blocking stdin poll
+    struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+    if (::poll(&pfd, 1, 0) > 0 && (pfd.revents & POLLIN)) {
+        char c;
+        if (::read(STDIN_FILENO, &c, 1) == 1) return TO_U8(c);
+    }
+    return -1; // nothing available (or EOF)
+}
+
+void uart::update_input(uint64_t instr_cnt) {
+    #ifndef DPI
+    if (instr_cnt >= next_rx_inst) {
+        next_rx_inst += BAUD_STRIDE;
+        // only pull a new byte once the previous one is consumed,
+        // so MEIP stays a clean level and no source byte is dropped
+        if (!(mem[UART_STATUS] & UART_RX_VALID)) {
+            int32_t b = next_byte();
+            if (b >= 0) {
+                mem[UART_RX_DATA] = TO_U8(b);
                 mem[UART_STATUS] |= UART_RX_VALID;
             }
-            std::this_thread::sleep_for(delay);
-            */
-
-            input_buffer.clear();
-        } else {
-            input_buffer.push_back(c);
         }
     }
+    #else
+    (void)instr_cnt;
+    #endif
+    refresh_meip();
 }
-#endif
+#endif // UART_INPUT_EN

@@ -9,15 +9,20 @@
 #define UART_EN
 #endif
 
+// UART RX input (UART_IN=1) requires the UART device
+#if defined(UART_INPUT_EN) && !defined(UART_EN)
+#error "UART_INPUT_EN requires UART_EN"
+#endif
+
 #ifdef DPI
 #ifdef HW_MODELS_EN
-static_assert(0, "HW models are not allowed in DPI mode");
+#error "HW models are not allowed in DPI mode"
 #endif
 #ifndef PROFILERS_EN
-static_assert(0, "DPI requires profilers");
+#error "DPI requires profilers"
 #endif
 #ifndef DASM_EN
-static_assert(0, "DPI requires DASM");
+#error "DPI requires DASM"
 #endif
 #endif
 

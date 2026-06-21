@@ -28,8 +28,12 @@ class core {
         core(memory* mem, cfg_t cfg, hw_cfg_t hw_cfg);
         uint64_t run();
         void single_step();
+        void check_interrupts();
         void fetch();
         void exec();
+        #ifdef DASM_EN
+        void log_inst(bool trapped, bool log_symbol);
+        #endif
         void dump();
         std::string print_state(bool dump_csr);
         void finish(bool dump_regs);

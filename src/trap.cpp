@@ -121,3 +121,11 @@ void trap::e_timer_interrupt() {
     SIM_TRAP << "Timer interrupt";
     trap_inst(MCAUSE_MACHINE_TIMER_INT, 0);
 }
+
+void trap::e_external_interrupt() {
+    #ifdef DASM_EN
+    DASM_PTR_TRAP << "External interrupt";
+    #endif
+    SIM_TRAP << "External interrupt";
+    trap_inst(MCAUSE_MACHINE_EXT_INT, 0);
+}
