@@ -101,14 +101,8 @@ mconfigptr_read:
 misa_read:
     csrr x26, CSR_MISA
     TEST_INC
-    bne x26, x0, fail # misa is 0 when not implemented
-
-misa_write:
-    li x26, 0x80000000
-    csrw CSR_MISA, x26
-    TEST_INC
-    csrr x26, CSR_MISA
-    bne x26, x0, fail # still 0 when writing to unimplemented misa
+    li x20, 0x40801100 # rv32im + custom isa
+    bne x26, x20, fail
 
 mcycle_reset: # bad idea to read mcycle before writing to it
     li x26, 0x0

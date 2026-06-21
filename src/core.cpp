@@ -682,9 +682,14 @@ void core::d_system() {
                 return;
             case INST_MRET:
                 // restore previous interrupt enable bit state
-                csr.at(CSR_MSTATUS).value =
+                csr.at(CSR_MSTATUS).value = (
+                    // clear mie
                     (csr.at(CSR_MSTATUS).value & ~MSTATUS_MIE) |
-                    ((csr.at(CSR_MSTATUS).value & MSTATUS_MPIE) >> 4);
+                    // mie = mpie
+                    ((csr.at(CSR_MSTATUS).value & MSTATUS_MPIE) >> 4) |
+                    // set mpie
+                    (csr.at(CSR_MSTATUS).value | MSTATUS_MPIE)
+                );
                 // restore pc
                 next_pc = csr[CSR_MEPC].value;
                 DASM_OP(mret)

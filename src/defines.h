@@ -173,6 +173,13 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define CSR_MCYCLEH 0XB80 // MRW
 #define CSR_MINSTRETH 0XB82 // MRW
 
+constexpr uint32_t CSR_MISA_VAL = (
+    (1 << 30) | // MXL = 1 (RV32)
+    (1 << 8)  | // I
+    (1 << 12) | // M
+    (1 << 23)   // X (non-standard extensions present)
+);
+
 // Machine Hardware Performance Monitor (MHPM) counters & events
 #define CSR_MHPMCOUNTER3 0XB03 // MRW
 #define CSR_MHPMCOUNTER4 0XB04 // MRW

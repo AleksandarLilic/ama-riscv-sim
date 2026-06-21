@@ -425,7 +425,7 @@ class core {
 
             // Machine Trap Setup
             {CSR_MSTATUS, "mstatus", csr_perm_t::rw, 0x1800}, // mpp = 3
-            {CSR_MISA, "misa", csr_perm_t::warl_unimp, 0u},
+            {CSR_MISA, "misa", csr_perm_t::ro, CSR_MISA_VAL},
             {CSR_MIE, "mie", csr_perm_t::warl, 0u},
             {CSR_MTVEC, "mtvec", csr_perm_t::rw, 0u},
 
