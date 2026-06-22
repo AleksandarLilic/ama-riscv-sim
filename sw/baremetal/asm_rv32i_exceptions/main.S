@@ -70,11 +70,11 @@ to_nowhere_b:
     nop
 #endif
 
-fail:
-    FAIL
-
 pass:
     PASS
+
+fail:
+    FAIL
 
 .data
 dat1: .word 0x55551f12
