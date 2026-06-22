@@ -29,7 +29,8 @@ endif
 
 # if not set in test's Makefile, default to all object files w/o newlib
 COMMON_OBJ_NAMES ?= crt0.o memset.o common.o common_math.o nanoprintf.o # newlib_defs.o
-COMMON_SRC_PATH := $(REPO_ROOT)/sw/baremetal/common
+SW_COMMON_DIR ?= $(REPO_ROOT)/sw/common
+COMMON_SRC_PATH ?= $(SW_COMMON_DIR)
 COMMON_BUILD_DIR := ./common_build
 COMMON_OBJS = $(addprefix $(COMMON_BUILD_DIR)/, $(COMMON_OBJ_NAMES))
 $(shell mkdir -p $(COMMON_BUILD_DIR))

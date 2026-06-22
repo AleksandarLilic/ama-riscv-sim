@@ -13,6 +13,6 @@
 [submodule "script/gprof2dot"]
 	path = script/gprof2dot
 	url = git@github.com:jrfonseca/gprof2dot.git
-[submodule "sw/baremetal/common/nanoprintf"]
-	path = sw/baremetal/common/nanoprintf
+[submodule "sw/common/nanoprintf"]
+	path = sw/common/nanoprintf
 	url = git@github.com:charlesnicholson/nanoprintf.git

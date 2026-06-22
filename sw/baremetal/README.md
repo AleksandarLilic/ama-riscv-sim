@@ -29,7 +29,8 @@ If test passes, `tohost[31:1]` is set to `0x0`. If test fails, `tohost[31:1]` is
 
 # Common files
 
-Shared startup and support code lives under [`common/`](./common/):
+Shared startup and support code lives under [`../common/`](../common/).  
+[`common/`](./common/) used as a symlink
 
 | File | Purpose |
 |------|---------|
