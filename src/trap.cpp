@@ -20,9 +20,6 @@ void trap::trap_inst(uint32_t cause, uint32_t tval) {
     #ifdef DASM_EN
     dasm->asm_ss << TRAP_CAUSE;
     #endif
-    #ifndef DPI
-    std::cout << TRAP_CAUSE << "\n";
-    #endif
 
     inst_trapped = true;
     csr->at(CSR_MCAUSE).value = cause;
@@ -41,53 +38,41 @@ void trap::trap_inst(uint32_t cause, uint32_t tval) {
 }
 
 // exception handling
-void trap::e_unsupported_inst(const std::string &msg) {
+void trap::e_unsupported_inst([[maybe_unused]] const std::string &msg) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
     #endif
-    #ifndef DPI
-    SIM_TRAP << "Unsupported instruction <" << FMT;
-    #endif
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
-void trap::e_illegal_inst(const std::string &msg, uint32_t memw) {
+void trap::e_illegal_inst(
+    [[maybe_unused]] const std::string &msg, [[maybe_unused]] uint32_t memw)
+{
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Illegal instruction <" << FMT_P(memw);
     #endif
-    #ifndef DPI
-    SIM_TRAP << "Illegal instruction <" << FMT_P(memw);
-    #endif
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
-void trap::e_env(const std::string &msg, uint32_t code) {
+void trap::e_env([[maybe_unused]] const std::string &msg, uint32_t code) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << msg;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << msg;
     #endif
     trap_inst(code, *inst);
 }
 
-void trap::e_unsupported_csr(const std::string &msg) {
+void trap::e_unsupported_csr([[maybe_unused]] const std::string &msg) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Unsupported instruction <" << FMT;
     #endif
     trap_inst(MCAUSE_ILLEGAL_INST, *inst);
 }
 
 void trap::e_dmem_access_fault(
-    uint32_t address, const std::string &msg, mem_op_t mem_op) {
+    uint32_t address, [[maybe_unused]] const std::string &msg, mem_op_t mem_op)
+{
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Memory access fault at address <" << FMT_ADDR;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Memory access fault at address <" << FMT_ADDR;
     #endif
     if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ACCESS_FAULT, address);
@@ -97,12 +82,10 @@ void trap::e_dmem_access_fault(
 }
 
 void trap::e_dmem_addr_misaligned(
-    uint32_t address, const std::string &msg, mem_op_t mem_op) {
+    uint32_t address, [[maybe_unused]] const std::string &msg, mem_op_t mem_op)
+{
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
     #endif
     if (mem_op == mem_op_t::read) {
         trap_inst(MCAUSE_LOAD_ADDR_MISALIGNED, address);
@@ -112,33 +95,26 @@ void trap::e_dmem_addr_misaligned(
 }
 
 void trap::e_inst_access_fault(
-    uint32_t address, const std::string &msg) {
+    uint32_t address, [[maybe_unused]] const std::string &msg)
+{
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Fetch access fault at address <" << FMT_ADDR;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Fetch access fault at " << FMT_ADDR;
     #endif
     trap_inst(MCAUSE_INST_ACCESS_FAULT, address);
 }
 
 void trap::e_inst_addr_misaligned(
-    uint32_t address, const std::string &msg) {
+    uint32_t address, [[maybe_unused]] const std::string &msg)
+{
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Fetch misaligned access at " << FMT_ADDR;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Fetch misaligned access at " << FMT_ADDR;
     #endif
     trap_inst(MCAUSE_INST_ADDR_MISALIGNED, address);
 }
 
-void trap::e_hardware_error(const std::string &msg) {
+void trap::e_hardware_error([[maybe_unused]] const std::string &msg) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Hardware Error <" << FMT;
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "Hardware Error <" << FMT;
     #endif
     trap_inst(MCAUSE_HARDWARE_ERROR, *inst);
 }
@@ -148,18 +124,12 @@ void trap::e_timer_interrupt() {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Timer interrupt";
     #endif
-    #ifndef DPI
-    SIM_TRAP << "Timer interrupt";
-    #endif
     trap_inst(MCAUSE_MACHINE_TIMER_INT, 0);
 }
 
 void trap::e_external_interrupt() {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "External interrupt";
-    #endif
-    #ifndef DPI
-    SIM_TRAP << "External interrupt";
     #endif
     trap_inst(MCAUSE_MACHINE_EXT_INT, 0);
 }

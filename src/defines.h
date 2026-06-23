@@ -533,7 +533,6 @@ constexpr uint32_t CSR_MISA_VAL = (
 
 #define SIM_ERROR std::cerr << "\n >> SIM RUNTIME ERROR: "
 #define SIM_WARNING std::cout << "\n >> SIM RUNTIME WARNING: "
-#define SIM_TRAP std::cout << "\n >> SIM INFO: Instruction trapped: "
 #define DASM_TRAP dasm.asm_ss << "Instruction trapped: "
 
 #define BIN_FORMAT(val, n) \
