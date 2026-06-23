@@ -181,11 +181,14 @@ void core::single_step() {
 }
 
 void core::check_interrupts() {
-    // TODO: DPI needs to handle this separately based on the simulation time
+    // nothing to update under DPI mode, RTL drives them
+    #ifndef DPI
     mem->update_mtime();
     #ifdef UART_INPUT_EN
     mem->update_uart_input(inst_cnt);
     #endif
+    #endif
+
     uint32_t mie_val = csr.at(CSR_MIE).value;
     uint32_t mip_val = csr.at(CSR_MIP).value;
     bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE);
@@ -197,6 +200,10 @@ void core::check_interrupts() {
     bool mei = ((mie_val & MIE_MEIE) && (mip_val & MIP_MEIP));
     if (mstatus_MIE && mei) {
         tu.e_external_interrupt();
+        #ifdef DPI
+        // one-shot; TB re-forces per RTL trap
+        csr.at(CSR_MIP).value &= ~MIP_MEIP;
+        #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
         #endif
@@ -204,6 +211,10 @@ void core::check_interrupts() {
     #endif
     if (mstatus_MIE && mti) {
         tu.e_timer_interrupt();
+        #ifdef DPI
+        // one-shot; TB re-forces per RTL trap
+        csr.at(CSR_MIP).value &= ~MIP_MTIP;
+        #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
         #endif
@@ -968,7 +979,6 @@ void core::d_csr_access() {
         #ifdef DASM_EN
         DASM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3);
         #endif
-        SIM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3) << "\n";
     } else {
         #ifndef DPI
         csr_cnt_update(csr_addr);

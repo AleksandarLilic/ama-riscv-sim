@@ -317,17 +317,26 @@ constexpr uint32_t CSR_MISA_VAL = (
         PROF_RD_ZERO(res) \
         break;
 
+#ifdef DPI
+#define MMIO_RTL_TRUSTED_OVERRIDE(val, addr) \
+    if (mmio_rtl_trusted(addr)) val = get_rtl_rf_value(ip.rd());
+#else
+#define MMIO_RTL_TRUSTED_OVERRIDE(val, addr)
+#endif
+
 #define CASE_LOAD(op) \
-    case TO_U8(load_op_t::op_##op): \
-        loaded = load_##op(rf[ip.rs1()] + ip.imm_i()); \
+    case TO_U8(load_op_t::op_##op): { \
+        uint32_t mmio_addr = rf[ip.rs1()] + ip.imm_i(); \
+        loaded = load_##op(mmio_addr); \
         if (tu.is_trapped()) return; \
+        MMIO_RTL_TRUSTED_OVERRIDE(loaded, mmio_addr) \
         PROF_SPARSITY(loaded, 1u, mem_l) \
         write_rf(ip.rd(), loaded); \
         DASM_OP(op) \
         PROF_G(op) \
         PROF_RD_RS1 \
         PROF_RD_ZERO(loaded) \
-        break;
+        } break;
 
 #define CASE_STORE(op) \
     case TO_U8(store_op_t::op_##op): \

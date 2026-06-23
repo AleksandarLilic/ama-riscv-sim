@@ -46,6 +46,10 @@ class core {
         uint32_t get_inst_cnt() { return inst_cnt; }
         void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
+        void force_irq(bool mtip, bool meip) {
+            if (mtip) csr.at(CSR_MIP).value |= MIP_MTIP;
+            if (meip) csr.at(CSR_MIP).value |= MIP_MEIP;
+        }
         #endif
 
         #if defined(PROFILERS_EN) || defined(DASM_EN)
@@ -503,6 +507,17 @@ class core {
         static constexpr bool is_rtl_trusted(uint16_t addr) {
             for (uint16_t a : csr_rtl_trusted) if (a == addr) return true;
             return false;
+        }
+
+        static constexpr bool mmio_rtl_trusted(uint32_t addr) {
+            // CLINT mtime is the 64-bit reg at CLINT_ADDR + 0x10
+            return (
+                // mtime
+                ((addr >= (CLINT_ADDR + 0x10)) && (addr < (CLINT_ADDR + 0x18)))
+                ||
+                // whole UART
+                ((addr >= UART0_ADDR) && (addr < (UART0_ADDR + UART_SIZE)))
+            );
         }
 
         // every rtl-trusted CSR must be a supported CSR

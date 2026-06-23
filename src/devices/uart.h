@@ -25,6 +25,7 @@ class uart : public dev {
         std::ofstream uart_ofs;
         const bool sink_uart;
 
+        #ifndef DPI
         #ifdef UART_INPUT_EN
         // RX input is drained one byte per ~char-time
         // on the same virtual clock as mtime (10ns/inst @ 100MHz, 1 IPC):
@@ -42,14 +43,17 @@ class uart : public dev {
         int32_t next_byte();
         void refresh_meip(); // drive mip.MEIP from RX_VALID (level-sensitive)
         #endif
+        #endif
 
     public:
         uart(cfg_t cfg);
         ~uart();
         void wr(uint32_t address, uint32_t data, uint32_t size) override;
+        #ifndef DPI
         #ifdef UART_INPUT_EN
         uint32_t rd(uint32_t address, uint32_t size) override;
         void set_mip(uint32_t* csr_mip) { this->csr_mip = csr_mip; }
         void update_input(uint64_t instr_cnt); // paced RX drain
+        #endif
         #endif
 };

@@ -1,18 +1,22 @@
 #include "uart.h"
 
+#ifndef DPI
 #ifdef UART_INPUT_EN
 #include <poll.h>
 #include <unistd.h>
+#endif
 #endif
 
 uart::uart(cfg_t cfg) :
     dev(UART_SIZE),
     sink_uart(cfg.sink_uart)
+    #ifndef DPI
     #ifdef UART_INPUT_EN
     , uart_in(cfg.uart_in)
     , uart_in_idx(0)
     , next_rx_inst(BAUD_STRIDE)
     , csr_mip(nullptr)
+    #endif
     #endif
 {
     std::fill(mem.begin(), mem.end(), 0);
@@ -40,6 +44,7 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
     }
 }
 
+#ifndef DPI
 #ifdef UART_INPUT_EN
 uint32_t uart::rd(uint32_t address, uint32_t size) {
     // reads from status register
@@ -95,3 +100,4 @@ void uart::update_input(uint64_t instr_cnt) {
     refresh_meip();
 }
 #endif // UART_INPUT_EN
+#endif // DPI

@@ -45,15 +45,19 @@ class memory {
         uint64_t get_mtime_shadow() { return clint0.get_mtime_shadow(); }
         void set_mip(uint32_t* csr_mip) {
             clint0.set_mip(csr_mip);
+            #ifndef DPI
             #ifdef UART_INPUT_EN
             uart0.set_mip(csr_mip);
             #endif
+            #endif
         }
         void update_mtime() { clint0.update_mtime(); }
+        #ifndef DPI
         #ifdef UART_INPUT_EN
         void update_uart_input(uint64_t instr_cnt) {
             uart0.update_input(instr_cnt);
         }
+        #endif
         #endif
         uint32_t rd_inst(uint32_t address);
         uint32_t just_inst(uint32_t address);
