@@ -2,7 +2,7 @@ priv-mode:
   mode: m
 
 general:
-  total_instructions: 15000
+  total_instructions: 14000
   regs_not_use: x1,x2
   custom_trap_handler: false
   code_start_address: 0x0 # not used by the flow
@@ -10,29 +10,15 @@ general:
   delegation: 0x000
 
 isa-instruction-distribution:
-  rel_rv32i.ctrl: 5
+  rel_rv32i.ctrl: 1
   rel_rv32i.compute: 20
   rel_rv32i.data: 20
 
-  rel_rv32m: 20
-  rel_rv32simd.addsub: 10
-  rel_rv32simd.qaddsub: 10
-  rel_rv32simd.mul: 10
-  rel_rv32simd.wmul: 10
-  rel_rv32simd.dot: 20
-  rel_rv32simd.minmax: 10
-  rel_rv32simd.shift: 5
-  rel_rv32simd.widen: 5
-  rel_rv32simd.narrow: 5
-  rel_rv32simd.qnarrow: 5
-  rel_rv32simd.txp: 5
-  rel_rv32simd.dup: 5
-  rel_rv32simd.vins: 5
-  rel_rv32simd.vext: 5
-  rel_sys.csr: 1
+  rel_rv32m: 0
+  rel_sys.csr: 5
 branch-control:
-  backward-probability: 0.6
-  block-size: 3
+  backward-probability: 0.5
+  block-size: 7
 
 recursion-options:
   recursion-enable: false
@@ -66,7 +52,7 @@ csr-sections:
   sections: 0x340:0x340 # mscratch
 
 user-functions:
-  randomize: '{64: "nop"}' # dc about function, new one is provided
+  randomize: '{32: "nop"}' # dc about function, new one is provided
 
 switch-priv-modes:
   switch_modes: false

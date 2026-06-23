@@ -29,6 +29,7 @@ isa-instruction-distribution:
   rel_rv32simd.dup: 5
   rel_rv32simd.vins: 5
   rel_rv32simd.vext: 5
+  rel_sys.csr: 5
 branch-control:
   backward-probability: 0.6
   block-size: 4

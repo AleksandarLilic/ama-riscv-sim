@@ -104,6 +104,7 @@
     "aapg/aapg_rv32_all": ["all"],
     "aapg/aapg_rv32_all2": ["all"],
     "aapg/aapg_rv32_generic": ["all"],
+    "aapg/aapg_rv32_generic_csr": ["all"],
     "aapg/aapg_rv32_branches": ["all"],
     "aapg/aapg_rv32_branches_short": ["all"],
     "aapg/aapg_rv32_mem": ["all"],

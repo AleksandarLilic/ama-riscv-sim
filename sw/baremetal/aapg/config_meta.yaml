@@ -48,6 +48,16 @@ rv32_generic:
     rel_rv32i.data: 20
     rel_rv32m: 0
 
+rv32_generic_csr:
+  general:
+    total_instructions: 14000
+  isa-instruction-distribution:
+    rel_rv32i.ctrl: 1
+    rel_rv32i.compute: 20
+    rel_rv32i.data: 20
+    rel_rv32m: 0
+    rel_sys.csr: 5
+
 rv32_mem:
   general:
     total_instructions: 9000
@@ -414,6 +424,7 @@ rv32_all:
     rel_rv32simd.dup: 5
     rel_rv32simd.vins: 5
     rel_rv32simd.vext: 5
+    rel_sys.csr: 1
   branch-control:
     backward-probability: 0.6
     block-size: 3
@@ -442,6 +453,7 @@ rv32_all2:
     rel_rv32simd.dup: 5
     rel_rv32simd.vins: 5
     rel_rv32simd.vext: 5
+    rel_sys.csr: 5
   branch-control:
     backward-probability: 0.6
     block-size: 4
