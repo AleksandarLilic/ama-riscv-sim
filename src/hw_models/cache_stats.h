@@ -134,7 +134,7 @@ struct cache_stats_t {
             if (!prof_active) return;
             misses.ld += (atype == mem_op_t::read);
             misses.st += (atype == mem_op_t::write);
-            ct_mem.reads += CACHE_LINE_SIZE;
+            ct_mem.reads += cache_cfg::line_size;
         }
         void replace(bool dirty) {
             if (!prof_active) return;
@@ -144,7 +144,7 @@ struct cache_stats_t {
         void writeback() {
             if (!prof_active) return;
             writebacks++;
-            ct_mem.writes += CACHE_LINE_SIZE;
+            ct_mem.writes += cache_cfg::line_size;
         }
 
     public:

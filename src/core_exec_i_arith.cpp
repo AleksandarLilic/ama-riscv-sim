@@ -27,10 +27,10 @@ uint32_t core::alu_srli(uint32_t a, uint32_t b) { return alu_srl(a, b); }
 uint32_t core::alu_srai(uint32_t a, uint32_t b) { return alu_sra(a, b); }
 uint32_t core::alu_slti(uint32_t a, uint32_t b) {
     #ifdef PROFILERS_EN
-    if (inst == INST_HINT_LOG_START) {
+    if (inst == inst::hint_log_start) {
         prof_state(prof_pc.should_start());
         return 0;
-    } else if (inst == INST_HINT_LOG_END) {
+    } else if (inst == inst::hint_log_end) {
         prof_state(false);
         running = !prof_pc.should_exit();
         return 0;

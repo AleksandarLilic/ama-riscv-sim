@@ -45,35 +45,15 @@
 //#define TO_I2(x) static_cast<int8_t>(((x) & 0x3) | (((x) & 0x2) ? 0xFC :0x00))
 #define TO_BOOL(x) static_cast<bool>((x))
 
-constexpr int const_log2(int n, int p = 0) {
-    return (n <= 1) ? p : const_log2(n >> 1, p + 1);
-}
-
-// Memory
-#define BASE_ADDR 0x8000'0000
-#define MEM_ADDR_BITWIDTH 8 // digits in hex printout
-#define MEM_SIZE 131072 // 0x2'0000
-constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
-#define UART0_ADDR 0x1001'3000
-#define UART0_RX_DATA_ADDR (UART0_ADDR + 0x04)
-#define UART0_TX_DATA_ADDR (UART0_ADDR + 0x08)
-#define UART_SIZE 12 // 3 32-bit registers per UART {ctrl, rx_data, tx_data}
-#define CLINT_ADDR 0x0200'0000
-#define CLINT_SIZE 32 // reserved for 4 64-bit registers
-
 // HW models
 #define CACHE_MODE_PERF 0 // tags and stats
 #define CACHE_MODE_FUNC 1 // adds data
-//#define CACHE_VERIFY // only for CACHE_MODE_FUNC
 
 #ifndef CACHE_MODE
-#define CACHE_MODE CACHE_MODE_PERF
+#define CACHE_MODE CACHE_MODE_FUNC
 #endif
-
-#define CACHE_LINE_SIZE 64 // bytes
-#define CACHE_BYTE_ADDR_BITS (__builtin_ctz(CACHE_LINE_SIZE)) // 6
-#define CACHE_BYTE_ADDR_MASK (CACHE_LINE_SIZE - 1) // 0x3F, bottom 6 bits
-//#define CACHE_ADDR_MASK 1FFFF // 17 bits
+// optionally, compare against isa sim, only for CACHE_MODE_FUNC
+//#define CACHE_VERIFY
 
 // Instruction field masks
 #define M_OPC7 TO_U32(0x7F)
@@ -127,22 +107,6 @@ constexpr uint32_t ADDR_BITS = const_log2(MEM_SIZE);
 #define M_IMM_6 TO_U32((0x1)<<6)
 #define M_IMM_5 TO_U32((0x1)<<5)
 #define M_IMM_2 TO_U32((0x1)<<2)
-
-// Instructions
-#define INST_ECALL 0x00000073
-#define INST_EBREAK 0x00100073
-#define INST_MRET 0x30200073
-#define INST_SRET 0x10200073
-#define INST_WFI 0x10500073
-#define INST_FENCE_I 0x0000100f
-#define INST_NOP 0x00000013
-#define INST_C_NOP 0x0001
-#define INST_RET 0x00008067 // jalr x0, 0(x1)
-#define INST_C_RET 0x8082 // c.jr x1
-#define INST_RET_X5 0x00028067 // jalr x0, 0(x5)
-//#define INST_RET_X15 0x00078067 // jalr x0, 0(x15)
-#define INST_HINT_LOG_START 0x01002013 // slti x0, x0, 0x10
-#define INST_HINT_LOG_END 0x01102013 // slti x0, x0, 0x11
 
 #define CSR_TOHOST 0x51E
 #define CSR_TOHOST_EARLY_EXIT 0xF0000000
@@ -548,7 +512,7 @@ constexpr uint32_t CSR_MISA_VAL = (
     std::setw((n)) << std::setfill('0') << std::bitset<n>(val) << std::dec
 
 #define MEM_ADDR_FORMAT(addr) \
-    std::setw(MEM_ADDR_BITWIDTH) << std::setfill('0') << std::hex << addr \
+    std::setw(mem_addr_bitwidth) << std::setfill('0') << std::hex << addr \
                                  << std::dec
 
 #define INST_FORMAT(inst, n) \
@@ -635,7 +599,11 @@ constexpr uint32_t CSR_MISA_VAL = (
     }
 
 inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
-    if ((addr != UART0_TX_DATA_ADDR) && (addr != UART0_RX_DATA_ADDR)) return "";
+    if ((addr != mem_map::uart0_tx_data_addr) &&
+        (addr != mem_map::uart0_rx_data_addr))
+    {
+        return "";
+    }
     if (val >= 0x20 && val <= 0x7e) { // printable ASCII characters
         return std::string(" # '") + char(val) + "'";
     }

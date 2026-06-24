@@ -17,6 +17,43 @@
 #include <cmath>
 #include <bitset>
 
+constexpr int const_log2(int n, int p = 0) {
+    return (n <= 1) ? p : const_log2(n >> 1, p + 1);
+}
+
+// Memory
+namespace mem_map {
+    constexpr uint32_t base_addr = 0x8000'0000;
+    constexpr uint32_t mem_size = 131072; // 0x2'0000
+    constexpr uint32_t addr_bits = const_log2(mem_size);
+    constexpr uint32_t uart0_addr = 0x1001'3000;
+    constexpr uint32_t uart0_rx_data_addr = (uart0_addr + 0x04);
+    constexpr uint32_t uart0_tx_data_addr = (uart0_addr + 0x08);
+    constexpr uint32_t uart_size = 12; // 3 32-bit registers per UART
+    constexpr uint32_t clint_addr = 0x0200'0000;
+    constexpr uint32_t clint_size = 32; // reserved for 4 64-bit registers
+}
+
+constexpr uint32_t mem_addr_bitwidth = 8; // digits in hex printout
+
+// Instructions
+namespace inst {
+    constexpr uint32_t ecall = 0x00000073;
+    constexpr uint32_t ebreak = 0x00100073;
+    constexpr uint32_t mret = 0x30200073;
+    constexpr uint32_t sret = 0x10200073;
+    constexpr uint32_t wfi = 0x10500073;
+    constexpr uint32_t fence_i = 0x0000100f;
+    constexpr uint32_t nop = 0x00000013;
+    constexpr uint32_t c_nop = 0x0001;
+    constexpr uint32_t ret = 0x00008067; // jalr x0, 0(x1)
+    constexpr uint32_t c_ret = 0x8082; // c.jr x1
+    constexpr uint32_t ret_x5 = 0x00028067; // jalr x0, 0(x5)
+    constexpr uint32_t ret_x15 = 0x00078067; // jalr x0, 0(x15)
+    constexpr uint32_t hint_log_start = 0x01002013; // slti x0, x0, 0x10
+    constexpr uint32_t hint_log_end = 0x01102013; // slti x0, x0, 0x11
+};
+
 // Decoder types
 enum class opcode {
     d_alu_reg = 0b011'0011, // R type
@@ -367,6 +404,24 @@ perf_event_names = {
     "bp_mispredict",
     #endif
 };
+
+// hw models
+namespace cache_cfg {
+    constexpr uint32_t line_size = 64; // bytes
+    constexpr uint32_t byte_addr_bits = (__builtin_ctz(line_size)); // 6
+    constexpr uint32_t byte_addr_mask = (line_size - 1); // 0x3F, bottom 6 bits
+    constexpr uint32_t addr_mask = (mem_map::mem_size - 1); // 17 bits
+    constexpr uint32_t max_sets = 1024;
+    constexpr uint32_t max_ways = 128;
+}
+
+namespace bp_cfg {
+    #ifdef RV32C
+    constexpr uint32_t pc_cutoff_bits = 1;
+    #else
+    constexpr uint32_t pc_cutoff_bits = 2;
+    #endif
+}
 
 // dasm
 struct dasm_str {

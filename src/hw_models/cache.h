@@ -5,6 +5,8 @@
 #include "cache_stats.h"
 #include "profiler_perf.h"
 
+class main_memory; // forward declaration
+
 #if CACHE_MODE == CACHE_MODE_FUNC
 // #ifdef DPI
 // using mem_t = memory_dpi;
@@ -12,9 +14,6 @@
 using mem_t = main_memory;
 // #endif
 #endif
-
-#define MAX_CACHE_SETS 1024
-#define MAX_CACHE_WAYS 128
 
 struct metadata_t {
     bool valid;
@@ -31,11 +30,11 @@ struct cache_line_t {
         metadata_t metadata;
         uint32_t tag;
         #if CACHE_MODE == CACHE_MODE_FUNC
-        std::array<uint8_t, CACHE_LINE_SIZE> data;
+        std::array<uint8_t, cache_cfg::line_size> data;
         #endif
     private:
         uint64_t reference_cnt;
-        //std::array<uint32_t, CACHE_LINE_SIZE> byte_reference_cnt;
+        //std::array<uint32_t, cache_cfg::line_size> byte_reference_cnt;
     private:
         bool prof_active = false;
     public:
@@ -65,8 +64,6 @@ struct current_cache_line {
     uint32_t byte_addr;
 };
 
-class main_memory; // forward declaration
-
 /*
 cache parameters (
     P: parametrized,
@@ -76,7 +73,7 @@ cache parameters (
 - line size (P): number of bytes in a cache line
 - sets (P): number of sets in the cache
 - ways (P): associativity - number of ways in each set
-- size (D): sets * ways * CACHE_LINE_SIZE [bytes]
+- size (D): sets * ways * cache_cfg::line_size [bytes]
 - policies:
     - replacement (P): 1. lru - track with counters, replace largest
     - insertion (P): 1. update - on miss, promote line to MRU position

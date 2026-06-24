@@ -250,11 +250,11 @@ void profiler::add_te() {
 void profiler::log_inst(opc_g opc, uint64_t inc) {
     if (active) {
         inst_cnt_prof++;
-        if (inst == INST_NOP) {
+        if (inst == inst::nop) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
-        } else if ((inst & 0xFFFF) == INST_C_NOP) {
+        } else if ((inst & 0xFFFF) == inst::c_nop) {
             prof_g_arr[TO_U32(opc_g::i_c_nop)].count += inc;
-        } else if (inst == INST_HINT_LOG_START || inst == INST_HINT_LOG_END) {
+        } else if (inst == inst::hint_log_start || inst == inst::hint_log_end) {
             prof_g_arr[TO_U32(opc_g::i_hint)].count += inc;
         } else {
             prof_g_arr[TO_U32(opc)].count += inc;
@@ -282,10 +282,10 @@ void profiler::log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc) {
 void profiler::track_sp(const uint32_t sp) {
     // rf[32] all initialized with 0xc0ffee by the isa sim
     // rf[32] all initialized to 0x0 by the crt0.S
-    // sp is then initialized to stack top `BASE_ADDR + MEM_SIZE` by the crt0.S
+    // sp is then initialized to stack top `base_addr + mem_size` by the crt0.S
     // if the rest of the application respects the abi
     // sp will grow downwards and therefore this will collect peak stack usage
-    if ((sp > BASE_ADDR) && (sp < min_sp)) min_sp = sp;
+    if ((sp > mem_map::base_addr) && (sp < min_sp)) min_sp = sp;
 }
 
 void profiler::log_to_file_and_print(bool silent) {
@@ -322,7 +322,7 @@ void profiler::log_to_file_and_print(bool silent) {
         }
     }
 
-    min_sp = (BASE_ADDR + MEM_SIZE - min_sp); // remove stack_top offset
+    min_sp = (mem_map::base_addr + mem_map::mem_size - min_sp); // remove stack_top offset
     ofs << INDENT << "\"_max_sp_usage\": " << min_sp << ",\n" << INDENT;
     if (prof_src == profiler_source_t::clock) {
         ofs << "\"_profiled_cycles\": " << cnt.tot;

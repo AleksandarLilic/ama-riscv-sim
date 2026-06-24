@@ -5,18 +5,18 @@ memory::memory(
     [[maybe_unused]] cfg_t cfg,
     [[maybe_unused]] hw_cfg_t hw_cfg) :
         // create devices
-        mm(MEM_SIZE, test_elf, hw_cfg),
+        mm(mem_map::mem_size, test_elf, hw_cfg),
         #ifdef UART_EN
         uart0(cfg),
         #endif
         clint0(),
         // put devices in memory map
         mem_map {{
-            {BASE_ADDR, MEM_SIZE, &mm},
+            {mem_map::base_addr, mem_map::mem_size, &mm},
             #ifdef UART_EN
-            {UART0_ADDR, UART_SIZE, &uart0},
+            {mem_map::uart0_addr, mem_map::uart_size, &uart0},
             #endif
-            {CLINT_ADDR, CLINT_SIZE, &clint0}
+            {mem_map::clint_addr, mem_map::clint_size, &clint0}
         }}
  {
     dev_ptr = nullptr;

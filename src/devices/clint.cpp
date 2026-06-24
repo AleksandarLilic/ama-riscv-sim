@@ -1,6 +1,6 @@
 #include "clint.h"
 
-clint::clint() : dev(CLINT_SIZE) {
+clint::clint() : dev(mem_map::clint_size) {
     std::fill(mem.begin(), mem.end(), 0x0);
 }
 

@@ -5,12 +5,6 @@
 #include "bp_pht.h"
 #include "bp_stats.h"
 
-#ifdef RV32C
-#define BP_PC_CUTOFF_BITS 1
-#else
-#define BP_PC_CUTOFF_BITS 2
-#endif
-
 class bp {
     public:
         const std::string type_name;
@@ -33,9 +27,11 @@ class bp {
             stats(cfg.type_name)
         {
             pc_folds = 0;
-            // the most possible # of folds, without going past ADDR_BITS
+            // the most possible # of folds, without going past addr_bits
             if (fold_pc == bp_pc_folds_t::all) {
-                pc_folds = TO_U32((ADDR_BITS - BP_PC_CUTOFF_BITS) / pc_bits);
+                pc_folds = TO_U32(
+                    (mem_map::addr_bits - bp_cfg::pc_cutoff_bits) / pc_bits
+                );
                 //pc_folds -= 1;
             }
         }
@@ -51,7 +47,10 @@ class bp {
         virtual uint32_t get_pc(uint32_t pc, uint32_t mask) {
             uint32_t pc_part = 0;
             for (size_t p = 0; p <= pc_folds; p++) {
-                pc_part ^= (pc >> (BP_PC_CUTOFF_BITS + (pc_bits * p))) & mask;
+                pc_part ^= (
+                    (pc >> (bp_cfg::pc_cutoff_bits + (pc_bits * p))) &
+                    mask
+                );
             }
             return pc_part;
         }

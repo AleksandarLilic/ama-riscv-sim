@@ -2,7 +2,7 @@
 
 core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     running(false),
-    mem(mem), pc(BASE_ADDR), next_pc(0), inst(0), inst_cnt(0),
+    mem(mem), pc(mem_map::base_addr), next_pc(0), inst(0), inst_cnt(0),
     tu(&csr, &pc, &inst)
     #ifdef PROFILERS_EN
     , prof_pc(cfg.prof_pc)
@@ -36,7 +36,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #ifdef DPI
     prof_perf.set_clk_src(&clk_src);
     // profiling active from the beginning instead of waiting for first PC exec
-    bool prof_on_boot = (prof_pc.start == BASE_ADDR);
+    bool prof_on_boot = (prof_pc.start == mem_map::base_addr);
     prof_active = prof_on_boot;
     prof.set_active(prof_on_boot);
     prof_perf.set_active(prof_on_boot);
@@ -479,7 +479,7 @@ void core::d_alu_imm() {
     if (is_shift) dasm.asm_ss << FHEXN(ip.imm_i_shamt(), 2);
     else dasm.asm_ss << TO_I32(ip.imm_i());
     DASM_RD_UPDATE;
-    if (inst == INST_NOP) {
+    if (inst == inst::nop) {
         dasm.clear_str();
         dasm.asm_ss << "nop";
     }
@@ -619,7 +619,7 @@ void core::d_jalr() {
     PROF_RD_RS1
 
     #if defined(PROFILERS_EN) || defined(DASM_EN)
-    bool ret_inst = (inst == INST_RET) || (inst == INST_RET_X5); // but not X15
+    bool ret_inst = (inst == inst::ret) || (inst == inst::ret_x5); // but not X15
     #endif
 
     #ifdef PROFILERS_EN
@@ -685,13 +685,13 @@ void core::d_system() {
         next_pc = pc + 4;
     } else { // (funct3 == 0) -> system instructions
         switch (inst) {
-            case INST_ECALL:
+            case inst::ecall:
                 tu.e_env("ECALL", MCAUSE_MACHINE_ECALL);
                 return;
-            case INST_EBREAK:
+            case inst::ebreak:
                 tu.e_env("EBREAK", MCAUSE_BREAKPOINT);
                 return;
-            case INST_MRET:
+            case inst::mret:
                 // restore previous interrupt enable bit state
                 csr.at(CSR_MSTATUS).value = (
                     // clear mie
@@ -718,7 +718,7 @@ void core::d_system() {
 }
 
 void core::d_misc_mem() {
-    if (inst == INST_FENCE_I) {
+    if (inst == inst::fence_i) {
         // nop
         next_pc = pc + 4;
         DASM_OP(fence.i)

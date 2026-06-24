@@ -9,7 +9,7 @@
 #endif
 
 struct mem_region_t {
-    uint32_t base; // offset from BASE_ADDR
+    uint32_t base; // offset from mem_map::base_addr
     uint32_t size;
     bool r, w, x;
 };
@@ -37,8 +37,9 @@ class main_memory : public dev {
         uint32_t just_inst(uint32_t addr) { return dev::rd(addr, 4); }
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
-        std::array<uint8_t, CACHE_LINE_SIZE> rd_line(uint32_t addr);
-        void wr_line(uint32_t addr, std::array<uint8_t, CACHE_LINE_SIZE> data);
+        std::array<uint8_t, cache_cfg::line_size> rd_line(uint32_t addr);
+        void wr_line(
+            uint32_t addr, std::array<uint8_t, cache_cfg::line_size> data);
         #ifdef HW_MODELS_EN
         scp_status_t scp(uint32_t addr, scp_mode_t scp_mode);
         void cache_profiling(bool enable) {
@@ -65,6 +66,11 @@ class main_memory : public dev {
             icache.show_stats(show_state);
             dcache.show_stats(show_state);
         }
+        #if CACHE_MODE == CACHE_MODE_FUNC
+        uint32_t align_to_cache_line(uint32_t addr) {
+            return (addr & ~cache_cfg::byte_addr_mask);
+        }
+        #endif
         #ifdef PROFILERS_EN
         void set_perf_profiler(profiler_perf* prof_perf) {
             icache.set_perf_profiler(

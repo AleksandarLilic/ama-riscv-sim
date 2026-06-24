@@ -8,7 +8,7 @@
 #endif
 
 uart::uart(cfg_t cfg) :
-    dev(UART_SIZE),
+    dev(mem_map::uart_size),
     sink_uart(cfg.sink_uart)
     #ifndef DPI
     #ifdef UART_INPUT_EN

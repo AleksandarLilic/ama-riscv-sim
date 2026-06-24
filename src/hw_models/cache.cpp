@@ -41,12 +41,16 @@ cache::cache(
         index_bits_num++;
         index_mask = (index_mask << 1) | 1;
     }
-    tag_bits_num = ADDR_BITS - index_bits_num - CACHE_BYTE_ADDR_BITS;
-    tag_off = (CACHE_BYTE_ADDR_BITS + index_bits_num);
+    tag_bits_num = (
+        mem_map::addr_bits - index_bits_num - cache_cfg::byte_addr_bits
+    );
+    tag_off = (cache_cfg::byte_addr_bits + index_bits_num);
     max_scp_ways = ways - 1; // should be fw configurable as MMIO, max = ways-1
     metadata_bits_num = metadata_t::get_bits_num();
     metadata_bits_num += log2(ways); // lru counters
-    size = {sets, ways, CACHE_LINE_SIZE, tag_bits_num, metadata_bits_num};
+    size = {
+        sets, ways, cache_cfg::line_size, tag_bits_num, metadata_bits_num
+    };
 }
 
 uint32_t cache::rd(uint32_t addr, uint32_t size) {
@@ -108,10 +112,10 @@ cache_ref_t cache::reference(
         #endif
     }
     ccl = {
-        (addr>>CACHE_BYTE_ADDR_BITS) & index_mask,
-        addr>>tag_off,
-        {0, 0},
-        addr & CACHE_BYTE_ADDR_MASK
+        /* index */ (addr>>cache_cfg::byte_addr_bits) & index_mask,
+        /* tag */ addr>>tag_off,
+        /* victim */ {0, 0},
+        /* byte_addr */ addr & cache_cfg::byte_addr_mask
     };
 
     for (uint32_t way = 0; way < ways; way++) {
@@ -227,8 +231,11 @@ void cache::miss(
             roi.stats.replace(act_line.metadata.dirty);
         }
         if (act_line.metadata.dirty) {
-            #if CACHE_MODE == CACHE_MODE_FUNC
-            mem->wr_line((act_line.tag << tag_off) - BASE_ADDR, act_line.data);
+            #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
+            mem->wr_line(
+                ((act_line.tag << tag_off) ),
+                act_line.data
+            );
             #endif
             act_line.metadata.dirty = false;
         }
@@ -245,7 +252,7 @@ void cache::miss(
     scp_status = update_scp(scp_mode, act_line, ccl.index);
 
     #if CACHE_MODE == CACHE_MODE_FUNC
-    act_line.data = mem->rd_line(addr - BASE_ADDR);
+    act_line.data = mem->rd_line(addr - mem_map::base_addr);
     #endif
     if (atype == mem_op_t::write) {
         #if CACHE_MODE == CACHE_MODE_FUNC
@@ -268,10 +275,11 @@ void cache::miss(
     // useful for debugging, to convert a specific address to scratchpad
     // NOTE: doesn't handle too many scp requests in this #ifdef
     if (act_line.metadata.scp == false) {
-        if ((act_line.tag == TO_U32(0x17200>>CACHE_BYTE_ADDR_BITS)) ||
-            (act_line.tag == TO_U32((0x17200 + 64)>>CACHE_BYTE_ADDR_BITS)) ||
-            (act_line.tag == TO_U32((0x17200 + 128)>>CACHE_BYTE_ADDR_BITS)) ||
-            (act_line.tag == TO_U32((0x17200 + 192)>>CACHE_BYTE_ADDR_BITS))) {
+        uint32_t tag = act_line.tag;
+        if ((tag == TO_U32(0x17200>>cache_cfg::byte_addr_bits)) ||
+            (tag == TO_U32((0x17200 + 64)>>cache_cfg::byte_addr_bits)) ||
+            (tag == TO_U32((0x17200 + 128)>>cache_cfg::byte_addr_bits)) ||
+            (tag == TO_U32((0x17200 + 192)>>cache_cfg::byte_addr_bits))) {
             act_line.metadata.scp = true; // converted to scratchpad
             std::cout << "Converted to scratchpad: " << std::hex << addr <<"\n";
         }
@@ -380,9 +388,9 @@ void cache::validate_inputs() {
         error = true;
     }
 
-    if (sets > MAX_CACHE_SETS) {
+    if (sets > cache_cfg::max_sets) {
         std::cerr << "ERROR: " << cache_name
-                  << ": number of sets cannot exceed " << MAX_CACHE_SETS
+                  << ": number of sets cannot exceed " << cache_cfg::max_sets
                   << ". Specified: " << sets << std::endl;
         error = true;
     }
@@ -401,9 +409,9 @@ void cache::validate_inputs() {
         error = true;
     }
 
-    if (ways > MAX_CACHE_WAYS) {
+    if (ways > cache_cfg::max_ways) {
         std::cerr << "ERROR: " << cache_name
-                  << ": number of ways cannot exceed " << MAX_CACHE_WAYS
+                  << ": number of ways cannot exceed " << cache_cfg::max_ways
                   << ". Specified: " << ways << std::endl;
         error = true;
     }
@@ -425,9 +433,14 @@ void cache::write_to_cache(
     for (uint32_t i = 0; i < size; i++) {
         act_line.data[byte_addr + i] = TO_U8(wr_buf >> (i * 8));
     }
+    #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
     if (wr_policy == cache_wr_policy_t::wt) {
-        mem->wr_line((act_line.tag << tag_off) - BASE_ADDR, act_line.data);
+        mem->wr_line(
+            ((act_line.tag << tag_off) - mem_map::base_addr),
+            act_line.data
+        );
     }
+    #endif
 }
 #endif
 
@@ -501,12 +514,13 @@ void cache::dump() const {
             #if CACHE_MODE == CACHE_MODE_FUNC
             // dump data in the line, byte by byte, all 64 bytes in a line
             std::cout << "     ";
-            for (uint32_t i = 0; i < CACHE_LINE_SIZE; i++) {
+            for (uint32_t i = 0; i < cache_cfg::line_size; i++) {
                 std::cout << " " << std::hex << std::setw(2)
                           << std::setfill('0') << TO_U32(line.data[i]);
                 if (i % 4 == 3) std::cout << " ";
                 if (i % 64 == 63) std::cout << "\n";
             }
+            std::cout << std::dec;
             #endif
         }
     }

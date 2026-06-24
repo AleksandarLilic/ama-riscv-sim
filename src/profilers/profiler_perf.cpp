@@ -17,9 +17,9 @@ profiler_perf::profiler_perf(
         symbol_lut[s.second.idx] = {s.first, s.second.name};
     }
     // set up beginning of callstack
-    st.idx_callstack.push_back(symbol_map.at(BASE_ADDR).idx);
+    st.idx_callstack.push_back(symbol_map.at(mem_map::base_addr).idx);
     st.idx_callstack_prev = st.idx_callstack;
-    set_fallthrough_symbol(BASE_ADDR);
+    set_fallthrough_symbol(mem_map::base_addr);
     st.updated = false;
     callstack_cnt = 0;
 }
