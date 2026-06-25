@@ -78,10 +78,10 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     // initialize CSRs
     csr_names_w = 0;
     for (const auto &c : supported_csrs) {
-        csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm)});
+        csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm, c.wmask)});
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
-    mem->set_mip(&csr.at(CSR_MIP).value);
+    mem->set_mip(&csr.at(csrm::addr::mip).value);
 }
 
 uint64_t core::run() {
@@ -189,20 +189,20 @@ void core::check_interrupts() {
     #endif
     #endif
 
-    uint32_t mie_val = csr.at(CSR_MIE).value;
-    uint32_t mip_val = csr.at(CSR_MIP).value;
-    bool mstatus_MIE = (csr.at(CSR_MSTATUS).value & MSTATUS_MIE);
-    bool mti = ((mie_val & MIE_MTIE) && (mip_val & MIP_MTIP));
+    uint32_t mie_val = csr.at(csrm::addr::mie).value;
+    uint32_t mip_val = csr.at(csrm::addr::mip).value;
+    bool mstatus_MIE = (csr.at(csrm::addr::mstatus).value & csrm::mstatus::mie);
+    bool mti = ((mie_val & csrm::mie::mtie) && (mip_val & csrm::mip::mtip));
 
     #ifdef UART_INPUT_EN
     // priv spec: external (MEI) before timer (MTI), one trap per step
     // UART RX is the sole MEI source, so MEI lives under UART_INPUT_EN
-    bool mei = ((mie_val & MIE_MEIE) && (mip_val & MIP_MEIP));
+    bool mei = ((mie_val & csrm::mie::meie) && (mip_val & csrm::mip::meip));
     if (mstatus_MIE && mei) {
         tu.e_external_interrupt();
         #ifdef DPI
         // one-shot; TB re-forces per RTL trap
-        csr.at(CSR_MIP).value &= ~MIP_MEIP;
+        csr.at(csrm::addr::mip).value &= ~csrm::mip::meip;
         #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
@@ -213,7 +213,7 @@ void core::check_interrupts() {
         tu.e_timer_interrupt();
         #ifdef DPI
         // one-shot; TB re-forces per RTL trap
-        csr.at(CSR_MIP).value &= ~MIP_MTIP;
+        csr.at(csrm::addr::mip).value &= ~csrm::mip::mtip;
         #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
@@ -619,7 +619,9 @@ void core::d_jalr() {
     PROF_RD_RS1
 
     #if defined(PROFILERS_EN) || defined(DASM_EN)
-    bool ret_inst = (inst == inst::ret) || (inst == inst::ret_x5); // but not X15
+    bool ret_inst = (
+        (inst == inst::heuristic::ret) || (inst == inst::heuristic::ret_x5)
+    ); // but not X15
     #endif
 
     #ifdef PROFILERS_EN
@@ -686,23 +688,25 @@ void core::d_system() {
     } else { // (funct3 == 0) -> system instructions
         switch (inst) {
             case inst::ecall:
-                tu.e_env("ECALL", MCAUSE_MACHINE_ECALL);
+                tu.e_env("ECALL", csrm::mcause::machine_ecall);
                 return;
             case inst::ebreak:
-                tu.e_env("EBREAK", MCAUSE_BREAKPOINT);
+                tu.e_env("EBREAK", csrm::mcause::breakpoint);
                 return;
             case inst::mret:
                 // restore previous interrupt enable bit state
-                csr.at(CSR_MSTATUS).value = (
+                csr.at(csrm::addr::mstatus).value = (
                     // clear mie
-                    (csr.at(CSR_MSTATUS).value & ~MSTATUS_MIE) |
+                    (csr.at(csrm::addr::mstatus).value &
+                     ~csrm::mstatus::mie) |
                     // mie = mpie
-                    ((csr.at(CSR_MSTATUS).value & MSTATUS_MPIE) >> 4) |
+                    ((csr.at(csrm::addr::mstatus).value &
+                      csrm::mstatus::mpie) >> 4) |
                     // set mpie
-                    (csr.at(CSR_MSTATUS).value | MSTATUS_MPIE)
+                    (csr.at(csrm::addr::mstatus).value | csrm::mstatus::mpie)
                 );
                 // restore pc
-                next_pc = csr[CSR_MEPC].value;
+                next_pc = csr.at(csrm::addr::mepc).value;
                 DASM_OP(mret)
                 PROF_G(mret)
                 #ifdef PROFILERS_EN
@@ -976,9 +980,11 @@ void core::d_csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
+        tu.e_illegal_inst("CSR write attempt to non-existent CSR", 4);
         #ifdef DASM_EN
         DASM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3);
         #endif
+        return;
     } else {
         #ifndef DPI
         csr_cnt_update(csr_addr);
@@ -1002,7 +1008,7 @@ void core::d_csr_access() {
             CASE_CSR_I(rci)
             default: tu.e_unsupported_inst("sys");
         }
-        if (csr.at(CSR_TOHOST).value & 0x1) running = false;
+        if (csr.at(csrm::addr::tohost).value & 0x1) running = false;
     }
 
     #ifdef DASM_EN
@@ -1127,11 +1133,11 @@ void core::dump() {
     #ifdef PROFILERS_EN
     if (prof_pc.exit_on_prof_stop) {
         std::cout << "Early exit on profiler stop, TOHOST invalid\n";
-        csr.at(CSR_TOHOST).value = CSR_TOHOST_EARLY_EXIT;
+        csr.at(csrm::addr::tohost).value = csrm::tohost_early_exit;
     } else
     #endif
     {
-        uint32_t tohost = csr.at(CSR_TOHOST).value;
+        uint32_t tohost = csr.at(csrm::addr::tohost).value;
         if (tohost != 1) {
             std::cout << "Failed test ID: " << (tohost >> 1) << " (0x"
                       << std::hex << (tohost >> 1) << std::dec << ")";
@@ -1145,7 +1151,7 @@ void core::dump() {
               #endif
               << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
-    else std::cout << INDENT << CSRF(csr.find(CSR_TOHOST)) << "\n";
+    else std::cout << INDENT << CSRF(csr.find(csrm::addr::tohost)) << "\n";
 
     #ifdef CHECK_LOG
     // open file for check log
@@ -1154,7 +1160,7 @@ void core::dump() {
     file << std::dec << inst_cnt << "\n";
     for(uint32_t i = 0; i < 32; i++) file << FHEXZ(rf[i], 8) << "\n";
     file << "0x" << MEM_ADDR_FORMAT(pc) << "\n";
-    file << FHEXZ(csr.at(CSR_TOHOST).value, 8) << "\n";
+    file << FHEXZ(csr.at(csrm::addr::tohost).value, 8) << "\n";
     file.close();
     #endif
 }

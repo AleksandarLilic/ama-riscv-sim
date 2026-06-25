@@ -252,9 +252,13 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
         inst_cnt_prof++;
         if (inst == inst::nop) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
-        } else if ((inst & 0xFFFF) == inst::c_nop) {
+        #ifdef RV32C
+        } else if ((inst & inst::align::compressed_mask) == inst::c_nop) {
             prof_g_arr[TO_U32(opc_g::i_c_nop)].count += inc;
-        } else if (inst == inst::hint_log_start || inst == inst::hint_log_end) {
+        #endif
+        } else if ((inst == inst::hint::log_start) ||
+            (inst == inst::hint::log_end))
+        {
             prof_g_arr[TO_U32(opc_g::i_hint)].count += inc;
         } else {
             prof_g_arr[TO_U32(opc)].count += inc;

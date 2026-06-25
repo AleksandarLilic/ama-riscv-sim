@@ -30,7 +30,7 @@ class bp {
             // the most possible # of folds, without going past addr_bits
             if (fold_pc == bp_pc_folds_t::all) {
                 pc_folds = TO_U32(
-                    (mem_map::addr_bits - bp_cfg::pc_cutoff_bits) / pc_bits
+                    (mem_map::addr_bits - inst::align::pc_low_bits) / pc_bits
                 );
                 //pc_folds -= 1;
             }
@@ -48,7 +48,7 @@ class bp {
             uint32_t pc_part = 0;
             for (size_t p = 0; p <= pc_folds; p++) {
                 pc_part ^= (
-                    (pc >> (bp_cfg::pc_cutoff_bits + (pc_bits * p))) &
+                    (pc >> (inst::align::pc_low_bits + (pc_bits * p))) &
                     mask
                 );
             }

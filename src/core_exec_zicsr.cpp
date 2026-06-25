@@ -30,28 +30,32 @@ void core::csr_cnt_update(uint16_t csr_addr) {
 
     // if current inst actually writes to instret, skip it in diff
     uint64_t skip = csr_updated;
-    skip &= ((csr_addr == CSR_MINSTRET) || (csr_addr == CSR_MINSTRETH));
+    skip &= ((csr_addr == csrm::addr::minstret) ||
+        (csr_addr == csrm::addr::minstreth)
+    );
     uint64_t inst_elapsed = inst_cnt - inst_cnt_csr;
     inst_cnt_csr = inst_cnt + skip;
 
     // if current inst actually writes to mcycle, skip this cycle in diff
     skip = csr_updated;
-    skip &= ((csr_addr == CSR_MCYCLE) || (csr_addr == CSR_MCYCLEH));
+    skip &= ((csr_addr == csrm::addr::mcycle) ||
+        (csr_addr == csrm::addr::mcycleh)
+    );
     uint64_t cycle_elapsed = inst_cnt - cycle_cnt_csr; // inst=cycle in isa sim
     cycle_cnt_csr = inst_cnt + skip;
 
-    csr.at(CSR_MINSTRET).value += (inst_elapsed & 0xFFFFFFFF);
-    csr.at(CSR_MINSTRETH).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
-    csr.at(CSR_MCYCLE).value += (cycle_elapsed & 0xFFFFFFFF);
-    csr.at(CSR_MCYCLEH).value += ((cycle_elapsed >> 32) & 0xFFFFFFFF);
+    csr.at(csrm::addr::minstret).value += (inst_elapsed & 0xFFFFFFFF);
+    csr.at(csrm::addr::minstreth).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
+    csr.at(csrm::addr::mcycle).value += (cycle_elapsed & 0xFFFFFFFF);
+    csr.at(csrm::addr::mcycleh).value += ((cycle_elapsed >> 32) & 0xFFFFFFFF);
 
     // user mode shadows
-    csr.at(CSR_CYCLE).value = csr.at(CSR_MCYCLE).value;
-    csr.at(CSR_CYCLEH).value = csr.at(CSR_MCYCLEH).value;
-    csr.at(CSR_INSTRET).value = csr.at(CSR_MINSTRET).value;
-    csr.at(CSR_INSTRETH).value = csr.at(CSR_MINSTRETH).value;
+    csr.at(csrm::addr::cycle).value = csr.at(csrm::addr::mcycle).value;
+    csr.at(csrm::addr::cycleh).value = csr.at(csrm::addr::mcycleh).value;
+    csr.at(csrm::addr::instret).value = csr.at(csrm::addr::minstret).value;
+    csr.at(csrm::addr::instreth).value = csr.at(csrm::addr::minstreth).value;
 
     uint64_t mtime_shadow = mem->get_mtime_shadow();
-    csr_wide_assign(CSR_TIME, mtime_shadow);
+    csr_wide_assign(csrm::addr::time, mtime_shadow);
     // no perf counters update, events don't exist in the standalone ISA sim
 }

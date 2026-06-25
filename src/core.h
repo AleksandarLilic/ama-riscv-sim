@@ -47,8 +47,8 @@ class core {
         void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
         void force_irq(bool mtip, bool meip) {
-            if (mtip) csr.at(CSR_MIP).value |= MIP_MTIP;
-            if (meip) csr.at(CSR_MIP).value |= MIP_MEIP;
+            if (mtip) csr.at(csrm::addr::mip).value |= csrm::mip::mtip;
+            if (meip) csr.at(csrm::addr::mip).value |= csrm::mip::meip;
         }
         #endif
 
@@ -112,19 +112,19 @@ class core {
             #ifdef DPI
             if (is_rtl_trusted(addr)) return;
             #endif
-            if (csr.at(addr).perm == csr_perm_t::ro) {
+            CSR& c = csr.at(addr);
+            if (c.perm == csrm::perm_t::ro) {
                 tu.e_illegal_inst("CSR write attempt to RO CSR", 4);
+                return;
             }
-            if (csr.at(addr).perm == csr_perm_t::warl_unimp) return;
-            csr.at(addr).value = data;
-            // FIXME: find a better way to handle RO bits in otherwise RW CSRs
-            // MPP always in machine mode (0x3)
-            if (addr == CSR_MSTATUS) csr.at(addr).value |= 0x1800;
+            if (c.perm == csrm::perm_t::warl_unimp) return;
+            // only writable bits change, hardwired bits keep their reset value
+            c.value = (c.value & ~c.wmask) | (data & c.wmask);
         }
 
         void csr_wide_assign(uint32_t addr, uint64_t val) {
             csr.at(addr).value = TO_U32(val);
-            csr.at(addr+CSR_LOW_TO_HIGH_OFF).value = TO_U32(val >> 32);
+            csr.at(addr + csrm::low_to_high_off).value = TO_U32(val >> 32);
         }
 
         void prof_state(bool enable);
@@ -417,65 +417,71 @@ class core {
         uint64_t cycle_cnt_csr = 0;
 
         std::map<uint16_t, CSR> csr;
-        static constexpr std::array<CSR_entry, 43> supported_csrs = {{
-            {CSR_TOHOST, "tohost", csr_perm_t::rw, 0u},
+        static constexpr CSR_entry supported_csrs[] = {
+            {csrm::addr::tohost, "tohost", csrm::perm_t::rw, 0u},
 
             // Machine Information Registers
-            {CSR_MVENDORID, "mvendorid", csr_perm_t::warl_unimp, 0u},
-            {CSR_MARCHID, "marchid", csr_perm_t::warl_unimp, 0u},
-            {CSR_MIMPID, "mimpid", csr_perm_t::warl_unimp, 0u},
-            {CSR_MHARTID, "mhartid", csr_perm_t::ro, 0u},
-            {CSR_MCONFIGPTR, "mconfigptr", csr_perm_t::ro, 0u},
+            {csrm::addr::mvendorid, "mvendorid", csrm::perm_t::warl_unimp, 0u},
+            {csrm::addr::marchid, "marchid", csrm::perm_t::warl_unimp, 0u},
+            {csrm::addr::mimpid, "mimpid", csrm::perm_t::warl_unimp, 0u},
+            {csrm::addr::mhartid, "mhartid", csrm::perm_t::ro, 0u},
+            {csrm::addr::mconfigptr, "mconfigptr", csrm::perm_t::ro, 0u},
 
             // Machine Trap Setup
-            {CSR_MSTATUS, "mstatus", csr_perm_t::rw, 0x1800}, // mpp = 3
-            {CSR_MISA, "misa", csr_perm_t::ro, CSR_MISA_VAL},
-            {CSR_MIE, "mie", csr_perm_t::warl, 0u},
-            {CSR_MTVEC, "mtvec", csr_perm_t::rw, 0u},
+            {csrm::addr::mstatus, "mstatus", csrm::perm_t::rw, csrm::mstatus_v,
+                ~csrm::mstatus_v // MPP hardwired to machine mode
+            },
+            {csrm::addr::misa, "misa", csrm::perm_t::ro, csrm::misa_v},
+            {csrm::addr::mie, "mie", csrm::perm_t::warl, 0u},
+            {csrm::addr::mtvec, "mtvec", csrm::perm_t::rw, 0u,
+                ~inst::align::pc_low_bits_mask // low bits zeroed out
+            },
 
             // Machine Trap Handling
-            {CSR_MSCRATCH, "mscratch", csr_perm_t::rw, 0u},
-            {CSR_MEPC, "mepc", csr_perm_t::rw, 0u},
-            {CSR_MCAUSE, "mcause", csr_perm_t::rw, 0u},
-            {CSR_MTVAL, "mtval", csr_perm_t::rw, 0u},
-            {CSR_MIP, "mip", csr_perm_t::ro, 0u},
+            {csrm::addr::mscratch, "mscratch", csrm::perm_t::rw, 0u},
+            {csrm::addr::mepc, "mepc", csrm::perm_t::rw, 0u,
+                ~inst::align::pc_low_bits_mask // low bits zeroed out
+            },
+            {csrm::addr::mcause, "mcause", csrm::perm_t::rw, 0u},
+            {csrm::addr::mtval, "mtval", csrm::perm_t::rw, 0u},
+            {csrm::addr::mip, "mip", csrm::perm_t::ro, 0u},
 
             // Machine Counter/Timers
-            {CSR_MCYCLE, "mcycle", csr_perm_t::rw, 0u},
-            {CSR_MINSTRET, "minstret", csr_perm_t::rw, 0u},
-            {CSR_MCYCLEH, "mcycleh", csr_perm_t::rw, 0u},
-            {CSR_MINSTRETH, "minstreth", csr_perm_t::rw, 0u},
+            {csrm::addr::mcycle, "mcycle", csrm::perm_t::rw, 0u},
+            {csrm::addr::minstret, "minstret", csrm::perm_t::rw, 0u},
+            {csrm::addr::mcycleh, "mcycleh", csrm::perm_t::rw, 0u},
+            {csrm::addr::minstreth, "minstreth", csrm::perm_t::rw, 0u},
 
             // Machine Hardware Performance Monitor (MHPM) counters & events
-            {CSR_MHPMCOUNTER3, "mhpmcounter3", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER4, "mhpmcounter4", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER5, "mhpmcounter5", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER6, "mhpmcounter6", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER7, "mhpmcounter7", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER8, "mhpmcounter8", csr_perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter3, "mhpmcounter3", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter4, "mhpmcounter4", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter5, "mhpmcounter5", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter6, "mhpmcounter6", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter7, "mhpmcounter7", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter8, "mhpmcounter8", csrm::perm_t::rw, 0u},
 
-            {CSR_MHPMCOUNTER3H, "mhpmcounter3h", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER4H, "mhpmcounter4h", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER5H, "mhpmcounter5h", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER6H, "mhpmcounter6h", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER7H, "mhpmcounter7h", csr_perm_t::rw, 0u},
-            {CSR_MHPMCOUNTER8H, "mhpmcounter8h", csr_perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter3h, "mhpmcounter3h", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter4h, "mhpmcounter4h", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter5h, "mhpmcounter5h", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter6h, "mhpmcounter6h", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter7h, "mhpmcounter7h", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmcounter8h, "mhpmcounter8h", csrm::perm_t::rw, 0u},
 
-            {CSR_MHPMEVENT3, "mhpmevent3", csr_perm_t::rw, 0u},
-            {CSR_MHPMEVENT4, "mhpmevent4", csr_perm_t::rw, 0u},
-            {CSR_MHPMEVENT5, "mhpmevent5", csr_perm_t::rw, 0u},
-            {CSR_MHPMEVENT6, "mhpmevent6", csr_perm_t::rw, 0u},
-            {CSR_MHPMEVENT7, "mhpmevent7", csr_perm_t::rw, 0u},
-            {CSR_MHPMEVENT8, "mhpmevent8", csr_perm_t::rw, 0u},
+            {csrm::addr::mhpmevent3, "mhpmevent3", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmevent4, "mhpmevent4", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmevent5, "mhpmevent5", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmevent6, "mhpmevent6", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmevent7, "mhpmevent7", csrm::perm_t::rw, 0u},
+            {csrm::addr::mhpmevent8, "mhpmevent8", csrm::perm_t::rw, 0u},
 
             // Unprivileged Counter/Timers
-            {CSR_CYCLE, "cycle", csr_perm_t::ro, 0u},
-            {CSR_TIME, "time", csr_perm_t::ro, 0u},
-            {CSR_INSTRET, "instret", csr_perm_t::ro, 0u},
-            {CSR_CYCLEH, "cycleh", csr_perm_t::ro, 0u},
-            {CSR_TIMEH, "timeh", csr_perm_t::ro, 0u},
-            {CSR_INSTRETH, "instreth", csr_perm_t::ro, 0u},
-        }};
+            {csrm::addr::cycle, "cycle", csrm::perm_t::ro, 0u},
+            {csrm::addr::time, "time", csrm::perm_t::ro, 0u},
+            {csrm::addr::instret, "instret", csrm::perm_t::ro, 0u},
+            {csrm::addr::cycleh, "cycleh", csrm::perm_t::ro, 0u},
+            {csrm::addr::timeh, "timeh", csrm::perm_t::ro, 0u},
+            {csrm::addr::instreth, "instreth", csrm::perm_t::ro, 0u},
+        };
 
         #ifdef PROFILERS_EN
         bool prof_trace;
@@ -494,15 +500,19 @@ class core {
         // these can't be emulated in cosim's timed environment, so the ISA sim
         // trusts the RTL on them (get_rtl_val in the testbench)
         // must be a subset of supported_csrs (below)
-        static constexpr std::array<uint16_t, 22> csr_rtl_trusted = {{
-            CSR_TIME, CSR_TIMEH,
-            CSR_CYCLE, CSR_CYCLEH, CSR_INSTRET, CSR_INSTRETH,
-            CSR_MCYCLE, CSR_MCYCLEH, CSR_MINSTRET, CSR_MINSTRETH,
-            CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER5,
-            CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER8,
-            CSR_MHPMCOUNTER3H, CSR_MHPMCOUNTER4H, CSR_MHPMCOUNTER5H,
-            CSR_MHPMCOUNTER6H, CSR_MHPMCOUNTER7H, CSR_MHPMCOUNTER8H,
-        }};
+        static constexpr uint16_t csr_rtl_trusted[] = {
+            csrm::addr::time, csrm::addr::timeh,
+            csrm::addr::cycle, csrm::addr::cycleh,
+            csrm::addr::instret, csrm::addr::instreth,
+            csrm::addr::mcycle, csrm::addr::mcycleh,
+            csrm::addr::minstret, csrm::addr::minstreth,
+            csrm::addr::mhpmcounter3, csrm::addr::mhpmcounter4,
+            csrm::addr::mhpmcounter5, csrm::addr::mhpmcounter6,
+            csrm::addr::mhpmcounter7, csrm::addr::mhpmcounter8,
+            csrm::addr::mhpmcounter3h, csrm::addr::mhpmcounter4h,
+            csrm::addr::mhpmcounter5h, csrm::addr::mhpmcounter6h,
+            csrm::addr::mhpmcounter7h, csrm::addr::mhpmcounter8h,
+        };
 
         static constexpr bool is_rtl_trusted(uint16_t addr) {
             for (uint16_t a : csr_rtl_trusted) if (a == addr) return true;
@@ -510,13 +520,9 @@ class core {
         }
 
         static constexpr bool mmio_rtl_trusted(uint32_t addr) {
-            // CLINT mtime is the 64-bit reg at CLINT_ADDR + 0x10
             return (
-                // mtime
-                ((addr >= (CLINT_ADDR + 0x10)) && (addr < (CLINT_ADDR + 0x18)))
-                ||
-                // whole UART
-                ((addr >= UART0_ADDR) && (addr < (UART0_ADDR + UART_SIZE)))
+                mem_map::addr_is_clint_mtime(addr) ||
+                mem_map::addr_is_uart(addr)
             );
         }
 

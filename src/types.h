@@ -33,7 +33,28 @@ namespace mem_map {
     constexpr uint32_t uart_size = 12; // 3 32-bit registers per UART
     constexpr uint32_t clint_addr = 0x0200'0000;
     constexpr uint32_t clint_size = 32; // reserved for 4 64-bit registers
+    constexpr uint32_t clint_mtime_addr = (clint_addr + 0x10); // 64-bit reg
+    constexpr uint32_t clint_mtime_size = 8;
+
+    // address-region predicates, half-open range [base, base + size)
+    constexpr bool in_region(uint32_t addr, uint32_t base, uint32_t size) {
+        return (addr >= base) && (addr < (base + size));
+    }
+    constexpr bool addr_is_main(uint32_t addr) {
+        return in_region(addr, base_addr, mem_size);
+    }
+    constexpr bool addr_is_uart(uint32_t addr) {
+        return in_region(addr, uart0_addr, uart_size);
+    }
+    constexpr bool addr_is_clint(uint32_t addr) {
+        return in_region(addr, clint_addr, clint_size);
+    }
+    constexpr bool addr_is_clint_mtime(uint32_t addr) {
+        return in_region(addr, clint_mtime_addr, clint_mtime_size);
+    }
 }
+
+constexpr uint32_t mem_addr_bitwidth = 8; // digits in hex printout
 
 using address_t = uint32_t;
 
@@ -49,7 +70,126 @@ constexpr address_t to_full(norm_address_t a) {
     return (a.v | mem_map::base_addr);
 }
 
-constexpr uint32_t mem_addr_bitwidth = 8; // digits in hex printout
+// CSR map
+namespace csrm {
+    // CSR numbers (12-bit). Addresses live in their own sub-namespace so a
+    // register name (e.g. mie/mip) can be both an address and a bit-field group.
+    namespace addr {
+        constexpr uint16_t tohost = 0x51E;
+        // Machine Information Registers
+        constexpr uint16_t mvendorid = 0xF11; // MRO
+        constexpr uint16_t marchid = 0xF12; // MRO
+        constexpr uint16_t mimpid = 0xF13; // MRO
+        constexpr uint16_t mhartid = 0xF14; // MRO
+        constexpr uint16_t mconfigptr = 0xF15; // MRO
+        // Machine Trap Setup
+        constexpr uint16_t mstatus = 0x300; // MRW
+        constexpr uint16_t misa = 0x301; // MRW
+        constexpr uint16_t mie = 0x304; // MWARL
+        constexpr uint16_t mtvec = 0x305; // MRW
+        // Machine Trap Handling
+        constexpr uint16_t mscratch = 0x340; // MRW
+        constexpr uint16_t mepc = 0x341; // MRW
+        constexpr uint16_t mcause = 0x342; // MRW
+        constexpr uint16_t mtval = 0x343; // MRW
+        constexpr uint16_t mip = 0x344; // MRO
+        // Machine Counter/Timers
+        constexpr uint16_t mcycle = 0xB00; // MRW
+        constexpr uint16_t minstret = 0xB02; // MRW
+        constexpr uint16_t mcycleh = 0xB80; // MRW
+        constexpr uint16_t minstreth = 0xB82; // MRW
+        // Machine Hardware Performance Monitor (MHPM) counters & events
+        constexpr uint16_t mhpmcounter3 = 0xB03; // MRW
+        constexpr uint16_t mhpmcounter4 = 0xB04; // MRW
+        constexpr uint16_t mhpmcounter5 = 0xB05; // MRW
+        constexpr uint16_t mhpmcounter6 = 0xB06; // MRW
+        constexpr uint16_t mhpmcounter7 = 0xB07; // MRW
+        constexpr uint16_t mhpmcounter8 = 0xB08; // MRW
+        constexpr uint16_t mhpmcounter3h = 0xB83; // MRW
+        constexpr uint16_t mhpmcounter4h = 0xB84; // MRW
+        constexpr uint16_t mhpmcounter5h = 0xB85; // MRW
+        constexpr uint16_t mhpmcounter6h = 0xB86; // MRW
+        constexpr uint16_t mhpmcounter7h = 0xB87; // MRW
+        constexpr uint16_t mhpmcounter8h = 0xB88; // MRW
+        constexpr uint16_t mhpmevent3 = 0x323; // MRW
+        constexpr uint16_t mhpmevent4 = 0x324; // MRW
+        constexpr uint16_t mhpmevent5 = 0x325; // MRW
+        constexpr uint16_t mhpmevent6 = 0x326; // MRW
+        constexpr uint16_t mhpmevent7 = 0x327; // MRW
+        constexpr uint16_t mhpmevent8 = 0x328; // MRW
+        // Unprivileged Counter/Timers
+        constexpr uint16_t cycle = 0xC00; // URO
+        constexpr uint16_t time = 0xC01; // URO
+        constexpr uint16_t instret = 0xC02; // URO
+        constexpr uint16_t cycleh = 0xC80; // URO
+        constexpr uint16_t timeh = 0xC81; // URO
+        constexpr uint16_t instreth = 0xC82; // URO
+    }
+
+    enum class perm_t {
+        ro = 0b00, // read-only
+        rw = 0b01, // read-write
+        warl = 0b10, // write-any-read-legal
+        warl_unimp = 0b11, // warl unimplemented -> always returns 0
+    };
+
+    constexpr uint32_t tohost_early_exit = 0xF000'0000;
+    constexpr uint16_t low_to_high_off = 0x80; // low counter CSR -> its *h pair
+    constexpr uint32_t mhpmcounters_num = 6;
+    constexpr uint32_t mstatus_v = 0x1800; // mpp = 3
+    constexpr uint32_t misa_v = (
+        (1u << 30) | // MXL = 1 (RV32)
+        (1u << 8)  | // I
+        (1u << 12) | // M
+        (1u << 23)   // X (non-standard extensions present)
+    );
+
+    // MSTATUS bits
+    namespace mstatus {
+        constexpr uint32_t mie = 0x8;
+        constexpr uint32_t mpie = 0x80;
+    }
+
+    // MIP bits - machine interrupt pending
+    namespace mip {
+        constexpr uint32_t msip = (1u << 3); // software
+        constexpr uint32_t mtip = (1u << 7); // timer
+        constexpr uint32_t meip = (1u << 11); // external
+        constexpr uint32_t lcofip = (1u << 13); // local counter overflow
+    }
+
+    // MIE bits - machine interrupt enable (same positions as MIP)
+    namespace mie {
+        constexpr uint32_t msie = mip::msip;
+        constexpr uint32_t mtie = mip::mtip;
+        constexpr uint32_t meie = mip::meip;
+        constexpr uint32_t lcofie = mip::lcofip;
+    }
+
+    // MCAUSE codes
+    namespace mcause {
+        // exception codes
+        constexpr uint32_t inst_addr_misaligned = 0x0;
+        constexpr uint32_t inst_access_fault = 0x1;
+        constexpr uint32_t illegal_inst = 0x2;
+        constexpr uint32_t breakpoint = 0x3;
+        constexpr uint32_t load_addr_misaligned = 0x4;
+        constexpr uint32_t load_access_fault = 0x5;
+        constexpr uint32_t store_addr_misaligned = 0x6;
+        constexpr uint32_t store_access_fault = 0x7;
+        constexpr uint32_t machine_ecall = 0xB; // 11
+        //constexpr uint32_t software_check = 0x12; // 18
+        constexpr uint32_t hardware_error = 0x13; // 19
+        // interrupt codes (top bit set)
+        constexpr uint32_t interrupt_bit = (1u << 31);
+        namespace intr {
+            constexpr uint32_t machine_sw = (interrupt_bit | 0x3u);
+            constexpr uint32_t machine_timer = (interrupt_bit | 0x7u);
+            constexpr uint32_t machine_ext = (interrupt_bit | 0xBu); // 11
+            constexpr uint32_t machine_lcof = (interrupt_bit | 0xDu); // 13
+        }
+    }
+}
 
 // Instructions
 namespace inst {
@@ -61,12 +201,28 @@ namespace inst {
     constexpr uint32_t fence_i = 0x0000100f;
     constexpr uint32_t nop = 0x00000013;
     constexpr uint32_t c_nop = 0x0001;
-    constexpr uint32_t ret = 0x00008067; // jalr x0, 0(x1)
-    constexpr uint32_t c_ret = 0x8082; // c.jr x1
-    constexpr uint32_t ret_x5 = 0x00028067; // jalr x0, 0(x5)
-    constexpr uint32_t ret_x15 = 0x00078067; // jalr x0, 0(x15)
-    constexpr uint32_t hint_log_start = 0x01002013; // slti x0, x0, 0x10
-    constexpr uint32_t hint_log_end = 0x01102013; // slti x0, x0, 0x11
+
+    namespace heuristic {
+        constexpr uint32_t ret = 0x00008067; // jalr x0, 0(x1)
+        constexpr uint32_t c_ret = 0x8082; // c.jr x1
+        constexpr uint32_t ret_x5 = 0x00028067; // jalr x0, 0(x5)
+        constexpr uint32_t ret_x15 = 0x00078067; // jalr x0, 0(x15)
+    }
+
+    namespace hint {
+        constexpr uint32_t log_start = 0x01002013; // slti x0, x0, 0x10
+        constexpr uint32_t log_end = 0x01102013; // slti x0, x0, 0x11
+    }
+
+    namespace align {
+        #ifdef RV32C
+        constexpr uint32_t pc_low_bits = 1u;
+        constexpr uint32_t compressed_mask = 0xFFFF;
+        #else
+        constexpr uint32_t pc_low_bits = 2u;
+        #endif
+        constexpr uint32_t pc_low_bits_mask = ((1u << pc_low_bits) - 1u);
+    }
 };
 
 // Decoder types
@@ -312,13 +468,6 @@ enum class scp_custom_op_t {
     op_rel = 0x1,
 };
 
-enum class csr_perm_t {
-    ro = 0b00, // read-only
-    rw = 0b01, // read-write
-    warl = 0b10, // write-any-read-legal
-    warl_unimp = 0b11, // warl unimplemented -> always returns 0
-};
-
 // not needed as isa sim can't log these
 // enum class mhpmevent_t {
 //     bad_spec = (1 << 0),
@@ -329,7 +478,6 @@ enum class csr_perm_t {
 //     ret_simd = (1 << 5),
 // };
 
-enum class rf_names_t { mode_x, mode_abi };
 enum class mem_op_t { read, write };
 enum class b_dir_t { backward, forward };
 
@@ -429,14 +577,6 @@ namespace cache_cfg {
     constexpr uint32_t max_ways = 128;
 }
 
-namespace bp_cfg {
-    #ifdef RV32C
-    constexpr uint32_t pc_cutoff_bits = 1;
-    #else
-    constexpr uint32_t pc_cutoff_bits = 2;
-    #endif
-}
-
 // dasm
 struct dasm_str {
     public:
@@ -459,6 +599,8 @@ struct dasm_str {
 };
 
 // RF
+enum class rf_names_t { mode_x, mode_abi };
+
 struct reg_pair {
     uint32_t a;
     uint32_t b;
@@ -468,17 +610,22 @@ struct reg_pair {
 struct CSR {
     const char* name;
     uint32_t value;
-    const csr_perm_t perm;
-    CSR() : name(""), value(0), perm(csr_perm_t::ro) {} // FIXME
-    CSR(const char* name, uint32_t value, const csr_perm_t perm) :
-        name(name), value(value), perm(perm) {}
+    const csrm::perm_t perm;
+    const uint32_t wmask; // writable bits; 0-bits are hardwired to boot value
+    CSR(
+        const char* name,
+        uint32_t value,
+        const csrm::perm_t perm,
+        uint32_t wmask
+    ) : name(name), value(value), perm(perm), wmask(wmask) {}
 };
 
 struct CSR_entry {
     const uint16_t csr_addr;
     const char* csr_name;
-    const csr_perm_t perm;
+    const csrm::perm_t perm;
     const uint32_t boot_val;
+    const uint32_t wmask = 0xFFFF'FFFF; // fully writable by default
 };
 
 // CLI options

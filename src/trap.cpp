@@ -22,15 +22,18 @@ void trap::trap_inst(uint32_t cause, uint32_t tval) {
     #endif
 
     inst_trapped = true;
-    csr->at(CSR_MCAUSE).value = cause;
-    csr->at(CSR_MTVAL).value = tval; // trap-specific, for trap handler
-    csr->at(CSR_MEPC).value = *pc; // pc that caused the trap
-    csr->at(CSR_MSTATUS).value = (
-        (csr->at(CSR_MSTATUS).value & ~MSTATUS_MPIE) | // clear mpie
-        ((csr->at(CSR_MSTATUS).value & MSTATUS_MIE) << 4) // mpie = mie
+    csr->at(csrm::addr::mcause).value = cause;
+    csr->at(csrm::addr::mtval).value = tval; // trap-specific, for trap handler
+    csr->at(csrm::addr::mepc).value = *pc; // pc that caused the trap
+    csr->at(csrm::addr::mstatus).value = (
+        // clear mpie
+        (csr->at(csrm::addr::mstatus).value & ~csrm::mstatus::mpie) |
+        // mpie = mie
+        ((csr->at(csrm::addr::mstatus).value & csrm::mstatus::mie) << 4)
     );
-    csr->at(CSR_MSTATUS).value &= ~MSTATUS_MIE; // disable interrupts
-    *pc = csr->at(CSR_MTVEC).value;
+    // disable interrupts
+    csr->at(csrm::addr::mstatus).value &= ~csrm::mstatus::mie;
+    *pc = csr->at(csrm::addr::mtvec).value;
 
     #ifdef PROFILERS_EN
     prof_perf->update_jalr(*pc, false, false, 0u);
@@ -42,7 +45,7 @@ void trap::e_unsupported_inst([[maybe_unused]] const std::string &msg) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
     #endif
-    trap_inst(MCAUSE_ILLEGAL_INST, *inst);
+    trap_inst(csrm::mcause::illegal_inst, *inst);
 }
 
 void trap::e_illegal_inst(
@@ -51,7 +54,7 @@ void trap::e_illegal_inst(
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Illegal instruction <" << FMT_P(memw);
     #endif
-    trap_inst(MCAUSE_ILLEGAL_INST, *inst);
+    trap_inst(csrm::mcause::illegal_inst, *inst);
 }
 
 void trap::e_env([[maybe_unused]] const std::string &msg, uint32_t code) {
@@ -61,13 +64,6 @@ void trap::e_env([[maybe_unused]] const std::string &msg, uint32_t code) {
     trap_inst(code, *inst);
 }
 
-void trap::e_unsupported_csr([[maybe_unused]] const std::string &msg) {
-    #ifdef DASM_EN
-    DASM_PTR_TRAP << "Unsupported instruction <" << FMT;
-    #endif
-    trap_inst(MCAUSE_ILLEGAL_INST, *inst);
-}
-
 void trap::e_dmem_access_fault(
     uint32_t address, [[maybe_unused]] const std::string &msg, mem_op_t mem_op)
 {
@@ -75,9 +71,9 @@ void trap::e_dmem_access_fault(
     DASM_PTR_TRAP << "Memory access fault at address <" << FMT_ADDR;
     #endif
     if (mem_op == mem_op_t::read) {
-        trap_inst(MCAUSE_LOAD_ACCESS_FAULT, address);
+        trap_inst(csrm::mcause::load_access_fault, address);
     } else {
-        trap_inst(MCAUSE_STORE_ACCESS_FAULT, address);
+        trap_inst(csrm::mcause::store_access_fault, address);
     }
 }
 
@@ -88,9 +84,9 @@ void trap::e_dmem_addr_misaligned(
     DASM_PTR_TRAP << "Memory misaligned access at address <" << FMT_ADDR;
     #endif
     if (mem_op == mem_op_t::read) {
-        trap_inst(MCAUSE_LOAD_ADDR_MISALIGNED, address);
+        trap_inst(csrm::mcause::load_addr_misaligned, address);
     } else {
-        trap_inst(MCAUSE_STORE_ADDR_MISALIGNED, address);
+        trap_inst(csrm::mcause::store_addr_misaligned, address);
     }
 }
 
@@ -100,7 +96,7 @@ void trap::e_inst_access_fault(
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Fetch access fault at address <" << FMT_ADDR;
     #endif
-    trap_inst(MCAUSE_INST_ACCESS_FAULT, address);
+    trap_inst(csrm::mcause::inst_access_fault, address);
 }
 
 void trap::e_inst_addr_misaligned(
@@ -109,14 +105,14 @@ void trap::e_inst_addr_misaligned(
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Fetch misaligned access at " << FMT_ADDR;
     #endif
-    trap_inst(MCAUSE_INST_ADDR_MISALIGNED, address);
+    trap_inst(csrm::mcause::inst_addr_misaligned, address);
 }
 
 void trap::e_hardware_error([[maybe_unused]] const std::string &msg) {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Hardware Error <" << FMT;
     #endif
-    trap_inst(MCAUSE_HARDWARE_ERROR, *inst);
+    trap_inst(csrm::mcause::hardware_error, *inst);
 }
 
 // interrupt handling
@@ -124,12 +120,12 @@ void trap::e_timer_interrupt() {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "Timer interrupt";
     #endif
-    trap_inst(MCAUSE_MACHINE_TIMER_INT, 0);
+    trap_inst(csrm::mcause::intr::machine_timer, 0);
 }
 
 void trap::e_external_interrupt() {
     #ifdef DASM_EN
     DASM_PTR_TRAP << "External interrupt";
     #endif
-    trap_inst(MCAUSE_MACHINE_EXT_INT, 0);
+    trap_inst(csrm::mcause::intr::machine_ext, 0);
 }

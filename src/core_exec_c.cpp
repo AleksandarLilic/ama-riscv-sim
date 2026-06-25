@@ -442,7 +442,7 @@ void core::c_jr() {
     PROF_C_RS1_RD
 
     #if defined(PROFILERS_EN) || defined(DASM_EN)
-    bool ret_inst = (inst == inst::c_ret);
+    bool ret_inst = (inst == inst::heuristic::c_ret);
     #endif
 
     #ifdef PROFILERS_EN
