@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_TRAP"],
+    "_common_args": ["USER_DEFINES="],
 
     "asm_rv32i": ["test"],
     "asm_rv32i_branches": ["test"],
@@ -58,7 +58,7 @@
 
     "uart_direct_send": ["hello_world"],
     "uart_printf_nano": ["hello_world"],
-    "timer_interrupt": ["test"],
+    "timer_interrupt": ["all"],
 
     "cpp_smoke": ["test"],
 

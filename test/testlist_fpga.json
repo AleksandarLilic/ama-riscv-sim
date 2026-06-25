@@ -1,5 +1,5 @@
 {
-    "_common_args": ["USER_DEFINES=-DNO_TRAP -DMHPM -DMHPM_TDA"],
+    "_common_args": ["USER_DEFINES=-DMHPM -DMHPM_TDA"],
 
     "mlp": ["all"],
 

@@ -27,6 +27,7 @@ extern "C" {
 #define INDENT "    "
 
 #define NOP asm volatile ("nop")
+#define WFI asm volatile ("wfi")
 
 // profiling features
 #ifdef USE_PROF_MARKERS
