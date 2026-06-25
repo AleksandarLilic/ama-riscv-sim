@@ -131,7 +131,7 @@ struct defs_t {
     static constexpr char run_insts[] = "0";
     static constexpr char silent[] = "false";
     #ifdef UART_EN
-    static constexpr char sink_uart[] = "false";
+    static constexpr char print_uart[] = "false";
     #ifdef UART_INPUT_EN
     static constexpr char uart_in[] = "";
     #endif
@@ -232,9 +232,10 @@ int main(int argc, char* argv[]) {
          "Don't print sim end stats to stdout. Logs are always saved to disk",
          CXXOPTS_VAL_BOOL->default_value(defs_t::silent))
         #ifdef UART_EN
-        ("sink_uart",
-         "Don't print UART output to stdout. UART still fully operational",
-         CXXOPTS_VAL_BOOL->default_value(defs_t::sink_uart))
+        ("print_uart",
+         "Print UART output to stdout. UART still fully operational. "
+         "Log always kept. " + saved_as("uart.log"),
+         CXXOPTS_VAL_BOOL->default_value(defs_t::print_uart))
         #ifdef UART_INPUT_EN
         ("uart_in",
          "UART RX input bytes, drained at the baud-rate instruction stride "
@@ -446,7 +447,7 @@ int main(int argc, char* argv[]) {
         out_dir_tag = result["out_dir_tag"].as<std::string>();
         cfg.silent = ARG2BOOL(result["silent"]);
         #ifdef UART_EN
-        cfg.sink_uart = ARG2BOOL(result["sink_uart"]);
+        cfg.print_uart = ARG2BOOL(result["print_uart"]);
         #ifdef UART_INPUT_EN
         cfg.uart_in = result["uart_in"].as<std::string>();
         #endif

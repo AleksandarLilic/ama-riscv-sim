@@ -9,7 +9,7 @@
 
 uart::uart(cfg_t cfg) :
     dev(mem_map::uart_size),
-    sink_uart(cfg.sink_uart)
+    print_uart(cfg.print_uart)
     #ifndef DPI
     #ifdef UART_INPUT_EN
     , uart_in(cfg.uart_in)
@@ -40,7 +40,7 @@ void uart::wr(uint32_t address, uint32_t data, uint32_t size) {
         dev::wr(address, TO_U8(data), size);
         // emulate the effect of writing to uart tx_data register
         uart_ofs << TO_U8(data) UART_FLUSH;
-        if (!sink_uart) std::cout << TO_U8(data) << std::flush;
+        if (print_uart) std::cout << TO_U8(data) << std::flush;
     }
 }
 

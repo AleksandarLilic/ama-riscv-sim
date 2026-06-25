@@ -23,7 +23,7 @@ class uart : public dev {
         static const uint8_t UART_RX_DATA = 0x04;
         static const uint8_t UART_TX_DATA = 0x08;
         std::ofstream uart_ofs;
-        const bool sink_uart;
+        const bool print_uart;
 
         #ifndef DPI
         #ifdef UART_INPUT_EN

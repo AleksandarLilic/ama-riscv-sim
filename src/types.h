@@ -538,7 +538,7 @@ struct cfg_t {
     bool log_hw_models;
     bool show_state;
     bool exit_on_trap;
-    bool sink_uart;
+    bool print_uart;
     std::string uart_in;
     bool silent;
     std::string out_dir;

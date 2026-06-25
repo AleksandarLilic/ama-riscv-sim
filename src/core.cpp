@@ -95,7 +95,7 @@ uint64_t core::run() {
     #endif
 
     #ifdef UART_EN
-    if (!cfg.sink_uart) std::cout << "=== UART START ===" << "\n";
+    if (cfg.print_uart) std::cout << "=== UART START ===" << "\n";
     #endif
 
     // start the core
@@ -1120,7 +1120,7 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_EN
-    if (!cfg.sink_uart) std::cout << "\n=== UART END ===\n";
+    if (cfg.print_uart) std::cout << "\n=== UART END ===\n";
     #endif
     std::cout << "SIMULATION FINISHED\n\n";
 
