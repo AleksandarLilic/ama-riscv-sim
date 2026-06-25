@@ -676,6 +676,7 @@ struct cfg_t {
     uint32_t mem_dump_size;
     perf_event_t perf_event;
     uint64_t run_insts;
+    uint64_t run_steps;
     bool prof_trace;
     bool rf_usage;
     bool no_callstack;

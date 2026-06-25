@@ -28,7 +28,7 @@ class core {
         core(memory* mem, cfg_t cfg, hw_cfg_t hw_cfg);
         uint64_t run();
         void single_step();
-        void check_interrupts();
+        bool check_interrupts(bool defer_trap);
         void fetch();
         void exec();
         #ifdef DASM_EN
@@ -395,6 +395,8 @@ class core {
         cfg_t cfg;
         // internal state
         bool running;
+        struct wait_for_interrupt_t { bool active, pend; };
+        wait_for_interrupt_t wfi;
         std::array<int32_t, 32> rf;
         memory* mem;
         uint32_t pc;
@@ -402,6 +404,7 @@ class core {
         uint32_t inst;
         // other state
         uint64_t inst_cnt;
+        uint64_t steps_cnt;
         trap tu;
         uint8_t rf_names_idx;
         uint8_t rf_names_w;

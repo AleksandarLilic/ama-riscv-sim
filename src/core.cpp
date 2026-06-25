@@ -1,8 +1,9 @@
 #include "core.h"
 
 core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
-    running(false),
-    mem(mem), pc(mem_map::base_addr), next_pc(0), inst(0), inst_cnt(0),
+    running(false), wfi({false, false}),
+    mem(mem), pc(mem_map::base_addr), next_pc(0), inst(0),
+    inst_cnt(0), steps_cnt(0),
     tu(&csr, &pc, &inst)
     #ifdef PROFILERS_EN
     , prof_pc(cfg.prof_pc)
@@ -135,8 +136,17 @@ void core::single_step() {
     }
     #endif
 
-    check_interrupts();
-    if (!tu.is_trapped()) {
+    // match RTL behavior, wfi in decode has priority over trap
+    bool about_to_wfi = (
+        !tu.is_trapped() && !wfi.active && (mem->just_inst(pc) == inst::wfi)
+    );
+
+    // if ((mtie && mtip) || (meie && meip)) -> no-trap interrupt wakeup
+    bool no_trap_interrupt = check_interrupts(about_to_wfi);
+
+    // clear wfi on interrupt (either trapped or not)
+    wfi.active &= (!(tu.is_trapped() || no_trap_interrupt));
+    if (!tu.is_trapped() && (!wfi.active || no_trap_interrupt)) {
         fetch();
         #ifdef PROFILERS_EN
         prof.new_inst(inst);
@@ -144,6 +154,15 @@ void core::single_step() {
         #endif
         exec();
     }
+
+    steps_cnt++;
+    if (steps_cnt == cfg.run_steps) {
+        std::cout << "Max steps count " << steps_cnt << " reached. Exiting.\n";
+        running = false;
+        return;
+    }
+
+    if (wfi.active && !tu.is_trapped()) return;
 
     #ifdef PROFILERS_EN
     [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
@@ -158,7 +177,10 @@ void core::single_step() {
     #endif
 
     if (tu.is_trapped()) {
-        if (cfg.exit_on_trap) running = false;
+        if (cfg.exit_on_trap) {
+            std::cout << "Core trapped with exit_on_trap set. Exiting.\n";
+            running = false;
+        }
         return;
     }
 
@@ -177,10 +199,20 @@ void core::single_step() {
     pc = next_pc;
     inst_cnt++;
 
-    if (inst_cnt == cfg.run_insts) running = false; // stop based on cli
+    // transfer pending to active, and clear
+    wfi.active |= wfi.pend;
+    wfi.pend = false;
+
+    if (inst_cnt == cfg.run_insts) {
+        std::cout << "Max instructions count " << inst_cnt
+                    << " reached. Exiting.\n";
+        running = false;
+    }
 }
 
-void core::check_interrupts() {
+bool core::check_interrupts(bool defer_trap) {
+    if (defer_trap) return false; // will get them next time
+
     // nothing to update under DPI mode, RTL drives them
     #ifndef DPI
     mem->update_mtime();
@@ -193,11 +225,13 @@ void core::check_interrupts() {
     uint32_t mip_val = csr.at(csrm::addr::mip).value;
     bool mstatus_MIE = (csr.at(csrm::addr::mstatus).value & csrm::mstatus::mie);
     bool mti = ((mie_val & csrm::mie::mtie) && (mip_val & csrm::mip::mtip));
+    bool mti_no_trap = (mti && !mstatus_MIE);
 
     #ifdef UART_INPUT_EN
     // priv spec: external (MEI) before timer (MTI), one trap per step
     // UART RX is the sole MEI source, so MEI lives under UART_INPUT_EN
     bool mei = ((mie_val & csrm::mie::meie) && (mip_val & csrm::mip::meip));
+    bool mei_no_trap = (mei && !mstatus_MIE);
     if (mstatus_MIE && mei) {
         tu.e_external_interrupt();
         #ifdef DPI
@@ -219,6 +253,12 @@ void core::check_interrupts() {
         last_inst_branch = false;
         #endif
     }
+    return (
+        mti_no_trap
+        #ifdef UART_INPUT_EN
+        || mei_no_trap
+        #endif
+    );
 }
 
 void core::fetch() {
@@ -280,9 +320,14 @@ void core::log_inst(bool trapped, bool log_symbol) {
     if (trapped) {
         // log changed callstack and return
         log_ofstream << dasm.asm_str << "\n";
+        #ifdef DEBUG
+        log_ofstream << std::flush;
+        #endif
+
         #ifdef PROFILERS_EN
         if (log_symbol) LOG_SYMBOL_TO_FILE;
         #endif
+
         if (cfg.exit_on_trap) running = false;
         return;
     }
@@ -302,6 +347,7 @@ void core::log_inst(bool trapped, bool log_symbol) {
     #ifdef HW_MODELS_EN
     if (cfg.log_hw_models) log_ofstream << hwmi.get_str();
     #endif
+
     log_ofstream << "\n";
     #ifdef DEBUG
     log_ofstream << std::flush;
@@ -712,6 +758,12 @@ void core::d_system() {
                 #ifdef PROFILERS_EN
                 prof_perf.update_jalr(next_pc, true, false, 0u);
                 #endif
+                break;
+            case inst::wfi:
+                next_pc = (pc + 4);
+                wfi.pend = true;
+                DASM_OP(wfi)
+                PROF_G(wfi)
                 break;
             default: tu.e_unsupported_inst("system");
         }

@@ -129,6 +129,7 @@ struct defs_t {
     static constexpr char mem_dump_start[] = "0";
     static constexpr char mem_dump_size[] = "0";
     static constexpr char run_insts[] = "0";
+    static constexpr char run_steps[] = "0";
     static constexpr char silent[] = "false";
     #ifdef UART_EN
     static constexpr char print_uart[] = "false";
@@ -226,8 +227,12 @@ int main(int argc, char* argv[]) {
          CXXOPTS_VAL_STR->default_value(defs_t::mem_dump_size))
         ("out_dir_tag", "Tag (suffix) for output directory",
          CXXOPTS_VAL_STR->default_value(""))
-        ("run_insts", "Number of instructions to run. Set to 0 for no limit",
+        ("run_insts",
+         "Number of instructions to execute. Set to 0 for no limit",
          CXXOPTS_VAL_STR->default_value(defs_t::run_insts))
+        ("run_steps",
+         "Number of steps (inst & wfi period) to run. Set to 0 for no limit",
+         CXXOPTS_VAL_STR->default_value(defs_t::run_steps))
         ("silent",
          "Don't print sim end stats to stdout. Logs are always saved to disk",
          CXXOPTS_VAL_BOOL->default_value(defs_t::silent))
@@ -444,6 +449,7 @@ int main(int argc, char* argv[]) {
         cfg.mem_dump_start = ARG2HEX(result["mem_dump_start"]);
         cfg.mem_dump_size = ARG2SIZE(result["mem_dump_size"]);
         cfg.run_insts = ARG2SIZE(result["run_insts"]);
+        cfg.run_steps = ARG2SIZE(result["run_steps"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
         cfg.silent = ARG2BOOL(result["silent"]);
         #ifdef UART_EN
