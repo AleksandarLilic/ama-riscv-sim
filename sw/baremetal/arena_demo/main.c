@@ -42,7 +42,7 @@ void main() {
         fail();
     }
 
-    snprintf(msg, 32, "used=%u avail=%u\n", arena_used(&a), arena_avail(&a));
+    npf_snprintf(msg, 32, "used=%u avail=%u\n", arena_used(&a), arena_avail(&a));
     printf(msg);
 
     const static uint32_t known_used = ints*4 + 32*1;

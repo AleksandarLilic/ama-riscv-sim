@@ -44,6 +44,7 @@
     "fibonacci": [["n_18"], ["LOOPS=1"]],
     "gcd_lcm": [["n_large"], ["LOOPS=1"]],
     "prime_numbers": [["n_3000"], ["LOOPS=1"]],
+    "arena_demo": ["all"],
 
     "vector_ew_al_uint8": ["test"],
     "vector_ew_mac_uint8": ["test"],
