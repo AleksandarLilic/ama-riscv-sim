@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument("--rebuild_codegen", default=False, action='store_true', help="Rebuild apps that use codegen, otherwise use existing codegen outputs")
     parser.add_argument("--aapg_seeds", default=1, type=int, help="Number of different AAPG seeds to build")
     parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter (as a whitespace separated list) to only build the subset of tests that exist in the testlist and match this filter list.")
+    parser.add_argument("-s", "--skip", default=False, action='store_true', help="Skip writing to gtest_testlist.txt")
     parser.add_argument("-a", "--append", default=False, action='store_true', help="Append to existing gtest_testlist.txt")
     return parser.parse_args()
 
@@ -177,7 +178,8 @@ if args.append and os.path.exists(output_path):
     paths = sorted(set(existing + paths))
     print(f"Number of RISC-V tests after append: {len(paths)}")
 
-with open(output_path, 'w') as f:
-    f.write("\n".join(paths))
+if not args.skip:
+    with open(output_path, 'w') as f:
+        f.write("\n".join(paths))
 
 print_runtime(start_time, "Build")
