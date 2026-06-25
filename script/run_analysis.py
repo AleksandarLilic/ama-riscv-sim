@@ -1451,7 +1451,7 @@ Tuple[plt.Figure, RangeSlider]:
 
     return fig, rsy
 
-def draw_timeline_exec(df, title, top_down=False) -> \
+def draw_timeline_exec(df, title, add_sp_plot, top_down=False) -> \
 Tuple[plt.Figure, RangeSlider]:
     size = df['symbol'].unique().size
     FSY_DYN = size * 0.25 + 1 + 1 + (size < 8) # + sp + margin
@@ -1463,14 +1463,18 @@ Tuple[plt.Figure, RangeSlider]:
     gse['top'] = 1 - (1 - gse['top']) * SCALE
 
     # set up figure
+    nrows = 1 + int(add_sp_plot)
+    hr = [FSY-1, 1] if add_sp_plot else [1]
     fig, ax = plt.subplots(
-        ncols=1, nrows=2, figsize=FS, sharex=True,
-        height_ratios=[FSY-1, 1], gridspec_kw=gse)
-    ax_tl, ax_sp = ax
+        ncols=1, nrows=nrows, figsize=FS, sharex=True,
+        height_ratios=hr, gridspec_kw=gse
+    )
 
-    # add sp trace
-    plot_sp(ax_sp, df)
-    add_outside_legend(ax_sp, None)
+    ax_tl, ax_tl2 = [ax, ax]
+    if add_sp_plot:
+        ax_tl, ax_tl2 = ax
+        plot_sp(ax_tl2, df)
+        add_outside_legend(ax_tl2, None)
 
     # add timeline
     smp = df['smp'].to_numpy()
@@ -1537,12 +1541,12 @@ Tuple[plt.Figure, RangeSlider]:
     #ax_tl.set_ylabel("Symbol")
     ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
     ax_top, xlabel = draw_exec_finish(ax_tl, df.smp[0], args.sample_begin_norm)
-    ax_sp.set_xlabel(xlabel)
+    ax_tl2.set_xlabel(xlabel)
 
     S_GAP = 0.04
     S_H = 0.03 * SCALE
     S_W = (S_H / FS[0]) * FS[1]
-    rsx = attach_xrange_slider(ax_sp, ax_top, gap=S_GAP*SCALE, h=S_H)
+    rsx = attach_xrange_slider(ax_tl2, ax_top, gap=S_GAP*SCALE, h=S_H)
     _ = attach_yrange_slider(ax_tl, gap=S_GAP*1.5, w=S_W, no_ticks=True)
     register_true_home(fig)
 
@@ -2101,7 +2105,7 @@ Tuple[pd.DataFrame, pd.DataFrame,
         return df_t, fig_tl, rsx_tl, fig_h, fig_t, rsx_t
 
     if args.timeline:
-        fig_tl, rsx_tl = draw_timeline_exec(df_t, title)
+        fig_tl, rsx_tl = draw_timeline_exec(df_t, title, args.add_sp_plot)
     if args.pc_hist:
         fig_h, rsy_h = draw_hist(df_h, m_hl_groups, title, symbols, args, 'pc')
     if args.pc_trace:
@@ -2209,7 +2213,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--freq', type=int, default=FREQ_DEFAULT, help=f"Core clock frequency in [MHz]. {TRACE_ONLY}")
     parser.add_argument('--sample_begin_norm', action='store_true', help=f"Normalize trace start to 0th sample. {TRACE_ONLY}")
 
-    parser.add_argument('--timeline', action='store_true', help=f"Plot top of stack trace as timeline. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--timeline', action='store_true', help=f"Plot top of callstack trace as timeline. Requires --dasm. {TRACE_ONLY}")
+    parser.add_argument('--add_sp_plot', action='store_true', help=f"Plot stack pointer (x2/sp) with the timeline plot. {TRACE_ONLY}")
     parser.add_argument('--pc_hist', action='store_true', help=f"Plot PC histogram. Each instruction is assigned to a separate bin. {TRACE_ONLY}")
     parser.add_argument('--pc_trace', action='store_true', help=f"Plot PC time trace. Each executed instruction is plotted using its respective size (2/4 B). {TRACE_ONLY}")
     parser.add_argument('--no_pc_limit', action='store_true', help=f"Don't limit the PC range to the execution trace range. Only updates plot view. Applied after --sample_begin/end. Useful when logging is done with HINT instruction. By default, the PC range is limited to the execution trace range. {TRACE_ONLY}")
