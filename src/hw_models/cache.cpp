@@ -16,18 +16,18 @@ cache::cache(
         in_policy(in_policy),
         wr_policy(wr_policy),
         cache_name(cache_name)
-    {
+{
     validate_inputs();
     direct_mapped = (ways == 1);
 
     // first dim is number of sets
-    cache_entries.resize(sets);
+    cache_array.resize(sets);
     // second dim number of ways in a set
     // go through all entires and initialize lru_cnt and data
     for (uint32_t set = 0; set < sets; set++) {
-        cache_entries[set].resize(ways);
+        cache_array[set].resize(ways);
         for (uint32_t way = 0; way < ways; way++) {
-            auto& line = cache_entries[set][way];
+            auto& line = cache_array[set][way];
             line.metadata.lru_cnt = way;
             #if CACHE_MODE == CACHE_MODE_FUNC
             std::fill(line.data.begin(), line.data.end(), 0xCD);
@@ -53,7 +53,7 @@ cache::cache(
     };
 }
 
-uint32_t cache::rd(uint32_t addr, uint32_t size) {
+uint32_t cache::rd(norm_address_t addr, uint32_t size) {
     auto ret = reference(addr, size, mem_op_t::read, scp_mode_t::m_none);
     if (ret == cache_ref_t::miss) {
         miss(addr, size, mem_op_t::read, scp_mode_t::m_none);
@@ -61,7 +61,7 @@ uint32_t cache::rd(uint32_t addr, uint32_t size) {
     return rd_buf;
 }
 
-void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
+void cache::wr(norm_address_t addr, uint32_t data, uint32_t size) {
     wr_buf = data;
     auto ret = reference(addr, size, mem_op_t::write, scp_mode_t::m_none);
     if (ret == cache_ref_t::miss) {
@@ -69,7 +69,7 @@ void cache::wr(uint32_t addr, uint32_t data, uint32_t size) {
     }
 }
 
-scp_status_t cache::scp_lcl(uint32_t addr) {
+scp_status_t cache::scp_lcl(norm_address_t addr) {
     if (direct_mapped) {
         SIM_WARNING << "Cache '" << cache_name
                     << "' is direct-mapped but tried to create SCP line. SCP "
@@ -82,7 +82,7 @@ scp_status_t cache::scp_lcl(uint32_t addr) {
     return scp_status;
 }
 
-scp_status_t cache::scp_rel(uint32_t addr) {
+scp_status_t cache::scp_rel(norm_address_t addr) {
     if (direct_mapped) {
         SIM_WARNING << "Cache '" << cache_name
                     << "' is direct-mapped but tried to release SCP line. SCP "
@@ -100,41 +100,46 @@ void cache::speculative_exec(speculative_t smode) {
     speculative_exec_active = (smode == speculative_t::enter);
 }
 
-// uses real address so that the tags are appropriately set
+// works in normalized address space -> tags are normalized
 cache_ref_t cache::reference(
-    uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp_mode) {
+    norm_address_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp_mode)
+{
+    uint32_t a = addr.v;
     // don't count reference for scp release, no data is referenced
     if (scp_mode != scp_mode_t::m_rel) {
         stats.referenced(atype, size);
-        if (roi.has(addr)) roi.stats.referenced(atype, size);
+        if (roi.has(a)) roi.stats.referenced(atype, size);
         #ifdef PROFILERS_EN
         prof_perf->set_perf_event_flag(ref_event);
         #endif
     }
-    ccl = {
-        /* index */ (addr>>cache_cfg::byte_addr_bits) & index_mask,
-        /* tag */ addr>>tag_off,
+
+    ccl_info = {
+        /* index */ ((a >> cache_cfg::byte_addr_bits) & index_mask),
+        /* tag */ (a >> tag_off),
         /* victim */ {0, 0},
-        /* byte_addr */ addr & cache_cfg::byte_addr_mask
+        /* byte_addr */ (a & cache_cfg::byte_addr_mask)
     };
 
     for (uint32_t way = 0; way < ways; way++) {
-        auto& line = cache_entries[ccl.index][way];
-        if (line.metadata.valid && (line.tag == ccl.tag)) {
+        auto& line = cache_array[ccl_info.index][way];
+        if (line.metadata.valid && (line.tag == ccl_info.tag)) {
             // hit, doesn't go to main mem
-            scp_status = update_scp(scp_mode, line, ccl.index);
+            scp_status = update_scp(scp_mode, line, ccl_info.index);
 
             #ifdef DASM_EN
             hwmi_ptr->log_cache({
-                cache_name,
-                addr,
-                ccl.tag,
-                ccl.index,
-                way,
-                ccl.byte_addr,
-                atype,
-                (line.metadata.scp == true),
-                true
+                /* name */ cache_name,
+                /* type */ type,
+                /* addr */ to_full(addr),
+                /* tag */ ccl_info.tag,
+                /* index */ ccl_info.index,
+                /* way */ way,
+                /* byte_addr */ ccl_info.byte_addr,
+                /* atype */ atype,
+                /* is_scp */ (line.metadata.scp == true),
+                /* is_hit */ true,
+                /* is_dirty */ (line.metadata.dirty == true)
             });
             #endif
 
@@ -144,24 +149,26 @@ cache_ref_t cache::reference(
                 return cache_ref_t::hit;
             }
 
-            update_lru(ccl.index, way);
+            update_lru(ccl_info.index, way);
             line.referenced();
             stats.hit(atype);
-            if (roi.has(addr)) roi.stats.hit(atype);
+            if (roi.has(a)) roi.stats.hit(atype);
 
             if (atype == mem_op_t::write) {
                 #if CACHE_MODE == CACHE_MODE_FUNC
-                write_to_cache(ccl.byte_addr, size, line);
+                write_to_cache(ccl_info, size, line);
                 #endif
                 if (wr_policy == cache_wr_policy_t::wt) {
                     stats.writeback();
-                    if (roi.has(line.tag << tag_off)) roi.stats.writeback();
+                    if (roi.has(line_base_addr(line.tag, ccl_info.index))) {
+                        roi.stats.writeback();
+                    }
                 } else {
                     line.metadata.dirty = true;
                 }
             } else { // read
                 #if CACHE_MODE == CACHE_MODE_FUNC
-                read_from_cache(ccl.byte_addr, size, line);
+                read_from_cache(ccl_info, size, line);
                 #endif
             }
 
@@ -170,12 +177,13 @@ cache_ref_t cache::reference(
 
         } else { // keep looking for victim line
             // potentially a miss, keep the largest lru count as victim line
-            if ((line.metadata.lru_cnt >= ccl.victim.lru_cnt) &&
-                !line.metadata.scp) {
+            if ((line.metadata.lru_cnt >= ccl_info.victim.lru_cnt) &&
+                !line.metadata.scp)
+            {
                 // if there are ways-1 scp lines in the set, it can happen
                 // for lru 0 to be victim, hence the >= instead of > comparison
-                // as ccl is initialized to 0
-                ccl.victim = {way, line.metadata.lru_cnt};
+                // as ccl_info is initialized to 0
+                ccl_info.victim = {way, line.metadata.lru_cnt};
             }
         }
     }
@@ -186,7 +194,7 @@ cache_ref_t cache::reference(
         // so there would be nothing to release, yet SW may try
         SIM_WARNING << "Cache '" << cache_name
                     << "' tried to release SCP line at address: 0x"
-                    << MEM_ADDR_FORMAT(addr)
+                    << MEM_ADDR_FORMAT(to_full(addr))
                     << " but cache missed, nothing has been released\n";
         return cache_ref_t::ignore;
     }
@@ -195,78 +203,84 @@ cache_ref_t cache::reference(
 }
 
 void cache::miss(
-    uint32_t addr,
+    norm_address_t addr,
     [[maybe_unused]] uint32_t size,
     mem_op_t atype,
-    scp_mode_t scp_mode) {
+    scp_mode_t scp_mode)
+{
     // TODO: don't service misses in speculative mode?
+    [[maybe_unused]] uint32_t a = addr.v;
 
     // miss, goes to main mem
     stats.miss(atype);
-    if (roi.has(addr)) roi.stats.miss(atype);
+    if (roi.has(a)) roi.stats.miss(atype);
 
     #ifdef PROFILERS_EN
     prof_perf->set_perf_event_flag(miss_event);
     #endif
 
+    auto& ccl = cache_array[ccl_info.index][ccl_info.victim.way_idx];
     #ifdef DASM_EN
     hwmi_ptr->log_cache({
-        cache_name,
-        addr,
-        ccl.tag,
-        ccl.index,
-        ccl.victim.way_idx,
-        ccl.byte_addr,
-        atype,
-        (scp_mode == scp_mode_t::m_lcl),
-        false
+        /* name */ cache_name,
+        /* type */ type,
+        /* addr */ to_full(addr),
+        /* tag */ ccl_info.tag,
+        /* index */ ccl_info.index,
+        /* way */ ccl_info.victim.way_idx,
+        /* byte_addr */ ccl_info.byte_addr,
+        /* atype */ atype,
+        /* is_scp */ (scp_mode == scp_mode_t::m_lcl),
+        /* is_hit */ false,
+        /* is_dirty */ ccl.metadata.dirty
     });
     #endif
 
     // replace the line (evict if dirty)
-    auto& act_line = cache_entries[ccl.index][ccl.victim.way_idx];
-    if (act_line.metadata.valid) {
-        stats.replace(act_line.metadata.dirty);
-        if (roi.has(act_line.tag << tag_off)) {
-            roi.stats.replace(act_line.metadata.dirty);
+    if (ccl.metadata.valid) {
+        stats.replace(ccl.metadata.dirty);
+        if (roi.has(line_base_addr(ccl.tag, ccl_info.index))) {
+            roi.stats.replace(ccl.metadata.dirty);
         }
-        if (act_line.metadata.dirty) {
+        if (ccl.metadata.dirty) {
             #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
             mem->wr_line(
-                ((act_line.tag << tag_off) ),
-                act_line.data
+                norm_address_t{line_base_addr(ccl.tag, ccl_info.index)},
+                ccl.data
             );
             #endif
-            act_line.metadata.dirty = false;
+            ccl.metadata.dirty = false;
         }
     }
 
     // bring in the new line requested by the core
-    act_line.referenced();
-    act_line.tag = ccl.tag; // act_line now caching new data
-    act_line.metadata.valid = true;
+    ccl.referenced();
+    ccl.tag = ccl_info.tag; // ccl now caching new data
+    ccl.metadata.valid = true;
     if (in_policy == cache_in_policy_t::update) {
         // now the most recently used
-        update_lru(ccl.index, ccl.victim.way_idx);
+        update_lru(ccl_info.index, ccl_info.victim.way_idx);
     }
-    scp_status = update_scp(scp_mode, act_line, ccl.index);
+    scp_status = update_scp(scp_mode, ccl, ccl_info.index);
 
     #if CACHE_MODE == CACHE_MODE_FUNC
-    act_line.data = mem->rd_line(addr - mem_map::base_addr);
+    ccl.data = mem->rd_line(addr);
     #endif
     if (atype == mem_op_t::write) {
         #if CACHE_MODE == CACHE_MODE_FUNC
-        write_to_cache(ccl.byte_addr, size, act_line);
+        write_to_cache(ccl_info, size, ccl);
         #endif
         if (wr_policy == cache_wr_policy_t::wt) {
             stats.writeback();
-            if (roi.has(act_line.tag << tag_off)) roi.stats.writeback();
+            if (roi.has(line_base_addr(ccl.tag, ccl_info.index))) {
+                roi.stats.writeback();
+            }
         } else {
-            act_line.metadata.dirty = true;
+            ccl.metadata.dirty = true;
         }
     } else { // read
         #if CACHE_MODE == CACHE_MODE_FUNC
-        read_from_cache(ccl.byte_addr, size, act_line);
+        read_from_cache(ccl_info, size, ccl);
         #endif
     }
 
@@ -274,24 +288,27 @@ void cache::miss(
     #ifdef SCP_BACKDOOR
     // useful for debugging, to convert a specific address to scratchpad
     // NOTE: doesn't handle too many scp requests in this #ifdef
-    if (act_line.metadata.scp == false) {
-        uint32_t tag = act_line.tag;
-        if ((tag == TO_U32(0x17200>>cache_cfg::byte_addr_bits)) ||
-            (tag == TO_U32((0x17200 + 64)>>cache_cfg::byte_addr_bits)) ||
-            (tag == TO_U32((0x17200 + 128)>>cache_cfg::byte_addr_bits)) ||
-            (tag == TO_U32((0x17200 + 192)>>cache_cfg::byte_addr_bits))) {
-            act_line.metadata.scp = true; // converted to scratchpad
-            std::cout << "Converted to scratchpad: " << std::hex << addr <<"\n";
+    if (ccl.metadata.scp == false) {
+        // tags are normalized; the constants are RAM offsets shifted to tags
+        uint32_t tag = ccl.tag;
+        if ((tag == TO_U32(0x17200 >> tag_off)) ||
+            (tag == TO_U32((0x17200 + 64) >> tag_off)) ||
+            (tag == TO_U32((0x17200 + 128) >> tag_off)) ||
+            (tag == TO_U32((0x17200 + 192) >> tag_off)))
+        {
+            ccl.metadata.scp = true; // converted to scratchpad
+            std::cout << "Converted to scratchpad: " << std::hex
+                      << to_full(addr) << "\n";
         }
     }
     // release all if the roi is done
     if (roi.stats.references >= 4096) {
         for (uint32_t set = 0; set < sets; set++) {
             for (uint32_t way = 0; way < ways; way++) {
-                if (cache_entries[set][way].metadata.scp) {
+                if (cache_array[set][way].metadata.scp) {
                     std::cout << "Releasing: " << std::hex
-                              << cache_entries[set][way].tag << "\n";
-                    cache_entries[set][way].metadata.scp = false;
+                              << cache_array[set][way].tag << "\n";
+                    cache_array[set][way].metadata.scp = false;
                 }
             }
         }
@@ -305,7 +322,7 @@ void cache::miss(
 void cache::update_lru(uint32_t index, uint32_t way) {
     // TODO: don't update lru in speculative mode?
     //if (smode == speculative_t::enter) return;
-    auto& active_set = cache_entries[index];
+    auto& active_set = cache_array[index];
     auto& active_lru_cnt = active_set[way].metadata.lru_cnt;
     // increment all counters newer than the current way
     for (uint32_t i = 0; i < ways; i++) {
@@ -330,7 +347,7 @@ scp_status_t cache::convert_to_scp(cache_line_t& line, uint32_t index) {
     // first check if there are empty ways for conversion
     uint32_t scp_cnt = 0;
     for (uint32_t way = 0; way < ways; way++) {
-        if (cache_entries[index][way].metadata.scp) scp_cnt++;
+        if (cache_array[index][way].metadata.scp) scp_cnt++;
     }
     if (scp_cnt < max_scp_ways) {
         line.metadata.scp = true;
@@ -421,23 +438,29 @@ void cache::validate_inputs() {
 
 #if CACHE_MODE == CACHE_MODE_FUNC
 void cache::read_from_cache(
-    uint32_t byte_addr, uint32_t size, cache_line_t& act_line) {
+    current_cache_line_info ccl_info,
+    uint32_t size,
+    cache_line_t& ccl)
+{
     rd_buf = 0;
     for (uint32_t i = 0; i < size; i++) {
-        rd_buf |= act_line.data[byte_addr + i] << (i * 8);
+        rd_buf |= ccl.data[ccl_info.byte_addr + i] << (i * 8);
     }
 }
 
 void cache::write_to_cache(
-    uint32_t byte_addr, uint32_t size, cache_line_t& act_line) {
+    current_cache_line_info ccl_info,
+    uint32_t size,
+    cache_line_t& ccl)
+{
     for (uint32_t i = 0; i < size; i++) {
-        act_line.data[byte_addr + i] = TO_U8(wr_buf >> (i * 8));
+        ccl.data[ccl_info.byte_addr + i] = TO_U8(wr_buf >> (i * 8));
     }
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
     if (wr_policy == cache_wr_policy_t::wt) {
         mem->wr_line(
-            ((act_line.tag << tag_off) - mem_map::base_addr),
-            act_line.data
+            norm_address_t{line_base_addr(ccl.tag, ccl_info.index)},
+            ccl.data
         );
     }
     #endif
@@ -445,7 +468,12 @@ void cache::write_to_cache(
 #endif
 
 // stats
-void cache::set_roi(uint32_t start, uint32_t size) { roi.set(start, size); }
+void cache::set_roi(uint32_t start, uint32_t size) {
+    // roi can be either full address or already normalized from cli
+    // store as normalized (matching caches)
+    // convert back for display at the end
+    roi.set(to_norm(start).v, size);
+}
 
 void cache::summarize_stats(uint64_t total_insts) {
     stats.summarize(type, total_insts);
@@ -464,7 +492,7 @@ void cache::show_stats(bool show_state) {
         int32_t n = 0;
         for (uint32_t set = 0; set < sets; set++) {
             for (uint32_t way = 0; way < ways; way++) {
-                uint32_t cnt = cache_entries[set][way].get_ref();
+                uint32_t cnt = cache_array[set][way].get_ref();
                 n = std::max(n, TO_I32(std::to_string(cnt).size()));
             }
         }
@@ -474,7 +502,7 @@ void cache::show_stats(bool show_state) {
                       << ": " << std::right;
             for (uint32_t way = 0; way < ways; way++) {
                 std::cout << " w" << way << " [" << std::setw(n)
-                        << cache_entries[set][way].get_ref() << "] ";
+                        << cache_array[set][way].get_ref() << "] ";
             }
             std::cout << "\n";
         }
@@ -482,8 +510,9 @@ void cache::show_stats(bool show_state) {
 
     if (!(roi.start == 0 && roi.end == 0)) {
         std::cout << INDENT << "ROI: "
-                  << "(0x" << std::hex << roi.start
-                  << " - 0x" << roi.end << "): " << std::dec;
+                  << "(0x" << std::hex << to_full(norm_address_t{roi.start})
+                  << " - 0x" << to_full(norm_address_t{roi.end}) << "): "
+                  << std::dec;
         roi.stats.show(type);
         std::cout << "\n";
     }
@@ -502,7 +531,7 @@ void cache::dump() const {
     std::cout << "  state:" << "\n";
     for (uint32_t set = 0; set < sets; set++) {
         for (uint32_t way = 0; way < ways; way++) {
-            auto& line = cache_entries[set][way];
+            auto& line = cache_array[set][way];
             std::cout << "    s" << set << " w" << way
                       << ", tag: " << FHEXZ(line.tag, 4)
                       << ", lru: " << line.metadata.lru_cnt

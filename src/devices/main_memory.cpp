@@ -166,15 +166,16 @@ void main_memory::burn_elf(std::string test_elf) {
 }
 
 void main_memory::check_access(
-        uint32_t addr, bool is_r, bool is_w, bool is_x) const
+        norm_address_t addr, bool is_r, bool is_w, bool is_x) const
 {
+    uint32_t a = addr.v;
     for (const auto& rgn : regions) {
-        if ((addr >= rgn.base) && (addr < (rgn.base + rgn.size))) {
+        if ((a >= rgn.base) && (a < (rgn.base + rgn.size))) {
             if ((is_r && !rgn.r) || (is_w && !rgn.w) || (is_x && !rgn.x)) {
                 const char* type = is_w ? "write" : (is_x ? "exec" : "read");
                 std::cerr << "ERROR: Memory access violation."
                           << " Address: 0x"
-                          << std::hex << (mem_map::base_addr + addr)
+                          << std::hex << to_full(addr)
                           << " Type: " << type
                           << std::dec << std::endl;
                 throw std::runtime_error("Memory access violation.");
@@ -184,15 +185,15 @@ void main_memory::check_access(
     }
 }
 
-uint32_t main_memory::rd_inst(uint32_t addr) {
+uint32_t main_memory::rd_inst(norm_address_t addr) {
     check_access(addr, false, false, true);
-    uint32_t inst = dev::rd_32(addr);
+    uint32_t inst = dev::rd_32(addr.v);
     #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
-    uint32_t inst_ic = icache.rd(mem_map::base_addr + addr, 4);
+    uint32_t inst_ic = icache.rd(addr, 4);
     if (inst_ic != inst) {
         std::cerr << "ERROR: Instruction cache and memory mismatch."
-                  << " Address: 0x" << std::hex << addr
+                  << " Address: 0x" << std::hex << to_full(addr)
                   << " icache: 0x" << inst_ic
                   << " Memory: 0x" << inst
                   << std::endl;
@@ -200,15 +201,14 @@ uint32_t main_memory::rd_inst(uint32_t addr) {
         throw std::runtime_error("Instruction cache and memory mismatch.");
     }
     #else
-    icache.rd(mem_map::base_addr + addr, 4);
+    icache.rd(addr, 4);
     #endif
     #endif
     return inst;
 }
 
 #ifdef HW_MODELS_EN
-scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
-    addr += mem_map::base_addr;
+scp_status_t main_memory::scp(norm_address_t addr, scp_mode_t scp_mode) {
     if (scp_mode == scp_mode_t::m_lcl) return dcache.scp_lcl(addr);
     else if (scp_mode == scp_mode_t::m_rel) return dcache.scp_rel(addr);
     else throw std::runtime_error("ERROR: Invalid cache hint mode");
@@ -216,14 +216,15 @@ scp_status_t main_memory::scp(uint32_t addr, scp_mode_t scp_mode) {
 #endif
 
 uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
-    check_access(addr, true, false, false);
+    norm_address_t naddr{addr};
+    check_access(naddr, true, false, false);
     uint32_t data = dev::rd(addr, size);
     #ifdef HW_MODELS_EN
     #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
-    uint32_t data_dc = dcache.rd(mem_map::base_addr + addr, size);
+    uint32_t data_dc = dcache.rd(naddr, size);
     if (data_dc != data) {
         std::cerr << "ERROR: Data cache and memory mismatch."
-                  << " Address: 0x" << std::hex << addr
+                  << " Address: 0x" << std::hex << to_full(naddr)
                   << " dcache: 0x" << data_dc
                   << " Memory: 0x" << data
                   << std::endl;
@@ -231,27 +232,33 @@ uint32_t main_memory::rd(uint32_t addr, uint32_t size) {
         throw std::runtime_error("Data cache and memory mismatch.");
     }
     #else
-    dcache.rd(mem_map::base_addr + addr, size);
+    dcache.rd(naddr, size);
     #endif
     #endif
     return data;
 }
 
 void main_memory::wr(uint32_t addr, uint32_t data, uint32_t size) {
-    check_access(addr, false, true, false);
-    #ifdef HW_MODELS_EN
-    dcache.wr(mem_map::base_addr + addr, data, size);
-    #endif
+    norm_address_t naddr{addr};
+    check_access(naddr, false, true, false);
+    // write memory first so the cache sees up-to-date data
+    // (under CACHE_VERIFY, cache compares its line
+    // against memory on write-through / writeback)
     dev::wr(addr, data, size);
+    #ifdef HW_MODELS_EN
+    dcache.wr(naddr, data, size);
+    #endif
 }
 
 #ifdef HW_MODELS_EN
 #if CACHE_MODE == CACHE_MODE_FUNC
-std::array<uint8_t, cache_cfg::line_size> main_memory::rd_line(uint32_t addr) {
+std::array<uint8_t, cache_cfg::line_size> main_memory::rd_line(
+    norm_address_t addr)
+{
     std::array<uint8_t, cache_cfg::line_size> data;
-    addr = align_to_cache_line(addr);
+    uint32_t base = align_to_cache_line(addr.v);
     for (uint32_t i = 0; i < cache_cfg::line_size; i++) {
-        data[i] = dev::rd(addr+i, 1);
+        data[i] = dev::rd(base+i, 1);
     }
     return data;
 }
@@ -259,18 +266,18 @@ std::array<uint8_t, cache_cfg::line_size> main_memory::rd_line(uint32_t addr) {
 
 #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
 void main_memory::wr_line(
-    uint32_t addr, std::array<uint8_t, cache_cfg::line_size> data)
+    norm_address_t addr, std::array<uint8_t, cache_cfg::line_size> data)
 {
-    addr = align_to_cache_line(addr);
+    uint32_t base = align_to_cache_line(addr.v);
     // don't actually write to memory (the updated data is already there),
     // instead read each byte and compare
     // data in the memory has to be the same as the data in the cache
     for (uint32_t i = 0; i < cache_cfg::line_size; i++) {
-        uint32_t mem_data = TO_U32(dev::rd(addr+i, 1));
+        uint32_t mem_data = TO_U32(dev::rd(base + i, 1));
         uint32_t cache_data = TO_U32(data[i]);
         if (mem_data != cache_data) {
             std::cerr << "ERROR: Data cache and memory mismatch."
-                      << " Address: 0x" << std::hex << addr+i
+                      << " Address: 0x" << std::hex << (base + i)
                       << " dcache: 0x" << cache_data
                       << " Memory: 0x" << mem_data
                       << std::endl;

@@ -18,7 +18,8 @@ class main_memory : public dev {
     private:
         void burn_bin(std::string test_bin);
         void burn_elf(std::string test_elf);
-        void check_access(uint32_t addr, bool is_r, bool is_w, bool is_x) const;
+        void check_access(
+            norm_address_t addr, bool is_r, bool is_w, bool is_x) const;
         std::vector<mem_region_t> regions;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
         #ifdef HW_MODELS_EN
@@ -33,15 +34,17 @@ class main_memory : public dev {
         std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
             return symbol_map;
         }
-        uint32_t rd_inst(uint32_t addr);
-        uint32_t just_inst(uint32_t addr) { return dev::rd(addr, 4); }
+        uint32_t rd_inst(norm_address_t addr);
+        uint32_t just_inst(norm_address_t addr) { return dev::rd(addr.v, 4); }
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;
         virtual void wr(uint32_t addr, uint32_t data, uint32_t size) override;
-        std::array<uint8_t, cache_cfg::line_size> rd_line(uint32_t addr);
+        std::array<uint8_t, cache_cfg::line_size> rd_line(norm_address_t addr);
         void wr_line(
-            uint32_t addr, std::array<uint8_t, cache_cfg::line_size> data);
+            norm_address_t addr,
+            std::array<uint8_t, cache_cfg::line_size> data
+        );
         #ifdef HW_MODELS_EN
-        scp_status_t scp(uint32_t addr, scp_mode_t scp_mode);
+        scp_status_t scp(norm_address_t addr, scp_mode_t scp_mode);
         void cache_profiling(bool enable) {
             icache.profiling(enable);
             dcache.profiling(enable);

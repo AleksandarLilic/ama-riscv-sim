@@ -48,6 +48,16 @@ ifeq ($(DEBUG), 1)
 DEFINES += -DDEBUG
 endif
 
+CACHE_MODE ?= 0
+ifeq ($(CACHE_MODE), 1)
+DEFINES += -DCACHE_MODE=CACHE_MODE_FUNC
+endif
+
+CACHE_VERIFY ?= 0
+ifeq ($(CACHE_VERIFY), 1)
+DEFINES += -DCACHE_VERIFY
+endif
+
 CXXFLAGS := -Wall -Wextra
 CXXFLAGS += -Wcast-qual -Wold-style-cast
 CXXFLAGS += -Wunreachable-code -Wnull-dereference

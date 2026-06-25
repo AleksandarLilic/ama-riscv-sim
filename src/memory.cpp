@@ -50,10 +50,9 @@ uint32_t memory::set_addr(uint32_t address, mem_op_t mem_op, uint32_t size) {
 
 scp_status_t memory::cache_hint(uint32_t address, scp_mode_t scp_mode) {
     #ifdef HW_MODELS_EN
-    address = address - mem_map[0].base;
     dev_ptr = mem_map[0].ptr;
     main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
-    return mm_ptr->scp(address, scp_mode);
+    return mm_ptr->scp(to_norm(address), scp_mode);
     #else
     // hint ignored if caches are not enabled
     SIM_WARNING << "Caches are not simulated but encountered cache hint "
@@ -64,15 +63,15 @@ scp_status_t memory::cache_hint(uint32_t address, scp_mode_t scp_mode) {
 }
 
 uint32_t memory::rd_inst(uint32_t address) {
-    address = address - mem_map[0].base;
-    bool address_unaligned = (address % 2 != 0);
+    norm_address_t naddr = to_norm(address);
+    bool address_unaligned = (naddr.v % 2 != 0);
     if (address_unaligned) {
-        tu->e_inst_addr_misaligned(address, "unaligned access");
+        tu->e_inst_addr_misaligned(naddr.v, "unaligned access");
         return 0;
     }
     dev_ptr = mem_map[0].ptr;
     main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
-    return TO_U32(mm_ptr->rd_inst(address));
+    return TO_U32(mm_ptr->rd_inst(naddr));
     //uint32_t inst = 0;
     //try {
     //    inst = TO_U32(mm_ptr->rd_inst(address));
@@ -83,10 +82,9 @@ uint32_t memory::rd_inst(uint32_t address) {
 }
 
 uint32_t memory::just_inst(uint32_t address) {
-    address = address - mem_map[0].base;
     dev_ptr = mem_map[0].ptr;
     main_memory* mm_ptr = static_cast<main_memory*>(this->dev_ptr);
-    return TO_U32(mm_ptr->just_inst(address));
+    return TO_U32(mm_ptr->just_inst(to_norm(address)));
 }
 
 uint32_t memory::rd(uint32_t address, uint32_t size) {

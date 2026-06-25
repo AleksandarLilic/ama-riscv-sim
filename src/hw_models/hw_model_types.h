@@ -18,6 +18,7 @@ enum class cache_access_reason_t {
 
 struct cache_access_stat {
     std::string name;
+    cache_type_t type;
     uint32_t addr;
     uint32_t tag;
     uint32_t index;
@@ -27,6 +28,7 @@ struct cache_access_stat {
     //cache_access_reason_t reason;
     bool is_scp;
     bool is_hit;
+    bool is_dirty;
 };
 
 struct bp_access_stat {
@@ -79,8 +81,11 @@ struct hwmi_str { // hardware model info
             stat_ss << "HW - " << cas.name
                     << " (" << (cas.is_scp ? "S" : "C" )
                     << ") : " << (cas.is_hit ? "HIT " : "MISS")
-                    << " (" << ((cas.atype == mem_op_t::write) ? "W" : "R" )
-                    << ") [A:0x" << MEM_ADDR_FORMAT(cas.addr)
+                    << " (" << ((cas.atype == mem_op_t::write) ? "W" : "R" );
+            if (cas.type == cache_type_t::data) {
+                stat_ss << ((cas.is_dirty) ? "/D" : "/C" );
+            }
+            stat_ss << ") [A:0x" << MEM_ADDR_FORMAT(cas.addr)
                     << ", W:" << cas.way
                     << ", T:" << FHEXZ(cas.tag, 4)
                     << ", I:" << cas.index

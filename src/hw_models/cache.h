@@ -57,7 +57,7 @@ struct victim_t {
     victim_t(uint32_t way, uint32_t lru_cnt) : way_idx(way), lru_cnt(lru_cnt) {}
 };
 
-struct current_cache_line {
+struct current_cache_line_info {
     uint32_t index;
     uint32_t tag;
     victim_t victim;
@@ -100,9 +100,9 @@ class cache {
         uint32_t index_mask;
         uint32_t tag_bits_num;
         uint32_t tag_off;
-        current_cache_line ccl;
+        current_cache_line_info ccl_info;
         uint32_t metadata_bits_num;
-        std::vector<std::vector<cache_line_t>> cache_entries;
+        std::vector<std::vector<cache_line_t>> cache_array;
         std::string cache_name;
         #if CACHE_MODE == CACHE_MODE_FUNC
         mem_t* mem;
@@ -140,10 +140,10 @@ class cache {
         #if CACHE_MODE == CACHE_MODE_FUNC
         void set_mem(mem_t* mem) { this->mem = mem; }
         #endif
-        uint32_t rd(uint32_t addr, uint32_t size);
-        void wr(uint32_t addr, uint32_t data, uint32_t size);
-        scp_status_t scp_lcl(uint32_t addr);
-        scp_status_t scp_rel(uint32_t addr);
+        uint32_t rd(norm_address_t addr, uint32_t size);
+        void wr(norm_address_t addr, uint32_t data, uint32_t size);
+        scp_status_t scp_lcl(norm_address_t addr);
+        scp_status_t scp_rel(norm_address_t addr);
         void speculative_exec(speculative_t smode);
         void set_hws(hw_status_t* hws) { this->hws = hws; };
 
@@ -151,7 +151,7 @@ class cache {
         void profiling(bool enable) {
             stats.profiling(enable);
             roi.stats.profiling(enable);
-            for (auto& set : cache_entries) {
+            for (auto& set : cache_array) {
                 for (auto& line : set) line.profiling(enable);
             }
         }
@@ -179,20 +179,29 @@ class cache {
 
     private:
         cache_ref_t reference(
-            uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
+            norm_address_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
         void miss(
-            uint32_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
+            norm_address_t addr, uint32_t size, mem_op_t atype, scp_mode_t scp);
         void update_lru(uint32_t index, uint32_t way);
         scp_status_t update_scp(
             scp_mode_t mode, cache_line_t& line,uint32_t index);
         scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
         scp_status_t release_scp(cache_line_t& line);
         bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
+        uint32_t line_base_addr(uint32_t tag, uint32_t index) const {
+            return (tag << tag_off) | (index << cache_cfg::byte_addr_bits);
+        }
         void validate_inputs();
         #if CACHE_MODE == CACHE_MODE_FUNC
         void read_from_cache(
-            uint32_t byte_addr, uint32_t size, cache_line_t& act_line);
+            current_cache_line_info ccl_info,
+            uint32_t size,
+            cache_line_t& act_line
+        );
         void write_to_cache(
-            uint32_t byte_addr, uint32_t size, cache_line_t& act_line);
+            current_cache_line_info ccl_info,
+            uint32_t size,
+            cache_line_t& act_line
+        );
         #endif
 };

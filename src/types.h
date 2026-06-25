@@ -25,13 +25,28 @@ constexpr int const_log2(int n, int p = 0) {
 namespace mem_map {
     constexpr uint32_t base_addr = 0x8000'0000;
     constexpr uint32_t mem_size = 131072; // 0x2'0000
-    constexpr uint32_t addr_bits = const_log2(mem_size);
+    constexpr uint32_t addr_bits = const_log2(mem_size); // 17 bits
+    constexpr uint32_t addr_mask = (mem_size - 1);
     constexpr uint32_t uart0_addr = 0x1001'3000;
     constexpr uint32_t uart0_rx_data_addr = (uart0_addr + 0x04);
     constexpr uint32_t uart0_tx_data_addr = (uart0_addr + 0x08);
     constexpr uint32_t uart_size = 12; // 3 32-bit registers per UART
     constexpr uint32_t clint_addr = 0x0200'0000;
     constexpr uint32_t clint_size = 32; // reserved for 4 64-bit registers
+}
+
+using address_t = uint32_t;
+
+struct norm_address_t {
+    uint32_t v;
+    explicit constexpr norm_address_t(uint32_t v) : v(v) {}
+};
+
+constexpr norm_address_t to_norm(address_t a) {
+    return norm_address_t{a & mem_map::addr_mask};
+}
+constexpr address_t to_full(norm_address_t a) {
+    return (a.v | mem_map::base_addr);
 }
 
 constexpr uint32_t mem_addr_bitwidth = 8; // digits in hex printout
@@ -410,7 +425,6 @@ namespace cache_cfg {
     constexpr uint32_t line_size = 64; // bytes
     constexpr uint32_t byte_addr_bits = (__builtin_ctz(line_size)); // 6
     constexpr uint32_t byte_addr_mask = (line_size - 1); // 0x3F, bottom 6 bits
-    constexpr uint32_t addr_mask = (mem_map::mem_size - 1); // 17 bits
     constexpr uint32_t max_sets = 1024;
     constexpr uint32_t max_ways = 128;
 }
