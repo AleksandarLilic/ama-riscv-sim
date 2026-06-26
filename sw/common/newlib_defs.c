@@ -3,6 +3,7 @@
 
 #include <sys/times.h>
 #include <sys/stat.h>
+#include <stddef.h>
 #include <errno.h>
 #undef errno
 extern int errno;
@@ -91,14 +92,35 @@ int _read(int file, char *ptr, int len) {
     return 0;
 }
 
-extern uint32_t _end; // defined in linker script as the end of the BSS section
+// linker script symbols (i.e. address labels)
+extern char _end; // end of the BSS section
+extern char __stack_limit; // bottom of linker-reserved stack space
+
 void* _sbrk(int incr) {
-    static uint32_t *heap = NULL;
-    uint32_t *prev_heap;
-    if (heap == NULL)
-        heap = (uint32_t *)&_end;
+    static char* heap = NULL;
+    char* prev_heap;
+    char* next_heap;
+
+    if (heap == NULL) heap = &_end;
+
+    if (incr < 0) {
+        errno = EINVAL;
+        return (void*)-1;
+    }
+
+    // keep returned chunks suitable for normal C object alignment
+    // i.e. round up to 8-byte aligned chunk
+    incr = ((incr + 7) & ~7);
     prev_heap = heap;
-    heap += incr;
+    next_heap = (heap + incr);
+
+    // if next_heap addition overflowed, or is greater that limit, error out
+    if ((next_heap < heap) || (next_heap > &__stack_limit)) {
+        errno = ENOMEM;
+        return (void*)-1;
+    }
+
+    heap = next_heap;
     return prev_heap;
 }
 

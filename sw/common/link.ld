@@ -6,6 +6,8 @@ MEMORY
     ram (rwx) : ORIGIN = 0x80000000, LENGTH = 128K
 }
 
+__stack_size = DEFINED(__stack_size) ? __stack_size : 16K;
+
 SECTIONS
 {
     .text : {
@@ -62,4 +64,6 @@ SECTIONS
 
     _end = .;
     __stack_top = ORIGIN(ram) + LENGTH(ram);
+    __stack_limit = __stack_top - __stack_size;
+    ASSERT(__stack_limit >= _end, "RAM overflow: heap start overlaps reserved stack")
 }
