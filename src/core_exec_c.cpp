@@ -436,7 +436,7 @@ void core::c_jal() {
 void core::c_jr() {
     // rs1 in position of rd
     if (ip.rd() == 0x0) tu.e_illegal_inst("c.jr (rd=0)", 4);
-    next_pc = rf[ip.rd()];
+    next_pc = (rf[ip.rd()] & ~1);
     DASM_OP(c.jr)
     PROF_J(c_jr)
     PROF_C_RS1_RD
@@ -458,8 +458,8 @@ void core::c_jr() {
 
 void core::c_jalr() {
     // rs1 in position of rd
-    next_pc = rf[ip.rd()];
-    uint32_t ra = pc + 2;
+    next_pc = (rf[ip.rd()] & ~1);
+    uint32_t ra = (pc + 2);
     write_rf(1, ra);
     DASM_OP(c.jalr)
     PROF_J(c_jalr)
