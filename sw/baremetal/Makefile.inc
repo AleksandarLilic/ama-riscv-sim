@@ -139,6 +139,9 @@ $(COMMON_BUILD_DIR)/%.o: %.c
 $(COMMON_BUILD_DIR)/%.o: %.S
 	$(BUILD_COMMON)
 
+# fight with linker relaxation and gp-relative issues for linker script symbols
+$(COMMON_BUILD_DIR)/newlib_defs.o: GCC_OPTS += -mno-relax
+
 -include $(wildcard $(COMMON_BUILD_DIR)/*.d)
 
 clean:

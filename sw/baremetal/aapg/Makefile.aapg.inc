@@ -15,6 +15,7 @@ endif
 
 OPT := -O0
 CFLAGS := -I../
+GCC_OPTS += -Wl,--defsym=__stack_size=1K # irrelevant, aapg doesn't use stack
 
 SEED ?= 47
 override EXPLICIT_SRCS := 1
