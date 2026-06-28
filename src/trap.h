@@ -1,6 +1,8 @@
 #pragma once
 
 #include "defines.h"
+#include "csrs.h"
+#include <cassert>
 #ifdef PROFILERS_EN
 #include "profiler_perf.h"
 #endif
@@ -8,27 +10,35 @@
 class trap {
     private:
         bool inst_trapped = false;
-        std::map<uint16_t, CSR>* csr;
-        uint32_t* pc;
-        uint32_t* inst;
+        using trap_state_update_fn_t = void (*)(void*, uint32_t, uint32_t);
+        void* trap_state_update_ctx;
+        trap_state_update_fn_t fn_ptr_trap_state_update;
+        const uint32_t& pc;
+        const uint32_t& inst;
         #ifdef DASM_EN
         dasm_str* dasm;
-        #endif
-        #ifdef PROFILERS_EN
-        profiler_perf* prof_perf;
         #endif
 
     public:
         trap() = delete;
-        trap(std::map<uint16_t, CSR>* csr, uint32_t* pc, uint32_t* inst) :
-            csr(csr), pc(pc), inst(inst) {}
+        trap(
+            void* ctx,
+            trap_state_update_fn_t fn,
+            uint32_t& pc,
+            uint32_t& inst
+        ) :
+            trap_state_update_ctx(ctx),
+            fn_ptr_trap_state_update(fn),
+            pc(pc),
+            inst(inst)
+        {
+            assert(trap_state_update_ctx != nullptr);
+            assert(fn_ptr_trap_state_update != nullptr);
+        }
         bool is_trapped() { return inst_trapped; }
         void clear_trap() { inst_trapped = false; }
         #ifdef DASM_EN
         void set_dasm(dasm_str* d) { dasm = d; }
-        #endif
-        #ifdef PROFILERS_EN
-        void set_prof_perf(profiler_perf* p) { prof_perf = p; }
         #endif
 
         // exceptions

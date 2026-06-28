@@ -1,10 +1,10 @@
 #include "core.h"
 
 core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
-    running(false), wfi({false, false}),
-    mem(mem), pc(mem_map::base_addr), next_pc(0), inst(0),
-    inst_cnt(0), steps_cnt(0),
-    tu(&csr, &pc, &inst)
+    mem(mem),
+    pc(mem_map::base_addr),
+    tu(this, &core::trap_state_update_cb, pc, inst),
+    out_dir(cfg.out_dir)
     #ifdef PROFILERS_EN
     , prof_pc(cfg.prof_pc)
     , prof(cfg.out_dir, PROF_SRC)
@@ -16,18 +16,16 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     , div(hw_cfg.div_cache_entries)
     , no_bp(hw_cfg.bp_active == bp_t::none)
     #endif
-    , out_dir(cfg.out_dir)
 {
     rf[0] = 0;
     rf_names_idx = TO_U8(cfg.rf_names);
-    rf_names_w = cfg.rf_names == rf_names_t::mode_abi ? 4 : 3;
+    rf_names_w = (cfg.rf_names == rf_names_t::mode_abi) ? 4 : 3;
     for (uint32_t i = 1; i < 32; i++) rf[i] = 0xc0ffee;
 
     this->cfg = cfg;
     mem->trap_setup(&tu);
 
     #ifdef PROFILERS_EN
-    tu.set_prof_perf(&prof_perf);
     prof.set_trace_en(cfg.prof_trace);
     if (cfg.no_callstack) prof_perf.set_callstack_en(false);
     prof_trace = cfg.prof_trace;
@@ -78,11 +76,13 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
 
     // initialize CSRs
     csr_names_w = 0;
-    for (const auto &c : supported_csrs) {
-        csr.insert({c.csr_addr, CSR(c.csr_name, c.boot_val, c.perm, c.wmask)});
+    for (const auto &c : csr_def::supported_csrs) {
+        csr.insert({
+            c.csr_addr, csr_def::CSR(c.csr_name, c.boot_val, c.perm, c.wmask)
+        });
         csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
     }
-    mem->set_mip(&csr.at(csrm::addr::mip).value);
+    mem->set_mip(&csr.at(csr_map::addr::mip).value);
 }
 
 uint64_t core::run() {
@@ -106,7 +106,7 @@ uint64_t core::run() {
     // wrap up
     csr_cnt_update(0u); // so all instructions since last CSR access are counted
     finish(true);
-    return inst_cnt;
+    return sim_cnt.inst;
 }
 
 void core::single_step() {
@@ -155,9 +155,10 @@ void core::single_step() {
         exec();
     }
 
-    steps_cnt++;
-    if (steps_cnt == cfg.run_steps) {
-        std::cout << "Max steps count " << steps_cnt << " reached. Exiting.\n";
+    sim_cnt.step++;
+    if (sim_cnt.step == cfg.run_steps) {
+        std::cout << "Max simulation steps count " << sim_cnt.step
+                  << " reached. Exiting.\n";
         running = false;
         return;
     }
@@ -165,8 +166,11 @@ void core::single_step() {
     if (wfi.active && !tu.is_trapped()) return;
 
     #ifdef PROFILERS_EN
-    [[maybe_unused]] bool log_symbol = prof_perf.finish_inst(next_pc);
-    if (!tu.is_trapped() && (prof_active)) prof_pc.inst_cnt++;
+    [[maybe_unused]] bool log_symbol = false;
+    if (!tu.is_trapped()){
+        log_symbol = prof_perf.finish_inst(next_pc);
+        if (prof_active) prof_pc.inst_cnt++;
+    }
     #endif
 
     #ifdef DASM_EN
@@ -197,14 +201,14 @@ void core::single_step() {
     #endif
 
     pc = next_pc;
-    inst_cnt++;
+    sim_cnt.inst++;
 
     // transfer pending to active, and clear
     wfi.active |= wfi.pend;
     wfi.pend = false;
 
-    if (inst_cnt == cfg.run_insts) {
-        std::cout << "Max instructions count " << inst_cnt
+    if (sim_cnt.inst == cfg.run_insts) {
+        std::cout << "Max simulation instructions count " << sim_cnt.inst
                     << " reached. Exiting.\n";
         running = false;
     }
@@ -217,26 +221,26 @@ bool core::check_interrupts(bool defer_trap) {
     #ifndef DPI
     mem->update_mtime();
     #ifdef UART_INPUT_EN
-    mem->update_uart_input(inst_cnt);
+    mem->update_uart_input(sim_cnt.inst);
     #endif
     #endif
 
-    uint32_t mie_val = csr.at(csrm::addr::mie).value;
-    uint32_t mip_val = csr.at(csrm::addr::mip).value;
-    bool mstatus_MIE = (csr.at(csrm::addr::mstatus).value & csrm::mstatus::mie);
-    bool mti = ((mie_val & csrm::mie::mtie) && (mip_val & csrm::mip::mtip));
+    uint32_t mie_val = csr.at(csr_map::addr::mie).value;
+    uint32_t mip_val = csr.at(csr_map::addr::mip).value;
+    bool mstatus_MIE = (csr.at(csr_map::addr::mstatus).value & csr_map::mstatus::mie);
+    bool mti = ((mie_val & csr_map::mie::mtie) && (mip_val & csr_map::mip::mtip));
     bool mti_no_trap = (mti && !mstatus_MIE);
 
     #ifdef UART_INPUT_EN
     // priv spec: external (MEI) before timer (MTI), one trap per step
     // UART RX is the sole MEI source, so MEI lives under UART_INPUT_EN
-    bool mei = ((mie_val & csrm::mie::meie) && (mip_val & csrm::mip::meip));
+    bool mei = ((mie_val & csr_map::mie::meie) && (mip_val & csr_map::mip::meip));
     bool mei_no_trap = (mei && !mstatus_MIE);
     if (mstatus_MIE && mei) {
         tu.e_external_interrupt();
         #ifdef DPI
         // one-shot; TB re-forces per RTL trap
-        csr.at(csrm::addr::mip).value &= ~csrm::mip::meip;
+        csr.at(csr_map::addr::mip).value &= ~csr_map::mip::meip;
         #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
@@ -247,7 +251,7 @@ bool core::check_interrupts(bool defer_trap) {
         tu.e_timer_interrupt();
         #ifdef DPI
         // one-shot; TB re-forces per RTL trap
-        csr.at(csrm::addr::mip).value &= ~csrm::mip::mtip;
+        csr.at(csr_map::addr::mip).value &= ~csr_map::mip::mtip;
         #endif
         #ifdef HW_MODELS_EN
         last_inst_branch = false;
@@ -336,10 +340,10 @@ void core::log_inst(bool trapped, bool log_symbol) {
     // don't count instructions unless also profiling
     //if (prof_active) log_ofstream << prof_pc.inst_cnt;
     #ifdef PROFILERS_EN
-    if (prof_active) log_ofstream << inst_cnt + 1;
+    if (prof_active) log_ofstream << sim_cnt.inst + 1;
     else log_ofstream << "";
     #else
-    log_ofstream << inst_cnt + 1;
+    log_ofstream << sim_cnt.inst + 1;
     #endif
     log_ofstream << ": " << FORMAT_INST(pc, inst, inst_w) << " "
                     << dasm.asm_str;
@@ -377,8 +381,8 @@ void core::finish(bool dump_regs) {
     mem->cache_finish(cfg.silent, prof_pc.inst_cnt);
     div.finish(cfg.silent);
     #else
-    bp.finish(cfg.out_dir, inst_cnt, cfg.silent);
-    mem->cache_finish(cfg.silent, inst_cnt);
+    bp.finish(cfg.out_dir, sim_cnt.inst, cfg.silent);
+    mem->cache_finish(cfg.silent, sim_cnt.inst);
     div.finish(cfg.silent);
     #endif
     log_hw_stats();
@@ -426,7 +430,7 @@ void core::save_trace_entry() {
         prof.te.taken = branch_taken;
         prof.te.inst_size = TO_U8(inst_w >> 1); // hex digits to bytes
         //prof.te.sample_cnt = prof_pc.inst_cnt;
-        prof.te.sample_cnt = inst_cnt + 1;
+        prof.te.sample_cnt = sim_cnt.inst + 1;
         #ifdef HW_MODELS_EN
         prof.te.ic_hm = TO_U8(hwrs.ic_hm);
         prof.te.dc_hm = TO_U8(hwrs.dc_hm);
@@ -734,25 +738,13 @@ void core::d_system() {
     } else { // (funct3 == 0) -> system instructions
         switch (inst) {
             case inst::ecall:
-                tu.e_env("ECALL", csrm::mcause::machine_ecall);
+                tu.e_env("ECALL", csr_map::mcause::machine_ecall);
                 return;
             case inst::ebreak:
-                tu.e_env("EBREAK", csrm::mcause::breakpoint);
+                tu.e_env("EBREAK", csr_map::mcause::breakpoint);
                 return;
             case inst::mret:
-                // restore previous interrupt enable bit state
-                csr.at(csrm::addr::mstatus).value = (
-                    // clear mie
-                    (csr.at(csrm::addr::mstatus).value &
-                     ~csrm::mstatus::mie) |
-                    // mie = mpie
-                    ((csr.at(csrm::addr::mstatus).value &
-                      csrm::mstatus::mpie) >> 4) |
-                    // set mpie
-                    (csr.at(csrm::addr::mstatus).value | csrm::mstatus::mpie)
-                );
-                // restore pc
-                next_pc = csr.at(csrm::addr::mepc).value;
+                mret_state_update();
                 DASM_OP(mret)
                 PROF_G(mret)
                 #ifdef PROFILERS_EN
@@ -1033,9 +1025,6 @@ void core::d_csr_access() {
     auto it = csr.find(csr_addr);
     if (it == csr.end()) {
         tu.e_illegal_inst("CSR write attempt to non-existent CSR", 4);
-        #ifdef DASM_EN
-        DASM_TRAP << "Unsupported CSR. Address: " << FHEXN(csr_addr, 3);
-        #endif
         return;
     } else {
         #ifndef DPI
@@ -1060,7 +1049,7 @@ void core::d_csr_access() {
             CASE_CSR_I(rci)
             default: tu.e_unsupported_inst("sys");
         }
-        if (csr.at(csrm::addr::tohost).value & 0x1) running = false;
+        if (csr.at(csr_map::addr::tohost).value & 0x1) running = false;
     }
 
     #ifdef DASM_EN
@@ -1160,7 +1149,7 @@ void core::log_hw_stats() {
     #ifdef PROFILERS_EN
     mem->log_cache_stats(ofs, prof_pc.inst_cnt);
     #else
-    mem->log_cache_stats(ofs, inst_cnt);
+    mem->log_cache_stats(ofs, sim_cnt.inst);
     #endif
     bp.log_stats(ofs);
     div.log_stats("divider", ofs);
@@ -1168,7 +1157,7 @@ void core::log_hw_stats() {
     #ifdef PROFILERS_EN
     << prof_pc.inst_cnt // profiled inst, depending on settings/triggers
     #else
-    << inst_cnt // app profiled from boot
+    << sim_cnt.inst // app profiled from boot
     #endif
     << "\n}\n";
     ofs.close();
@@ -1185,34 +1174,34 @@ void core::dump() {
     #ifdef PROFILERS_EN
     if (prof_pc.exit_on_prof_stop) {
         std::cout << "Early exit on profiler stop, TOHOST invalid\n";
-        csr.at(csrm::addr::tohost).value = csrm::tohost_early_exit;
+        csr.at(csr_map::addr::tohost).value = csr_def::tohost_early_exit;
     } else
     #endif
     {
-        uint32_t tohost = csr.at(csrm::addr::tohost).value;
+        uint32_t tohost = csr.at(csr_map::addr::tohost).value;
         if (tohost != 1) {
             std::cout << "Failed test ID: " << (tohost >> 1) << " (0x"
                       << std::hex << (tohost >> 1) << std::dec << ")";
             std::cout << ((tohost > 1000) ? " (trap)" : " (exit)") << "\n";
         }
     }
-    std::cout << std::dec << "Instruction Counters: executed: " << inst_cnt
+    std::cout << std::dec << "Instruction Counters: executed: " << sim_cnt.inst
               #ifdef PROFILERS_EN
               // profiled inst, depending on settings/triggers
               << ", profiled: " << prof_pc.inst_cnt
               #endif
               << "\n";
     if (cfg.show_state) std::cout << print_state(true) << "\n";
-    else std::cout << INDENT << CSRF(csr.find(csrm::addr::tohost)) << "\n";
+    else std::cout << INDENT << CSRF(csr.find(csr_map::addr::tohost)) << "\n";
 
     #ifdef CHECK_LOG
     // open file for check log
     std::ofstream file;
     file.open("sim.check");
-    file << std::dec << inst_cnt << "\n";
+    file << std::dec << sim_cnt.inst << "\n";
     for(uint32_t i = 0; i < 32; i++) file << FHEXZ(rf[i], 8) << "\n";
     file << "0x" << MEM_ADDR_FORMAT(pc) << "\n";
-    file << FHEXZ(csr.at(csrm::addr::tohost).value, 8) << "\n";
+    file << FHEXZ(csr.at(csr_map::addr::tohost).value, 8) << "\n";
     file.close();
     #endif
 }

@@ -1,4 +1,5 @@
 #include "uart.h"
+#include "csrs.h"
 
 #ifndef DPI
 #ifdef UART_INPUT_EN
@@ -60,8 +61,8 @@ uint32_t uart::rd(uint32_t address, uint32_t size) {
 
 void uart::refresh_meip() {
     if (csr_mip == nullptr) return;
-    if (mem[UART_STATUS] & UART_RX_VALID) *csr_mip |= csrm::mip::meip;
-    else *csr_mip &= ~csrm::mip::meip;
+    if (mem[UART_STATUS] & UART_RX_VALID) *csr_mip |= csr_map::mip::meip;
+    else *csr_mip &= ~csr_map::mip::meip;
 }
 
 int32_t uart::next_byte() {

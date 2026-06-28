@@ -22,8 +22,8 @@ void clint::update_mtime(uint64_t mtime_elapsed) {
 
     // under DPI, the TB is the mip.MTIP source (RTL-driven timing)
     #ifndef DPI
-    if (dev::rd_64(MTIME) >= dev::rd_64(MTIMECMP)) *csr_mip |= csrm::mip::mtip;
-    else *csr_mip &= ~csrm::mip::mtip;
+    if (dev::rd_64(MTIME) >= dev::rd_64(MTIMECMP)) *csr_mip |= csr_map::mip::mtip;
+    else *csr_mip &= ~csr_map::mip::mtip;
     #endif
 }
 
