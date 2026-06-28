@@ -1,17 +1,6 @@
 SHELL := /bin/bash
 
-NPROCS_DEF := 8
-NPROCS := $(shell nproc 2>/dev/null || echo $(NPROCS_DEF))
-# only add -j if MAKEFLAGS doesn't already contain a job limit
-ifeq ($(filter -j% --jobserver%, $(MAKEFLAGS)),)
-    MAKEFLAGS += -j$(NPROCS)
-endif
-
-REPO_ROOT := $(shell git rev-parse --show-toplevel)
-
-RV_GNU := $(RV_GNU_LATEST)
-# e.g. `export RV_GNU_LATEST=riscv64-unknown-elf`
-BIN2HEX := $(REPO_ROOT)/sw/bin2hex.py
+include $(dir $(lastword $(MAKEFILE_LIST)))Makefile.setup.inc
 
 # Turn on increased build verbosity by defining BUILD_VERBOSE in test Makefile
 # or use V=1 on the make command line
@@ -99,10 +88,10 @@ HEX ?= 1
 MEM_WIDTH := 128
 
 ifeq ($(CPP_SRCS),)
-    CC_DRIVER := $(RV_GNU)-gcc
+    CC_DRIVER := $(GCC)
     CXX_FLAGS :=
 else
-    CC_DRIVER := $(RV_GNU)-g++
+    CC_DRIVER := $(CXX)
     CXX_FLAGS := $(CXX_OPTS)
 endif
 
@@ -113,16 +102,16 @@ BUILD_APP = \
 
 HEX_GEN = \
 	if [ "$(HEX)" = "1" ]; then \
-		$(RV_GNU)-objcopy $@ -O binary $(basename $@).bin; \
+		$(OBJCOPY) $@ -O binary $(basename $@).bin; \
 		$(BIN2HEX) -w $(MEM_WIDTH) -a 0 $(basename $@).bin $(basename $@).mem; \
 	fi
 
 %.elf: $(SRCS) $(INC_H) $(CRT0) $(LD_SRC) $(COMMON_OBJS) $(APP_REQS)
 	$(Q)$(BUILD_APP)
-	$(Q)$(RV_GNU)-objdump $(OBJDUMP_OPTS) $@ > $(basename $@).dasm
+	$(Q)$(OBJDUMP) $(OBJDUMP_OPTS) $@ > $(basename $@).dasm
 	$(Q)$(HEX_GEN)
 	@echo "Executable built: $@"
-	$(Q)$(RV_GNU)-size -G $@
+	$(Q)$(SIZE) -G $@
 
 build_common: $(COMMON_OBJS)
 
@@ -130,8 +119,8 @@ COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
 COMMON_FLAGS += -Werror -pedantic
 
 BUILD_COMMON = \
-	$(Q)$(RV_GNU)-gcc $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) \
-		$(USER_DEFINES) -MMD -MP -c $< -o $@
+	$(Q)$(GCC) $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) \
+		-MMD -MP -c $< -o $@
 
 $(COMMON_BUILD_DIR)/%.o: %.c
 	$(BUILD_COMMON)
