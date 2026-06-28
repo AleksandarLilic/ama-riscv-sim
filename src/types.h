@@ -16,6 +16,7 @@
 #include <cstring>
 #include <cmath>
 #include <bitset>
+#include <optional>
 
 constexpr int const_log2(int n, int p = 0) {
     return (n <= 1) ? p : const_log2(n >> 1, p + 1);
@@ -519,6 +520,7 @@ struct symbol_tracking_t {
     std::vector<uint16_t> idx_callstack;
     std::vector<uint16_t> idx_callstack_prev;
     uint32_t fallthrough_pc;
+    bool fallthrough_valid;
     bool updated;
 };
 

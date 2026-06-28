@@ -57,7 +57,8 @@ class profiler_perf {
         void update_callstack(uint32_t next_pc);
         void set_fallthrough_symbol(uint32_t pc);
         bool symbol_change_on_jump(uint32_t next_pc);
-        std::pair<uint32_t, symbol_map_entry_t>
+        bool match_symbol(uint32_t pc, uint16_t idx);
+        std::optional<std::pair<uint32_t, symbol_map_entry_t>>
             find_symbol_in_range(uint32_t next_pc);
         std::string get_callstack_str(const std::vector<uint16_t>& idx_stack);
         std::u16string callstack_to_key();

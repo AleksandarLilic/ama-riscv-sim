@@ -19,6 +19,7 @@ profiler_perf::profiler_perf(
     // set up beginning of callstack
     st.idx_callstack.push_back(symbol_map.at(mem_map::base_addr).idx);
     st.idx_callstack_prev = st.idx_callstack;
+    st.fallthrough_valid = false;
     set_fallthrough_symbol(mem_map::base_addr);
     st.updated = false;
     callstack_cnt = 0;
@@ -26,23 +27,33 @@ profiler_perf::profiler_perf(
 
 bool profiler_perf::finish_inst(uint32_t next_pc) {
     if (!callstack_en) return false;
-    // handle next instruction symbol change, if any
-    bool fallthrough = ((next_pc == st.fallthrough_pc) && !st.updated);
+    // function symbols can be contiguous without a branch between them
+    // track that exact fallthrough separately from range-based lookup
+    bool fallthrough = (
+        st.fallthrough_valid && (next_pc == st.fallthrough_pc) && !st.updated
+    );
     if (fallthrough) {
-        update_callstack(next_pc);
-        st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+        auto it = symbol_map.find(next_pc);
+        if (it != symbol_map.end()) {
+            update_callstack(next_pc);
+            st.idx_callstack.back() = it->second.idx;
+        } else {
+            st.fallthrough_valid = false;
+        }
     }
 
     if (!match_top(next_pc)) {
         diverged_cnt += 1;
-        // try to fix diverged callstack
+        // try to repair the stack after missed tail calls/returns by popping
+        // candidate frames until next_pc falls back inside a caller's symbol
 
         //std::cout << "diverged at next_pc: " << MEM_ADDR_FORMAT(next_pc)
         //          << std::flush;
 
-        // tail calls can be missed, try to pop back and match the current top
         auto temp_cs = st.idx_callstack;
-        while (!match_top(next_pc) && !temp_cs.empty()) temp_cs.pop_back();
+        while (!temp_cs.empty() && !match_symbol(next_pc, temp_cs.back())) {
+            temp_cs.pop_back();
+        }
 
         // if pop_back resolves the diverged callstack, use it
         // else, symbol change likely due to assembly labels, just replace top
@@ -50,7 +61,13 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
             st.idx_callstack = temp_cs;
         } else {
             auto found_sym = find_symbol_in_range(next_pc);
-            st.idx_callstack.back() = symbol_map.at(found_sym.first).idx;
+            if (found_sym) {
+                if (st.idx_callstack.empty()) {
+                    st.idx_callstack.push_back(found_sym->second.idx);
+                } else {
+                    st.idx_callstack.back() = found_sym->second.idx;
+                }
+            }
         }
 
         //if (temp_cs.empty()) {
@@ -74,52 +91,78 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
 void profiler_perf::update_branch(uint32_t next_pc, bool taken) {
     if (!callstack_en) return;
     if (!taken) return;
+    // branches can jump to labels inside a function, range lookup is enough
+    // unknown targets leave the stack untouched
     auto found_sym = find_symbol_in_range(next_pc);
-    bool sym_chg = (found_sym.second.idx != st.idx_callstack.back());
+    if (!found_sym || st.idx_callstack.empty()) return;
+    bool sym_chg = (found_sym->second.idx != st.idx_callstack.back());
     if (sym_chg) {
-        update_callstack(found_sym.first);
-        st.idx_callstack.back() = symbol_map.at(found_sym.first).idx;
+        update_callstack(found_sym->first);
+        st.idx_callstack.back() = found_sym->second.idx;
     }
 }
 
 void profiler_perf::update_jalr(
-    uint32_t next_pc, bool ret_inst, bool tail_call, uint32_t ra) {
+    uint32_t next_pc, bool ret_inst, bool tail_call, uint32_t ra)
+{
     if (!callstack_en) return;
     // also not ret if it doesn't change the symbol
     ret_inst &= symbol_change_on_jump(next_pc);
+    auto target_sym = symbol_map.find(next_pc);
     if (ret_inst) {
         update_callstack(next_pc);
         // catch_empty_callstack("jalr (ret)", next_pc);
-        st.idx_callstack.pop_back();
-        if (symbol_map.find(next_pc) != symbol_map.end()) {
+        if (st.idx_callstack.size() > 1) st.idx_callstack.pop_back();
+        if (target_sym != symbol_map.end()) {
             // returns to the next symbol (mostly-assembly thing)
             if (st.idx_callstack.empty()) {
-                st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
+                st.idx_callstack.push_back(target_sym->second.idx);
             } else {
-                st.idx_callstack.back() = symbol_map.at(next_pc).idx;
+                st.idx_callstack.back() = target_sym->second.idx;
             }
         }
-    } else if (symbol_map.find(next_pc) != symbol_map.end()) {
+    } else if (target_sym != symbol_map.end()) {
         update_callstack(next_pc);
         bool noreturn_call = symbol_map.find(ra) != symbol_map.end();
         if (tail_call || noreturn_call) {
+            // tail/noreturn calls replace the current frame
+            // keep one frame alive so profiling never produces empty callstack
             // catch_empty_callstack("jalr", next_pc);
-            st.idx_callstack.pop_back();
+            if (st.idx_callstack.size() > 1) {
+                st.idx_callstack.pop_back();
+                st.idx_callstack.push_back(target_sym->second.idx);
+            } else if (st.idx_callstack.empty()) {
+                st.idx_callstack.push_back(target_sym->second.idx);
+            } else {
+                st.idx_callstack.back() = target_sym->second.idx;
+            }
+        } else {
+            st.idx_callstack.push_back(target_sym->second.idx);
         }
-        st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
     }
 }
 
 void profiler_perf::update_jal(uint32_t next_pc, bool tail_call, uint32_t ra) {
     if (!callstack_en) return;
     bool noreturn_call = symbol_map.find(ra) != symbol_map.end();
-    if (symbol_map.find(next_pc) != symbol_map.end()) {
+    auto target_sym = symbol_map.find(next_pc);
+    if (target_sym != symbol_map.end()) {
         update_callstack(next_pc);
         if (tail_call || noreturn_call) {
-            st.idx_callstack.pop_back();
+            // tail/noreturn calls replace the current frame
+            // keep one frame alive so profiling never produces empty callstack
             // catch_empty_callstack("jal", next_pc);
+            if (st.idx_callstack.size() > 1) {
+                st.idx_callstack.pop_back();
+                st.idx_callstack.push_back(target_sym->second.idx);
+            } else if (st.idx_callstack.empty()) {
+                st.idx_callstack.push_back(target_sym->second.idx);
+            } else {
+                st.idx_callstack.back() = target_sym->second.idx;
+            }
+        } else {
+            st.idx_callstack.push_back(target_sym->second.idx);
         }
-        st.idx_callstack.push_back(symbol_map.at(next_pc).idx);
     }
 }
 
@@ -164,43 +207,48 @@ void profiler_perf::update_callstack(uint32_t next_pc) {
 }
 
 void profiler_perf::set_fallthrough_symbol(uint32_t pc) {
-    //bool found = false;
-    for (auto it = symbol_map.begin(); it != symbol_map.end(); it++) {
-        if (it->first == pc) {
-            //found = true;
-            it++;
-            if (it == symbol_map.end()) break; // no next symbol
-            st.fallthrough_pc = it->first;
-        }
-    }
-    //if (!found) {
-    //    std::cerr << "ERROR: set_fallthrough_symbol: symbol at pc "
-    //              << std::hex << pc << " not found" << std::dec << std::endl;
-    //    throw std::runtime_error("set_fallthrough_symbol: symbol not found");
-    //}
+    // only exact symbol starts get a fallthrough target
+    // clear first so a function without a following symbol cannot reuse
+    // stale target
+    st.fallthrough_valid = false;
+    auto it = symbol_map.find(pc);
+    if (it == symbol_map.end()) return;
+    it++;
+    if (it == symbol_map.end()) return;
+    st.fallthrough_pc = it->first;
+    st.fallthrough_valid = true;
 }
 
 bool profiler_perf::symbol_change_on_jump(uint32_t next_pc) {
+    if (st.idx_callstack.empty()) return false;
     auto found_sym = find_symbol_in_range(next_pc);
-    return (found_sym.second.idx != st.idx_callstack.back());
+    return found_sym && (found_sym->second.idx != st.idx_callstack.back());
 }
 
-std::pair<uint32_t, symbol_map_entry_t>
-    profiler_perf::find_symbol_in_range(uint32_t next_pc) {
-    // find to which range does the next_pc belong
-    std::pair<uint32_t, symbol_map_entry_t> found;
-    for (const auto &sym : symbol_map) {
-        if (next_pc >= sym.first) found = sym;
-        else break;
-    }
-    return found;
+std::optional<std::pair<uint32_t, symbol_map_entry_t>>
+profiler_perf::find_symbol_in_range(uint32_t next_pc)
+{
+    // map arbitrary PCs to the nearest preceding symbol
+    // PCs before the first symbol
+    // (e.g. mtvec=0 during bad boot code) have no valid symbol range
+    if (symbol_map.empty()) return std::nullopt;
+    auto it = symbol_map.upper_bound(next_pc);
+    if (it == symbol_map.begin()) return std::nullopt;
+    it--;
+    return *it;
 }
 
 std::string profiler_perf::get_callstack_str(
-    const std::vector<uint16_t>& idx_stack) {
+    const std::vector<uint16_t>& idx_stack)
+{
     std::string stack_str = "";
+    if (idx_stack.empty()) return "<unknown>;";
     for (const auto &idx : idx_stack) {
-        stack_str += symbol_lut.at(idx).name + ";";
+        if ((idx < symbol_lut.size()) && !symbol_lut[idx].name.empty()) {
+            stack_str += symbol_lut[idx].name + ";";
+        } else {
+            stack_str += "<unknown>;";
+        }
     }
     return stack_str;
 }
@@ -248,12 +296,12 @@ void profiler_perf::log_to_file_and_print(bool silent) {
     }
 }
 
+bool profiler_perf::match_symbol(uint32_t pc, uint16_t idx) {
+    auto found_sym = find_symbol_in_range(pc);
+    return found_sym && (found_sym->second.idx == idx);
+}
+
 bool profiler_perf::match_top(uint32_t next_pc) {
-    uint16_t idx = 0;
-    for (const auto &sym : symbol_map) {
-        if (next_pc >= sym.first) idx = sym.second.idx;
-        else break;
-    }
-    uint16_t top = {st.idx_callstack.back()};
-    return (idx == top);
+    if (st.idx_callstack.empty()) return false;
+    return match_symbol(next_pc, st.idx_callstack.back());
 }
