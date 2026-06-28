@@ -470,7 +470,7 @@ class core {
             for (uint16_t a : csr_rtl_trusted) {
                 bool found = false;
                 for (const auto& e : csr_def::supported_csrs)
-                    if (e.csr_addr == a) found = true;
+                    if (e.addr == a) found = true;
                 if (!found) return false;
             }
             return true;

@@ -78,9 +78,9 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     csr_names_w = 0;
     for (const auto &c : csr_def::supported_csrs) {
         csr.insert({
-            c.csr_addr, csr_def::CSR(c.csr_name, c.boot_val, c.perm, c.wmask)
+            c.addr, csr_def::CSR(c.name, c.boot_val, c.perm, c.wmask, c.s_addr)
         });
-        csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.csr_name)));
+        csr_names_w = std::max(csr_names_w, TO_U8(strlen(c.name)));
     }
     mem->set_mip(&csr.at(csr_map::addr::mip).value);
 }

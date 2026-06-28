@@ -129,6 +129,66 @@ namespace csr_map {
         constexpr uint16_t cycleh = 0xC80; // URO
         constexpr uint16_t timeh = 0xC81; // URO
         constexpr uint16_t instreth = 0xC82; // URO
+        // Unprivileged Hardware Performance Monitor (Zihpm) counters
+        constexpr uint16_t hpmcounter3 = 0xC03; // URO
+        constexpr uint16_t hpmcounter4 = 0xC04; // URO
+        constexpr uint16_t hpmcounter5 = 0xC05; // URO
+        constexpr uint16_t hpmcounter6 = 0xC06; // URO
+        constexpr uint16_t hpmcounter7 = 0xC07; // URO
+        constexpr uint16_t hpmcounter8 = 0xC08; // URO
+        constexpr uint16_t hpmcounter9 = 0xC09; // URO
+        constexpr uint16_t hpmcounter10 = 0xC0A; // URO
+        constexpr uint16_t hpmcounter11 = 0xC0B; // URO
+        constexpr uint16_t hpmcounter12 = 0xC0C; // URO
+        constexpr uint16_t hpmcounter13 = 0xC0D; // URO
+        constexpr uint16_t hpmcounter14 = 0xC0E; // URO
+        constexpr uint16_t hpmcounter15 = 0xC0F; // URO
+        constexpr uint16_t hpmcounter16 = 0xC10; // URO
+        constexpr uint16_t hpmcounter17 = 0xC11; // URO
+        constexpr uint16_t hpmcounter18 = 0xC12; // URO
+        constexpr uint16_t hpmcounter19 = 0xC13; // URO
+        constexpr uint16_t hpmcounter20 = 0xC14; // URO
+        constexpr uint16_t hpmcounter21 = 0xC15; // URO
+        constexpr uint16_t hpmcounter22 = 0xC16; // URO
+        constexpr uint16_t hpmcounter23 = 0xC17; // URO
+        constexpr uint16_t hpmcounter24 = 0xC18; // URO
+        constexpr uint16_t hpmcounter25 = 0xC19; // URO
+        constexpr uint16_t hpmcounter26 = 0xC1A; // URO
+        constexpr uint16_t hpmcounter27 = 0xC1B; // URO
+        constexpr uint16_t hpmcounter28 = 0xC1C; // URO
+        constexpr uint16_t hpmcounter29 = 0xC1D; // URO
+        constexpr uint16_t hpmcounter30 = 0xC1E; // URO
+        constexpr uint16_t hpmcounter31 = 0xC1F; // URO
+
+        constexpr uint16_t hpmcounter3h = 0xC83; // URO
+        constexpr uint16_t hpmcounter4h = 0xC84; // URO
+        constexpr uint16_t hpmcounter5h = 0xC85; // URO
+        constexpr uint16_t hpmcounter6h = 0xC86; // URO
+        constexpr uint16_t hpmcounter7h = 0xC87; // URO
+        constexpr uint16_t hpmcounter8h = 0xC88; // URO
+        constexpr uint16_t hpmcounter9h = 0xC89; // URO
+        constexpr uint16_t hpmcounter10h = 0xC8A; // URO
+        constexpr uint16_t hpmcounter11h = 0xC8B; // URO
+        constexpr uint16_t hpmcounter12h = 0xC8C; // URO
+        constexpr uint16_t hpmcounter13h = 0xC8D; // URO
+        constexpr uint16_t hpmcounter14h = 0xC8E; // URO
+        constexpr uint16_t hpmcounter15h = 0xC8F; // URO
+        constexpr uint16_t hpmcounter16h = 0xC90; // URO
+        constexpr uint16_t hpmcounter17h = 0xC91; // URO
+        constexpr uint16_t hpmcounter18h = 0xC92; // URO
+        constexpr uint16_t hpmcounter19h = 0xC93; // URO
+        constexpr uint16_t hpmcounter20h = 0xC94; // URO
+        constexpr uint16_t hpmcounter21h = 0xC95; // URO
+        constexpr uint16_t hpmcounter22h = 0xC96; // URO
+        constexpr uint16_t hpmcounter23h = 0xC97; // URO
+        constexpr uint16_t hpmcounter24h = 0xC98; // URO
+        constexpr uint16_t hpmcounter25h = 0xC99; // URO
+        constexpr uint16_t hpmcounter26h = 0xC9A; // URO
+        constexpr uint16_t hpmcounter27h = 0xC9B; // URO
+        constexpr uint16_t hpmcounter28h = 0xC9C; // URO
+        constexpr uint16_t hpmcounter29h = 0xC9D; // URO
+        constexpr uint16_t hpmcounter30h = 0xC9E; // URO
+        constexpr uint16_t hpmcounter31h = 0xC9F; // URO
     }
 
     // MSTATUS bits
@@ -182,10 +242,11 @@ namespace csr_def {
     namespace m = ::csr_map;
 
     enum class perm_t {
-        ro = 0b00, // read-only
-        rw = 0b01, // read-write
-        warl = 0b10, // write-any-read-legal
-        war0 = 0b11, // war0 - unimplemented -> always returns 0
+        ro, // read-only
+        ro_u_shadow, // read-only user mode shadow
+        rw, // read-write
+        warl, // write-any-read-legal
+        war0, // war0 - unimplemented -> always returns 0
     };
 
     constexpr uint32_t tohost_early_exit = 0xF000'0000;
@@ -204,20 +265,23 @@ namespace csr_def {
         uint32_t value;
         const perm_t perm;
         const uint32_t wmask; // writable bits; 0-bits are hardwired to boot val
+        const uint16_t s_addr;
         CSR(
             const char* name,
             uint32_t value,
             const perm_t perm,
-            uint32_t wmask
-        ) : name(name), value(value), perm(perm), wmask(wmask) {}
+            uint32_t wmask,
+            uint16_t s_addr
+        ) : name(name), value(value), perm(perm), wmask(wmask), s_addr(s_addr){}
     };
 
     struct CSR_entry {
-        const uint16_t csr_addr;
-        const char* csr_name;
+        const uint16_t addr;
+        const char* name;
         const perm_t perm;
         const uint32_t boot_val;
         const uint32_t wmask = 0xFFFF'FFFF; // fully writable by default
+        const uint16_t s_addr = 0x0; // only used for ro_shadow csrs
     };
 
     #define CSR_ENTRY(s, perm, boot_val) \
@@ -225,6 +289,12 @@ namespace csr_def {
 
     #define CSR_ENTRY_WM(s, perm, boot_val, wmask) \
         {m::addr::s, #s, perm, boot_val, wmask}
+
+    #define CSR_ENTRY_SHADOW(s, source) \
+        {m::addr::s, #s, perm_t::ro_u_shadow, 0u, 0u, source}
+
+    #define CSR_ENTRY_SHADOW_MMIO(s) \
+        {m::addr::s, #s, perm_t::ro_u_shadow, 0u, 0u} // manually synced
 
     static constexpr CSR_entry supported_csrs[] = {
         CSR_ENTRY(tohost, perm_t::rw, 0u),
@@ -349,12 +419,73 @@ namespace csr_def {
         CSR_ENTRY(mhpmevent31, perm_t::war0, 0u),
 
         // Unprivileged Counter/Timers
-        CSR_ENTRY(cycle, perm_t::ro, 0u),
-        CSR_ENTRY(time, perm_t::ro, 0u),
-        CSR_ENTRY(instret, perm_t::ro, 0u),
-        CSR_ENTRY(cycleh, perm_t::ro, 0u),
-        CSR_ENTRY(timeh, perm_t::ro, 0u),
-        CSR_ENTRY(instreth, perm_t::ro, 0u),
+        CSR_ENTRY_SHADOW(cycle, m::addr::mcycle),
+        CSR_ENTRY_SHADOW_MMIO(time),
+        CSR_ENTRY_SHADOW(instret, m::addr::minstret),
+        CSR_ENTRY_SHADOW(cycleh, m::addr::mcycleh),
+        CSR_ENTRY_SHADOW_MMIO(timeh),
+        CSR_ENTRY_SHADOW(instreth, m::addr::minstreth),
+
+        // Unprivileged Hardware Performance Monitor (Zihpm) counters
+        CSR_ENTRY_SHADOW(hpmcounter3, m::addr::mhpmcounter3),
+        CSR_ENTRY_SHADOW(hpmcounter4, m::addr::mhpmcounter4),
+        CSR_ENTRY_SHADOW(hpmcounter5, m::addr::mhpmcounter5),
+        CSR_ENTRY_SHADOW(hpmcounter6, m::addr::mhpmcounter6),
+        CSR_ENTRY_SHADOW(hpmcounter7, m::addr::mhpmcounter7),
+        CSR_ENTRY_SHADOW(hpmcounter8, m::addr::mhpmcounter8),
+        CSR_ENTRY_SHADOW(hpmcounter9, m::addr::mhpmcounter9),
+        CSR_ENTRY_SHADOW(hpmcounter10, m::addr::mhpmcounter10),
+        CSR_ENTRY_SHADOW(hpmcounter11, m::addr::mhpmcounter11),
+        CSR_ENTRY_SHADOW(hpmcounter12, m::addr::mhpmcounter12),
+        CSR_ENTRY_SHADOW(hpmcounter13, m::addr::mhpmcounter13),
+        CSR_ENTRY_SHADOW(hpmcounter14, m::addr::mhpmcounter14),
+        CSR_ENTRY_SHADOW(hpmcounter15, m::addr::mhpmcounter15),
+        CSR_ENTRY_SHADOW(hpmcounter16, m::addr::mhpmcounter16),
+        CSR_ENTRY_SHADOW(hpmcounter17, m::addr::mhpmcounter17),
+        CSR_ENTRY_SHADOW(hpmcounter18, m::addr::mhpmcounter18),
+        CSR_ENTRY_SHADOW(hpmcounter19, m::addr::mhpmcounter19),
+        CSR_ENTRY_SHADOW(hpmcounter20, m::addr::mhpmcounter20),
+        CSR_ENTRY_SHADOW(hpmcounter21, m::addr::mhpmcounter21),
+        CSR_ENTRY_SHADOW(hpmcounter22, m::addr::mhpmcounter22),
+        CSR_ENTRY_SHADOW(hpmcounter23, m::addr::mhpmcounter23),
+        CSR_ENTRY_SHADOW(hpmcounter24, m::addr::mhpmcounter24),
+        CSR_ENTRY_SHADOW(hpmcounter25, m::addr::mhpmcounter25),
+        CSR_ENTRY_SHADOW(hpmcounter26, m::addr::mhpmcounter26),
+        CSR_ENTRY_SHADOW(hpmcounter27, m::addr::mhpmcounter27),
+        CSR_ENTRY_SHADOW(hpmcounter28, m::addr::mhpmcounter28),
+        CSR_ENTRY_SHADOW(hpmcounter29, m::addr::mhpmcounter29),
+        CSR_ENTRY_SHADOW(hpmcounter30, m::addr::mhpmcounter30),
+        CSR_ENTRY_SHADOW(hpmcounter31, m::addr::mhpmcounter31),
+
+        CSR_ENTRY_SHADOW(hpmcounter3h, m::addr::mhpmcounter3h),
+        CSR_ENTRY_SHADOW(hpmcounter4h, m::addr::mhpmcounter4h),
+        CSR_ENTRY_SHADOW(hpmcounter5h, m::addr::mhpmcounter5h),
+        CSR_ENTRY_SHADOW(hpmcounter6h, m::addr::mhpmcounter6h),
+        CSR_ENTRY_SHADOW(hpmcounter7h, m::addr::mhpmcounter7h),
+        CSR_ENTRY_SHADOW(hpmcounter8h, m::addr::mhpmcounter8h),
+        CSR_ENTRY_SHADOW(hpmcounter9h, m::addr::mhpmcounter9h),
+        CSR_ENTRY_SHADOW(hpmcounter10h, m::addr::mhpmcounter10h),
+        CSR_ENTRY_SHADOW(hpmcounter11h, m::addr::mhpmcounter11h),
+        CSR_ENTRY_SHADOW(hpmcounter12h, m::addr::mhpmcounter12h),
+        CSR_ENTRY_SHADOW(hpmcounter13h, m::addr::mhpmcounter13h),
+        CSR_ENTRY_SHADOW(hpmcounter14h, m::addr::mhpmcounter14h),
+        CSR_ENTRY_SHADOW(hpmcounter15h, m::addr::mhpmcounter15h),
+        CSR_ENTRY_SHADOW(hpmcounter16h, m::addr::mhpmcounter16h),
+        CSR_ENTRY_SHADOW(hpmcounter17h, m::addr::mhpmcounter17h),
+        CSR_ENTRY_SHADOW(hpmcounter18h, m::addr::mhpmcounter18h),
+        CSR_ENTRY_SHADOW(hpmcounter19h, m::addr::mhpmcounter19h),
+        CSR_ENTRY_SHADOW(hpmcounter20h, m::addr::mhpmcounter20h),
+        CSR_ENTRY_SHADOW(hpmcounter21h, m::addr::mhpmcounter21h),
+        CSR_ENTRY_SHADOW(hpmcounter22h, m::addr::mhpmcounter22h),
+        CSR_ENTRY_SHADOW(hpmcounter23h, m::addr::mhpmcounter23h),
+        CSR_ENTRY_SHADOW(hpmcounter24h, m::addr::mhpmcounter24h),
+        CSR_ENTRY_SHADOW(hpmcounter25h, m::addr::mhpmcounter25h),
+        CSR_ENTRY_SHADOW(hpmcounter26h, m::addr::mhpmcounter26h),
+        CSR_ENTRY_SHADOW(hpmcounter27h, m::addr::mhpmcounter27h),
+        CSR_ENTRY_SHADOW(hpmcounter28h, m::addr::mhpmcounter28h),
+        CSR_ENTRY_SHADOW(hpmcounter29h, m::addr::mhpmcounter29h),
+        CSR_ENTRY_SHADOW(hpmcounter30h, m::addr::mhpmcounter30h),
+        CSR_ENTRY_SHADOW(hpmcounter31h, m::addr::mhpmcounter31h),
     };
 
     #undef CSR_ENTRY

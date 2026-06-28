@@ -53,12 +53,14 @@ void core::csr_cnt_update(uint16_t addr) {
     csr.at(m::addr::mcycleh).value += ((cycle_elapsed >> 32) & 0xFFFFFFFF);
 
     // user mode shadows
-    csr.at(m::addr::cycle).value = csr.at(m::addr::mcycle).value;
-    csr.at(m::addr::cycleh).value = csr.at(m::addr::mcycleh).value;
-    csr.at(m::addr::instret).value = csr.at(m::addr::minstret).value;
-    csr.at(m::addr::instreth).value = csr.at(m::addr::minstreth).value;
+    for (auto &c : csr) {
+        if (c.second.perm != csr_def::perm_t::ro_u_shadow) continue;
+        if (c.second.s_addr == 0x0) continue; // MMIO shadows, handled after
+        c.second.value = csr.at(c.second.s_addr).value;
+    }
 
     uint64_t mtime_shadow = mem->get_mtime_shadow();
     csr_wide_assign(m::addr::time, mtime_shadow);
+
     // no perf counters update, events don't exist in the standalone ISA sim
 }
