@@ -130,9 +130,8 @@ struct defs_t {
     static constexpr char mem_dump_size[] = "0";
     static constexpr char run_insts[] = "0";
     static constexpr char run_steps[] = "0";
-    static constexpr char silent[] = "false";
     #ifdef UART_EN
-    static constexpr char print_uart[] = "false";
+    static constexpr char uart_show[] = "false";
     #ifdef UART_INPUT_EN
     static constexpr char uart_in[] = "";
     #endif
@@ -145,6 +144,8 @@ struct defs_t {
     static constexpr char prof_trace[] = "false";
     static constexpr char perf_event[] = "inst";
     static constexpr char rf_usage[] = "false";
+    static constexpr char no_callstack[] = "false";
+    static constexpr char prof_show[] = "false";
     #endif
     #ifdef DASM_EN
     static constexpr char log[] = "false";
@@ -233,14 +234,11 @@ int main(int argc, char* argv[]) {
         ("run_steps",
          "Number of steps (inst & wfi period) to run. Set to 0 for no limit",
          CXXOPTS_VAL_STR->default_value(defs_t::run_steps))
-        ("silent",
-         "Don't print sim end stats to stdout. Logs are always saved to disk",
-         CXXOPTS_VAL_BOOL->default_value(defs_t::silent))
         #ifdef UART_EN
-        ("print_uart",
+        ("uart_show",
          "Print UART output to stdout. UART still fully operational. "
          "Log always kept. " + saved_as("uart.log"),
-         CXXOPTS_VAL_BOOL->default_value(defs_t::print_uart))
+         CXXOPTS_VAL_BOOL->default_value(defs_t::uart_show))
         #ifdef UART_INPUT_EN
         ("uart_in",
          "UART RX input bytes, drained at the baud-rate instruction stride "
@@ -276,7 +274,11 @@ int main(int argc, char* argv[]) {
          "Enable profiling register file usage. " + saved_as("rf_usage.bin"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
         ("no_callstack", "Disable callstack tracing",
-         CXXOPTS_VAL_BOOL->default_value("false"));
+         CXXOPTS_VAL_BOOL->default_value(defs_t::no_callstack))
+        ("prof_show",
+         "Show profiler stats to stdout at the end of sim. "
+         "Logs and traces always saved",
+         CXXOPTS_VAL_BOOL->default_value(defs_t::prof_show));
     #endif
 
     #ifdef DASM_EN
@@ -451,9 +453,8 @@ int main(int argc, char* argv[]) {
         cfg.run_insts = ARG2SIZE(result["run_insts"]);
         cfg.run_steps = ARG2SIZE(result["run_steps"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
-        cfg.silent = ARG2BOOL(result["silent"]);
         #ifdef UART_EN
-        cfg.print_uart = ARG2BOOL(result["print_uart"]);
+        cfg.uart_show = ARG2BOOL(result["uart_show"]);
         #ifdef UART_INPUT_EN
         cfg.uart_in = result["uart_in"].as<std::string>();
         #endif
@@ -468,6 +469,7 @@ int main(int argc, char* argv[]) {
         cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
         cfg.rf_usage = ARG2BOOL(result["rf_usage"]);
         cfg.no_callstack = ARG2BOOL(result["no_callstack"]);
+        cfg.prof_show = ARG2BOOL(result["prof_show"]);
         #endif
 
         #ifdef DASM_EN

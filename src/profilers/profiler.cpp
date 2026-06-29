@@ -292,7 +292,7 @@ void profiler::track_sp(const uint32_t sp) {
     if ((sp > mem_map::base_addr) && (sp < min_sp)) min_sp = sp;
 }
 
-void profiler::log_to_file_and_print(bool silent) {
+void profiler::log_to_file_and_print(bool show) {
     cnt_t cnt;
     std::string pt = "";
     if (prof_src == profiler_source_t::clock) pt = "_clk";
@@ -409,7 +409,7 @@ void profiler::log_to_file_and_print(bool silent) {
     return;
     #endif
 
-    if (silent) return;
+    if (!show) return;
 
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Profiler - Inst:\n"

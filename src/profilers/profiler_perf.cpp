@@ -258,7 +258,7 @@ std::u16string profiler_perf::callstack_to_key() {
   return std::u16string(p, st.idx_callstack.size());
 }
 
-void profiler_perf::log_to_file_and_print(bool silent) {
+void profiler_perf::log_to_file_and_print(bool show) {
     if (!callstack_en) return;
     // close last callstack
     save_callstack_cnt();
@@ -285,7 +285,7 @@ void profiler_perf::log_to_file_and_print(bool silent) {
     return;
     #endif
 
-    if (silent) return;
+    if (!show) return;
 
     std::cout << "Profiler - Perf:\n"
               << INDENT << "Event: " << perf_event_names[TO_U32(perf_event)]

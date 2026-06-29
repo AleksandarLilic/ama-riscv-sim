@@ -68,12 +68,12 @@ state profiler_fusion::lea_2() {
 }
 
 // FIXME: should be passed to the main profiler and stored in the output file
-void profiler_fusion::finish(bool silent) {
+void profiler_fusion::finish(bool show) {
     #ifdef DPI
     return;
     #endif
 
-    if (silent) return;
+    if (!show) return;
 
     std::cout << "Profiler - Fusion:\n"
               << INDENT << "LEA opportunities: " << lea_match_cnt << "\n";

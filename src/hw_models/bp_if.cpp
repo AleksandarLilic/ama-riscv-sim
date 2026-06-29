@@ -248,7 +248,7 @@ void bp_if::update_app_stats(uint32_t pc, bool taken) {
     ptr->pattern.push_back(taken);
 }
 
-void bp_if::finish(std::string out_dir, uint64_t profiled_insts, bool silent) {
+void bp_if::finish(std::string out_dir, uint64_t profiled_insts, bool show) {
     for (auto& p : all_bps) p->summarize_stats(profiled_insts);
     active_bp->summarize_stats(profiled_insts);
 
@@ -256,7 +256,7 @@ void bp_if::finish(std::string out_dir, uint64_t profiled_insts, bool silent) {
     // put active bp in a list and iterate over all of them to dump/show stats
     all_bps.insert(all_bps.begin(), std::move(active_bp));
     if (to_dump_csv) dump_csv(out_dir);
-    if (!silent) show_stats(active_bp_name);
+    if (show) show_stats(active_bp_name);
     active_bp = std::move(all_bps[0]); // restore active_bp
     all_bps.erase(all_bps.begin()); // remove invalid pointer
 }

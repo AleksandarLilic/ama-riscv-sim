@@ -96,7 +96,7 @@ uint64_t core::run() {
     #endif
 
     #ifdef UART_EN
-    if (cfg.print_uart) std::cout << "=== UART START ===" << "\n";
+    if (cfg.uart_show) std::cout << "=== UART START ===" << "\n";
     #endif
 
     // start the core
@@ -370,20 +370,20 @@ void core::finish(bool dump_regs) {
         mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, cfg.out_dir);
     }
     #ifdef PROFILERS_EN
-    prof.finish(cfg.silent);
-    prof_perf.finish(cfg.silent);
-    prof_fusion.finish(cfg.silent);
+    prof.finish(cfg.prof_show);
+    prof_perf.finish(cfg.prof_show);
+    prof_fusion.finish(cfg.prof_show);
     prof_rf.finish(cfg.out_dir);
     #endif
     #ifdef HW_MODELS_EN
     #ifdef PROFILERS_EN
-    bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.silent);
-    mem->cache_finish(cfg.silent, prof_pc.inst_cnt);
-    div.finish(cfg.silent);
+    bp.finish(cfg.out_dir, prof_pc.inst_cnt, cfg.prof_show);
+    mem->cache_finish(cfg.prof_show, prof_pc.inst_cnt);
+    div.finish(cfg.prof_show);
     #else
-    bp.finish(cfg.out_dir, sim_cnt.inst, cfg.silent);
-    mem->cache_finish(cfg.silent, sim_cnt.inst);
-    div.finish(cfg.silent);
+    bp.finish(cfg.out_dir, sim_cnt.inst, cfg.prof_show);
+    mem->cache_finish(cfg.prof_show, sim_cnt.inst);
+    div.finish(cfg.prof_show);
     #endif
     log_hw_stats();
     #endif
@@ -1167,7 +1167,7 @@ void core::log_hw_stats() {
 // Utilities
 void core::dump() {
     #ifdef UART_EN
-    if (cfg.print_uart) std::cout << "\n=== UART END ===\n";
+    if (cfg.uart_show) std::cout << "\n=== UART END ===\n";
     #endif
     std::cout << "SIMULATION FINISHED\n\n";
 

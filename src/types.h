@@ -545,15 +545,15 @@ struct cfg_t {
     bool prof_trace;
     bool rf_usage;
     bool no_callstack;
+    bool prof_show;
     bool log;
     bool log_always;
     bool log_state;
     bool log_hw_models;
     bool show_state;
     bool exit_on_trap;
-    bool print_uart;
+    bool uart_show;
     std::string uart_in;
-    bool silent;
     std::string out_dir;
 };
 

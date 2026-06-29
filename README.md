@@ -124,8 +124,8 @@ make
 # create a separate workdir
 cd .. && mkdir workdir && cd workdir
 
-# run test, profile from the beginning, log executed instructions
-../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x80000000 -tl
+# run test, profile from the beginning, log executed instructions, show profiler stats and uart output to stdout
+../src/build/ama-riscv-sim ../sw/baremetal/dhrystone/dhrystone.elf --prof_pc_start 0x80000000 -tl --prof_show --uart_show
 
 # check the execution log
 vim dhrystone_dhrystone_out/exec.log
@@ -1039,7 +1039,6 @@ git checkout 121fdd24764f6cb6ed1cc998fa920654b1b56253
 
 # fetch newlib and binutils; update binutils pointer
 git submodule update --init --recursive newlib binutils
-cd ..
 
 cd binutils
 git fetch origin tag binutils-2_42

@@ -336,10 +336,10 @@ class profiler {
         }
         void set_active(bool active) { this->active = active; }
         void set_trace_en(bool trace_en) { this->trace_en = trace_en; }
-        void finish(bool silent) { log_to_file_and_print(silent); }
+        void finish(bool show) { log_to_file_and_print(show); }
 
     private:
-        void log_to_file_and_print(bool silent);
+        void log_to_file_and_print(bool show);
 
     private:
         // all compressed instructions

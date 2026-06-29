@@ -72,8 +72,8 @@ class divider {
             file << "\n},";
         }
 
-        void finish(bool silent) const {
-            if (silent) return;
+        void finish(bool show) const {
+            if (!show) return;
             size.show();
             std::cout << "\n" << INDENT;
             stats.show();

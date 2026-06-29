@@ -74,8 +74,8 @@ class memory {
         void set_cache_hws(hw_status_t* ic, hw_status_t* dc) {
             mm.set_cache_hws(ic, dc);
         }
-        void cache_finish(bool silent, uint64_t profiled_insts) {
-            if (silent) return;
+        void cache_finish(bool show, uint64_t profiled_insts) {
+            if (!show) return;
             mm.finish(profiled_insts);
         }
         void cache_profiling(bool enable) {

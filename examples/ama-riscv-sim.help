@@ -7,9 +7,10 @@ Usage:
       --mem_dump_start arg  Start address (hex) for memory dump at the end of simulation (default: 0)
       --mem_dump_size arg   Size of the region for memory dump at the end of simulation (default: 0)
       --out_dir_tag arg     Tag (suffix) for output directory (default: "")
-      --run_insts arg       Number of instructions to run. Set to 0 for no limit (default: 0)
-      --silent              Don't print sim end stats to stdout. Logs are always saved to disk
-      --sink_uart           Don't print UART output to stdout. UART still fully operational
+      --run_insts arg       Number of instructions to execute. Set to 0 for no limit (default: 0)
+      --run_steps arg       Number of steps (inst & wfi period) to run. Set to 0 for no limit (default: 0)
+      --uart_show           Print UART output to stdout. UART still fully operational. Log always kept. Saved as 
+                            'uart.log' under run directory
 
  Profiler options:
       --prof_pc_start arg       Start PC (hex) for profiling (default: 0)
@@ -24,6 +25,7 @@ Usage:
                                 icache_reference, icache_miss, simd, mem, branch, inst (default: inst)
       --rf_usage                Enable profiling register file usage. Saved as 'rf_usage.bin' under run directory
       --no_callstack            Disable callstack tracing
+      --prof_show               Show profiler stats to stdout at the end of sim. Logs and traces always saved
 
  Logging options:
   -l, --log            Enable logging of each executed instrucion. Saved as 'exec.log' under run directory
