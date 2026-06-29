@@ -16,3 +16,6 @@
 [submodule "sw/common/nanoprintf"]
 	path = sw/common/nanoprintf
 	url = git@github.com:charlesnicholson/nanoprintf.git
+[submodule "sw/arch-tests/riscv-arch-test"]
+	path = sw/arch-tests/riscv-arch-test
+	url = git@github.com:riscv/riscv-arch-test.git

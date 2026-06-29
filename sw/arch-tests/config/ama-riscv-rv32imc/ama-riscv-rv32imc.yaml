@@ -1,0 +1,147 @@
+---
+$schema: config_schema.json#
+kind: architecture configuration
+type: fully configured
+name: ama-riscv-rv32imc
+description: ama-riscv - RV32IMC configuration DUT - ISA simulator
+implemented_extensions:
+  - { name: I, version: "= 2.1" }
+  - { name: M, version: "= 2.0" }
+  - { name: C, version: "= 2.0" }
+  - { name: Zca, version: "= 1.0.0" }
+  - { name: Zicsr, version: "= 2.0" }
+  #- { name: Zifencei, version: "= 2.0" }
+  - { name: Zicntr, version: "= 2.0" }
+  - { name: Zihpm, version: "= 2.0" }
+  - { name: Sm, version: "= 1.12.0" }
+  - { name: Zbb, version: "= 1.0.0" } # partial support: only min(u)/max(u)
+
+params:
+  MXLEN: 32
+  PHYS_ADDR_WIDTH: 32
+
+  MUTABLE_MISA_M: false
+  MUTABLE_MISA_C: false
+  MISA_CSR_IMPLEMENTED: true
+
+  M_MODE_ENDIANNESS: little
+
+  TRAP_ON_ECALL_FROM_M: true
+  TRAP_ON_EBREAK: true
+  TRAP_ON_UNIMPLEMENTED_INSTRUCTION: true
+  TRAP_ON_RESERVED_INSTRUCTION: true
+  TRAP_ON_UNIMPLEMENTED_CSR: true # isa sim
+  TRAP_ON_ILLEGAL_WLRL: false
+
+  # MTVAL reporting
+  REPORT_VA_IN_MTVAL_ON_BREAKPOINT: false
+  REPORT_VA_IN_MTVAL_ON_LOAD_MISALIGNED: false
+  REPORT_VA_IN_MTVAL_ON_STORE_AMO_MISALIGNED: false
+  REPORT_VA_IN_MTVAL_ON_INSTRUCTION_MISALIGNED: false
+  REPORT_VA_IN_MTVAL_ON_LOAD_ACCESS_FAULT: false
+  REPORT_VA_IN_MTVAL_ON_STORE_AMO_ACCESS_FAULT: false
+  REPORT_VA_IN_MTVAL_ON_INSTRUCTION_ACCESS_FAULT: false
+  REPORT_ENCODING_IN_MTVAL_ON_ILLEGAL_INSTRUCTION: false
+  MTVAL_WIDTH: 32 # 32-bit field, RO hardwired to 0
+  CONFIG_PTR_ADDRESS: 0 # no config data structure; RTL/ISS hardwired mconfigptr=0
+
+  # Misaligned load/store support
+  MISALIGNED_LDST: false
+  MISALIGNED_LDST_EXCEPTION_PRIORITY: low
+  #MISALIGNED_MAX_ATOMICITY_GRANULE_SIZE: 0
+  #MISALIGNED_SPLIT_STRATEGY not set: only definedBy when MISALIGNED_LDST: true
+
+  # CSR / implementation IDs
+  IMP_ID_VALUE: 0x0
+  VENDOR_ID_BANK: 0x0
+  VENDOR_ID_OFFSET: 0x0
+
+  # MTVEC
+  MTVEC_MODES: [0, 1]
+  MTVEC_ACCESS: rw
+  MTVEC_ILLEGAL_WRITE_BEHAVIOR: custom
+  MTVEC_BASE_ALIGNMENT_VECTORED: 4
+  MTVEC_BASE_ALIGNMENT_DIRECT: 4
+
+  # Sm params
+  PRECISE_SYNCHRONOUS_EXCEPTIONS: true
+  MARCHID_IMPLEMENTED: false # RTL/ISS hardwire marchid to 0 (CSR_MARCHID case absent)
+  MIMPID_IMPLEMENTED: true
+  PMA_GRANULARITY: 2 # min legal value; no MMU, no PMA hardware, so MMU-related caveat n/a
+
+  # Zicntr params
+  TIME_CSR_IMPLEMENTED: true
+
+  HPM_EVENTS: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  MCOUNTINHIBIT_IMPLEMENTED: false
+  HPM_COUNTER_EN:
+    [
+      false, # 0  (CY — must be false per UDB schema)
+      false, # 1  (TM — must be false per UDB schema)
+      false, # 2  (IR — must be false per UDB schema)
+      true, # 3
+      true, # 4
+      true, # 5
+      true, # 6
+      true, # 7
+      true, # 8
+      false, # 9
+      false, # 10
+      false, # 11
+      false, # 12
+      false, # 13
+      false, # 14
+      false, # 15
+      false, # 16
+      false, # 17
+      false, # 18
+      false, # 19
+      false, # 20
+      false, # 21
+      false, # 22
+      false, # 23
+      false, # 24
+      false, # 25
+      false, # 26
+      false, # 27
+      false, # 28
+      false, # 29
+      false, # 30
+      false, # 31
+    ]
+  NUM_PMP_ENTRIES: 0
+  MCOUNTENABLE_EN:
+    [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]

@@ -1,0 +1,13 @@
+name: ama-riscv-rv32im
+#compiler_exe: ${RV_GNU_16}/riscv32-unknown-elf-gcc
+#objdump_exe: ${RV_GNU_16}/riscv32-unknown-elf-objdump
+compiler_exe: riscv32-unknown-elf-gcc
+objdump_exe: riscv32-unknown-elf-objdump
+ref_model_exe: sail_riscv_sim
+udb_config: ama-riscv-rv32im.yaml
+linker_script: link.ld
+dut_include_dir: .
+
+# run with
+# `PATH="$RV_GNU_16:$PATH" make elfs CONFIG_FILES=../config/ama-riscv-rv32im/test_config.yaml`
+# since this tool doesn't expand env vars

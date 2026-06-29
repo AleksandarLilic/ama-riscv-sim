@@ -1,0 +1,7 @@
+name: ama-riscv-rv32imc
+compiler_exe: riscv32-unknown-elf-gcc
+objdump_exe: riscv32-unknown-elf-objdump
+ref_model_exe: sail_riscv_sim
+udb_config: ama-riscv-rv32imc.yaml
+linker_script: link.ld
+dut_include_dir: .

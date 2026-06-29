@@ -1,0 +1,1 @@
+../ama-riscv-rv32im/link.ld
