@@ -18,8 +18,12 @@
 #include <bitset>
 #include <optional>
 
-constexpr int const_log2(int n, int p = 0) {
-    return (n <= 1) ? p : const_log2(n >> 1, p + 1);
+constexpr int is_log2(int n, int p = 0) {
+    return (n <= 1) ? p : is_log2(n >> 1, p + 1);
+}
+
+constexpr bool is_pow2(uint32_t n) {
+    return (n > 0 && !(n & (n - 1)));
 }
 
 // Memory
@@ -27,7 +31,8 @@ namespace mem_map {
     constexpr uint32_t base_addr = 0x8000'0000;
     constexpr uint32_t mem_size = 131072; // 0x2'0000
     //constexpr uint32_t mem_size = 262144; // 0x4'0000
-    constexpr uint32_t addr_bits = const_log2(mem_size); // 17 bits
+    static_assert (is_pow2(mem_size));
+    constexpr uint32_t addr_bits = is_log2(mem_size); // 17 bits
     constexpr uint32_t addr_mask = (mem_size - 1);
     constexpr uint32_t uart0_addr = 0x1001'3000;
     constexpr uint32_t uart0_rx_data_addr = (uart0_addr + 0x04);

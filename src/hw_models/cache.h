@@ -4,6 +4,7 @@
 #include "hw_model_types.h"
 #include "cache_stats.h"
 #include "profiler_perf.h"
+#include "types.h"
 
 class main_memory; // forward declaration
 
@@ -187,7 +188,6 @@ class cache {
             scp_mode_t mode, cache_line_t& line,uint32_t index);
         scp_status_t convert_to_scp(cache_line_t& line, uint32_t index);
         scp_status_t release_scp(cache_line_t& line);
-        bool is_pow_2(uint32_t n) const { return n > 0 && !(n & (n - 1)); }
         uint32_t line_base_addr(uint32_t tag, uint32_t index) const {
             return (tag << tag_off) | (index << cache_cfg::byte_addr_bits);
         }

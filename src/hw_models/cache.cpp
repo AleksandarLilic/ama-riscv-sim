@@ -412,7 +412,7 @@ void cache::validate_inputs() {
         error = true;
     }
 
-    if (!is_pow_2(sets)) {
+    if (!is_pow2(sets)) {
         std::cerr << "ERROR: " << cache_name
                   << ": number of sets must be a power of 2. Specified: "
                   << sets << std::endl;
