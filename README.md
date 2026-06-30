@@ -1012,6 +1012,7 @@ If binary already exists, either add `-B` to force rebuild, or run `make clean` 
 | `SIMD=1` | `-DSIMD_EN` | Enable custom packed-SIMD extension | on |
 | `UART_IN=1` | `-DUART_INPUT_EN` | Enable user interaction through UART | off |
 | `DEBUG=1` | `-DDEBUG` | Enable additional checks | off |
+| `PERF=1` | `-g -fno-omit-frame-pointer` | Add debug symbols + frame pointers for perf/flamegraphs (keeps `-O3`) | off |
 
 Additional/new defines can be passed via `USER_DEFINES=` if needed.
 

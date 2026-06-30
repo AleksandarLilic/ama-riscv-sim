@@ -77,7 +77,12 @@ CXXFLAGS += -Wnon-virtual-dtor -Woverloaded-virtual
 CXXFLAGS += -Werror -pedantic -std=gnu++17
 CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
 CXXFLAGS += -O3 -flto=auto # release build
-#CXXFLAGS += -g -fno-omit-frame-pointer # perf profiling
+
+PERF ?= 0 # perf/flamegraph profiling: debug symbols + frame pointers, keeps -O3
+ifeq ($(PERF), 1)
+CXXFLAGS += -g -fno-omit-frame-pointer
+endif
+
 #CXXFLAGS += -O0 -g -fsanitize=address -fsanitize=undefined # gdb build
 #CXXFLAGS += -save-temps
 #CXXFLAGS += -ftime-report

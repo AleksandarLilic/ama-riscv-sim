@@ -22,7 +22,7 @@ if [[ "$param" != "user" && "$param" != "real" ]]; then
 fi
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
-EXEC_BIN="$REPO_ROOT/src/ama-riscv-sim"
+EXEC_BIN="$REPO_ROOT/src/build/ama-riscv-sim"
 RUN_SIM="$EXEC_BIN $RV_BIN"
 
 # get instruction count for the initial iteration
