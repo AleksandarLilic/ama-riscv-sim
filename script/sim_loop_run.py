@@ -7,86 +7,44 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import regex
-import yaml
 from hw_model_sweep import get_test_name
-from utils import INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING, get_reporoot
+from sim_run_utils import (default_isa_sim, is_pass, load_config,
+                           parse_inst_counts, resolve_workloads)
+from utils import INDENT
 
 # globals
-reporoot = get_reporoot()
-SIM = os.path.join(reporoot, "src", "build", "ama-riscv-sim")
 MAX_WORKERS = int(os.cpu_count())
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser( description="Run a batch of workloads through the ISA sim in parallel")
     parser.add_argument("-c", "--config", required=True, help="Path to the YAML config (workloads + isa_sim_args)")
+    parser.add_argument("--isa_sim", default=default_isa_sim(), help="Path to the ISA sim binary (defaults to the build/ one)")
     parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter (whitespace separated list of regex patterns) to only run workloads whose path matches any of the patterns matches any of the patterns")
     parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of parallel workers")
     parser.add_argument("--work_dir", default=os.getcwd(), help="Directory to run in and store sim outputs")
     parser.add_argument("--save_log", action="store_true", help="Save each workload's stdout to <name>.log")
     return parser.parse_args()
 
-def load_config(cfg_path: str):
-    with open(cfg_path, "r") as f:
-        cfg = yaml.safe_load(f) or {}
-
-    isa_sim_args = cfg.get("isa_sim_args") or []
-    if not isinstance(isa_sim_args, list):
-        raise ValueError("'isa_sim_args' must be a list of CLI tokens")
-    # split on whitespace so "--arg value" pairs can share a line; numbers
-    # (e.g. addresses) are coerced to str
-    isa_sim_args = [tok for a in isa_sim_args for tok in str(a).split()]
-
-    workloads = cfg.get("workloads")
-    if not workloads:
-        raise ValueError("'workloads' is required and must be non-empty")
-    if not isinstance(workloads, list):
-        raise ValueError("'workloads' must be a list of paths")
-
-    return isa_sim_args, workloads
-
-def resolve_workloads(workloads, filters):
-    # resolve relative paths against the repo root, keep absolute as-is
-    resolved = [p if os.path.isabs(p) else os.path.join(reporoot, p)
-                for p in workloads]
-
-    if filters:
-        resolved = [p for p in resolved
-                    if any(regex.search(f, p) for f in filters)]
-        print(f"Filter enabled. Patterns: {filters}. "
-              f"Number of workloads after filter: {len(resolved)}")
-
-    if len(resolved) == 0:
-        raise FileNotFoundError("No workloads to run (check filter/config)")
-
-    missing = [p for p in resolved if not os.path.exists(p)]
-    if missing:
-        raise FileNotFoundError(
-            "Workload elf(s) not found:\n" +
-            "\n".join(f"{INDENT}{p}" for p in missing))
-
-    return resolved
-
-def run_one(app: str, sim_args, work_dir: str, save_log: bool):
+def run_one(sim: str, app: str, sim_args, work_dir: str, save_log: bool):
     name = get_test_name(app)
-    cmd = [SIM, app] + sim_args
+    cmd = [sim, app] + sim_args
     t_start = time.time()
     res = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
     runtime = time.time() - t_start
 
-    passed = (SIM_PASS_STRING in res.stdout or
-              SIM_EARLY_EXIT_STRING in res.stdout)
+    passed = is_pass(res.stdout)
 
+    executed, profiled = parse_inst_counts(res.stdout)
     insts = ""
-    m = regex.search(
-        r"Instruction Counters: executed: (\d+), profiled: (\d+)", res.stdout)
-    if m:
-        executed, profiled = int(m.group(1)), int(m.group(2))
-        insts = f" - executed: {executed:,}, profiled: {profiled:,}"
-        if executed == profiled:
-            insts += " (all)"
+    if executed is not None:
+        if profiled is not None:
+            insts = f" - executed: {executed:,}, profiled: {profiled:,}"
+            if executed == profiled:
+                insts += " (all)"
+            else:
+                insts += f", diff: {profiled - executed:,}"
         else:
-            insts += f", diff: {profiled - executed:,}"
+            insts = f" - executed: {executed:,}"
 
     if save_log:
         with open(os.path.join(work_dir, f"{name}.log"), "w") as f:
@@ -110,11 +68,12 @@ def run_one(app: str, sim_args, work_dir: str, save_log: bool):
 
 def main():
     args = parse_args()
+    args.isa_sim = os.path.abspath(args.isa_sim)
 
     if not os.path.exists(args.config):
         raise FileNotFoundError(f"Config not found at: {args.config}")
-    if not os.path.exists(SIM):
-        raise FileNotFoundError(f"Simulator not found at: {SIM}")
+    if not os.path.exists(args.isa_sim):
+        raise FileNotFoundError(f"Simulator not found at: {args.isa_sim}")
     if not os.path.exists(args.work_dir):
         os.makedirs(args.work_dir)
 
@@ -132,8 +91,9 @@ def main():
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(
-                run_one, app, isa_sim_args, args.work_dir, args.save_log): app
-            for app in workloads
+                run_one,
+                args.isa_sim, app, isa_sim_args, args.work_dir, args.save_log
+            ): app for app in workloads
         }
         for future in as_completed(futures):
             r = future.result()

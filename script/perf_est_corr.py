@@ -7,9 +7,9 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from hw_model_sweep import get_test_name
-from loop_run import load_config, resolve_workloads
 from perf_est_v2 import main as pe_main
 from perf_est_v2 import parse_args as pe_parse_args
+from sim_run_utils import load_config, resolve_workloads
 from utils import INDENT
 
 
