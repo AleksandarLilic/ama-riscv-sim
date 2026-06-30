@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 
+from utils import print_file_saved
+
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 FLAMEGRAPH_PL = os.path.join(SCRIPT_PATH, "FlameGraph/flamegraph.pl")
 
@@ -43,4 +45,4 @@ with open(svg_out, "w") as f:
     if result.returncode != 0:
         raise RuntimeError(f"Error: {result.stderr.decode('utf-8')}")
 
-print(f"Saved SVG chart to: '{svg_out}'")
+print_file_saved("SVG", svg_out)

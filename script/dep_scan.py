@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import numpy as np
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.ticker import EngFormatter
 from run_analysis import icfg, rolling_mean
-from utils import INDENT, get_test_title, smarter_eng_formatter
+from utils import (INDENT, get_test_title, print_file_saved,
+                   smarter_eng_formatter)
 
 MNM_ANY = "_any_"
 DOT_MNM = set(icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot])
@@ -319,11 +320,11 @@ def main(args):
     if args.save_png:
         out = f"{name}.png"
         fig.savefig(out)
-        print(f"Saved PNG chart to: '{out}'")
+        print_file_saved("PNG", out)
     if args.save_svg:
         out = f"{name}.svg"
         fig.savefig(out)
-        print(f"Saved SVG chart to: '{out}'")
+        print_file_saved("SVG", out)
 
 if __name__ == "__main__":
     args = parse_args()

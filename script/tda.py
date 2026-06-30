@@ -7,7 +7,7 @@ import os
 import pandas as pd
 import plotly.express as px
 from matplotlib.ticker import EngFormatter
-from utils import INDENT, get_test_title
+from utils import INDENT, get_test_title, print_file_saved
 
 PLOTLY_COLORS = px.colors.qualitative.Plotly
 
@@ -311,25 +311,25 @@ def main(args: argparse.Namespace):
         for fig, suffix in [(fig_tda, "_tda"), (fig_cnt, "_all_counters")]:
             png_path = os.path.join(base_path, f"{title_path}{suffix}.png")
             fig.write_image(png_path, width=FIG_W, height=FIG_H)
-            print(f"Saved PNG chart to: '{png_path}'")
+            print_file_saved("PNG", png_path)
 
     if args.save_svg:
         for fig, suffix in [(fig_tda, "_tda"), (fig_cnt, "_all_counters")]:
             svg_path = os.path.join(base_path, f"{title_path}{suffix}.svg")
             fig.write_image(svg_path, width=FIG_W, height=FIG_H)
-            print(f"Saved SVG chart to: '{svg_path}'")
+            print_file_saved("SVG", svg_path)
 
     if args.save_log:
         log_path = os.path.join(base_path, f"{title_path}_summary.log")
         with open(log_path, "w") as f:
             f.write(log_txt)
-        print(f"Saved summary log to: '{log_path}'")
+        print_file_saved("summary log", log_path)
 
     if args.save_hw_stats:
         hw_stats_path = os.path.join(base_path, f"{title_path}_hw_stats.json")
         with open(hw_stats_path, "w") as f:
             json.dump(data, f, indent=4)
-        print(f"Saved hw_stats to: '{hw_stats_path}'")
+        print_file_saved("hw_stats", hw_stats_path)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot TDA")

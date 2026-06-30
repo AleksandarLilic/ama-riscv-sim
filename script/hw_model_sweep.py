@@ -7,8 +7,8 @@ import math
 import os
 import re
 import subprocess
-import time
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import timedelta
@@ -21,8 +21,8 @@ import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MultipleLocator
 from utils import (INDENT, SIM_EARLY_EXIT_STRING, SIM_PASS_STRING,
-                   get_reporoot, is_headless, is_notebook, reformat_json,
-                   smarter_eng_formatter)
+                   get_reporoot, is_headless, is_notebook, print_file_saved,
+                   reformat_json, smarter_eng_formatter)
 
 # globals
 reporoot = get_reporoot()
@@ -350,10 +350,10 @@ def run_cache_sweep(
     multi_wl = len(workloads) > 1
     running_single = (not multi_wl)
     running_single_best = (running_best and running_single)
-    sweep_name, sweep_log = gen_sweep_log_name(
+    sweep_name, sweep_log_path = gen_sweep_log_name(
         args.sweep, args.work_dir, workloads, not running_best)
-    if os.path.exists(sweep_log):
-        os.remove(sweep_log)
+    if os.path.exists(sweep_log_path):
+        os.remove(sweep_log_path)
 
     MAX_SIZE = int(sweep_params["max_size"])
     SIZE_LIM = [CACHE_LINE_BYTES, MAX_SIZE]
@@ -410,7 +410,7 @@ def run_cache_sweep(
 
                 if hr == None:
                     continue
-                with open(sweep_log, "a") as f:
+                with open(sweep_log_path, "a") as f:
                     f.write(msg)
                 cpolicy, cset, cway = cp[5], int(cp[1]), int(cp[3])
                 if cpolicy not in sr:
@@ -441,13 +441,14 @@ def run_cache_sweep(
             if ck == "dcache":
                 sr['_profiled_inst_mem'] = prof_info[1]
 
-    sweep_results = sweep_log.replace(".log", "_best.json")
+    sweep_results_path = sweep_log_path.replace(".log", "_best.json")
     if args.load_stats:
-        with open(sweep_results, "r") as f:
+        with open(sweep_results_path, "r") as f:
             sr = convert_keys_to_int(json.load(f))
     elif args.save_stats:
-        with open(sweep_results, "w") as f:
+        with open(sweep_results_path, "w") as f:
             f.write(reformat_json(sr, max_depth=3))
+        print_file_saved("cache sweep results", sweep_results_path)
 
     if args.load_stats and args.plot_skip_searched and not running_best:
         return sr
@@ -599,7 +600,9 @@ def run_cache_sweep(
         a.margins(x=0.02)
 
     if args.save_png:
-        fig.savefig(sweep_log.replace(".log", ".png"))
+        p = sweep_log_path.replace(".log", ".png")
+        fig.savefig(p)
+        print_file_saved("cache sweep plot", p)
 
     return sr, fig
 
@@ -1071,10 +1074,10 @@ def run_bp_sweep(
     running_best = (best_params != None)
     multi_wl = len(workloads) > 1
     running_single_best = (running_best and (not multi_wl))
-    sweep_name, sweep_log = gen_sweep_log_name(
+    sweep_name, sweep_log_path = gen_sweep_log_name(
         args.sweep, args.work_dir, workloads, not running_best)
-    if os.path.exists(sweep_log) and not args.load_stats:
-        os.remove(sweep_log)
+    if os.path.exists(sweep_log_path) and not args.load_stats:
+        os.remove(sweep_log_path)
 
     bpk = args.sweep # bp key in the hw_stats dict
     sr_bin = {}
@@ -1213,7 +1216,7 @@ def run_bp_sweep(
                 cnt += 1
                 if args.track and cnt % idx_c == 0 and not running_single_best:
                     print(f"{cnt//idx_c}/{PROG_BAT}", end=", ", flush=True)
-                with open(sweep_log, "a") as f:
+                with open(sweep_log_path, "a") as f:
                     f.write(msg)
 
                 if not running_best:
@@ -1263,7 +1266,7 @@ def run_bp_sweep(
             dfa = dfa.sort_values(list(dfa.columns)).reset_index(drop=True)
             dfa.to_pickle(
                 os.path.join(
-                    os.path.dirname(sweep_log),
+                    os.path.dirname(sweep_log_path),
                     f"all_configs_{bp_handle}.pkl.gz")
             )
 
@@ -1316,8 +1319,8 @@ def run_bp_sweep(
         # TODO: save to disk as each bp/cache is finished
 
     # save sweep results
-    sr_bin_out = sweep_log.replace(".log", "_binned.json")
-    sr_best_out = sweep_log.replace(".log", "_best.json")
+    sr_bin_out = sweep_log_path.replace(".log", "_binned.json")
+    sr_best_out = sweep_log_path.replace(".log", "_best.json")
 
     if args.load_stats:
         with open(sr_bin_out, "r") as f:
@@ -1376,9 +1379,11 @@ def run_bp_sweep(
     elif args.save_stats:
         with open(sr_bin_out, "w") as f:
             f.write(reformat_json(sr_bin))
+        print_file_saved("bp binned sweep results", sr_bin_out)
         if not running_best or args.bp_run_best_for_all_workloads:
             with open(sr_best_out, "w") as f:
                 f.write(reformat_json(sr_best))
+            print_file_saved("bp best sweep results", sr_best_out)
 
     sweep_results = [sr_bin, sr_best, None]
     if args.load_stats and args.plot_skip_searched and not running_best:
@@ -1393,7 +1398,9 @@ def run_bp_sweep(
     plot_bp_results(axs, sweep_results, sweep_params)
 
     if args.save_png:
-        fig.savefig(sweep_log.replace(".log", ".png"))
+        p = sweep_log_path.replace(".log", ".png")
+        fig.savefig(p)
+        print_file_saved("bp sweep plot", p)
 
     sweep_results[2] = fig
     return sweep_results
@@ -1627,6 +1634,7 @@ def bp_plot_per_workload(args, sweep_params, workloads_all, sr) -> None:
             sr_bin_out = log.replace(".log", "_binned.json")
             with open(sr_bin_out, "w") as f:
                 f.write(reformat_json(per_app_sr))
+            print_file_saved("bp per workload binned sweep results", sr_bin_out)
 
     return figs
 
@@ -1822,11 +1830,7 @@ if __name__ == "__main__":
     print(f"Running with config '{args.params}' in '{args.work_dir}'" + mw_str)
     figs = run_main(args)
     if args.save_pdf and len(figs) > 0:
-        pdf_path = os.path.join(
-            args.work_dir,
-            f"sweep_{args.sweep}_results.pdf"
-        )
-        print(pdf_path)
+        pdf_path = os.path.join(args.work_dir,f"sweep_{args.sweep}_results.pdf")
         n = len(figs)
         with PdfPages(pdf_path) as pdf:
             for i,fig in enumerate(figs, start=1):
@@ -1836,7 +1840,7 @@ if __name__ == "__main__":
                     fontsize=10
                 )
                 pdf.savefig(fig)
-        print(f"\nAll charts saved to: {pdf_path}")
+        print_file_saved("all plots as PDF", pdf_path, nl=True)
     print("\nAll sweeps completed. ", end="")
     sweep_wrapper_end(args, tt, "\n")
 

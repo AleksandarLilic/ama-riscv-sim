@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import subprocess
-import argparse
 from pathlib import Path
+
+from utils import print_file_saved
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
 DOT_PY = os.path.join(SCRIPT_PATH, "gprof2dot/gprof2dot.py")
@@ -45,4 +47,4 @@ for fmt in ("svg", "png", "pdf"):
         out_name = Path(dot_out_name).with_suffix(f".{fmt}")
         cmd = ["dot", f"-T{fmt}", dot_out_name, "-o", str(out_name)]
         run_cmd(cmd)
-        print(f"Saved {fmt.upper()} chart to: '{out_name}'")
+        print_file_saved(f"{fmt.upper()} chart", out_name)

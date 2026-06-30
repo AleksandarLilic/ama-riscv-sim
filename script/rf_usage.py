@@ -5,7 +5,7 @@ import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from utils import get_test_title, smarter_eng_formatter
+from utils import get_test_title, print_file_saved, smarter_eng_formatter
 
 H = ['rd', 'rdp', 'rs1', 'rs2', 'rs3']
 H_ALL_TYPE = ['rd_all', 'rs_all']
@@ -51,7 +51,9 @@ df.insert(0, 'reg', 'x' + df.index.astype(str))
 df['reg_name'] = df.index.map(lambda x: rf_names[x])
 df['reg_comb'] = df['reg_name'] + " (" + df['reg'] + ")"
 if args.save_csv:
-    df.to_csv(args.prof.replace('.bin', '.csv'), index=False)
+    p = args.prof.replace('.bin', '.csv')
+    df.to_csv(p, index=False)
+    print_file_saved("CSV", p)
 
 base_fmt = smarter_eng_formatter()
 columns = COLUMNS
@@ -89,7 +91,12 @@ for col_set in columns:
     #ax.axhspan(20-0.5, 31+0.5, facecolor='lightgray', alpha=0.3, zorder=0)
 
     name = "_".join(col_set)
+    base_name = args.prof.replace(" ", "_")
     if args.save_png:
-        fig.savefig(args.prof.replace(" ", "_").replace(".bin", f"_{name}.png"))
+        p = base_name.replace(".bin", f"_{name}.png")
+        fig.savefig(p)
+        print_file_saved("CSV", p)
     if args.save_svg:
-        fig.savefig(args.prof.replace(" ", "_").replace(".bin", f"_{name}.svg"))
+        p = base_name.replace(".bin", f"_{name}.svg")
+        fig.savefig(p)
+        print_file_saved("SVG", p)

@@ -41,6 +41,10 @@ def is_headless():
 
     return False
 
+def print_file_saved(what, where, nl=False):
+    nl_str = "\n" if nl else ""
+    print(f"{nl_str}Saved {what} to: '{where}'")
+
 def get_test_title(input_log: str) -> str:
     """Generate a plot title based on the input log filename."""
     return os.path.basename(os.path.dirname(input_log)).replace("out_", "")

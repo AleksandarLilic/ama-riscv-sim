@@ -9,6 +9,7 @@ import subprocess
 from pathlib import Path
 
 import pandas as pd
+from utils import print_file_saved
 
 script_dir = Path(__file__).resolve().parent
 EMBENCH_DIR = script_dir / "../sw/baremetal/embench"
@@ -199,7 +200,7 @@ def main():
     if args.output:
         with open(args.output, "w") as f:
             f.write(json_str + "\n")
-        print(f"Saved results to {args.output}")
+        print_file_saved("results", args.output)
     else:
         print(json_str)
 
@@ -212,7 +213,7 @@ def main():
     if args.report:
         with open(args.report, "w") as f:
             f.write(report)
-        print(f"Saved report to {args.report}")
+        print_file_saved("report", args.report)
     else:
         print(report)
 

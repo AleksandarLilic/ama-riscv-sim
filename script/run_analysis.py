@@ -17,8 +17,8 @@ from matplotlib.ticker import (AutoMinorLocator, EngFormatter, FixedLocator,
                                LogFormatterSciNotation, MaxNLocator,
                                MultipleLocator)
 from matplotlib.widgets import RangeSlider
-from utils import (FMT_AXIS, get_test_title, is_notebook, reformat_json,
-                   smarter_eng_formatter)
+from utils import (FMT_AXIS, get_test_title, is_notebook, print_file_saved,
+                   reformat_json, smarter_eng_formatter)
 
 CACHE_LINE_BYTES = 64
 BASE_ADDR = 0x80000000
@@ -460,7 +460,7 @@ def save_df_to_file(df: pd.DataFrame, out_path: str, format='csv') -> None:
         df.to_parquet(p, index=False)
     else:
         df.to_csv(p, index=False)
-    print(f"Saved DataFrame to '{p}'")
+    print_file_saved("DataFrame", p)
 
 # common functions for plotting
 def find_loc_range(ax) -> int:
@@ -779,7 +779,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
         with open(sym_json, 'w') as symfile:
             # use max_depth=1 for single line per symbol if needed
             symfile.write(reformat_json(symbols_py, max_depth=2))
-        print(f"Symbols saved in '{sym_json}'")
+        print_file_saved("Symbols", sym_json)
 
     if section == "data":
         os.remove(outfile_name) # remove the dummy file
@@ -2361,7 +2361,7 @@ def run_main(args) -> None:
                 continue
             out = name.replace(" ", "_").replace(ext, ".png")
             fig.savefig(out, dpi=300)
-            print(f"Saved PNG chart to: '{out}'")
+            print_file_saved("PNG chart", out)
 
     if args.save_svg: # each chart is saved as a separate SVG file
         for name, fig in (fig_arr):
@@ -2369,7 +2369,7 @@ def run_main(args) -> None:
                 continue
             out = name.replace(" ", "_").replace(ext, ".svg")
             fig.savefig(out)
-            print(f"Saved SVG chart to: '{out}'")
+            print_file_saved("SVG chart", out)
 
     if not args.silent:
         if args.browser:
