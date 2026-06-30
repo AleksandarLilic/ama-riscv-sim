@@ -1008,7 +1008,8 @@ If binary already exists, either add `-B` to force rebuild, or run `make clean` 
 | `PROFILERS=1` | `-DPROFILERS_EN` | Enable execution profiling and tracing | on |
 | `HW_MODELS=1` | `-DHW_MODELS_EN` | Enable hardware models | on |
 | `DASM=1` | `-DDASM_EN` | Enable execution log recording | off |
-| `RV32C=1` | `-DRV32C` | Enable compressed ISA (C extension) | off |
+| `RV32C=1` | `-DRV32C_EN` | Enable compressed ISA (C extension) | off |
+| `SIMD=1` | `-DSIMD_EN` | Enable custom packed-SIMD extension | on |
 | `UART_IN=1` | `-DUART_INPUT_EN` | Enable user interaction through UART | off |
 | `DEBUG=1` | `-DDEBUG` | Enable additional checks | off |
 

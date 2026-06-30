@@ -70,6 +70,7 @@ class core {
             ostr << "x" << ip.rd() << ": " << FHEXZ(rf[ip.rd()], 8);
             return ostr.str();
         }
+        #ifdef SIMD_EN
         void simd_ss_clear();
         void simd_ss_init_c();
         void simd_ss_init_a();
@@ -89,7 +90,8 @@ class core {
         void simd_ss_finish_dup(int32_t a_scalar);
         void simd_ss_finish_vins(int32_t a, int32_t idx);
         void simd_ss_finish_vext(int32_t c_scalar, int32_t idx);
-        #endif
+        #endif // SIMD_EN
+        #endif // DASM_EN
 
     private:
         void write_rf(uint32_t reg, uint32_t data) {
@@ -149,7 +151,9 @@ class core {
         void d_auipc();
         void d_system();
         void d_misc_mem();
+        #ifdef SIMD_EN
         void d_custom_ext();
+        #endif
         void d_csr_access();
 
         // arithmetic and logic operations
@@ -226,6 +230,7 @@ class core {
         static void trap_state_update_cb( // callback for trap handler
             void* ctx, uint32_t cause, uint32_t tval);
 
+        #ifdef SIMD_EN
         // custom extension - arithmetic add & sub
         uint32_t alu_c_add16(uint32_t a, uint32_t b);
         uint32_t alu_c_add8(uint32_t a, uint32_t b);
@@ -324,7 +329,9 @@ class core {
         uint32_t data_fmt_c_vext4u(uint32_t rs1, uint8_t idx);
         uint32_t data_fmt_c_vext2(uint32_t rs1, uint8_t idx);
         uint32_t data_fmt_c_vext2u(uint32_t rs1, uint8_t idx);
+        #endif // SIMD_EN
 
+        #ifdef RV32C_EN
         // C extension
         void d_compressed_0();
         void d_compressed_1();
@@ -362,7 +369,9 @@ class core {
         void c_jalr();
         // system
         void c_ebreak();
+        #endif // RV32C_EN
 
+        #ifdef SIMD_EN
         // templates
         // arith
         template <size_t vbits, bool vsigned, alu_add_sub_op_t op, bool sat>
@@ -390,6 +399,7 @@ class core {
             uint32_t data_fmt_c_vins_t(uint32_t rd, uint32_t rs1, uint8_t idx);
         template <size_t vbits, bool vsigned>
             uint32_t data_fmt_c_vext_t(uint32_t rs1, uint8_t idx);
+        #endif // SIMD_EN
 
         #ifdef HW_MODELS_EN
         void log_hw_stats();

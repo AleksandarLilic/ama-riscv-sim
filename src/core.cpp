@@ -286,7 +286,7 @@ void core::fetch() {
 void core::exec() {
     uint32_t op_c = ip.copcode();
     if (op_c != 0x3) { // d_d_compressed ISA
-        #ifdef RV32C
+        #ifdef RV32C_EN
         INST_HEX_W(4);
         inst = ip.to_rvc(inst);
         switch (op_c) {
@@ -295,7 +295,7 @@ void core::exec() {
             case 0x2: d_compressed_2(); break;
             default: tu.e_unsupported_inst("op_c unreachable");
         }
-        #else // !RV32C
+        #else // !RV32C_EN
         tu.e_unsupported_inst("RV32C unsupported");
         #endif
 
@@ -313,7 +313,9 @@ void core::exec() {
             CASE_DECODER(d_auipc)
             CASE_DECODER(d_system)
             CASE_DECODER(d_misc_mem)
+            #ifdef SIMD_EN
             CASE_DECODER(d_custom_ext)
+            #endif
             default: tu.e_unsupported_inst("opcode");
         }
     }
@@ -599,7 +601,7 @@ void core::d_branch() {
         default: tu.e_unsupported_inst("branch");
     }
 
-    #ifndef RV32C
+    #ifndef RV32C_EN
     bool address_unaligned = (next_pc % 4 != 0);
     if (address_unaligned) {
         tu.e_inst_addr_misaligned(next_pc, "branch unaligned access");
@@ -784,6 +786,7 @@ void core::d_misc_mem() {
     #endif
 }
 
+#ifdef SIMD_EN
 void core::d_custom_ext() {
     uint8_t funct3 = ip.funct3();
     uint8_t funct7 = ip.funct7();
@@ -1019,6 +1022,7 @@ void core::d_custom_ext() {
     #endif
     next_pc = pc + 4;
 }
+#endif // SIMD_EN
 
 void core::d_csr_access() {
     uint16_t csr_addr = TO_U16(ip.csr_addr());
@@ -1064,6 +1068,7 @@ void core::d_csr_access() {
     #endif
 }
 
+#ifdef RV32C_EN
 // C extension - decoders
 void core::d_compressed_0() {
     uint32_t funct3 = ip.c_funct3();
@@ -1139,6 +1144,7 @@ void core::d_compressed_2() {
         default: tu.e_unsupported_inst("compressed_2");
     }
 }
+#endif // RV32C_EN
 
 // HW stats
 #ifdef HW_MODELS_EN

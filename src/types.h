@@ -101,7 +101,7 @@ namespace inst {
     }
 
     namespace align {
-        #ifdef RV32C
+        #ifdef RV32C_EN
         constexpr uint32_t pc_low_bits = 1u;
         constexpr uint32_t compressed_mask = 0xFFFF;
         #else

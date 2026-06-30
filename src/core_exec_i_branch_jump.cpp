@@ -24,7 +24,7 @@ void core::jalr() {
     if (ip.funct3() != 0) tu.e_unsupported_inst("jalr, funct3 != 0");
     next_pc = ((rf[ip.rs1()] + ip.imm_i()) & 0xFFFFFFFE);
 
-    #ifndef RV32C
+    #ifndef RV32C_EN
     bool address_unaligned = (next_pc % 4 != 0);
     if (address_unaligned) {
         tu.e_inst_addr_misaligned(next_pc, "jalr unaligned access");
@@ -37,7 +37,7 @@ void core::jalr() {
 
 void core::jal() {
     next_pc = (pc + ip.imm_j());
-    #ifndef RV32C
+    #ifndef RV32C_EN
     bool address_unaligned = (next_pc % 4 != 0);
     if (address_unaligned) {
         tu.e_inst_addr_misaligned(next_pc, "jal unaligned access");

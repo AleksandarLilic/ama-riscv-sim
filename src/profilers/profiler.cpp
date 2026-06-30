@@ -252,7 +252,7 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
         inst_cnt_prof++;
         if (inst == inst::nop) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
-        #ifdef RV32C
+        #ifdef RV32C_EN
         } else if ((inst & inst::align::compressed_mask) == inst::c_nop) {
             prof_g_arr[TO_U32(opc_g::i_c_nop)].count += inc;
         #endif
@@ -301,7 +301,7 @@ void profiler::log_to_file_and_print(bool show) {
     ofs << "{\n";
     for (const auto &i : prof_g_arr) {
         if ((i.name != "")
-            #ifndef RV32C
+            #ifndef RV32C_EN
             && !(i.name.rfind("c.", 0) == 0)
             #endif
         ) {
@@ -313,7 +313,7 @@ void profiler::log_to_file_and_print(bool show) {
     for (const auto &e : prof_b_arr) {
         // .starts_with() on c++20
         if ((e.name != "")
-            #ifndef RV32C
+            #ifndef RV32C_EN
             && !(e.name.rfind("c.", 0) == 0)
             #endif
         ) {
@@ -343,7 +343,7 @@ void profiler::log_to_file_and_print(bool show) {
         ofs.close();
     }
 
-    #ifdef RV32C
+    #ifdef RV32C_EN
     // compressed inst cnt
     uint32_t comp_cnt = 0;
     for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
@@ -414,7 +414,7 @@ void profiler::log_to_file_and_print(bool show) {
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "Profiler - Inst:\n"
               << INDENT << "All: " << cnt.tot
-              #ifdef RV32C
+              #ifdef RV32C_EN
               << " - 32/16-bit: " << (cnt.tot - comp_cnt) << "/" << comp_cnt
               << "(" << (100.0 - comp_perc) << "%/" << comp_perc << "%)"
               #endif

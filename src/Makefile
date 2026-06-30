@@ -7,6 +7,8 @@ ifeq ($(filter -j% --jobserver%, $(MAKEFLAGS)),)
     MAKEFLAGS += -j$(NPROCS)
 endif
 
+MAKEFLAGS += --output-sync=line
+
 CXX ?= g++
 
 CXX_REQ := 10 # 9 may also work, but 10+ is preferred for gnu++17 support
@@ -35,7 +37,12 @@ endif
 
 RV32C ?= 0
 ifeq ($(RV32C), 1)
-DEFINES += -DRV32C
+DEFINES += -DRV32C_EN
+endif
+
+SIMD ?= 1
+ifeq ($(SIMD), 1)
+DEFINES += -DSIMD_EN
 endif
 
 UART_IN ?= 0
@@ -46,6 +53,11 @@ endif
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 DEFINES += -DDEBUG
+endif
+
+DPI ?= 0
+ifeq ($(DPI), 1)
+DEFINES += -DDPI
 endif
 
 CACHE_MODE ?= 0
@@ -102,19 +114,18 @@ $(shell mkdir -p $(BDIR))
 
 BIN := ama-riscv-sim
 TARGET := $(BDIR)/$(BIN)
-SOURCES := $(wildcard *.cpp)
-SOURCES += $(wildcard devices/*.cpp)
-SOURCES += $(wildcard profilers/*.cpp)
-SOURCES += $(wildcard hw_models/*.cpp)
-OBJECTS := $(patsubst %.cpp, $(BDIR)/%.o, $(SOURCES))
-DEPS := $(patsubst %.cpp, $(BDIR)/%.d, $(SOURCES))
-INC = -I. -I./devices -I./profilers -I./hw_models
-INC += -I./$(BDIR)
-INC += -I./external/cxxopts/include
-INC += -isystem ./external/ELFIO # because it goes haywire on old-style-cast
-INC += $(INC_EXT)
 
-COSIM_OBJECTS := $(filter-out $(BDIR)/hw_models/%.o $(BDIR)/main.o, $(OBJECTS))
+ISA_SIM_SRC_ROOT := .
+ISA_SIM_OBJ_ROOT := $(BDIR)
+include Makefile.isa_sim_sources.mk
+
+SOURCES := $(ISA_SIM_SRCS)
+OBJECTS := $(ISA_SIM_OBJS)
+DEPS := $(ISA_SIM_DEPS)
+INC = $(ISA_SIM_INC)
+INC += $(INC_EXTRA)
+
+COSIM_OBJECTS := $(ISA_SIM_COSIM_OBJS)
 
 all: $(TARGET)
 
@@ -122,21 +133,28 @@ obj: $(OBJECTS)
 
 obj_for_cosim: $(COSIM_OBJECTS)
 
-include Makefile.autogen
+include Makefile.autogen.mk
 
-NO_SYMLINK ?= 0 # to skip symlinking into the parent directory, e.g. for test build
+V ?= 0
+ifeq ($(V),1)
+Q :=
+MSG := @:
+else
+Q := @
+MSG := @printf
+endif
+
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
-	@if [ "$(NO_SYMLINK)" = "0" ]; then \
-		ln -sf $@ $(BIN); \
-	fi
+	$(MSG) "  LD      $@\n"
+	$(Q)$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 strip: $(TARGET)
 	$(STRIP) $(STRIPFLAGS) $(TARGET)
 
 $(BDIR)/%.o: %.cpp | $(VER_H)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
+	$(MSG) "  CXX     $<\n"
+	$(Q)$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
 
 -include $(DEPS)
 
