@@ -2,14 +2,15 @@
 import argparse
 import json
 import os
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 from dep_scan import search, search_args
 from ruamel.yaml import YAML
 from run_analysis import icfg, load_inst_prof
-from types import SimpleNamespace
-from utils import DELIM, INDENT, smarter_eng_formatter, get_test_title
+from utils import (DELIM, INDENT, get_test_title, print_file_saved,
+                   smarter_eng_formatter)
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -510,7 +511,7 @@ class perf:
         )
         with open(p, "w") as f:
             json.dump({"core": self._core_dict()}, f, indent=4)
-        print(f"\nSaved performance estimation as JSON to {p}")
+        print_file_saved("performance estimation", p, nl=True)
 
     def save_as_df(self) -> None:
         attrs = vars(self).copy()
@@ -520,10 +521,9 @@ class perf:
         _ = attrs.pop('perf_str')
         all_flat = {**attrs, **branches, **est}
         df = pd.DataFrame([all_flat])
-        df.to_csv(self.inst_profile.replace(".json", "_perf_est.csv"),
-                  index=False)
-        print(f"\nSaved performance estimation as CSV to " +
-              f"{self.inst_profile.replace('.json', '_perf_est.csv')}")
+        csv_out = self.inst_profile.replace(".json", "_perf_est.csv")
+        df.to_csv(csv_out, index=False)
+        print_file_saved("performance estimation", csv_out, nl=True)
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Performance estimates based on the ISA sim results and the microarchitectural description.")
@@ -535,7 +535,7 @@ def parse_args(argv=None):
     parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output to stdout. Requires running with -j/--save_json or -c/--corr")
     parser.add_argument("--plot", action="store_true", help="Show plots. Applicable only for correlation runs")
     parser.add_argument("-p", "--places", type=int, default=2, help="Number of decimal places for formatted output (default: 2)")
-    parser.add_argument("-j", "--save_json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
+    parser.add_argument("--save_json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
     parser.add_argument("--save_corr_csv", action="store_true", help="Save correlation stats as csv")
     parser.add_argument("--save_corr_png", action="store_true", help="Save correlation plots as png")
     parser.add_argument("--save_corr_svg", action="store_true", help="Save correlation plots as svg")
@@ -608,7 +608,7 @@ def main(args: argparse.Namespace):
         if args.save_corr_csv:
             p = os.path.join(os.path.dirname(p_inst), "correlation.csv")
             dfc.to_csv(p, index=False)
-            print(f"Saved correlation stats as CSV to {p}")
+            print_file_saved("correlation stats", p)
 
         if not (args.plot or args.save_corr_png or args.save_corr_svg):
             return
@@ -678,7 +678,7 @@ def main(args: argparse.Namespace):
             for fig_obj, stem in pairs:
                 p = os.path.join(os.path.dirname(p_inst), f"{stem}.{ext}")
                 fig_obj.savefig(p)
-                print(f"Saved correlation plot as {ext.upper()} to {p}")
+                print_file_saved(f"correlation plot {ext.upper()}", p)
 
         if not args.plot:
             plt.close('all')
