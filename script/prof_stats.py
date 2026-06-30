@@ -221,9 +221,14 @@ def draw_single_plot(df, ax, args):
     data = df[args['data']].tolist()[::-1]
     symbols = df['symbol'].tolist()[::-1]
     box = ax.barh(symbols, data, color='#7ed3ab')
-    if args.get('fmt', None):
-        ax.bar_label(box, fmt=args['fmt'], padding=3)
-    ax.set_xlim(0, ax.get_xlim()[1] * 1.12) # make room for data labels
+    f = args.get('fmt', None)
+    if f:
+        ax.bar_label(box, fmt=f, padding=3)
+        # match format on axis if needed
+        if args.get('eng_fmt', None):
+            ax.xaxis.set_major_formatter(EngFormatter(places=1, sep=""))
+
+    ax.set_xlim(0, ax.get_xlim()[1] * 1.14) # make room for data labels
     ax.set_xlabel(args['xlabel'])
     if args.get('use_ylabel', False):
         ax.set_ylabel("symbol")
@@ -256,6 +261,7 @@ def main():
     parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
     parser.add_argument("--ipc", action='store_true', default=False, help="Plot IPC instead of CPI for the combined chart. Ignored if -t and -s are not both specified")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
+    parser.add_argument("--plot_abs", action='store_true', default=False, help="Plot absolute self counts instead of percentages")
     parser.add_argument("--save_png", action='store_true', default=False, help="Save plot as PNG")
     parser.add_argument("--save_svg", action='store_true', default=False, help="Save plot as SVG")
     parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV. Single trace only")
@@ -312,11 +318,14 @@ def main():
         samples_str = f"{fmt(total_samples)} samples ({args.event})"
         a = ax[0] if args.second_trace else ax
         draw_single_plot(t_df, a, {
-            'data': 'percent',
-            'xlabel': f'% of {args.event} samples',
+            'data': 'self_counts' if args.plot_abs else 'percent',
+            'xlabel': (
+                f"{args.event} samples" + (" [%]" if not args.plot_abs else "")
+            ),
             'title': title,
             'use_ylabel': True,
-            'fmt': '%.1f%%'
+            'fmt': fmt if args.plot_abs else '%.1f%%',
+            'eng_fmt': args.plot_abs
         })
 
     else: # args.second_trace:
@@ -381,22 +390,25 @@ def main():
             'data': d[int(args.ipc)],
             'xlabel': d[int(args.ipc)].upper(),
             'title': t[int(args.ipc)],
-            'fmt': '%.3f'
+            'fmt': '%.3f',
+            'eng_fmt': False
         })
 
         draw_single_plot(merged, ax[0], {
-            'data': 'percent_inst',
-            'xlabel': f'% of inst samples',
+            'data': 'self_counts_inst' if args.plot_abs else 'percent_inst',
+            'xlabel': ('inst samples' + (" [%]" if not args.plot_abs else "")),
             'title': 'Profile - Inst',
             'use_ylabel': True,
-            'fmt': '%.1f%%'
+            'fmt': fmt if args.plot_abs else '%.1f%%',
+            'eng_fmt': args.plot_abs
         })
 
         draw_single_plot(merged, ax[1], {
-            'data': 'percent_cycle',
-            'xlabel': f'% of cycle samples',
+            'data': 'self_counts_cycle' if args.plot_abs else 'percent_cycle',
+            'xlabel': ('cycle samples' + (" [%]" if not args.plot_abs else "")),
             'title': 'Profile - Cycles',
-            'fmt': '%.1f%%'
+            'fmt': fmt if args.plot_abs else '%.1f%%',
+            'eng_fmt': args.plot_abs
         })
 
     # resize only height, keep width
