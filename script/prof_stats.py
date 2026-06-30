@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import EngFormatter
+from utils import print_file_saved
 
 
 def parse_folded_line(line: str) -> Tuple[List[str], int]:
@@ -116,12 +117,12 @@ def print_profile(df: pd.DataFrame, merged=False) -> None:
     time_unit = df.attrs.get('time_unit') if cycles_trace else None
 
     hdr_cycles = "{:>6} {:>15} {:>10} {:>10} {:>10} {:>10}".format(
-        "%[c]", "cumulative[c]", "self[c]", "total[c]",
+        "%[c]", "%cumulative[c]", "self[c]", "total[c]",
         f"self[{time_unit}]", f"total[{time_unit}]")
     hdr_inst = "{:>6} {:>15} {:>10} {:>10}".format(
-        "%[i]", "cumulative[i]", "self[i]", "total[i]")
+        "%[i]", "%cumulative[i]", "self[i]", "total[i]")
     hdr = "{:>6} {:>15} {:>10} {:>10}".format(
-        "%", "cumulative", "self", "total")
+        "%", "%cumulative", "self", "total")
 
     if merged:
         print("{}   {} {:>7} {:>7}   {}".format(
@@ -185,6 +186,37 @@ def run_trace(lines, clk: Optional[float] = None) -> pd.DataFrame:
 
     return(format_flat_profile(df, clk=clk))
 
+def save_flat_csv(df: pd.DataFrame, path: str, event: str) -> None:
+    # round floats (ipc/cpi 3dp, rest 2dp)
+    # and tag columns so the csv is self-describing
+    # merge -> _i/_c, single -> event tag,
+    # time -> _<unit> (same as [i]/[c]/[us] tags shown on stdout)
+    df = df.copy()
+    round_map = {
+        c: (3 if c in ("ipc", "cpi") else 2)
+        for c in df.columns
+        if c in ("ipc", "cpi") or pd.api.types.is_float_dtype(df[c])
+    }
+    df = df.round(round_map)
+
+    unit = df.attrs.get("time_unit", "us")
+    tag = {"inst": "i", "cycle": "c"}.get(event, event)
+    tagged = ("self_counts", "total_counts", "percent", "cum_percent")
+    rename = {}
+    for c in df.columns:
+        if c.endswith("_inst"):
+            rename[c] = c[:-len("_inst")] + "_i"
+        elif c.endswith("_cycle"):
+            rename[c] = c[:-len("_cycle")] + "_c"
+        elif c in ("self_time", "total_time"):
+            rename[c] = f"{c}_{unit}"
+        elif c in tagged:
+            rename[c] = f"{c}_{tag}"
+    df = df.rename(columns=rename)
+
+    df.to_csv(path, index=False)
+    print_file_saved("Flat profile", path)
+
 def draw_single_plot(df, ax, args):
     data = df[args['data']].tolist()[::-1]
     symbols = df['symbol'].tolist()[::-1]
@@ -224,6 +256,9 @@ def main():
     parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
     parser.add_argument("--ipc", action='store_true', default=False, help="Plot IPC instead of CPI for the combined chart. Ignored if -t and -s are not both specified")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
+    parser.add_argument("--save_png", action='store_true', default=False, help="Save plot as PNG")
+    parser.add_argument("--save_svg", action='store_true', default=False, help="Save plot as SVG")
+    parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV. Single trace only")
     args = parser.parse_args()
 
     if (args.second_trace and args.event != PROF_EVENTS[0]):
@@ -241,6 +276,13 @@ def main():
     if not os.path.isfile(args.trace):
         parser.error(f"Trace callstack not found: {args.trace}")
 
+    out_base = os.path.splitext(args.trace)[0]
+    if args.second_trace:
+        print(out_base)
+        out_base += "_combined"
+        # first trace always 'inst' in combined, remove it
+        out_base = out_base.replace("_inst", "")
+
     t_lines = open(args.trace, "r").readlines()
     t_df = run_trace(
         t_lines, clk=args.clk if args.event == PROF_EVENTS[1] else None)
@@ -248,6 +290,9 @@ def main():
 
     fmt = EngFormatter(unit='', places=1, sep="")
     if not args.second_trace:
+        if args.save_csv:
+            save_flat_csv(t_df, out_base + ".csv", args.event)
+
         df_len_og = t_df.index.size
         if args.top is not None:
             t_df = t_df.head(args.top)
@@ -315,6 +360,9 @@ def main():
         samples_str = \
             f"{fmt(total_inst)} instructions, {fmt(total_cycles)} cycles"
 
+        if args.save_csv:
+            save_flat_csv(merged, out_base + ".csv", args.event)
+
         df_len_og = merged.index.size
         if args.top is not None:
             merged = merged.head(args.top)
@@ -375,6 +423,14 @@ def main():
             f"\n(Showing top {df_len} of {df_len_og} entries after filtering" +\
             f" - Threshold: {args.thr}%" + \
             (f", Top: {args.top}" if args.top is not None else "") + ")")
+
+    if args.save_png:
+        fig.savefig(out_base + ".png", dpi=300, bbox_inches="tight")
+        print_file_saved("PNG chart", out_base + ".png")
+
+    if args.save_svg:
+        fig.savefig(out_base + ".svg", bbox_inches="tight")
+        print_file_saved("SVG chart", out_base + ".svg")
 
     if args.plot:
         plt.show()
