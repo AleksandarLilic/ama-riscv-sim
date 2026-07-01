@@ -294,8 +294,7 @@ void profiler::track_sp(const uint32_t sp) {
 
 void profiler::log_to_file_and_print(bool show) {
     cnt_t cnt;
-    std::string pt = "";
-    if (prof_src == profiler_source_t::clock) pt = "_clk";
+    std::string pt = prof_src_tag(prof_src);
 
     ofs.open(out_dir + "inst_profile" + pt + ".json");
     ofs << "{\n";

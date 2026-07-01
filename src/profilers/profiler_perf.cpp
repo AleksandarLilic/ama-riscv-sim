@@ -1,15 +1,14 @@
-
 #include "profiler_perf.h"
 
 profiler_perf::profiler_perf(
     std::string out_dir,
     std::map<uint32_t, symbol_map_entry_t> symbol_map,
-    perf_event_t perf_event,
+    std::vector<perf_event_t> perf_events,
     profiler_source_t prof_src)
 {
     this->out_dir = out_dir;
     this->symbol_map = symbol_map;
-    this->perf_event = perf_event;
+    this->perf_events = perf_events;
     this->prof_src = prof_src;
     // set up symbol tracking
     symbol_lut.resize(symbol_map.size() + 1); // 0th index is reserved
@@ -22,7 +21,8 @@ profiler_perf::profiler_perf(
     st.fallthrough_valid = false;
     set_fallthrough_symbol(mem_map::base_addr);
     st.updated = false;
-    callstack_cnt = 0;
+    perf_event_flags.fill(0);
+    callstack_cnt.fill(0);
 }
 
 bool profiler_perf::finish_inst(uint32_t next_pc) {
@@ -76,7 +76,7 @@ bool profiler_perf::finish_inst(uint32_t next_pc) {
     }
 
     // handle counter
-    if (st.updated) callstack_cnt = 0;
+    if (st.updated) callstack_cnt.fill(0);
     else inc_callstack_cnt();
     st.updated = false;
 
@@ -167,25 +167,32 @@ void profiler_perf::update_jal(uint32_t next_pc, bool tail_call, uint32_t ra) {
 }
 
 void profiler_perf::inc_callstack_cnt() {
-    if (!active) {
-        perf_event_flags[TO_U32(perf_event)] = 0;
-        return;
-    }
-    if (perf_event == perf_event_t::inst) {
-        callstack_cnt += 1;
-    #ifdef DPI
-    } else if (perf_event == perf_event_t::cycle) {
-        callstack_cnt += clk_src->get_diff();
-    #endif
-    } else {
-        callstack_cnt += perf_event_flags[TO_U32(perf_event)];
-        // only care about resetting the event being counted, others dc
-        perf_event_flags[TO_U32(perf_event)] = 0;
+    for (const auto &e : perf_events) {
+        uint32_t i = TO_U32(e);
+        if (!active) {
+            // don't carry flags accumulated while inactive into the next window
+            perf_event_flags[i] = 0;
+            continue;
+        }
+        if (e == perf_event_t::inst) {
+            callstack_cnt[i] += 1;
+        #ifdef DPI
+        } else if (e == perf_event_t::cycle) {
+            callstack_cnt[i] += clk_src->get_diff();
+        #endif
+        } else {
+            callstack_cnt[i] += perf_event_flags[i];
+            perf_event_flags[i] = 0;
+        }
     }
 }
 
 void profiler_perf::save_callstack_cnt() {
-    callstack_cnt_map[callstack_to_key()] += callstack_cnt;
+    auto &dst = callstack_cnt_map[callstack_to_key()];
+    for (const auto &e : perf_events) {
+        uint32_t i = TO_U32(e);
+        dst[i] += callstack_cnt[i];
+    }
 }
 
 void profiler_perf::catch_empty_callstack(
@@ -262,23 +269,28 @@ void profiler_perf::log_to_file_and_print(bool show) {
     if (!callstack_en) return;
     // close last callstack
     save_callstack_cnt();
-    std::string pt = "";
-    if (prof_src == profiler_source_t::clock) pt = "clk_";
+    // tag (e.g. _cosim) tells RTL traces apart from isa sim by filename
+    std::string tag = prof_src_tag(prof_src);
 
-    // dump all counters from callstack_cnt_map to file
-    std::string out = out_dir + "callstack_folded_" + pt +
-                      perf_event_names[TO_U32(perf_event)] + ".txt";
-    std::ofstream out_file(out);
+    // one folded file per tracked event; totals kept for the stdout summary
+    std::array<uint64_t, TO_U32(perf_event_t::_count)> totals;
+    totals.fill(0);
     std::vector<uint16_t> callstack_ids;
-    uint64_t total_cnt = 0;
-    for (const auto &c : callstack_cnt_map) {
-        callstack_ids.clear();
-        callstack_ids.reserve(c.first.size());
-        // demangle the key string
-        for (const auto &id : c.first) callstack_ids.push_back(TO_U16(id));
-        // write to file
-        out_file << get_callstack_str(callstack_ids) << " " << c.second << "\n";
-        total_cnt += c.second;
+    for (const auto &e : perf_events) {
+        uint32_t ei = TO_U32(e);
+        std::string out = (
+            out_dir + "callstack_folded_" + perf_event_names[ei] + tag + ".txt"
+        );
+        std::ofstream out_file(out);
+        for (const auto &c : callstack_cnt_map) {
+            callstack_ids.clear();
+            callstack_ids.reserve(c.first.size());
+            // demangle the key string
+            for (const auto &id : c.first) callstack_ids.push_back(TO_U16(id));
+            out_file << get_callstack_str(callstack_ids) << " "
+                     << c.second[ei] << "\n";
+            totals[ei] += c.second[ei];
+        }
     }
 
     #ifdef DPI
@@ -287,9 +299,11 @@ void profiler_perf::log_to_file_and_print(bool show) {
 
     if (!show) return;
 
-    std::cout << "Profiler - Perf:\n"
-              << INDENT << "Event: " << perf_event_names[TO_U32(perf_event)]
-              << ", Samples: " << total_cnt << "\n";
+    std::cout << "Profiler - Perf:\n";
+    for (const auto &e : perf_events) {
+        std::cout << INDENT << "Event: " << perf_event_names[TO_U32(e)]
+                  << ", Samples: " << totals[TO_U32(e)] << "\n";
+    }
     if (diverged_cnt) {
             std::cout << INDENT << "Warning: Stacktop divergence detected "
                       << diverged_cnt << " times\n";

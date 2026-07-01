@@ -9,11 +9,14 @@ class profiler_perf {
         symbol_tracking_t st;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
         std::vector<symbol_lut_entry_t> symbol_lut;
-        perf_event_t perf_event;
+        std::vector<perf_event_t> perf_events;
         profiler_source_t prof_src;
         std::array<uint8_t, TO_U32(perf_event_t::_count)> perf_event_flags;
-        uint64_t callstack_cnt;
-        std::unordered_map<std::u16string, uint64_t> callstack_cnt_map;
+        std::array<uint64_t, TO_U32(perf_event_t::_count)> callstack_cnt;
+        std::unordered_map<
+            std::u16string,
+            std::array<uint64_t, TO_U32(perf_event_t::_count)>
+        > callstack_cnt_map;
         #ifdef DPI
         clock_source_t* clk_src;
         #endif
@@ -25,7 +28,7 @@ class profiler_perf {
         profiler_perf(
             std::string out_dir,
             std::map<uint32_t, symbol_map_entry_t> symbol_map,
-            perf_event_t perf_event,
+            std::vector<perf_event_t> perf_events,
             profiler_source_t prof_src);
         #ifdef DPI
         void set_clk_src (clock_source_t* src) { clk_src = src; }

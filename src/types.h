@@ -370,6 +370,11 @@ enum class b_dir_t { backward, forward };
 // profilers
 enum class profiler_source_t { inst, clock };
 
+// tag for trace files, to tell ISA-sim from RTL/cosim output by filename alone
+inline std::string prof_src_tag(profiler_source_t s) {
+    return (s == profiler_source_t::clock) ? "_cosim" : "";
+}
+
 enum class dmem_size_t {
     lb, lh, lw, ld,
     sb, sh, sw, sd,
@@ -539,7 +544,7 @@ struct cfg_t {
     rf_names_t rf_names;
     uint32_t mem_dump_start;
     uint32_t mem_dump_size;
-    perf_event_t perf_event;
+    std::vector<perf_event_t> perf_events;
     uint64_t run_insts;
     uint64_t run_steps;
     bool prof_trace;

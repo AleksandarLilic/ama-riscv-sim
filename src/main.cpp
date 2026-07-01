@@ -1,5 +1,6 @@
 #include <chrono>
 #include <filesystem>
+#include <set>
 
 #include "defines.h"
 #include "cxxopts.hpp"
@@ -29,13 +30,17 @@
 
 #define RESOLVE_ARG(str, map) \
     resolve_arg(str, result[str].as<std::string>(), map)
+#define RESOLVE_ARG_LIST(str, map) \
+    resolve_arg_list(str, result[str].as<std::vector<std::string>>(), map)
 
 // handle passed args
 template <typename T>
 T resolve_arg(
     const std::string& name,
     const std::string& arg,
-    const std::unordered_map<std::string, T>& map) {
+    const std::unordered_map<std::string, T>& map)
+{
+    // check if given arg is supported
     auto it = map.find(arg);
     if (it == map.end()) {
         std::cout << "Invalid value for " << name << ": " << arg
@@ -43,6 +48,27 @@ T resolve_arg(
         throw std::invalid_argument("");
     }
     return it->second;
+}
+
+// list variant: resolve each token, and de-duplicate
+template <typename T>
+std::vector<T> resolve_arg_list(
+    const std::string& name,
+    const std::vector<std::string>& args,
+    const std::unordered_map<std::string, T>& map)
+{
+    std::set<T> seen;
+    // check if all args are supprted
+    for (const auto& arg : args) {
+        auto it = map.find(arg);
+        if (it == map.end()) {
+            std::cout << "Invalid value for " << name << ": " << arg
+                      << ". Valid options: " << gen_help_list(map) << std::endl;
+            throw std::invalid_argument("");
+        }
+        seen.insert(it->second);
+    }
+    return {seen.begin(), seen.end()};
 }
 
 template <typename T>
@@ -267,9 +293,10 @@ int main(int argc, char* argv[]) {
          "Record profiler traces. " + saved_as("trace.bin/rf_trace.bin"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::prof_trace))
         ("e,perf_event",
-         "Performance event to track. Options: " +
+         "Performance event(s) to track, comma-separated. Options: " +
          gen_help_list(perf_event_map),
-         CXXOPTS_VAL_STR->default_value(defs_t::perf_event))
+         cxxopts::value<std::vector<std::string>>()
+            ->default_value(defs_t::perf_event))
         ("rf_usage",
          "Enable profiling register file usage. " + saved_as("rf_usage.bin"),
          CXXOPTS_VAL_BOOL->default_value(defs_t::rf_usage))
@@ -466,7 +493,7 @@ int main(int argc, char* argv[]) {
         cfg.prof_pc.single_match_num = ARG2SIZE(result["prof_pc_single_match"]);
         cfg.prof_pc.exit_on_prof_stop = ARG2BOOL(result["exit_on_prof_stop"]);
         cfg.prof_trace = ARG2BOOL(result["prof_trace"]);
-        cfg.perf_event = RESOLVE_ARG("perf_event", perf_event_map);
+        cfg.perf_events = RESOLVE_ARG_LIST("perf_event", perf_event_map);
         cfg.rf_usage = ARG2BOOL(result["rf_usage"]);
         cfg.no_callstack = ARG2BOOL(result["no_callstack"]);
         cfg.prof_show = ARG2BOOL(result["prof_show"]);

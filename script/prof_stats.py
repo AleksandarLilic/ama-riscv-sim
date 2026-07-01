@@ -235,7 +235,8 @@ def draw_single_plot(df, ax, args):
     ax.set_title(args['title'])
     return ax
 
-PROF_EVENTS = [
+# should match cpp defined events for 'perf_event_t'
+PERF_EVENT_T = [
     "inst",
     "cycle",
     "branch",
@@ -255,7 +256,7 @@ def main():
     parser = argparse.ArgumentParser(description="Convert folded callstack samples to a flat-profile summary.")
     parser.add_argument("-t", "--trace", type=str, required=True, help="Callstack trace. Normally run standalone. Can be combined with -s for inst/cycle only to get detailed execution breakdown")
     parser.add_argument("-s", "--second_trace", type=str, help="Second callstack trace. Used to combine with -t for inst/cycle only to get detailed execution breakdown")
-    parser.add_argument("-e", "--event", type=str, choices=PROF_EVENTS, default=PROF_EVENTS[0], help="Callstack sample event type. If both -t and -s are specified, this is ignored and 'inst' is used for -t, and 'cycle' for -s")
+    parser.add_argument("-e", "--event", type=str, choices=PERF_EVENT_T, default=PERF_EVENT_T[0], help="Callstack sample event type. If both -t and -s are specified, this is ignored and 'inst' is used for -t, and 'cycle' for -s")
     parser.add_argument("-p", "--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
     parser.add_argument("-r", "--thr", type=int, default=1, help="Show only above threshold percentage by self-samples. Self-cycles are used if both -t and -s are specified")
     parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
@@ -267,13 +268,13 @@ def main():
     parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV. Single trace only")
     args = parser.parse_args()
 
-    if (args.second_trace and args.event != PROF_EVENTS[0]):
+    if (args.second_trace and args.event != PERF_EVENT_T[0]):
         parser.error(
-            "When both -i and -r are specified, event type shouldn't be set;"
-            " auto-defaults to 'inst' for -i and 'cycle' for -r")
+            "When both -t and -s are specified, event type shouldn't be set;"
+            " auto-defaults to 'inst' for -t and 'cycle' for -s")
 
     if args.second_trace:
-        args.event = PROF_EVENTS[0] # force to 'inst' for -i
+        args.event = PERF_EVENT_T[0] # force to 'inst' for -t
         fig, ax = plt.subplots(
             1, 3, figsize=(15, FIG_H), tight_layout=True, sharey=True)
     else:
@@ -291,7 +292,7 @@ def main():
 
     t_lines = open(args.trace, "r").readlines()
     t_df = run_trace(
-        t_lines, clk=args.clk if args.event == PROF_EVENTS[1] else None)
+        t_lines, clk=args.clk if args.event == PERF_EVENT_T[1] else None)
     title = 'Profile' + (f' - {args.event.capitalize()}')
 
     fmt = EngFormatter(unit='', places=1, sep="")
@@ -310,7 +311,7 @@ def main():
         print_profile(t_df)
         for atn,atv in t_df.attrs.items():
             print(atn, ":", atv)
-            if args.event != PROF_EVENTS[1]:
+            if args.event != PERF_EVENT_T[1]:
                 # only total_samples is printed if event is not 'cycle'
                 break
 
@@ -329,7 +330,7 @@ def main():
         })
 
     else: # args.second_trace:
-        args.event = PROF_EVENTS[1] # force to 'cycle' for -r
+        args.event = PERF_EVENT_T[1] # force to 'cycle' for -s
         if not os.path.isfile(args.second_trace):
             parser.error(
                 f"Second trace callstack not found: {args.second_trace}")

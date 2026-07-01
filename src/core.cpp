@@ -8,7 +8,7 @@ core::core(memory *mem, cfg_t cfg, [[maybe_unused]] hw_cfg_t hw_cfg) :
     #ifdef PROFILERS_EN
     , prof_pc(cfg.prof_pc)
     , prof(cfg.out_dir, PROF_SRC)
-    , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_event, PROF_SRC)
+    , prof_perf(cfg.out_dir, mem->get_symbol_map(), cfg.perf_events, PROF_SRC)
     #endif
     #ifdef HW_MODELS_EN
     , bp_name("bpred")
