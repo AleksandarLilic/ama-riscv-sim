@@ -45,6 +45,13 @@ ifeq ($(strip $(SIMD)), 1)
 DEFINES += -DSIMD_EN
 endif
 
+# most apps need UART
+# sim will trap if there's no uart in mem map but is being accessed by the app
+UART ?= 1
+ifeq ($(strip $(UART)), 1)
+DEFINES += -DUART_EN
+endif
+
 UART_IN ?= 0
 ifeq ($(strip $(UART_IN)), 1)
 DEFINES += -DUART_INPUT_EN
@@ -55,11 +62,6 @@ ifeq ($(strip $(DEBUG)), 1)
 DEFINES += -DDEBUG
 endif
 
-DPI ?= 0
-ifeq ($(strip $(DPI)), 1)
-DEFINES += -DDPI
-endif
-
 CACHE_MODE ?= 0
 ifeq ($(strip $(CACHE_MODE)), 1)
 DEFINES += -DCACHE_MODE=CACHE_MODE_FUNC
@@ -68,6 +70,12 @@ endif
 CACHE_VERIFY ?= 0
 ifeq ($(strip $(CACHE_VERIFY)), 1)
 DEFINES += -DCACHE_VERIFY
+endif
+
+DPI ?= 0
+ifeq ($(strip $(DPI)), 1)
+#DPI requires more than just -DDPI, check defines.h
+DEFINES += -DDPI
 endif
 
 CXXFLAGS := -Wall -Wextra

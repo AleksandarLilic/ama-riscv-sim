@@ -1,14 +1,5 @@
 #pragma once
 
-// default defines
-#ifndef DPI
-#define UART_EN // apps may need UART, will hang waiting for ready indefinitely
-#else // DPI mode - defines based on the cosim needs
-#define PROFILERS_EN
-#define DASM_EN
-#define UART_EN
-#endif
-
 // UART RX input (UART_IN=1) requires the UART device
 #if defined(UART_INPUT_EN) && !defined(UART_EN)
 #error "UART_INPUT_EN requires UART_EN"
@@ -23,6 +14,9 @@
 #endif
 #ifndef DASM_EN
 #error "DPI requires DASM"
+#endif
+#ifndef UART_EN
+#error "DPI requires UART"
 #endif
 #endif
 
