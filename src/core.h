@@ -112,9 +112,6 @@ class core {
         }
 
         void write_csr(uint16_t addr, uint32_t data) {
-            #ifdef DPI
-            if (is_rtl_trusted(addr)) return;
-            #endif
             csr_def::CSR& c = csr.at(addr);
             if (c.perm == csr_def::perm_t::ro) {
                 tu.e_illegal_inst("CSR write attempt to RO CSR", 4);

@@ -1034,16 +1034,19 @@ void core::d_csr_access() {
         #ifndef DPI
         csr_cnt_update(csr_addr);
         #endif
-        // using temp in case rd and rs1 are the same register
-        uint32_t init_val_rs1 = rf[ip.rs1()];
-        // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
+
+        uint32_t init_val_rs1 = rf[ip.rs1()]; // temp, in case rd==rs1
         #ifdef DPI
         uint32_t val = is_rtl_trusted(csr_addr) ?
             get_rtl_rf_value(ip.rd()) : it->second.value;
         write_rf(ip.rd(), val);
+        // mirror the rtl-trusted value so dasm reads stay correct
+        if (is_rtl_trusted(csr_addr) && (ip.rd() != 0)) it->second.value = val;
         #else
         write_rf(ip.rd(), it->second.value);
         #endif
+
+        // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
         switch (ip.funct3()) {
             CASE_CSR(rw)
             CASE_CSR(rs)
