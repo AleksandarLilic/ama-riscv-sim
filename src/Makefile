@@ -21,52 +21,52 @@ USER_DEFINES ?=
 DEFINES :=
 
 PROFILERS ?= 1
-ifeq ($(PROFILERS), 1)
+ifeq ($(strip $(PROFILERS)), 1)
 DEFINES += -DPROFILERS_EN
 endif
 
 HW_MODELS ?= 1
-ifeq ($(HW_MODELS), 1)
+ifeq ($(strip $(HW_MODELS)), 1)
 DEFINES += -DHW_MODELS_EN
 endif
 
 DASM ?= 0
-ifeq ($(DASM), 1)
+ifeq ($(strip $(DASM)), 1)
 DEFINES += -DDASM_EN
 endif
 
 RV32C ?= 0
-ifeq ($(RV32C), 1)
+ifeq ($(strip $(RV32C)), 1)
 DEFINES += -DRV32C_EN
 endif
 
 SIMD ?= 1
-ifeq ($(SIMD), 1)
+ifeq ($(strip $(SIMD)), 1)
 DEFINES += -DSIMD_EN
 endif
 
 UART_IN ?= 0
-ifeq ($(UART_IN), 1)
+ifeq ($(strip $(UART_IN)), 1)
 DEFINES += -DUART_INPUT_EN
 endif
 
 DEBUG ?= 0
-ifeq ($(DEBUG), 1)
+ifeq ($(strip $(DEBUG)), 1)
 DEFINES += -DDEBUG
 endif
 
 DPI ?= 0
-ifeq ($(DPI), 1)
+ifeq ($(strip $(DPI)), 1)
 DEFINES += -DDPI
 endif
 
 CACHE_MODE ?= 0
-ifeq ($(CACHE_MODE), 1)
+ifeq ($(strip $(CACHE_MODE)), 1)
 DEFINES += -DCACHE_MODE=CACHE_MODE_FUNC
 endif
 
 CACHE_VERIFY ?= 0
-ifeq ($(CACHE_VERIFY), 1)
+ifeq ($(strip $(CACHE_VERIFY)), 1)
 DEFINES += -DCACHE_VERIFY
 endif
 
@@ -79,7 +79,7 @@ CXXFLAGS += -Wno-error=null-dereference # may be required for ELFIO only
 CXXFLAGS += -O3 -flto=auto # release build
 
 PERF ?= 0 # perf/flamegraph profiling: debug symbols + frame pointers, keeps -O3
-ifeq ($(PERF), 1)
+ifeq ($(strip $(PERF)), 1)
 CXXFLAGS += -g -fno-omit-frame-pointer
 endif
 
@@ -88,22 +88,22 @@ endif
 #CXXFLAGS += -ftime-report
 
 TUNE ?= native_x86
-ifeq ($(TUNE), generic_x86)
+ifeq ($(strip $(TUNE)), generic_x86)
 CXXFLAGS += -march=x86-64 -mtune=generic
-else ifeq ($(TUNE), native_x86)
+else ifeq ($(strip $(TUNE)), native_x86)
 CXXFLAGS += -march=native -mtune=native
-else ifeq ($(TUNE), generic_arm)
+else ifeq ($(strip $(TUNE)), generic_arm)
 CXXFLAGS += -march=armv8.5-a -mtune=generic
-else ifeq ($(TUNE), native_arm)
+else ifeq ($(strip $(TUNE)), native_arm)
 CXXFLAGS += -mcpu=native
 endif
 
 LDFLAGS :=
 
 STATIC_LINKING ?= 0 # default: dynamic linking
-ifeq ($(STATIC_LINKING), 1) # static linking of C++ runtime only
+ifeq ($(strip $(STATIC_LINKING)), 1) # static linking of C++ runtime only
 LDFLAGS += -static-libstdc++ -static-libgcc
-else ifeq ($(STATIC_LINKING), 2) # full static linking
+else ifeq ($(strip $(STATIC_LINKING)), 2) # full static linking
 LDFLAGS += -static
 endif
 
@@ -141,7 +141,7 @@ obj_for_cosim: $(COSIM_OBJECTS)
 include Makefile.autogen.mk
 
 V ?= 0
-ifeq ($(V),1)
+ifeq ($(strip $(V)),1)
 Q :=
 MSG := @:
 else

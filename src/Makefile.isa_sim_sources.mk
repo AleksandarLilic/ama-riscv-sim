@@ -18,12 +18,12 @@ ISA_SIM_SRCS += $(wildcard $(ISA_SIM_SRC_PREFIX)profilers/*.cpp)
 ISA_SIM_SRCS += $(wildcard $(ISA_SIM_SRC_PREFIX)hw_models/*.cpp)
 
 # drop disabled features' sources so their objects are never built/linked
-ifeq ($(RV32C), 0)
+ifeq ($(strip $(RV32C)), 0)
 ISA_SIM_SRCS := $(filter-out \
     $(ISA_SIM_SRC_PREFIX)core_exec_c.cpp, \
     $(ISA_SIM_SRCS))
 endif
-ifeq ($(SIMD), 0)
+ifeq ($(strip $(SIMD)), 0)
 ISA_SIM_SRCS := $(filter-out \
     $(ISA_SIM_SRC_PREFIX)core_exec_custom_simd_%.cpp \
     $(ISA_SIM_SRC_PREFIX)dasm_simd.cpp, \
