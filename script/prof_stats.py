@@ -259,7 +259,7 @@ def main():
     parser.add_argument("-p", "--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
     parser.add_argument("-r", "--thr", type=int, default=1, help="Show only above threshold percentage by self-samples. Self-cycles are used if both -t and -s are specified")
     parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
-    parser.add_argument("--ipc", action='store_true', default=False, help="Plot IPC instead of CPI for the combined chart. Ignored if -t and -s are not both specified")
+    parser.add_argument("--cpi", action='store_true', default=False, help="Plot CPI instead of IPC for the combined chart. Ignored if -t and -s are not both specified")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
     parser.add_argument("--plot_abs", action='store_true', default=False, help="Plot absolute self counts instead of percentages")
     parser.add_argument("--save_png", action='store_true', default=False, help="Save plot as PNG")
@@ -384,12 +384,12 @@ def main():
         for atn,atv in merged.attrs.items():
             print(atn.replace("_", " "), ":", atv)
 
-        d = ["cpi", "ipc"]
-        t = ["Cycles Per Instruction (CPI)", "Instructions Per Cycle (IPC)"]
+        d = ["ipc", "cpi"]
+        t = ["Instructions Per Cycle (IPC)", "Cycles Per Instruction (CPI)"]
         draw_single_plot(merged, ax[2], {
-            'data': d[int(args.ipc)],
-            'xlabel': d[int(args.ipc)].upper(),
-            'title': t[int(args.ipc)],
+            'data': d[int(args.cpi)],
+            'xlabel': d[int(args.cpi)].upper(),
+            'title': t[int(args.cpi)],
             'fmt': '%.3f',
             'eng_fmt': False
         })
