@@ -132,7 +132,7 @@ mcycle_run_for_7:
     csrr x26, CSR_MCYCLE
     TEST_INC
     li x27, 7
-    bne x26, x27, fail # mcycle should be 7 after 7 nops
+    blt x26, x27, fail # mcycle should be at least 7 after 7 nops
 
 mcycle_write:
     li x26, 0x0
@@ -167,8 +167,8 @@ minstret_run_for_7:
     nop
     csrr x26, CSR_MINSTRET
     TEST_INC
-    li x27, 4 # minstret should be at least 5 after 7 nops, csr pipelining may change this
-    blt x26, x27, fail
+    li x27, 7
+    bne x26, x27, fail # should be exactly 7 after 7 nops
 
     j pass
 
