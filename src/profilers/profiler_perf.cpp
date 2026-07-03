@@ -167,23 +167,18 @@ void profiler_perf::update_jal(uint32_t next_pc, bool tail_call, uint32_t ra) {
 }
 
 void profiler_perf::inc_callstack_cnt() {
+    if (!active) {
+        // don't carry flags accumulated while inactive into the next window
+        perf_event_flags.fill(0);
+        return;
+    }
     for (const auto &e : perf_events) {
         uint32_t i = TO_U32(e);
-        if (!active) {
-            // don't carry flags accumulated while inactive into the next window
-            perf_event_flags[i] = 0;
-            continue;
-        }
-        if (e == perf_event_t::ret_inst) {
-            callstack_cnt[i] += 1;
+        callstack_cnt[i] += perf_event_flags[i];
+        perf_event_flags[i] = 0;
         #ifdef DPI
-        } else if (e == perf_event_t::cycle) {
-            callstack_cnt[i] += clk_src->get_diff();
+        if (e == perf_event_t::cycle) callstack_cnt[i] += clk_src->get_diff();
         #endif
-        } else {
-            callstack_cnt[i] += perf_event_flags[i];
-            perf_event_flags[i] = 0;
-        }
     }
 }
 

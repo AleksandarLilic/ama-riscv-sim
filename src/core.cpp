@@ -319,6 +319,7 @@ void core::exec() {
             default: tu.e_unsupported_inst("opcode");
         }
     }
+    prof_perf.set_perf_event_flag(perf_event_t::ret_inst);
 }
 
 #ifdef DASM_EN
