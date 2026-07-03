@@ -1,6 +1,8 @@
 #include "defines.h"
 #include "core.h"
 
+#ifdef RV32C_EN
+
 // arithmetic and logic operations
 void core::c_addi() {
     PROF_SPARSITY(rf[ip.rs1()], ip.c_imm_arith(), alu)
@@ -486,3 +488,5 @@ void core::c_ebreak() {
     dasm.asm_ss << dasm.op;
     #endif
 }
+
+#endif
