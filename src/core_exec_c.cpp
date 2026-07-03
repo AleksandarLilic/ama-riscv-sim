@@ -275,7 +275,7 @@ void core::c_lw() {
     PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.c_imm_mem()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
@@ -301,7 +301,7 @@ void core::c_lwsp() {
     PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rf[2] + ip.c_imm_lwsp()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_lwsp())
@@ -327,7 +327,7 @@ void core::c_sw() {
     #ifdef PROFILERS_EN
     prof.log_stack_access_store(
         (rf[ip.c_regh()] + ip.c_imm_mem()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
@@ -348,7 +348,7 @@ void core::c_swsp() {
     PROF_C_RS2_RS2
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[2] + ip.c_imm_swsp()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << rf_names[ip.c_rs2()][rf_names_idx] << ","
@@ -373,7 +373,7 @@ void core::c_beqz() {
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
-    prof_perf.set_perf_event_flag(perf_event_t::branch);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
     #endif
     DASM_OP(c.beqz)
     #ifdef DASM_EN
@@ -394,7 +394,7 @@ void core::c_bnez() {
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
-    prof_perf.set_perf_event_flag(perf_event_t::branch);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
     #endif
     DASM_OP(c.bnez)
     #ifdef DASM_EN

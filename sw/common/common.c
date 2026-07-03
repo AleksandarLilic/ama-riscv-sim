@@ -79,7 +79,7 @@ void init_tda_counters() {
 
 void save_tda_counters(tda_cnt_t* p) {
     // read L2 events first
-    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret_inst);
     read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->bad_spec);
     read_csr_wide(CSR_MHPMCOUNTER6, CSR_MHPMCOUNTER6H, p->stall_l1i);
     read_csr_wide(CSR_MHPMCOUNTER7, CSR_MHPMCOUNTER7H, p->stall_l1d);
@@ -89,32 +89,33 @@ void save_tda_counters(tda_cnt_t* p) {
     read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->stall_be);
     read_csr_wide(CSR_MCYCLE, CSR_MCYCLEH, p->cycles);
     // derive the rest
-    p->empty = (p->cycles - p->ret);
+    p->empty = (p->cycles - p->ret_inst);
     p->stalls = (p->stall_be + p->stall_fe);
     p->lost = (p->empty - p->stalls);
     p->lost_other = (p->lost - p->bad_spec);
     p->stall_be_core = (p->stall_be - p->stall_l1d);
     p->stall_fe_core = (p->stall_fe - p->stall_l1i);
-    p->ret_int = (p->ret - p->ret_simd);
+    p->ret_int = (p->ret_inst - p->ret_simd);
 }
 
-void print_ipc(const uint64_t cycles, const uint64_t ret) {
+void print_ipc(const uint64_t cycles, const uint64_t ret_inst) {
     // scale up by 1000x to get 3 decimal places w/o floating point
     const uint32_t sf_ipc = 1000u;
-    uint32_t ipc_x = ((ret * sf_ipc) / cycles);
+    uint32_t ipc_x = ((ret_inst * sf_ipc) / cycles);
     printf(
         "Stats:\n"
         INDENT "Cycles: %llu, Retired: %llu, Empty: %llu, IPC: %u.%03u\n",
-        cycles, ret, (cycles - ret), (ipc_x / sf_ipc), (ipc_x % sf_ipc)
+        cycles, ret_inst, (cycles - ret_inst),
+        (ipc_x / sf_ipc), (ipc_x % sf_ipc)
     );
 }
 
 void print_tda_counters(const tda_cnt_t* p) {
-    print_ipc(p->cycles, p->ret);
+    print_ipc(p->cycles, p->ret_inst);
     printf(
         "TDA:\n"
         INDENT "L1: Retired: %llu, FE: %llu, BE: %llu, Lost: %llu\n",
-        p->ret, p->stall_fe, p->stall_be, p->lost
+        p->ret_inst, p->stall_fe, p->stall_be, p->lost
     );
     printf(
         INDENT "L2: "
@@ -123,7 +124,7 @@ void print_tda_counters(const tda_cnt_t* p) {
         "BE DCache: %llu, BE Core: %llu, "
         "Bad Spec: %llu, Other: %llu"
         "\n\n",
-        p->ret, p->ret_simd,
+        p->ret_inst, p->ret_simd,
         p->stall_l1i, p->stall_fe_core,
         p->stall_l1d, p->stall_be_core,
         p->bad_spec, p->lost_other
@@ -145,7 +146,7 @@ void print_tda_counters_json(const tda_cnt_t* p) {
         "\"stall_fe\": %llu, "
         "\"stall_l1i\": %llu, "
         "\"stall_fe_core\": %llu, "
-        "\"ret\": %llu, "
+        "\"ret_inst\": %llu, "
         "\"ret_simd\": %llu, "
         "\"ret_int\": %llu"
         "}\n\n",
@@ -161,7 +162,7 @@ void print_tda_counters_json(const tda_cnt_t* p) {
         p->stall_fe,
         p->stall_l1i,
         p->stall_fe_core,
-        p->ret,
+        p->ret_inst,
         p->ret_simd,
         p->ret_int
     );
@@ -188,7 +189,7 @@ void init_hw_counters() {
 }
 
 void save_hw_counters(hw_cnt_t* p) {
-    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret);
+    read_csr_wide(CSR_MINSTRET, CSR_MINSTRETH, p->ret_inst);
     read_csr_wide(CSR_MHPMCOUNTER3, CSR_MHPMCOUNTER3H, p->ret_ctrl_flow_br);
     read_csr_wide(CSR_MHPMCOUNTER4, CSR_MHPMCOUNTER4H, p->bp_miss);
     read_csr_wide(CSR_MHPMCOUNTER5, CSR_MHPMCOUNTER5H, p->l1i_ref);
@@ -206,11 +207,13 @@ static uint32_t calc_hr(uint64_t ref, uint64_t miss, uint64_t decimal_scale) {
     return (uint32_t)((hit * percent_scale * decimal_scale) / ref);
 }
 
-static uint32_t calc_mpki(uint64_t miss, uint64_t ret, uint64_t decimal_scale) {
+static uint32_t calc_mpki(
+    uint64_t miss, uint64_t ret_inst, uint64_t decimal_scale)
+{
     const uint64_t per_kilo_scale = 1000ull;
 
-    if (ret == 0u) return 0u;
-    return (uint32_t)((miss * per_kilo_scale * decimal_scale) / ret);
+    if (ret_inst == 0u) return 0u;
+    return (uint32_t)((miss * per_kilo_scale * decimal_scale) / ret_inst);
 }
 
 void print_hw_counters(const hw_cnt_t* p) {
@@ -218,15 +221,15 @@ void print_hw_counters(const hw_cnt_t* p) {
     const uint64_t dec_sc = (uint64_t)print_sc;
 
     uint32_t bp_hr_x = calc_hr(p->ret_ctrl_flow_br, p->bp_miss, dec_sc);
-    uint32_t bp_mpki_x = calc_mpki(p->bp_miss, p->ret, dec_sc);
+    uint32_t bp_mpki_x = calc_mpki(p->bp_miss, p->ret_inst, dec_sc);
 
     uint32_t l1i_hr_x = calc_hr(p->l1i_ref, p->l1i_miss, dec_sc);
-    uint32_t l1i_mpki_x = calc_mpki(p->l1i_miss, p->ret, dec_sc);
+    uint32_t l1i_mpki_x = calc_mpki(p->l1i_miss, p->ret_inst, dec_sc);
 
     uint32_t l1d_hr_x = calc_hr(p->l1d_ref, p->l1d_miss, dec_sc);
-    uint32_t l1d_mpki_x = calc_mpki(p->l1d_miss, p->ret, dec_sc);
+    uint32_t l1d_mpki_x = calc_mpki(p->l1d_miss, p->ret_inst, dec_sc);
 
-    print_ipc(p->cycles, p->ret);
+    print_ipc(p->cycles, p->ret_inst);
 
     uint64_t bp_hit = (p->bp_miss < p->ret_ctrl_flow_br) ?
         (p->ret_ctrl_flow_br - p->bp_miss) : 0u;
@@ -264,7 +267,7 @@ void print_hw_counters_json(const hw_cnt_t* p) {
     printf(
         "{"
         "\"cycles\": %llu, "
-        "\"ret\": %llu, "
+        "\"ret_inst\": %llu, "
         "\"ret_ctrl_flow_br\": %llu, "
         "\"bp_miss\": %llu, "
         "\"l1i_ref\": %llu, "
@@ -273,7 +276,7 @@ void print_hw_counters_json(const hw_cnt_t* p) {
         "\"l1d_miss\": %llu"
         "}\n\n",
         p->cycles,
-        p->ret,
+        p->ret_inst,
         p->ret_ctrl_flow_br,
         p->bp_miss,
         p->l1i_ref,

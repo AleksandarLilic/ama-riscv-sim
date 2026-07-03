@@ -415,24 +415,43 @@ struct symbol_tracking_t {
 };
 
 // perf events
+
+// ==== PERF_EVENT AUTOGEN BEGIN ====
 enum class perf_event_t {
-    inst,
-    #ifdef DPI
-    cycle,
-    #endif
-    branch,
-    mem,
-    //mem_load,
-    //mem_store,
-    simd,
+    ret_inst,
+    ret_ctrl_flow,
+    ret_ctrl_flow_jr,
+    ret_ctrl_flow_br,
+    ret_mem,
+    ret_mem_load,
+    ret_mul,
+    ret_div,
+    ret_simd,
+    ret_simd_arith,
+    ret_simd_arith_dot,
     #if defined(HW_MODELS_EN) || defined(DPI)
-    //cache_reference, // only applicable for multi-level caches
-    //cache_miss, // only applicable for multi-level caches
-    icache_reference,
-    icache_miss,
-    dcache_reference,
-    dcache_miss,
-    bp_mispredict,
+    bp_miss,
+    l1i_ref,
+    l1i_miss,
+    l1i_spec_miss,
+    l1i_spec_miss_bad,
+    l1d_ref,
+    l1d_ref_r,
+    l1d_miss,
+    l1d_miss_r,
+    l1d_writeback,
+    #endif
+    #ifdef DPI
+    bad_spec,
+    stall_be,
+    stall_l1d,
+    stall_l1d_r,
+    stall_fe,
+    stall_l1i,
+    stall_load_use,
+    stall_mul_simd_use,
+    stall_div,
+    cycle,
     #endif
     _count
 };
@@ -440,25 +459,44 @@ enum class perf_event_t {
 static const
 std::array<std::string, static_cast<uint32_t>(perf_event_t::_count)>
 perf_event_names = {
-    "inst",
+    "ret_inst",
+    "ret_ctrl_flow",
+    "ret_ctrl_flow_jr",
+    "ret_ctrl_flow_br",
+    "ret_mem",
+    "ret_mem_load",
+    "ret_mul",
+    "ret_div",
+    "ret_simd",
+    "ret_simd_arith",
+    "ret_simd_arith_dot",
+    #if defined(HW_MODELS_EN) || defined(DPI)
+    "bp_miss",
+    "l1i_ref",
+    "l1i_miss",
+    "l1i_spec_miss",
+    "l1i_spec_miss_bad",
+    "l1d_ref",
+    "l1d_ref_r",
+    "l1d_miss",
+    "l1d_miss_r",
+    "l1d_writeback",
+    #endif
     #ifdef DPI
+    "bad_spec",
+    "stall_be",
+    "stall_l1d",
+    "stall_l1d_r",
+    "stall_fe",
+    "stall_l1i",
+    "stall_load_use",
+    "stall_mul_simd_use",
+    "stall_div",
     "cycle",
     #endif
-    "branch",
-    "mem",
-    //"mem_load",
-    //"mem_store",
-    "simd",
-    #if defined(HW_MODELS_EN) || defined(DPI)
-    //"cache_reference",
-    //"cache_miss",
-    "icache_reference",
-    "icache_miss",
-    "dcache_reference",
-    "dcache_miss",
-    "bp_mispredict",
-    #endif
 };
+
+// ==== PERF_EVENT AUTOGEN END ====
 
 // hw models
 namespace cache_cfg {

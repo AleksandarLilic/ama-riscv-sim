@@ -104,26 +104,28 @@ typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
 
 // mhpm events
 // can't enum beacuse C, switch back to enums with `-std=gnu23`
-static const uint32_t mhpmevent_bad_spec = (1u << 0); // tda
-static const uint32_t mhpmevent_stall_be = (1u << 1); // tda
-static const uint32_t mhpmevent_stall_l1d = (1u << 2); // tda
-static const uint32_t mhpmevent_stall_l1d_r = (1u << 3);
-static const uint32_t mhpmevent_stall_l1d_w = (1u << 4);
-static const uint32_t mhpmevent_stall_fe = (1u << 5); // tda
-static const uint32_t mhpmevent_stall_l1i = (1u << 6); // tda
-static const uint32_t mhpmevent_stall_simd = (1u << 7);
-static const uint32_t mhpmevent_stall_div = (1u << 8);
-static const uint32_t mhpmevent_stall_load = (1u << 9);
+
+// ==== PERF_EVENT AUTOGEN BEGIN ====
+static const uint32_t mhpmevent_ret_inst = (1u << 0);
+static const uint32_t mhpmevent_bad_spec = (1u << 1);
+static const uint32_t mhpmevent_stall_be = (1u << 2);
+static const uint32_t mhpmevent_stall_l1d = (1u << 3);
+static const uint32_t mhpmevent_stall_l1d_r = (1u << 4);
+static const uint32_t mhpmevent_stall_fe = (1u << 5);
+static const uint32_t mhpmevent_stall_l1i = (1u << 6);
+static const uint32_t mhpmevent_stall_load_use = (1u << 7);
+static const uint32_t mhpmevent_stall_mul_simd_use = (1u << 8);
+static const uint32_t mhpmevent_stall_div = (1u << 9);
 static const uint32_t mhpmevent_ret_ctrl_flow = (1u << 10);
-static const uint32_t mhpmevent_ret_ctrl_flow_j = (1u << 11); // direct unconditional branch
-static const uint32_t mhpmevent_ret_ctrl_flow_jr = (1u << 12); // indirect unconditional branch
-static const uint32_t mhpmevent_ret_ctrl_flow_br = (1u << 13); // direct conditional branch
-static const uint32_t mhpmevent_ret_mem = (1u << 14);
-static const uint32_t mhpmevent_ret_mem_load = (1u << 15);
-static const uint32_t mhpmevent_ret_mem_store = (1u << 16);
-static const uint32_t mhpmevent_ret_simd = (1u << 17); // tda
+static const uint32_t mhpmevent_ret_ctrl_flow_jr = (1u << 11);
+static const uint32_t mhpmevent_ret_ctrl_flow_br = (1u << 12);
+static const uint32_t mhpmevent_ret_mem = (1u << 13);
+static const uint32_t mhpmevent_ret_mem_load = (1u << 14);
+static const uint32_t mhpmevent_ret_mul = (1u << 15);
+static const uint32_t mhpmevent_ret_div = (1u << 16);
+static const uint32_t mhpmevent_ret_simd = (1u << 17);
 static const uint32_t mhpmevent_ret_simd_arith = (1u << 18);
-static const uint32_t mhpmevent_ret_simd_data_fmt = (1u << 19);
+static const uint32_t mhpmevent_ret_simd_arith_dot = (1u << 19);
 static const uint32_t mhpmevent_bp_miss = (1u << 20);
 static const uint32_t mhpmevent_l1i_ref = (1u << 21);
 static const uint32_t mhpmevent_l1i_miss = (1u << 22);
@@ -131,11 +133,10 @@ static const uint32_t mhpmevent_l1i_spec_miss = (1u << 23);
 static const uint32_t mhpmevent_l1i_spec_miss_bad = (1u << 24);
 static const uint32_t mhpmevent_l1d_ref = (1u << 25);
 static const uint32_t mhpmevent_l1d_ref_r = (1u << 26);
-static const uint32_t mhpmevent_l1d_ref_w = (1u << 27);
-static const uint32_t mhpmevent_l1d_miss = (1u << 28);
-static const uint32_t mhpmevent_l1d_miss_r = (1u << 29);
-static const uint32_t mhpmevent_l1d_miss_w = (1u << 30);
-static const uint32_t mhpmevent_l1d_writeback = (1u << 31);
+static const uint32_t mhpmevent_l1d_miss = (1u << 27);
+static const uint32_t mhpmevent_l1d_miss_r = (1u << 28);
+static const uint32_t mhpmevent_l1d_writeback = (1u << 29);
+// ==== PERF_EVENT AUTOGEN END ====
 
 typedef struct {
     uint64_t cycles;
@@ -150,7 +151,7 @@ typedef struct {
     uint64_t stall_fe;
     uint64_t stall_l1i;
     uint64_t stall_fe_core; // derived
-    uint64_t ret;
+    uint64_t ret_inst;
     uint64_t ret_simd;
     uint64_t ret_int; // derived
 } tda_cnt_t;
@@ -163,7 +164,7 @@ typedef struct {
     uint64_t l1i_miss;
     uint64_t l1d_ref;
     uint64_t l1d_miss;
-    uint64_t ret;
+    uint64_t ret_inst;
 } hw_cnt_t;
 
 // functions
@@ -252,7 +253,7 @@ void set_cpu_instret(uint64_t value);
 
 void init_tda_counters();
 void save_tda_counters(tda_cnt_t* pe);
-void print_ipc(const uint64_t cycles, const uint64_t ret);
+void print_ipc(const uint64_t cycles, const uint64_t ret_inst);
 void print_tda_counters(const tda_cnt_t* pe);
 void print_tda_counters_json(const tda_cnt_t* pe);
 void init_hw_counters();

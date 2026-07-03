@@ -78,12 +78,12 @@ class main_memory : public dev {
         void set_perf_profiler(profiler_perf* prof_perf) {
             icache.set_perf_profiler(
                 prof_perf,
-                perf_event_t::icache_reference,
-                perf_event_t::icache_miss);
+                perf_event_t::l1i_ref,
+                perf_event_t::l1i_miss);
             dcache.set_perf_profiler(
                 prof_perf,
-                perf_event_t::dcache_reference,
-                perf_event_t::dcache_miss);
+                perf_event_t::l1d_ref,
+                perf_event_t::l1d_miss);
         }
         #endif
         #ifdef DASM_EN

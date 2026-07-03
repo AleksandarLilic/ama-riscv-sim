@@ -494,7 +494,7 @@ class perf:
             "stall_fe":         int(stall_fe),
             "stall_l1i":        int(self.ic_stalls),
             "stall_fe_core":    int(self.j_stalls),
-            "ret":              int(self.inst_total),
+            "ret_inst":         int(self.inst_total),
             "ret_simd":         int(ret_simd),
             "ret_int":          int(ret_int),
             "ret_ctrl_flow_br": int(self.b_inst),

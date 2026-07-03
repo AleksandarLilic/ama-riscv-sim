@@ -1,6 +1,9 @@
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <set>
+#include <utility>
+#include <vector>
 
 #include "defines.h"
 #include "cxxopts.hpp"
@@ -33,15 +36,31 @@
 #define RESOLVE_ARG_LIST(str, map) \
     resolve_arg_list(str, result[str].as<std::vector<std::string>>(), map)
 
+// ordered map of string -> T:
+// preserves declaration order so help text lists options as they were written
+template <typename T>
+using ordered_map = std::vector<std::pair<std::string, T>>;
+
+template <typename T>
+typename ordered_map<T>::const_iterator find_arg(
+    const ordered_map<T>& map, const std::string& arg)
+{
+    for (auto it = map.begin(); it != map.end(); it++) {
+        if (it->first == arg) return it;
+    }
+    return map.end();
+}
+
+
 // handle passed args
 template <typename T>
 T resolve_arg(
     const std::string& name,
     const std::string& arg,
-    const std::unordered_map<std::string, T>& map)
+    const ordered_map<T>& map)
 {
     // check if given arg is supported
-    auto it = map.find(arg);
+    auto it = find_arg(map, arg);
     if (it == map.end()) {
         std::cout << "Invalid value for " << name << ": " << arg
                   << ". Valid options: " << gen_help_list(map) << std::endl;
@@ -55,12 +74,12 @@ template <typename T>
 std::vector<T> resolve_arg_list(
     const std::string& name,
     const std::vector<std::string>& args,
-    const std::unordered_map<std::string, T>& map)
+    const ordered_map<T>& map)
 {
     std::set<T> seen;
     // check if all args are supprted
     for (const auto& arg : args) {
-        auto it = map.find(arg);
+        auto it = find_arg(map, arg);
         if (it == map.end()) {
             std::cout << "Invalid value for " << name << ": " << arg
                       << ". Valid options: " << gen_help_list(map) << std::endl;
@@ -71,12 +90,20 @@ std::vector<T> resolve_arg_list(
     return {seen.begin(), seen.end()};
 }
 
+// if an entry's value already appeared earlier under a different name, that
+// earlier name is treated as canonical and this one is annotated as its alias
 template <typename T>
-std::string gen_help_list(const std::unordered_map<std::string, T>& map) {
+std::string gen_help_list(const ordered_map<T>& map) {
     std::ostringstream oss;
-    for (const auto& entry : map) {
+    for (auto it = map.begin(); it != map.end(); it++) {
         if (oss.tellp() > 0) oss << ", "; // comma and space after first entry
-        oss << entry.first;
+        oss << it->first;
+        for (auto prev = map.begin(); prev != it; prev++) {
+            if (prev->second == it->second) {
+                oss << " (alias of '" << prev->first << "')";
+                break;
+            }
+        }
     }
     return oss.str();
 }
@@ -87,49 +114,72 @@ inline std::string saved_as(const std::string& s) {
 
 // args maps
 // available rf names
-const std::unordered_map<std::string, rf_names_t> rf_names_map = {
+const ordered_map<rf_names_t> rf_names_map = {
     {"abi", rf_names_t::mode_abi},
     {"x", rf_names_t::mode_x}
 };
 
-const std::unordered_map<std::string, perf_event_t> perf_event_map = {
-    {"inst", perf_event_t::inst},
-    {"branch", perf_event_t::branch},
-    {"mem", perf_event_t::mem},
-    {"simd", perf_event_t::simd},
+const ordered_map<perf_event_t> perf_event_map = {
+    // ==== PERF_EVENT AUTOGEN BEGIN ====
+    {"ret_inst", perf_event_t::ret_inst},
+    {"ret_ctrl_flow", perf_event_t::ret_ctrl_flow},
+    {"ret_ctrl_flow_jr", perf_event_t::ret_ctrl_flow_jr},
+    {"ret_ctrl_flow_br", perf_event_t::ret_ctrl_flow_br},
+    {"ret_mem", perf_event_t::ret_mem},
+    {"ret_mem_load", perf_event_t::ret_mem_load},
+    {"ret_mul", perf_event_t::ret_mul},
+    {"ret_div", perf_event_t::ret_div},
+    {"ret_simd", perf_event_t::ret_simd},
+    {"ret_simd_arith", perf_event_t::ret_simd_arith},
+    {"ret_simd_arith_dot", perf_event_t::ret_simd_arith_dot},
     #ifdef HW_MODELS_EN
-    {"icache_reference", perf_event_t::icache_reference},
-    {"icache_miss", perf_event_t::icache_miss},
-    {"dcache_reference", perf_event_t::dcache_reference},
-    {"dcache_miss", perf_event_t::dcache_miss},
-    {"bp_mispredict", perf_event_t::bp_mispredict}
+    {"bp_miss", perf_event_t::bp_miss},
+    {"l1i_ref", perf_event_t::l1i_ref},
+    {"l1i_miss", perf_event_t::l1i_miss},
+    {"l1i_spec_miss", perf_event_t::l1i_spec_miss},
+    {"l1i_spec_miss_bad", perf_event_t::l1i_spec_miss_bad},
+    {"l1d_ref", perf_event_t::l1d_ref},
+    {"l1d_ref_r", perf_event_t::l1d_ref_r},
+    {"l1d_miss", perf_event_t::l1d_miss},
+    {"l1d_miss_r", perf_event_t::l1d_miss_r},
+    {"l1d_writeback", perf_event_t::l1d_writeback},
+    #endif
+    // ==== PERF_EVENT AUTOGEN END ====
+
+    // perf muscle memory aliases
+    {"instructions", perf_event_t::ret_inst},
+    {"branches", perf_event_t::ret_ctrl_flow_br},
+    #ifdef HW_MODELS_EN
+    {"l1-icache-load-references", perf_event_t::l1i_ref},
+    {"l1-icache-load-misses", perf_event_t::l1i_miss},
+    {"l1-dcache-references", perf_event_t::l1d_ref},
+    {"l1-dcache-misses", perf_event_t::l1d_miss},
+    {"branch-misses", perf_event_t::bp_miss}
     #endif
 };
 
 #ifdef HW_MODELS_EN
-const std::unordered_map<std::string, cache_re_policy_t> cache_re_policy_map = {
+const ordered_map<cache_re_policy_t> cache_re_policy_map = {
     {"lru", cache_re_policy_t::lru}
 };
 
-const std::unordered_map<std::string, cache_in_policy_t> cache_in_policy_map = {
+const ordered_map<cache_in_policy_t> cache_in_policy_map = {
     {"update", cache_in_policy_t::update},
     {"no_update", cache_in_policy_t::no_update}
 };
 
-const std::unordered_map<std::string, cache_wr_policy_t> cache_wr_policy_map = {
+const ordered_map<cache_wr_policy_t> cache_wr_policy_map = {
     {"wt", cache_wr_policy_t::wt},
     {"wb", cache_wr_policy_t::wb}
 };
 
-// allowed options for static predictor methods
-const std::unordered_map<std::string, bp_sttc_t> bp_sttc_map = {
+const ordered_map<bp_sttc_t> bp_sttc_map = {
     {"at", bp_sttc_t::at},
     {"ant", bp_sttc_t::ant},
     {"btfn", bp_sttc_t::btfn}
 };
 
-// all available branch predictors
-const std::unordered_map<std::string, bp_t> bp_names_map = {
+const ordered_map<bp_t> bp_names_map = {
     {"static", bp_t::sttc},
     {"bimodal", bp_t::bimodal},
     {"local", bp_t::local},
@@ -141,7 +191,7 @@ const std::unordered_map<std::string, bp_t> bp_names_map = {
     //{"combined", bp_t::combined}
 };
 
-const std::unordered_map<std::string, bp_pc_folds_t> bp_pc_folds_map = {
+const ordered_map<bp_pc_folds_t> bp_pc_folds_map = {
     {"none", bp_pc_folds_t::none},
     {"all", bp_pc_folds_t::all}
 };
@@ -168,7 +218,7 @@ struct defs_t {
     static constexpr char prof_pc_sm[] = "0";
     static constexpr char exit_on_prof_stop[] = "false";
     static constexpr char prof_trace[] = "false";
-    static constexpr char perf_event[] = "inst";
+    static constexpr char perf_event[] = "ret_inst";
     static constexpr char rf_usage[] = "false";
     static constexpr char no_callstack[] = "false";
     static constexpr char prof_show[] = "false";

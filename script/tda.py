@@ -25,7 +25,7 @@ CLASS_ORDER = [
 ]
 DROP_KEYS = {"cpi", "ipc"}
 EXACT_CLASS = {
-    "cycles": "cycles", "ret": "ret", "stalls": "stall", "lost": "lost"}
+    "cycles": "cycles", "ret_inst": "ret", "stalls": "stall", "lost": "lost"}
 PREFIX_CLASS = [
     ("ret_", "ret_*"), ("stall_", "stall_*"), ("bad_spec", "bad_spec"),
     ("bp_", "bp_*"), ("l1i_", "l1i_*"), ("l1d_", "l1d_*")
@@ -72,7 +72,33 @@ def classify_and_sort_counters(core: dict) -> list[tuple[str, int, str]]:
     entries.sort(key=lambda e: (class_rank[e[2]], sort_priority(e[0]), e[0]))
     return entries
 
-def plot_counters_bar(data_core: dict, title: str):
+# derived counters, each as 'parent - sum(children)'
+DERIVED = {
+    "ret_int": ("ret_inst", ("ret_simd",)),
+    "ret_ctrl_flow_j": ("ret_ctrl_flow", ("ret_ctrl_flow_jr", "ret_ctrl_flow_br")),
+    "ret_mem_store": ("ret_mem", ("ret_mem_load",)),
+    "ret_simd_data_fmt": ("ret_simd", ("ret_simd_arith",)),
+    "stall_be_core": ("stall_be", ("stall_l1d",)),
+    "stall_fe_core": ("stall_fe", ("stall_l1i",)),
+    "stall_l1d_w": ("stall_l1d", ("stall_l1d_r",)),
+    "l1d_ref_w": ("l1d_ref", ("l1d_ref_r",)),
+    "l1d_miss_w": ("l1d_miss", ("l1d_miss_r",)),
+    "l1i_hit": ("l1i_ref", ("l1i_miss",)),
+    "l1d_hit": ("l1d_ref", ("l1d_miss",)),
+}
+
+def compute_derived(core: dict) -> dict:
+    # derive only when the name is absent and every input is present
+    # returns {name: value} - the hatched set
+    out = {}
+    for name, (parent, children) in DERIVED.items():
+        if name in core:
+            continue
+        if all(k in core for k in (parent, *children)):
+            out[name] = core[parent] - sum(core[c] for c in children)
+    return out
+
+def plot_counters(data_core: dict, title: str, derived_names=frozenset()):
     entries = classify_and_sort_counters(data_core)
     df_cnt = pd.DataFrame(entries, columns=["counter", "count", "class"])
     # reorder columns to class, counter, count
@@ -115,7 +141,28 @@ def plot_counters_bar(data_core: dict, title: str):
         yaxis=dict(gridcolor="#ddd", linecolor="#ccc", tickformat=".2s"),
     )
 
-    log_txt_cnt = f"{title.split('<br>')[0]}\n{df_cnt.to_string(index=False)}"
+    # hatch derived bars: overlay only
+    # pattern is not a plotly dimension it adds no legend entry
+    for tr in fig_cnt.data: # for each class in the figure...
+        tr.marker.pattern.shape = [
+            # ...hatch only those bars whose name is in derived names
+            "/" if str(x) in derived_names else "" for x in tr.x
+        ]
+        tr.marker.pattern.fgcolor = "rgba(0,0,0,0.45)"
+        tr.marker.pattern.solidity = 0.35
+        tr.marker.pattern.size = 6
+
+    if derived_names:
+        fig_cnt.add_annotation(
+            text="# hatched = derived", showarrow=False,
+            xref="paper", yref="paper", x=1.0, y=1.06, xanchor="right",
+            font=dict(size=11, color="#666"))
+
+    # mark derived rows with '#' in the saved text log
+    df_log = df_cnt.copy()
+    df_log["counter"] = df_log["counter"].map(
+        lambda n: f"{n} #" if n in derived_names else n)
+    log_txt_cnt = f"{title.split('<br>')[0]}\n{df_log.to_string(index=False)}"
 
     return fig_cnt, sc, log_txt_cnt
 
@@ -127,13 +174,13 @@ def get_stats(data: dict) -> dict:
         hr = (hits / references) * 100
         return round(hr, precision) if hr > 0 else 0
 
-    def get_mpki(misses: int, ret: int, precision: int = 2) -> float:
-        mpki = (misses / (ret / 1000))
+    def get_mpki(misses: int, ret_inst: int, precision: int = 2) -> float:
+        mpki = (misses / (ret_inst / 1000))
         return round(mpki, precision) if mpki > 0 else 0
 
     cnt = data["core"]
     if "icache" not in data:
-        icache_keys = ["l1i_ref", "l1i_miss", "ret"]
+        icache_keys = ["l1i_ref", "l1i_miss", "ret_inst"]
         if all(k in cnt for k in icache_keys):
             hits = cnt["l1i_ref"] - cnt["l1i_miss"]
             data["icache"] = {
@@ -141,11 +188,11 @@ def get_stats(data: dict) -> dict:
                 "hits": {"all": hits},
                 "misses": {"all": cnt["l1i_miss"]},
                 "hr": get_hr(hits, cnt["l1i_ref"]),
-                "mpki": get_mpki(cnt["l1i_miss"], cnt["ret"])
+                "mpki": get_mpki(cnt["l1i_miss"], cnt["ret_inst"])
             }
 
     if "dcache" not in data:
-        dcache_keys = ["l1d_ref", "l1d_miss", "ret"]
+        dcache_keys = ["l1d_ref", "l1d_miss", "ret_inst"]
         if all(k in cnt for k in dcache_keys):
             hits = cnt["l1d_ref"] - cnt["l1d_miss"]
             data["dcache"] = {
@@ -153,18 +200,18 @@ def get_stats(data: dict) -> dict:
                 "hits": {"all": hits},
                 "misses": {"all": cnt["l1d_miss"]},
                 "hr": get_hr(hits, cnt["l1d_ref"]),
-                "mpki": get_mpki(cnt["l1d_miss"], cnt["ret"])
+                "mpki": get_mpki(cnt["l1d_miss"], cnt["ret_inst"])
             }
 
     if "bpred" not in data:
-        bpred_keys = ["bp_miss", "ret_ctrl_flow_br", "ret"]
+        bpred_keys = ["bp_miss", "ret_ctrl_flow_br", "ret_inst"]
         if all(k in cnt for k in bpred_keys):
             predicted = cnt["ret_ctrl_flow_br"] - cnt["bp_miss"]
             data["bpred"] = {
                 "predicted": predicted,
                 "mispredicted": cnt["bp_miss"],
                 "accuracy": get_hr(predicted, cnt["ret_ctrl_flow_br"]),
-                "mpki": get_mpki(cnt["bp_miss"], cnt["ret"])
+                "mpki": get_mpki(cnt["bp_miss"], cnt["ret_inst"])
             }
 
     out = ""
@@ -172,8 +219,8 @@ def get_stats(data: dict) -> dict:
         cnt = data['core']
         out += f"\ncore:\n{INDENT}"
         out += f"Cycles: {FMT(cnt['cycles'])}, "
-        out += f"Retired: {FMT(cnt['ret'])}, "
-        out += f"Empty: {FMT(cnt['cycles'] - cnt['ret'])}, "
+        out += f"Retired: {FMT(cnt['ret_inst'])}, "
+        out += f"Empty: {FMT(cnt['cycles'] - cnt['ret_inst'])}, "
         out += f"IPC: {cnt['ipc']:.3f} "
     else:
         out += f"core: N/A "
@@ -220,9 +267,9 @@ def plot_tda(data_core: dict, title: str):
     df_tda = pd.DataFrame(row, columns=col)
     df_tda["cycles_e"] = df_tda["cycles"].apply(lambda x: FMT(x, None))
 
-    ret = df_tda[df_tda["L1"] == "retiring"]["cycles"].sum()
+    ret_inst = df_tda[df_tda["L1"] == "retiring"]["cycles"].sum()
     cycles = df_tda["cycles"].sum()
-    ipc = ret / cycles
+    ipc = ret_inst / cycles
     ipc = round(ipc, 3) if ipc > 0 else "N/A"
     df_tda["root"] = f"pipeline<br>IPC: {ipc}"
 
@@ -230,14 +277,14 @@ def plot_tda(data_core: dict, title: str):
         d["ipc"] = ipc
     if "cycles" not in d:
         d["cycles"] = cycles
-    if "ret" not in d:
-        d["ret"] = ret
+    if "ret_inst" not in d:
+        d["ret_inst"] = ret_inst
     if "empty" not in d:
-        d["empty"] = d["cycles"] - d["ret"]
+        d["empty"] = d["cycles"] - d["ret_inst"]
     if "lost" not in d:
         d["lost"] = d['bad_spec'] + d['lost_other']
     if "stalls" not in d:
-        d["stalls"] = d["cycles"] - d["ret"] - d["lost"]
+        d["stalls"] = d["cycles"] - d["ret_inst"] - d["lost"]
 
     # make new df that's a group and sum on L1 only
     #df_tda_l1 = df_tda.groupby(col[0]).agg({col[2]: "sum"}).reset_index()
@@ -289,8 +336,11 @@ def main(args: argparse.Namespace):
         data = json.load(f)
 
     title = args.title or f"{get_test_title(args.hw_stats)}"
+    derived = compute_derived(data['core'])
+    data['core'].update(derived)
+    derived_names = set(derived)
     fig_tda, log_txt_tda = plot_tda(data['core'], title)
-    fig_cnt, sc, log_txt_cnt = plot_counters_bar(data['core'], title)
+    fig_cnt, sc, log_txt_cnt = plot_counters(data['core'], title, derived_names)
 
     if not args.silent:
         print(log_txt_tda)

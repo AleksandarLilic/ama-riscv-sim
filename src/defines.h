@@ -658,7 +658,7 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof.te.dmem = addr;
 
 #define PROF_SET_PERF_EVENT_SIMD \
-    prof_perf.set_perf_event_flag(perf_event_t::simd);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_simd);
 
 #define PROF_SPARSITY_ANY(res) \
     prof.log_sparsity((res == 0), sparsity_t::sp_any);

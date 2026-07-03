@@ -174,7 +174,7 @@ void profiler_perf::inc_callstack_cnt() {
             perf_event_flags[i] = 0;
             continue;
         }
-        if (e == perf_event_t::inst) {
+        if (e == perf_event_t::ret_inst) {
             callstack_cnt[i] += 1;
         #ifdef DPI
         } else if (e == perf_event_t::cycle) {

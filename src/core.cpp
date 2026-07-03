@@ -555,7 +555,7 @@ void core::d_load() {
 
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
@@ -577,7 +577,7 @@ void core::d_store() {
     }
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::mem);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
     #endif
     next_pc = pc + 4;
     #ifdef DASM_EN
@@ -611,7 +611,7 @@ void core::d_branch() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_branch(next_pc, taken);
-    prof_perf.set_perf_event_flag(perf_event_t::branch);
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
     branch_taken = taken;
     #endif
 
@@ -647,7 +647,7 @@ void core::d_branch() {
         // if no bp, this I$ reference is counted, no bp has only resolution
         if (no_bp) next_ic_hm = hwrs.ic_hm;
         #ifdef PROFILERS_EN
-        prof_perf.set_perf_event_flag(perf_event_t::bp_mispredict);
+        prof_perf.set_perf_event_flag(perf_event_t::bp_miss);
         #endif
     } else {
         //mem->speculative_exec(speculative_t::exit_commit);
