@@ -79,11 +79,19 @@ class main_memory : public dev {
             icache.set_perf_profiler(
                 prof_perf,
                 perf_event_t::l1i_ref,
-                perf_event_t::l1i_miss);
+                perf_event_t::l1i_miss,
+                perf_event_t::_count, // key for ignored
+                perf_event_t::_count, // key for ignored
+                perf_event_t::_count // key for ignored
+            );
             dcache.set_perf_profiler(
                 prof_perf,
                 perf_event_t::l1d_ref,
-                perf_event_t::l1d_miss);
+                perf_event_t::l1d_miss,
+                perf_event_t::l1d_ref_r,
+                perf_event_t::l1d_miss_r,
+                perf_event_t::l1d_writeback
+            );
         }
         #endif
         #ifdef DASM_EN

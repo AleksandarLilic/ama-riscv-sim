@@ -111,6 +111,10 @@ cache_ref_t cache::reference(
         if (roi.has(a)) roi.stats.referenced(atype, size);
         #ifdef PROFILERS_EN
         prof_perf->set_perf_event_flag(ref_event);
+        prof_perf->set_perf_event_flag(
+            ref_r_event,
+            ((type == cache_type_t::data) && (atype == mem_op_t::read))
+        );
         #endif
     }
 
@@ -217,6 +221,10 @@ void cache::miss(
 
     #ifdef PROFILERS_EN
     prof_perf->set_perf_event_flag(miss_event);
+    prof_perf->set_perf_event_flag(
+        miss_r_event,
+        ((type == cache_type_t::data) && (atype == mem_op_t::read))
+    );
     #endif
 
     auto& ccl = cache_array[ccl_info.index][ccl_info.victim.way_idx];
@@ -243,6 +251,11 @@ void cache::miss(
             roi.stats.replace(ccl.metadata.dirty);
         }
         if (ccl.metadata.dirty) {
+            #ifdef PROFILERS_EN
+            prof_perf->set_perf_event_flag(
+                writeback_event, (type == cache_type_t::data)
+            );
+            #endif
             #if CACHE_MODE == CACHE_MODE_FUNC and defined(CACHE_VERIFY)
             mem->wr_line(
                 norm_address_t{line_base_addr(ccl.tag, ccl_info.index)},

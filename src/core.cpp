@@ -319,7 +319,9 @@ void core::exec() {
             default: tu.e_unsupported_inst("opcode");
         }
     }
+    #ifndef DPI
     prof_perf.set_perf_event_flag(perf_event_t::ret_inst);
+    #endif
 }
 
 #ifdef DASM_EN
@@ -556,7 +558,8 @@ void core::d_load() {
 
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.imm_i()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
+    PROF_SET_PERF_EVENT_MEM_LOAD
     #endif
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.imm_i()) << "(" << DASM_OP_RS1 << ")";
@@ -578,7 +581,7 @@ void core::d_store() {
     }
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[ip.rs1()] + ip.imm_s()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
     #endif
     next_pc = pc + 4;
     #ifdef DASM_EN
@@ -612,7 +615,8 @@ void core::d_branch() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_branch(next_pc, taken);
-    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
+    PROF_SET_PERF_EVENT_CTRL_FLOW_BR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = taken;
     #endif
 
@@ -680,6 +684,8 @@ void core::d_jalr() {
     #ifdef PROFILERS_EN
     bool tail_call = (ip.rd() == 0);
     prof_perf.update_jalr(next_pc, ret_inst, tail_call, (pc + 4));
+    PROF_SET_PERF_EVENT_CTRL_FLOW_JR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
 
@@ -700,6 +706,7 @@ void core::d_jal() {
     //bool pc_match = (pc == 0x19118); // known noreturn call
     bool tail_call = (ip.rd() == 0); // || pc_match;
     prof_perf.update_jal(next_pc, tail_call, (pc + 4));
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
 
@@ -797,6 +804,7 @@ void core::d_custom_ext() {
     switch(funct7) {
         case TO_U8(custom_op_t::type_alu):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_ADDSUB_CUSTOM_OP(add16, alu)
                 CASE_ADDSUB_CUSTOM_OP(add8, alu)
@@ -807,6 +815,7 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_qalu):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_QADDSUB_CUSTOM_OP(qadd16, alu)
                 CASE_QADDSUB_CUSTOM_OP(qadd8, alu)
@@ -821,6 +830,7 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_mul):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_MUL_CUSTOM_OP(mul16, mul)
                 CASE_MUL_CUSTOM_OP(mul8, mul)
@@ -833,6 +843,7 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_wmul):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_WMUL_CUSTOM_OP(wmul16, mul)
                 CASE_WMUL_CUSTOM_OP(wmul16u, mul)
@@ -843,6 +854,8 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_dot):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
+            PROF_SET_PERF_EVENT_SIMD_ARITH_DOT
             switch (funct3) {
                 CASE_ALU_CUSTOM_DOT(dot16, dot)
                 CASE_ALU_CUSTOM_DOT(dot16u, dot)
@@ -857,6 +870,7 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_min_max):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_MIN_MAX_CUSTOM_OP(min16, alu)
                 CASE_MIN_MAX_CUSTOM_OP(min16u, alu)
@@ -871,6 +885,7 @@ void core::d_custom_ext() {
             break;
         case TO_U8(custom_op_t::type_shift):
             PROF_SET_PERF_EVENT_SIMD
+            PROF_SET_PERF_EVENT_SIMD_ARITH
             switch (funct3) {
                 CASE_SHIFT_CUSTOM_OP(slli16, alu)
                 CASE_SHIFT_CUSTOM_OP(slli8, alu)

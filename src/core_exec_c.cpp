@@ -277,7 +277,8 @@ void core::c_lw() {
     PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rs1 + ip.c_imm_mem()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
+    PROF_SET_PERF_EVENT_MEM_LOAD
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
@@ -303,7 +304,8 @@ void core::c_lwsp() {
     PROF_RD_ZERO(loaded)
     #ifdef PROFILERS_EN
     prof.log_stack_access_load((rf[2] + ip.c_imm_lwsp()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
+    PROF_SET_PERF_EVENT_MEM_LOAD
     #endif
     #ifdef DASM_EN
     DASM_OP_RD << "," << TO_I32(ip.c_imm_lwsp())
@@ -329,7 +331,7 @@ void core::c_sw() {
     #ifdef PROFILERS_EN
     prof.log_stack_access_store(
         (rf[ip.c_regh()] + ip.c_imm_mem()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << DASM_CREGL << "," << TO_I32(ip.c_imm_mem())
@@ -350,7 +352,7 @@ void core::c_swsp() {
     PROF_C_RS2_RS2
     #ifdef PROFILERS_EN
     prof.log_stack_access_store((rf[2] + ip.c_imm_swsp()) > TO_U32(rf[2]));
-    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+    PROF_SET_PERF_EVENT_MEM
     #endif
     #ifdef DASM_EN
     dasm.asm_ss << dasm.op << " " << rf_names[ip.c_rs2()][rf_names_idx] << ","
@@ -375,7 +377,8 @@ void core::c_beqz() {
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
-    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
+    PROF_SET_PERF_EVENT_CTRL_FLOW_BR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     #endif
     DASM_OP(c.beqz)
     #ifdef DASM_EN
@@ -396,7 +399,8 @@ void core::c_bnez() {
     #ifdef PROFILERS_EN
     branch_taken = (next_pc != (pc + 2));
     prof_perf.update_branch(next_pc, branch_taken);
-    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
+    PROF_SET_PERF_EVENT_CTRL_FLOW_BR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     #endif
     DASM_OP(c.bnez)
     #ifdef DASM_EN
@@ -410,6 +414,7 @@ void core::c_j() {
     PROF_J(c_j)
     #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, true, false);
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
     #ifdef DASM_EN
@@ -426,6 +431,7 @@ void core::c_jal() {
     PROF_C_RD_LIT(1)
     #ifdef PROFILERS_EN
     prof_perf.update_jal(next_pc, false, false);
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
     #ifdef DASM_EN
@@ -449,6 +455,8 @@ void core::c_jr() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, ret_inst, true, pc + 2); // no ra, tail calls
+    PROF_SET_PERF_EVENT_CTRL_FLOW_JR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
 
@@ -470,6 +478,8 @@ void core::c_jalr() {
 
     #ifdef PROFILERS_EN
     prof_perf.update_jalr(next_pc, false, false, ra);
+    PROF_SET_PERF_EVENT_CTRL_FLOW_JR
+    PROF_SET_PERF_EVENT_CTRL_FLOW
     branch_taken = true;
     #endif
 

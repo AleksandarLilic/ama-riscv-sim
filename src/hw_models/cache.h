@@ -122,6 +122,9 @@ class cache {
         profiler_perf* prof_perf;
         perf_event_t ref_event;
         perf_event_t miss_event;
+        perf_event_t ref_r_event;
+        perf_event_t miss_r_event;
+        perf_event_t writeback_event;
         #endif
         #ifdef DASM_EN
         hwmi_str* hwmi_ptr;
@@ -160,11 +163,17 @@ class cache {
         void set_perf_profiler(
             profiler_perf* prof_perf,
             perf_event_t ref_event,
-            perf_event_t miss_event)
+            perf_event_t miss_event,
+            perf_event_t ref_r_event,
+            perf_event_t miss_r_event,
+            perf_event_t writeback_event)
         {
             this->prof_perf = prof_perf;
             this->ref_event = ref_event;
             this->miss_event = miss_event;
+            this->ref_r_event = ref_r_event;
+            this->miss_r_event = miss_r_event;
+            this->writeback_event = writeback_event;
         }
         #endif
         #ifdef DASM_EN

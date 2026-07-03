@@ -126,6 +126,7 @@
         write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
+        PROF_SET_PERF_EVENT_MUL \
         PROF_RD_RS1_RS2 \
         PROF_RD_ZERO(res) \
         break;
@@ -145,6 +146,7 @@
         write_rf(ip.rd(), res); \
         DASM_OP(op) \
         PROF_G(op) \
+        PROF_SET_PERF_EVENT_DIV \
         PROF_RD_RS1_RS2 \
         PROF_RD_ZERO(res) \
         break;
@@ -657,15 +659,48 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof.te.dmem_size = TO_U8(size); \
     prof.te.dmem = addr;
 
+// cosim collects these from RTL, don't count on the isa sim side
+#ifndef DPI
 #define PROF_SET_PERF_EVENT_SIMD \
     prof_perf.set_perf_event_flag(perf_event_t::ret_simd);
+#define PROF_SET_PERF_EVENT_SIMD_ARITH \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_simd_arith);
+#define PROF_SET_PERF_EVENT_SIMD_ARITH_DOT \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_simd_arith_dot);
+#define PROF_SET_PERF_EVENT_MUL \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mul);
+#define PROF_SET_PERF_EVENT_DIV \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_div);
+#define PROF_SET_PERF_EVENT_CTRL_FLOW \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow);
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_JR \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_jr);
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_BR \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_ctrl_flow_br);
+#define PROF_SET_PERF_EVENT_MEM \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem);
+#define PROF_SET_PERF_EVENT_MEM_LOAD \
+    prof_perf.set_perf_event_flag(perf_event_t::ret_mem_load);
+
+#else
+#define PROF_SET_PERF_EVENT_SIMD
+#define PROF_SET_PERF_EVENT_SIMD_ARITH
+#define PROF_SET_PERF_EVENT_SIMD_ARITH_DOT
+#define PROF_SET_PERF_EVENT_MUL
+#define PROF_SET_PERF_EVENT_DIV
+#define PROF_SET_PERF_EVENT_CTRL_FLOW
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_JR
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_BR
+#define PROF_SET_PERF_EVENT_MEM
+#define PROF_SET_PERF_EVENT_MEM_LOAD
+#endif // DPI
 
 #define PROF_SPARSITY_ANY(res) \
     prof.log_sparsity((res == 0), sparsity_t::sp_any);
 #define PROF_SPARSITY(a, b, cls) \
     prof.log_sparsity(((a == 0) || (b == 0)), sparsity_t::sp_##cls);
 
-#else
+#else // !PROFILERS_EN
 #define PROF_G(op)
 #define PROF_J(op)
 #define PROF_B_T(op)
@@ -683,6 +718,15 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
 #define PROF_RS1_RS2
 #define PROF_DMEM(addr)
 #define PROF_SET_PERF_EVENT_SIMD
+#define PROF_SET_PERF_EVENT_SIMD_ARITH
+#define PROF_SET_PERF_EVENT_SIMD_ARITH_DOT
+#define PROF_SET_PERF_EVENT_MUL
+#define PROF_SET_PERF_EVENT_DIV
+#define PROF_SET_PERF_EVENT_CTRL_FLOW
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_JR
+#define PROF_SET_PERF_EVENT_CTRL_FLOW_BR
+#define PROF_SET_PERF_EVENT_MEM
+#define PROF_SET_PERF_EVENT_MEM_LOAD
 #define PROF_SPARSITY_ANY(res)
 #define PROF_SPARSITY(a, b, cls)
 #define PROF_RD_ZERO(val)
@@ -695,7 +739,7 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
 #define PROF_C_RS2_RS2
 #define PROF_C_RD_LIT(n)
 #define PROF_C_RS1_LIT(n)
-#endif
+#endif // PROFILERS_EN
 
 #define INDENT "    "
 #define INDENT_3X INDENT << INDENT << INDENT

@@ -47,6 +47,9 @@ class core {
         uint32_t get_inst_cnt() { return sim_cnt.inst; }
         void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
+        void set_perf_event_flag(perf_event_t perf_event, bool set) {
+            prof_perf.set_perf_event_flag(perf_event, set);
+        }
         void force_irq(bool mtip, bool meip) {
             if (mtip) csr.at(csr_map::addr::mip).value |= csr_map::mip::mtip;
             if (meip) csr.at(csr_map::addr::mip).value |= csr_map::mip::meip;

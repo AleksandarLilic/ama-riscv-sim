@@ -11,7 +11,9 @@ class profiler_perf {
         std::vector<symbol_lut_entry_t> symbol_lut;
         std::vector<perf_event_t> perf_events;
         profiler_source_t prof_src;
-        std::array<uint8_t, TO_U32(perf_event_t::_count)> perf_event_flags;
+        // in DPI, stall events accumulate, and drain when instruction retires
+        // uint16_t for insurance; today's max is div at 34 stall cycles
+        std::array<uint16_t, TO_U32(perf_event_t::_count)> perf_event_flags;
         std::array<uint64_t, TO_U32(perf_event_t::_count)> callstack_cnt;
         std::unordered_map<
             std::u16string,
@@ -49,6 +51,9 @@ class profiler_perf {
         void update_jal(uint32_t next_pc, bool tail_call, uint32_t ra);
         void set_perf_event_flag(perf_event_t perf_event) {
             perf_event_flags[TO_U32(perf_event)] += 1;
+        }
+        void set_perf_event_flag(perf_event_t perf_event, bool set) {
+            perf_event_flags[TO_U32(perf_event)] += TO_U32(set);
         }
         void finish(bool show) { log_to_file_and_print(show); }
         bool match_top(uint32_t next_pc);
