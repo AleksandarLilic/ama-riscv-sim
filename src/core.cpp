@@ -165,8 +165,8 @@ void core::single_step() {
 
     if (wfi.active && !tu.is_trapped()) return;
 
-    #ifdef PROFILERS_EN
     [[maybe_unused]] bool log_symbol = false;
+    #ifdef PROFILERS_EN
     if (!tu.is_trapped()){
         log_symbol = prof_perf.finish_inst(next_pc);
         if (prof_active) prof_pc.inst_cnt++;
@@ -319,13 +319,13 @@ void core::exec() {
             default: tu.e_unsupported_inst("opcode");
         }
     }
-    #ifndef DPI
+    #if defined(PROFILERS_EN) && !defined(DPI)
     prof_perf.set_perf_event_flag(perf_event_t::ret_inst);
     #endif
 }
 
 #ifdef DASM_EN
-void core::log_inst(bool trapped, bool log_symbol) {
+void core::log_inst(bool trapped, [[maybe_unused]] bool log_symbol) {
     if (trapped) {
         // log changed callstack and return
         log_ofstream << dasm.asm_str << "\n";
