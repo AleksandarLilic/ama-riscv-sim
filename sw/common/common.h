@@ -106,36 +106,35 @@ typedef union { uint64_t d; struct { int2x16_t lo, hi; } w; } int2x32_t;
 // can't enum beacuse C, switch back to enums with `-std=gnu23`
 
 // ==== PERF_EVENT AUTOGEN BEGIN ====
-static const uint32_t mhpmevent_ret_inst = (1u << 0);
-static const uint32_t mhpmevent_bad_spec = (1u << 1);
-static const uint32_t mhpmevent_stall_be = (1u << 2);
-static const uint32_t mhpmevent_stall_l1d = (1u << 3);
-static const uint32_t mhpmevent_stall_l1d_r = (1u << 4);
-static const uint32_t mhpmevent_stall_fe = (1u << 5);
-static const uint32_t mhpmevent_stall_l1i = (1u << 6);
-static const uint32_t mhpmevent_stall_load_use = (1u << 7);
-static const uint32_t mhpmevent_stall_mul_simd_use = (1u << 8);
-static const uint32_t mhpmevent_stall_div = (1u << 9);
-static const uint32_t mhpmevent_ret_ctrl_flow = (1u << 10);
-static const uint32_t mhpmevent_ret_ctrl_flow_jr = (1u << 11);
-static const uint32_t mhpmevent_ret_ctrl_flow_br = (1u << 12);
-static const uint32_t mhpmevent_ret_mem = (1u << 13);
-static const uint32_t mhpmevent_ret_mem_load = (1u << 14);
-static const uint32_t mhpmevent_ret_mul = (1u << 15);
-static const uint32_t mhpmevent_ret_div = (1u << 16);
-static const uint32_t mhpmevent_ret_simd = (1u << 17);
-static const uint32_t mhpmevent_ret_simd_arith = (1u << 18);
-static const uint32_t mhpmevent_ret_simd_arith_dot = (1u << 19);
-static const uint32_t mhpmevent_bp_miss = (1u << 20);
-static const uint32_t mhpmevent_l1i_ref = (1u << 21);
-static const uint32_t mhpmevent_l1i_miss = (1u << 22);
-static const uint32_t mhpmevent_l1i_spec_miss = (1u << 23);
-static const uint32_t mhpmevent_l1i_spec_miss_bad = (1u << 24);
-static const uint32_t mhpmevent_l1d_ref = (1u << 25);
-static const uint32_t mhpmevent_l1d_ref_r = (1u << 26);
-static const uint32_t mhpmevent_l1d_miss = (1u << 27);
-static const uint32_t mhpmevent_l1d_miss_r = (1u << 28);
-static const uint32_t mhpmevent_l1d_writeback = (1u << 29);
+static const uint32_t mhpmevent_bad_spec = (1u << 0);
+static const uint32_t mhpmevent_stall_be = (1u << 1);
+static const uint32_t mhpmevent_stall_l1d = (1u << 2);
+static const uint32_t mhpmevent_stall_l1d_r = (1u << 3);
+static const uint32_t mhpmevent_stall_fe = (1u << 4);
+static const uint32_t mhpmevent_stall_l1i = (1u << 5);
+static const uint32_t mhpmevent_stall_load_use = (1u << 6);
+static const uint32_t mhpmevent_stall_mul_simd_use = (1u << 7);
+static const uint32_t mhpmevent_stall_div = (1u << 8);
+static const uint32_t mhpmevent_ret_ctrl_flow = (1u << 9);
+static const uint32_t mhpmevent_ret_ctrl_flow_jr = (1u << 10);
+static const uint32_t mhpmevent_ret_ctrl_flow_br = (1u << 11);
+static const uint32_t mhpmevent_ret_mem = (1u << 12);
+static const uint32_t mhpmevent_ret_mem_load = (1u << 13);
+static const uint32_t mhpmevent_ret_mul = (1u << 14);
+static const uint32_t mhpmevent_ret_div = (1u << 15);
+static const uint32_t mhpmevent_ret_simd = (1u << 16);
+static const uint32_t mhpmevent_ret_simd_arith = (1u << 17);
+static const uint32_t mhpmevent_ret_simd_arith_dot = (1u << 18);
+static const uint32_t mhpmevent_bp_miss = (1u << 19);
+static const uint32_t mhpmevent_l1i_ref = (1u << 20);
+static const uint32_t mhpmevent_l1i_miss = (1u << 21);
+static const uint32_t mhpmevent_l1i_spec_miss = (1u << 22);
+static const uint32_t mhpmevent_l1i_spec_miss_bad = (1u << 23);
+static const uint32_t mhpmevent_l1d_ref = (1u << 24);
+static const uint32_t mhpmevent_l1d_ref_r = (1u << 25);
+static const uint32_t mhpmevent_l1d_miss = (1u << 26);
+static const uint32_t mhpmevent_l1d_miss_r = (1u << 27);
+static const uint32_t mhpmevent_l1d_writeback = (1u << 28);
 // ==== PERF_EVENT AUTOGEN END ====
 
 typedef struct {
