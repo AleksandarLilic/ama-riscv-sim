@@ -11,6 +11,7 @@ import pandas as pd
 from matplotlib.ticker import EngFormatter
 from utils import print_file_saved
 
+SYM_MAXLEN = 40 # y-axis char limit, longer names get a '...' in the middle
 
 def parse_folded_line(line: str) -> Tuple[List[str], int]:
     """
@@ -217,10 +218,22 @@ def save_flat_csv(df: pd.DataFrame, path: str, event: str) -> None:
     df.to_csv(path, index=False)
     print_file_saved("Flat profile", path)
 
+def shorten_symbol(s, maxlen=SYM_MAXLEN):
+    # keep the namespace/class head and the ::method tail
+    if len(s) <= maxlen:
+        return s
+    keep = (maxlen - 3) # room for the '...'
+    tail = (keep // 3) # one 3rd from the end
+    head = (keep - tail) # and two 3rds from the start
+    return s[:head] + "..." + s[-tail:]
+
 def draw_single_plot(df, ax, args):
     data = df[args['data']].tolist()[::-1]
     symbols = df['symbol'].tolist()[::-1]
     box = ax.barh(symbols, data, color='#7ed3ab')
+    # relabel ticks with shortened names
+    ax.set_yticks(range(len(symbols)))
+    ax.set_yticklabels([shorten_symbol(s) for s in symbols])
     f = args.get('fmt', None)
     if f:
         ax.bar_label(box, fmt=f, padding=3)
@@ -251,6 +264,8 @@ PERF_EVENT_T = [
 
 CLK_DEFAULT = 100.0 # MHz
 FIG_H = 3.3
+FIG_W_1 = 7
+FIG_W_3 = (FIG_W_1 * 3) - 3
 
 def main():
     parser = argparse.ArgumentParser(description="Convert folded callstack samples to a flat-profile summary.")
@@ -276,9 +291,10 @@ def main():
     if args.second_trace:
         args.event = PERF_EVENT_T[0] # force to 'inst' for -t
         fig, ax = plt.subplots(
-            1, 3, figsize=(15, FIG_H), tight_layout=True, sharey=True)
+            1, 3, figsize=(FIG_W_3, FIG_H), tight_layout=True, sharey=True)
     else:
-        fig, ax = plt.subplots(1, 1, figsize=(6, FIG_H), tight_layout=True)
+        fig, ax = plt.subplots(
+            1, 1, figsize=(FIG_W_1, FIG_H), tight_layout=True)
 
     if not os.path.isfile(args.trace):
         parser.error(f"Trace callstack not found: {args.trace}")
@@ -340,6 +356,14 @@ def main():
         # merge two dfs on symbol
         merged = pd.merge(
             t_df, s_df, on='symbol', how='outer', suffixes=('_inst', '_cycle'))
+        # independent host perf streams (e.g. cycles vs instructions)
+        # can sample slightly different symbol sets -> outer join leaves NaN cnt
+        # symbol seen in one stream but not the other is 0 in the other
+        count_cols = [
+            'self_counts_inst', 'total_counts_inst',
+            'self_counts_cycle', 'total_counts_cycle'
+        ]
+        merged[count_cols] = merged[count_cols].fillna(0).astype('int64')
         merged['ipc'] = merged.apply(
             lambda row: (row['total_counts_inst'] / row['total_counts_cycle'])
             if row['total_counts_cycle'] > 0 else None, axis=1)
