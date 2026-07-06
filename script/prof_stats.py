@@ -113,37 +113,44 @@ pd.DataFrame:
 
     return work
 
-def print_profile(df: pd.DataFrame, merged=False) -> None:
+def print_profile(
+    df: pd.DataFrame, merged=False, labels=("a", "b"), ratio_label="ratio") \
+-> None:
+
     cycles_trace = ('self_time' in df.columns) and ('total_time' in df.columns)
     time_unit = df.attrs.get('time_unit') if cycles_trace else None
 
     hdr_cycles = "{:>6} {:>15} {:>10} {:>10} {:>10} {:>10}".format(
         "%[c]", "%cumulative[c]", "self[c]", "total[c]",
         f"self[{time_unit}]", f"total[{time_unit}]")
-    hdr_inst = "{:>6} {:>15} {:>10} {:>10}".format(
-        "%[i]", "%cumulative[i]", "self[i]", "total[i]")
     hdr = "{:>6} {:>15} {:>10} {:>10}".format(
         "%", "%cumulative", "self", "total")
 
     if merged:
-        print("{}   {} {:>7} {:>7}   {}".format(
-            hdr_inst, hdr_cycles, "ipc", "cpi", "symbol"))
+        # a/b are the two traces (first/second -t); legend maps them to labels
+        la, lb = labels
+        print(f"  a: {la}   b: {lb}   ratio: {ratio_label}")
+        hdr_a = "{:>6} {:>15} {:>10} {:>10}".format(
+            "%[a]", "%cumulative[a]", "self[a]", "total[a]")
+        hdr_b = "{:>6} {:>15} {:>10} {:>10}".format(
+            "%[b]", "%cumulative[b]", "self[b]", "total[b]")
+        print("{}   {} {:>8}   {}".format(hdr_a, hdr_b, "ratio", "symbol"))
         for row in df.itertuples(index=False):
+            ratio = getattr(row, 'ratio')
+            ratio = float(ratio) if ratio is not None else float('nan')
             print(
-                "{:6.2f} {:15.2f} {:10d} {:10d}   {:6.2f} {:15.2f} {:10d} {:10d} {:10.1f} {:10.1f} {:7.3f} {:7.3f}   {}".format(
-                float(getattr(row, 'percent_inst')),
-                float(getattr(row, 'cum_percent_inst')),
-                int(getattr(row, 'self_counts_inst')),
-                int(getattr(row, 'total_counts_inst')),
+                "{:6.2f} {:15.2f} {:10d} {:10d}   "
+                "{:6.2f} {:15.2f} {:10d} {:10d} {:8.3f}   {}".format(
+                float(getattr(row, 'percent_a')),
+                float(getattr(row, 'cum_percent_a')),
+                int(getattr(row, 'self_counts_a')),
+                int(getattr(row, 'total_counts_a')),
 
-                float(getattr(row, 'percent_cycle')),
-                float(getattr(row, 'cum_percent_cycle')),
-                int(getattr(row, 'self_counts_cycle')),
-                int(getattr(row, 'total_counts_cycle')),
-                float(getattr(row, 'self_time')),
-                float(getattr(row, 'total_time')),
-                float(getattr(row, 'ipc')),
-                float(getattr(row, 'cpi')),
+                float(getattr(row, 'percent_b')),
+                float(getattr(row, 'cum_percent_b')),
+                int(getattr(row, 'self_counts_b')),
+                int(getattr(row, 'total_counts_b')),
+                ratio,
 
                 getattr(row, 'symbol'),
             ))
@@ -187,36 +194,75 @@ def run_trace(lines, clk: Optional[float] = None) -> pd.DataFrame:
 
     return(format_flat_profile(df, clk=clk))
 
-def save_flat_csv(df: pd.DataFrame, path: str, event: str) -> None:
-    # round floats (ipc/cpi 3dp, rest 2dp)
-    # and tag columns so the csv is self-describing
-    # merge -> _i/_c, single -> event tag,
-    # time -> _<unit> (same as [i]/[c]/[us] tags shown on stdout)
+def save_flat_csv(df: pd.DataFrame, path: str, labels, ratio_label=None) \
+-> None:
+    # round floats (ratio 3dp, rest 2dp) and tag columns for csv
+    # combined -> the two count blocks carry their event label
+    # (_a/_b -> _<labelA>/_<labelB>)
+    # single -> the one event label; time -> _<unit>
     df = df.copy()
     round_map = {
-        c: (3 if c in ("ipc", "cpi") else 2)
+        c: (3 if c == "ratio" else 2)
         for c in df.columns
-        if c in ("ipc", "cpi") or pd.api.types.is_float_dtype(df[c])
+        if c == "ratio" or pd.api.types.is_float_dtype(df[c])
     }
     df = df.round(round_map)
 
     unit = df.attrs.get("time_unit", "us")
-    tag = {"inst": "i", "cycle": "c"}.get(event, event)
-    tagged = ("self_counts", "total_counts", "percent", "cum_percent")
     rename = {}
-    for c in df.columns:
-        if c.endswith("_inst"):
-            rename[c] = c[:-len("_inst")] + "_i"
-        elif c.endswith("_cycle"):
-            rename[c] = c[:-len("_cycle")] + "_c"
-        elif c in ("self_time", "total_time"):
-            rename[c] = f"{c}_{unit}"
-        elif c in tagged:
-            rename[c] = f"{c}_{tag}"
+    rename["ratio"] = ratio_label if ratio_label else "ratio"
+    if len(labels) == 2: # combined
+        la, lb = labels
+        for c in df.columns:
+            if c.endswith("_a"):
+                rename[c] = c[:-len("_a")] + f"_{la}"
+            elif c.endswith("_b"):
+                rename[c] = c[:-len("_b")] + f"_{lb}"
+    else: # single trace
+        tag = labels[0]
+        tagged = ("self_counts", "total_counts", "percent", "cum_percent")
+        for c in df.columns:
+            if c in ("self_time", "total_time"):
+                rename[c] = f"{c}_{unit}"
+            elif c in tagged:
+                rename[c] = f"{c}_{tag}"
     df = df.rename(columns=rename)
 
     df.to_csv(path, index=False)
     print_file_saved("Flat profile", path)
+
+def label_from_path(p):
+    # single-trace label:
+    # strip the generic 'callstack_folded_' prefix, keeping the event (+ source)
+    # host 'callstack_folded_<ev>_host' -> '<ev>_host',
+    # guest/risc-v 'callstack_folded_<ev>[_cosim]' -> '<ev>[_cosim]'
+    stem = os.path.splitext(os.path.basename(p))[0]
+    pre = "callstack_folded_"
+    return stem[len(pre):] if stem.startswith(pre) else stem
+
+def labels_from_paths(paths):
+    # for two traces, strip the common leading/trailing name tokens so only the
+    # distinguishing part remains
+    # (host & guest both reduce to '<ev>',
+    # shared source tags like _host/_cosim fall away as common suffix)
+    if len(paths) == 1:
+        return [label_from_path(paths[0])]
+    # a/b arrays of the callstack name without ext
+    a, b = [os.path.splitext(os.path.basename(p))[0].split('_') for p in paths]
+
+    # match elements from the front, then back
+    i, j = 0, 0
+    while (i < len(a)) and (i < len(b)) and (a[i] == b[i]):
+        i += 1
+    while (j < len(a) - i) and (j < len(b) - i) and (a[-1 - j] == b[-1 - j]):
+        j += 1
+
+    # strip away
+    la = '_'.join(a[i:len(a) - j])
+    lb = '_'.join(b[i:len(b) - j])
+
+    # la/lb if non-empty, otherwise reconstruct a/b from array back to string
+    return [la or '_'.join(a), lb or '_'.join(b)]
 
 def shorten_symbol(s, maxlen=SYM_MAXLEN):
     # keep the namespace/class head and the ::method tail
@@ -248,201 +294,201 @@ def draw_single_plot(df, ax, args):
     ax.set_title(args['title'])
     return ax
 
-# should match cpp defined events for 'perf_event_t'
-PERF_EVENT_T = [
-    "inst",
-    "cycle",
-    "branch",
-    "mem",
-    "simd",
-    "icache_reference",
-    "icache_miss",
-    "dcache_reference",
-    "dcache_miss",
-    "bp_mispredict"
-]
-
-CLK_DEFAULT = 100.0 # MHz
 FIG_H = 3.3
 FIG_W_1 = 7
 FIG_W_3 = (FIG_W_1 * 3) - 3
 
 def main():
-    parser = argparse.ArgumentParser(description="Convert folded callstack samples to a flat-profile summary.")
-    parser.add_argument("-t", "--trace", type=str, required=True, help="Callstack trace. Normally run standalone. Can be combined with -s for inst/cycle only to get detailed execution breakdown")
-    parser.add_argument("-s", "--second_trace", type=str, help="Second callstack trace. Used to combine with -t for inst/cycle only to get detailed execution breakdown")
-    parser.add_argument("-e", "--event", type=str, choices=PERF_EVENT_T, default=PERF_EVENT_T[0], help="Callstack sample event type. If both -t and -s are specified, this is ignored and 'inst' is used for -t, and 'cycle' for -s")
-    parser.add_argument("-p", "--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
-    parser.add_argument("-r", "--thr", type=int, default=1, help="Show only above threshold percentage by self-samples. Self-cycles are used if both -t and -s are specified")
-    parser.add_argument("-c", "--clk", type=float, default=CLK_DEFAULT, help="Clock frequency in MHz. Only used for 'cycle' event")
-    parser.add_argument("--cpi", action='store_true', default=False, help="Plot CPI instead of IPC for the combined chart. Ignored if -t and -s are not both specified")
+    parser = argparse.ArgumentParser(description="Convert folded callstack samples to a flat-profile summary. One trace -> flat profile; two traces -> combined view with a derived ratio (e.g. inst/cycle = IPC).")
+    parser.add_argument("-t", "--trace", type=str, nargs='+', required=True, help="One or two folded callstack traces. Two -> combined view with a derived third column (ratio of the two).")
+    parser.add_argument("-e", "--event", type=str, nargs='+', default=None, help="Display label(s) for the trace(s); count must match -t. Default: derived from each filename (<name>_folded_host_<ev>.txt -> <ev>).")
+    parser.add_argument("--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
+    parser.add_argument("--thr", type=int, default=1, help="Show only symbols above this self-%% threshold (in either trace, for combined mode)")
+    parser.add_argument("--clk", type=float, default=None, help="Clock frequency in MHz. Opt-in, single-trace only: when given, adds time columns (count/clk). Only meaningful if -e is cycles. No effect in combined mode.")
+    parser.add_argument("--sort", type=int, default=1, metavar="N", help="Combined mode: rank rows by |N| = 1 first trace, 2 second trace, 3 ratio; sign sets direction (negative = ascending). Default 1 (first trace, descending)")
+    parser.add_argument("--invert", action='store_true', default=False, help="Invert the derived ratio (second/first instead of first/second)")
+    parser.add_argument("--pct", action='store_true', default=False, help="Scale the derived ratio by 100 and label it a percentage (e.g. miss rate, SIMD share)")
+    parser.add_argument("--complement", action='store_true', default=False, help="Use '1-ratio' (applied before --pct scaling), e.g. turn a miss rate into a hit rate")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
     parser.add_argument("--plot_abs", action='store_true', default=False, help="Plot absolute self counts instead of percentages")
+    parser.add_argument("--ratio_label", type=str, default=None, help="Explicit label for the derived third column (e.g. 'IPC', 'dcache HR'). Gets ' [%%]' appended with --pct. Default: '<num>/<den>'")
     parser.add_argument("--save_png", action='store_true', default=False, help="Save plot as PNG")
     parser.add_argument("--save_svg", action='store_true', default=False, help="Save plot as SVG")
-    parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV. Single trace only")
+    parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV")
     args = parser.parse_args()
 
-    if (args.second_trace and args.event != PERF_EVENT_T[0]):
+    n = len(args.trace)
+    if n not in (1, 2):
+        parser.error("-t takes one or two traces")
+    if abs(args.sort) not in (1, 2, 3):
+        parser.error("--sort must be 1, 2 or 3 (negative for ascending)")
+    if args.event is not None and len(args.event) != n:
         parser.error(
-            "When both -t and -s are specified, event type shouldn't be set;"
-            " auto-defaults to 'inst' for -t and 'cycle' for -s")
+            f"-e expects {n} label(s) to match -t, got {len(args.event)}")
+    for p in args.trace:
+        if not os.path.isfile(p):
+            parser.error(f"Trace callstack not found: {p}")
+    labels = args.event if args.event is not None else \
+        labels_from_paths(args.trace)
+    combined = (n == 2)
 
-    if args.second_trace:
-        args.event = PERF_EVENT_T[0] # force to 'inst' for -t
+    if combined:
         fig, ax = plt.subplots(
             1, 3, figsize=(FIG_W_3, FIG_H), tight_layout=True, sharey=True)
     else:
         fig, ax = plt.subplots(
             1, 1, figsize=(FIG_W_1, FIG_H), tight_layout=True)
 
-    if not os.path.isfile(args.trace):
-        parser.error(f"Trace callstack not found: {args.trace}")
-
-    out_base = os.path.splitext(args.trace)[0]
-    if args.second_trace:
-        print(out_base)
-        out_base += "_combined"
-        # first trace always 'inst' in combined, remove it
-        out_base = out_base.replace("_inst", "")
-
-    t_lines = open(args.trace, "r").readlines()
-    t_df = run_trace(
-        t_lines, clk=args.clk if args.event == PERF_EVENT_T[1] else None)
-    title = 'Profile' + (f' - {args.event.capitalize()}')
-
     fmt = EngFormatter(unit='', places=1, sep="")
-    if not args.second_trace:
+
+    if not combined:
+        la = labels[0]
+        out_base = os.path.splitext(args.trace[0])[0]
+        t_df = run_trace(open(args.trace[0]).readlines(), clk=args.clk)
+        title = f"Profile - {la}"
+
         if args.save_csv:
-            save_flat_csv(t_df, out_base + ".csv", args.event)
+            save_flat_csv(t_df, out_base + ".csv", labels)
 
         df_len_og = t_df.index.size
-        if args.top is not None:
-            t_df = t_df.head(args.top)
+        # filter (significance) before head (top-N) so --top returns N kept rows
         if args.thr is not None:
             t_df = t_df[t_df['percent'] >= args.thr]
+        if args.top is not None:
+            t_df = t_df.head(args.top)
         df_len = t_df.index.size
 
         print(title)
         print_profile(t_df)
-        for atn,atv in t_df.attrs.items():
+        for atn, atv in t_df.attrs.items():
             print(atn, ":", atv)
-            if args.event != PERF_EVENT_T[1]:
-                # only total_samples is printed if event is not 'cycle'
-                break
 
-        total_samples = t_df.attrs['total_samples']
-        samples_str = f"{fmt(total_samples)} samples ({args.event})"
-        a = ax[0] if args.second_trace else ax
-        draw_single_plot(t_df, a, {
+        samples_str = f"{fmt(t_df.attrs['total_samples'])} samples ({la})"
+        draw_single_plot(t_df, ax, {
             'data': 'self_counts' if args.plot_abs else 'percent',
-            'xlabel': (
-                f"{args.event} samples" + (" [%]" if not args.plot_abs else "")
-            ),
+            'xlabel': f"{la} samples" + ("" if args.plot_abs else " [%]"),
             'title': title,
             'use_ylabel': True,
             'fmt': fmt if args.plot_abs else '%.1f%%',
             'eng_fmt': args.plot_abs
         })
 
-    else: # args.second_trace:
-        args.event = PERF_EVENT_T[1] # force to 'cycle' for -s
-        if not os.path.isfile(args.second_trace):
-            parser.error(
-                f"Second trace callstack not found: {args.second_trace}")
-        s_lines = open(args.second_trace, "r").readlines()
-        s_df = run_trace(s_lines, clk=args.clk)
+    else:
+        la, lb = labels
+        out_base = os.path.splitext(args.trace[0])[0]
+        if out_base.endswith(f"_{la}"):
+            out_base = out_base[:-len(f"_{la}")]
+        out_base += "_combined"
 
-        # merge two dfs on symbol
+        t_df = run_trace(open(args.trace[0]).readlines(), clk=None)
+        s_df = run_trace(open(args.trace[1]).readlines(), clk=None)
+
+        # merge on symbol; a = first trace, b = second
         merged = pd.merge(
-            t_df, s_df, on='symbol', how='outer', suffixes=('_inst', '_cycle'))
-        # independent host perf streams (e.g. cycles vs instructions)
-        # can sample slightly different symbol sets -> outer join leaves NaN cnt
-        # symbol seen in one stream but not the other is 0 in the other
+            t_df, s_df, on='symbol', how='outer', suffixes=('_a', '_b'))
+        # independent host perf streams (e.g. cycles vs instructions) can sample
+        # slightly different symbol sets -> outer join leaves NaN counts;
+        # symbol seen in one stream but not the other is genuinely 0 in other
         count_cols = [
-            'self_counts_inst', 'total_counts_inst',
-            'self_counts_cycle', 'total_counts_cycle'
+            'self_counts_a', 'total_counts_a',
+            'self_counts_b', 'total_counts_b'
         ]
         merged[count_cols] = merged[count_cols].fillna(0).astype('int64')
-        merged['ipc'] = merged.apply(
-            lambda row: (row['total_counts_inst'] / row['total_counts_cycle'])
-            if row['total_counts_cycle'] > 0 else None, axis=1)
-        merged['ipc'] = merged['ipc'].round(3)
-        merged['cpi'] = merged.apply(
-            lambda row: (row['total_counts_cycle'] / row['total_counts_inst'])
-            if row['total_counts_inst'] > 0 else None, axis=1)
-        merged['cpi'] = merged['cpi'].round(3)
+
+        # derived third column: ratio = num/den (den>0), optionally x100 (pct)
+        num, den = ('b', 'a') if args.invert else ('a', 'b')
+        scale = 100.0 if args.pct else 1.0
+
+        def ratio_of(nv, dv):
+            # num/den, optionally complemented (1-x, e.g. miss rate -> hit rate)
+            # before scaling;
+            # NaN when the denominator has no samples
+            if dv <= 0:
+                return float('nan')
+            v = (nv / dv)
+            if args.complement:
+                v = (1.0 - v)
+            return round(v * scale, 3)
+
+        merged['ratio'] = merged.apply(
+            lambda r: ratio_of(
+                r[f'self_counts_{num}'], r[f'self_counts_{den}']), axis=1)
+
+        # rank by |sort| column, sign = direction (neg = ascending); NaN sinks
+        sort_col = {1: 'percent_a', 2: 'percent_b', 3: 'ratio'}[abs(args.sort)]
         merged = merged.sort_values(
-            by=['percent_cycle', 'symbol'],
-            ascending=[False, True],
-            kind='mergesort'
-        )
+            by=[sort_col, 'symbol'], ascending=[args.sort < 0, True],
+            kind='mergesort', na_position='last')
 
-        # copy over attrs
-        instrs = t_df.attrs['total_samples']
-        cycles = s_df.attrs['total_samples']
-        merged.attrs["total_instructions"] = instrs
-        merged.attrs["total_cycles"] = cycles
-        merged.attrs["total_time"] = s_df.attrs['total_time']
-        merged.attrs["clk_MHz"] = s_df.attrs['clk_mhz']
-        merged.attrs["time_unit"] = s_df.attrs['time_unit']
-        merged.attrs["CPI"] = round((cycles/instrs), 3) if instrs > 0 else None
-        merged.attrs["IPC"] = round((instrs/cycles), 3) if cycles > 0 else None
+        tot_a = t_df.attrs['total_samples']
+        tot_b = s_df.attrs['total_samples']
+        merged.attrs[f"total_{la}"] = tot_a
+        merged.attrs[f"total_{lb}"] = tot_b
+        num_tot, den_tot = (tot_b, tot_a) if args.invert else (tot_a, tot_b)
+        merged.attrs["ratio_overall"] = ratio_of(num_tot, den_tot)
 
-        total_inst = merged.attrs['total_instructions']
-        total_cycles = merged.attrs['total_cycles']
-        samples_str = \
-            f"{fmt(total_inst)} instructions, {fmt(total_cycles)} cycles"
+        # third-column label
+        if args.ratio_label:
+            ratio_label = args.ratio_label
+        else:
+            numl, denl = (lb, la) if args.invert else (la, lb)
+            ratio_label = f"1-{numl}/{denl}" if args.complement \
+                else f"{numl}/{denl}"
+
+        ratio_label = ratio_label + (" [%]" if args.pct else "")
+        samples_str = f"{fmt(tot_a)} {la}, {fmt(tot_b)} {lb}"
 
         if args.save_csv:
-            save_flat_csv(merged, out_base + ".csv", args.event)
+            save_flat_csv(merged, out_base + ".csv", labels, ratio_label)
 
         df_len_og = merged.index.size
+        # filter before head (top-N) so --top returns N kept rows,
+        # even when --sort ascending puts low-count rows first
+        if args.thr is not None:
+            # thr gate, independent of sort:
+            # keep a symbol if it clears the threshold in *either* trace
+            sig = merged[['percent_a', 'percent_b']].max(axis=1)
+            merged = merged[sig >= args.thr]
         if args.top is not None:
             merged = merged.head(args.top)
-        if args.thr is not None:
-            merged = merged[merged['percent_cycle'] >= args.thr]
         df_len = merged.index.size
 
-        print("Profile - Inst/Cycles combined ")
-        print_profile(merged, merged=True)
-        for atn,atv in merged.attrs.items():
+        print(f"Profile - combined ({la} vs {lb})")
+        print_profile(
+            merged, merged=True, labels=labels, ratio_label=ratio_label)
+        for atn, atv in merged.attrs.items():
             print(atn.replace("_", " "), ":", atv)
 
-        d = ["ipc", "cpi"]
-        t = ["Instructions Per Cycle (IPC)", "Cycles Per Instruction (CPI)"]
-        draw_single_plot(merged, ax[2], {
-            'data': d[int(args.cpi)],
-            'xlabel': d[int(args.cpi)].upper(),
-            'title': t[int(args.cpi)],
-            'fmt': '%.3f',
-            'eng_fmt': False
-        })
-
         draw_single_plot(merged, ax[0], {
-            'data': 'self_counts_inst' if args.plot_abs else 'percent_inst',
-            'xlabel': ('inst samples' + (" [%]" if not args.plot_abs else "")),
-            'title': 'Profile - Inst',
+            'data': 'self_counts_a' if args.plot_abs else 'percent_a',
+            'xlabel': f"{la} samples" + ("" if args.plot_abs else " [%]"),
+            'title': f"Profile - {la}",
             'use_ylabel': True,
             'fmt': fmt if args.plot_abs else '%.1f%%',
             'eng_fmt': args.plot_abs
         })
-
         draw_single_plot(merged, ax[1], {
-            'data': 'self_counts_cycle' if args.plot_abs else 'percent_cycle',
-            'xlabel': ('cycle samples' + (" [%]" if not args.plot_abs else "")),
-            'title': 'Profile - Cycles',
+            'data': 'self_counts_b' if args.plot_abs else 'percent_b',
+            'xlabel': f"{lb} samples" + ("" if args.plot_abs else " [%]"),
+            'title': f"Profile - {lb}",
             'fmt': fmt if args.plot_abs else '%.1f%%',
             'eng_fmt': args.plot_abs
+        })
+        draw_single_plot(merged, ax[2], {
+            'data': 'ratio',
+            'xlabel': ratio_label,
+            'title': ratio_label,
+            'fmt': '%.3f',
+            'eng_fmt': False
         })
 
     # resize only height, keep width
     w, h = fig.get_size_inches()
     fig.set_size_inches(w, max(FIG_H, df_len * 0.33))
-    ax_l = ax if args.second_trace else [ax]
-    for i,a in enumerate(ax_l):
+    ax_l = ax if combined else [ax]
+    for i, a in enumerate(ax_l):
         a.margins(y=0.02)
-        if args.second_trace:
+        if combined:
             axr = a.twinx()
             axr.set_yticks(ax[0].get_yticks())
             axr.set_ylim(ax[0].get_ylim())
@@ -452,7 +498,7 @@ def main():
                 axr.set_yticklabels(ax[0].get_yticklabels())
 
     test_name = \
-        os.path.basename(os.path.dirname(args.trace)).replace('out_', '')
+        os.path.basename(os.path.dirname(args.trace[0])).replace('out_', '')
     fig.suptitle(f"Summary for {test_name} - {samples_str}", fontsize=13)
 
     if df_len < df_len_og:
