@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# sampling profiler for the ISA sim host machine
+# sampling profiler for the ISA sim on the host machine
 # wraps one dedicated `perf record` run per workload and
 # converts it to the folded-stack format
 # needs symbols (build with PERF=1)
@@ -8,6 +8,7 @@
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 
@@ -22,42 +23,73 @@ STACKCOLLAPSE = os.path.join(SCRIPT_PATH, "FlameGraph", "stackcollapse-perf.pl")
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Sample-profile the host execution of the ISA sim (perf record -> folded stacks)")
     add_common_args(p)
+    p.add_argument("-e", "--event", default="cycles", help="perf event(s) to sample; comma-separated for multiple independent streams, each written to its own folded file (e.g. 'cycles,instructions' -> per-function IPC via prof_stats -t/-s). Comma = separate streams; a {...} group is one stream and can't be split per event")
     p.add_argument("-F", "--freq", type=int, default=999, help="perf sampling frequency in Hz")
     p.add_argument("--call-graph", dest="call_graph", choices=["fp", "dwarf"], default="fp", help="perf stack unwind method (fp needs PERF=1 frame pointers)")
-    p.add_argument("--top", type=int, default=15, help="Top-N hot symbols to print to stdout")
+    p.add_argument("--top", type=int, default=0, help="Top-N hot symbols to print to stdout")
     return p.parse_args()
 
-def record(cmd, data, freq, cg_mode, cwd):
+def record(cmd, data, freq, cg_mode, events, cwd):
     rec = ([
         "perf", "record",
         "-F", str(freq),
+        "-e", events,
         "--call-graph", cg_mode,
         "-o", data, "--"
         ] + cmd
     )
     return subprocess.run(rec, cwd=cwd, capture_output=True, text=True)
 
-def collapse(data, folded, cwd):
-    # perf script -i <data> | stackcollapse-perf.pl > <folded>
+# perf script sample header: "ama-riscv-sim 1234 5.67: 890 cycles: <ip> ..."
+# the event name is the token right before its trailing colon
+EVENT_LINE_RE = re.compile(r":\s*\d*\s+(\S+):\s*$")
+
+def emitted_events(script_text):
+    # distinct event names perf actually emitted
+    # only used to build an error msg when a requested event turns up no samples
+    seen = []
+    for line in script_text.splitlines():
+        m = EVENT_LINE_RE.search(line)
+        if m and m.group(1) not in seen:
+            seen.append(m.group(1))
+    return seen
+
+def collapse(data, out_dir, ev_req):
+    # one `perf script`, then split per event with stackcollapse --event-filter
+    # perf prints each event under the token passed to `-e`
+    # so filter on the requested name directly
+    # returns (success, error_message, folded_paths_by_event_base)
     script = subprocess.run(
-        ["perf", "script", "-i", data], cwd=cwd, capture_output=True, text=True
+        ["perf", "script", "-i", data],
+        cwd=out_dir, capture_output=True, text=True
     )
     if script.returncode != 0:
-        return False, script.stderr
-    col = subprocess.run(
-        [STACKCOLLAPSE], input=script.stdout, capture_output=True, text=True
-    )
-    if col.returncode != 0:
-        return False, col.stderr
-    with open(folded, "w") as f:
-        f.write(col.stdout)
-    return True, ""
+        return False, script.stderr, {}
+
+    folded_map = {}
+    for ev in ev_req:
+        collapsed = subprocess.run(
+            [STACKCOLLAPSE, "--event-filter", ev],
+            input=script.stdout, capture_output=True, text=True
+        )
+        if collapsed.returncode != 0:
+            return False, collapsed.stderr, {}
+        if not collapsed.stdout.strip():
+            # filter matched nothing -> event wasn't recorded (typo/not in -e)
+            return False, (
+                f"event '{ev}' produced no samples (recorded: "
+                f"{', '.join(emitted_events(script.stdout)) or 'none'})"
+            ), {}
+        ev_base = ev.split(":")[0] # filesystem-clean label for the filename
+        # mirror the riscv isa sim trace naming (callstack_folded_<ev>_<source>)
+        folded = os.path.join(out_dir, f"callstack_folded_{ev_base}_host.txt")
+        with open(folded, "w") as f:
+            f.write(collapsed.stdout)
+        folded_map[ev_base] = folded
+    return True, "", folded_map
 
 def parse_folded(path):
-    # leaf frame gets the self-weight; sum is total weight;
-    # perf samples on `cycles` are a per-sample PERIOD,
-    # so the count is period-weighted (~cycles),
-    # not a raw sample count, percentages are important
+    # leaf frame gets the self-weight; sum is total weight
     self_counts = {}
     total = 0
     with open(path) as f:
@@ -88,14 +120,14 @@ def top_symbols(self_counts, total, n):
 
 def profile_one(sim, app, sim_args, args):
     name = get_test_name(app)
-    d = os.path.abspath(os.path.join(args.work_dir, name))
-    os.makedirs(d, exist_ok=True)
-    data = os.path.join(d, f"{name}.data")
-    folded = os.path.join(d, f"{name}_folded_host.txt")
+    out_dir = os.path.abspath(os.path.join(args.work_dir, name))
+    os.makedirs(out_dir, exist_ok=True)
+    data = os.path.join(out_dir, "perf.data")
 
     cmd = sim_cmd(sim, app, sim_args, args.pin)
+    ev_req = [e.strip() for e in args.event.split(",") if e.strip()]
 
-    rec = record(cmd, data, args.freq, args.call_graph, d)
+    rec = record(cmd, data, args.freq, args.call_graph, args.event, out_dir)
     passed = is_pass(rec.stdout)
     if rec.returncode != 0:
         print(
@@ -104,24 +136,25 @@ def profile_one(sim, app, sim_args, args):
         print("\n".join(rec.stderr.splitlines()[-10:]))
         return None
 
-    ok, err = collapse(data, folded, d)
+    ok, err, folded_map = collapse(data, out_dir, ev_req)
     if not ok:
         print(f"{INDENT}[ERROR] {name}: folding failed\n{err}")
         return None
 
     # stdout glance only; render folded with get_flamegraph.py / prof_stats.py
-    self_counts, total = parse_folded(folded)
     status = "PASS" if passed else "FAIL"
-    print(f"{INDENT}[{status}] {name}  ({total:,} weight, "
-          f"{len(self_counts)} symbols)")
-    for s in top_symbols(self_counts, total, args.top):
-        print(f"{INDENT * 2}{s['self_pct']:>6.2f}%  {s['symbol']}")
+    for ev, folded in folded_map.items():
+        self_counts, total = parse_folded(folded)
+        print(f"{INDENT}[{status}] {name} [{ev}]  ({total:,} weight, "
+              f"{len(self_counts)} symbols)")
+        for s in top_symbols(self_counts, total, args.top):
+            print(f"{INDENT * 2}{s['self_pct']:>6.2f}%  {s['symbol']}")
 
     return {
         "name": name,
         "passed": passed,
         "perf_data": data,
-        "folded": folded,
+        "folded": folded_map,
     }
 
 def main():
@@ -150,7 +183,8 @@ def main():
         )
 
     print(
-        f"Profiling {len(workloads)} workload(s),"
+        f"Profiling {len(workloads)} workload(s), "
+        f"events={args.event}, "
         f"freq={args.freq}Hz, "
         f"call-graph={args.call_graph}, "
         f"pin={'none' if args.pin is None else args.pin} in "
@@ -169,7 +203,7 @@ def main():
     out = {
         "meta": host_meta(
             args.isa_sim, isa_sim_args, args.pin,
-            freq=args.freq, call_graph=args.call_graph
+            event=args.event, freq=args.freq, call_graph=args.call_graph
         ),
         "results": results,
     }
