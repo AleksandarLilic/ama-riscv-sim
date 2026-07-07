@@ -9,7 +9,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.ticker import EngFormatter
-from utils import print_file_saved
+from utils import INDENT, print_file_saved
 
 SYM_MAXLEN = 40 # y-axis char limit, longer names get a '...' in the middle
 
@@ -75,8 +75,9 @@ def accumulate_samples(lines: Iterable[str]) -> Tuple[pd.DataFrame, int]:
     df.attrs['total_samples'] = total_samples
     return df
 
-def format_flat_profile(df: pd.DataFrame, clk: Optional[float] = None) -> \
-pd.DataFrame:
+def format_flat_profile(df: pd.DataFrame, clk: Optional[float] = None) \
+-> pd.DataFrame:
+
     smpls = df.attrs['total_samples']
     if smpls <= 0:
         raise ValueError("total_samples must be > 0")
@@ -114,8 +115,7 @@ pd.DataFrame:
     return work
 
 def print_profile(
-    df: pd.DataFrame, merged=False, labels=("a", "b"), ratio_label="ratio") \
--> None:
+    df: pd.DataFrame, merged=False, labels=("a", "b"), rlabel="ratio") -> None:
 
     cycles_trace = ('self_time' in df.columns) and ('total_time' in df.columns)
     time_unit = df.attrs.get('time_unit') if cycles_trace else None
@@ -129,7 +129,7 @@ def print_profile(
     if merged:
         # a/b are the two traces (first/second -t); legend maps them to labels
         la, lb = labels
-        print(f"  a: {la}   b: {lb}   ratio: {ratio_label}")
+        print(f"  a: {la}   b: {lb}   ratio: {rlabel}")
         hdr_a = "{:>6} {:>15} {:>10} {:>10}".format(
             "%[a]", "%cumulative[a]", "self[a]", "total[a]")
         hdr_b = "{:>6} {:>15} {:>10} {:>10}".format(
@@ -194,8 +194,7 @@ def run_trace(lines, clk: Optional[float] = None) -> pd.DataFrame:
 
     return(format_flat_profile(df, clk=clk))
 
-def save_flat_csv(df: pd.DataFrame, path: str, labels, ratio_label=None) \
--> None:
+def save_flat_csv(df: pd.DataFrame, path: str, labels, rlabel=None) -> None:
     # round floats (ratio 3dp, rest 2dp) and tag columns for csv
     # combined -> the two count blocks carry their event label
     # (_a/_b -> _<labelA>/_<labelB>)
@@ -210,7 +209,7 @@ def save_flat_csv(df: pd.DataFrame, path: str, labels, ratio_label=None) \
 
     unit = df.attrs.get("time_unit", "us")
     rename = {}
-    rename["ratio"] = ratio_label if ratio_label else "ratio"
+    rename["ratio"] = rlabel if rlabel else "ratio"
     if len(labels) == 2: # combined
         la, lb = labels
         for c in df.columns:
@@ -296,7 +295,7 @@ def draw_single_plot(df, ax, args):
 
 FIG_H = 3.3
 FIG_W_1 = 7
-FIG_W_3 = (FIG_W_1 * 3) - 3
+FIG_W_3 = (FIG_W_1 * 3) - 2
 
 def main():
     parser = argparse.ArgumentParser(description="Convert folded callstack samples to a flat-profile summary. One trace -> flat profile; two traces -> combined view with a derived ratio (e.g. inst/cycle = IPC).")
@@ -304,14 +303,14 @@ def main():
     parser.add_argument("-e", "--event", type=str, nargs='+', default=None, help="Display label(s) for the trace(s); count must match -t. Default: derived from each filename (<name>_folded_host_<ev>.txt -> <ev>).")
     parser.add_argument("--top", type=int, default=None, help="Show only the top N symbols (functions) by self-samples")
     parser.add_argument("--thr", type=int, default=1, help="Show only symbols above this self-%% threshold (in either trace, for combined mode)")
-    parser.add_argument("--clk", type=float, default=None, help="Clock frequency in MHz. Opt-in, single-trace only: when given, adds time columns (count/clk). Only meaningful if -e is cycles. No effect in combined mode.")
     parser.add_argument("--sort", type=int, default=1, metavar="N", help="Combined mode: rank rows by |N| = 1 first trace, 2 second trace, 3 ratio; sign sets direction (negative = ascending). Default 1 (first trace, descending)")
-    parser.add_argument("--invert", action='store_true', default=False, help="Invert the derived ratio (second/first instead of first/second)")
-    parser.add_argument("--pct", action='store_true', default=False, help="Scale the derived ratio by 100 and label it a percentage (e.g. miss rate, SIMD share)")
-    parser.add_argument("--complement", action='store_true', default=False, help="Use '1-ratio' (applied before --pct scaling), e.g. turn a miss rate into a hit rate")
+    parser.add_argument("--clk", type=float, default=None, help="Clock frequency in MHz. Opt-in, single-trace only: when given, adds time columns (count/clk). Only meaningful if -e is cycles. No effect in combined mode.")
     parser.add_argument("--plot", action='store_true', default=False, help="Show plot")
     parser.add_argument("--plot_abs", action='store_true', default=False, help="Plot absolute self counts instead of percentages")
-    parser.add_argument("--ratio_label", type=str, default=None, help="Explicit label for the derived third column (e.g. 'IPC', 'dcache HR'). Gets ' [%%]' appended with --pct. Default: '<num>/<den>'")
+    parser.add_argument("--rinvert", action='store_true', default=False, help="Invert the derived ratio (first/second instead of second/first)")
+    parser.add_argument("--rpct", action='store_true', default=False, help="Scale the derived ratio by 100 and label it a percentage (e.g. miss rate, SIMD share)")
+    parser.add_argument("--rcomplement", action='store_true', default=False, help="Use '1-ratio' (applied before --rpct scaling), e.g. turn a miss rate into a hit rate")
+    parser.add_argument("--rlabel", type=str, default=None, help="Explicit label for the derived third column (e.g. 'IPC', 'dcache HR'). Gets ' [%%]' appended with --rpct. Default: '<num>/<den>'")
     parser.add_argument("--save_png", action='store_true', default=False, help="Save plot as PNG")
     parser.add_argument("--save_svg", action='store_true', default=False, help="Save plot as SVG")
     parser.add_argument("--save_csv", action="store_true", help="Save the complete (unfiltered) flat profile as CSV")
@@ -331,6 +330,11 @@ def main():
     labels = args.event if args.event is not None else \
         labels_from_paths(args.trace)
     combined = (n == 2)
+
+    print("Running for:")
+    for p in args.trace:
+        print(f"{INDENT}{p}")
+    print()
 
     if combined:
         fig, ax = plt.subplots(
@@ -395,9 +399,8 @@ def main():
         ]
         merged[count_cols] = merged[count_cols].fillna(0).astype('int64')
 
-        # derived third column: ratio = num/den (den>0), optionally x100 (pct)
-        num, den = ('b', 'a') if args.invert else ('a', 'b')
-        scale = 100.0 if args.pct else 1.0
+        # derived third column: ratio = num/den (den>0), optionally x100 (rpct)
+        num, den = ('a', 'b') if args.rinvert else ('b', 'a')
 
         def ratio_of(nv, dv):
             # num/den, optionally complemented (1-x, e.g. miss rate -> hit rate)
@@ -406,13 +409,15 @@ def main():
             if dv <= 0:
                 return float('nan')
             v = (nv / dv)
-            if args.complement:
+            if args.rcomplement:
                 v = (1.0 - v)
+            scale = 100.0 if args.rpct else 1.0
             return round(v * scale, 3)
 
         merged['ratio'] = merged.apply(
-            lambda r: ratio_of(
-                r[f'self_counts_{num}'], r[f'self_counts_{den}']), axis=1)
+            lambda r: ratio_of(r[f'self_counts_{num}'],r[f'self_counts_{den}']),
+            axis=1
+        )
 
         # rank by |sort| column, sign = direction (neg = ascending); NaN sinks
         sort_col = {1: 'percent_a', 2: 'percent_b', 3: 'ratio'}[abs(args.sort)]
@@ -424,22 +429,22 @@ def main():
         tot_b = s_df.attrs['total_samples']
         merged.attrs[f"total_{la}"] = tot_a
         merged.attrs[f"total_{lb}"] = tot_b
-        num_tot, den_tot = (tot_b, tot_a) if args.invert else (tot_a, tot_b)
+        num_tot, den_tot = (tot_a, tot_b) if args.rinvert else (tot_b, tot_a)
         merged.attrs["ratio_overall"] = ratio_of(num_tot, den_tot)
 
         # third-column label
-        if args.ratio_label:
-            ratio_label = args.ratio_label
+        if args.rlabel:
+            rlabel = args.rlabel
         else:
-            numl, denl = (lb, la) if args.invert else (la, lb)
-            ratio_label = f"1-{numl}/{denl}" if args.complement \
+            numl, denl = (la, lb) if args.rinvert else (lb, la)
+            rlabel = f"1-({numl}/{denl})" if args.rcomplement \
                 else f"{numl}/{denl}"
 
-        ratio_label = ratio_label + (" [%]" if args.pct else "")
+        rlabel = rlabel + (" [%]" if args.rpct else "")
         samples_str = f"{fmt(tot_a)} {la}, {fmt(tot_b)} {lb}"
 
         if args.save_csv:
-            save_flat_csv(merged, out_base + ".csv", labels, ratio_label)
+            save_flat_csv(merged, out_base + ".csv", labels, rlabel)
 
         df_len_og = merged.index.size
         # filter before head (top-N) so --top returns N kept rows,
@@ -455,7 +460,7 @@ def main():
 
         print(f"Profile - combined ({la} vs {lb})")
         print_profile(
-            merged, merged=True, labels=labels, ratio_label=ratio_label)
+            merged, merged=True, labels=labels, rlabel=rlabel)
         for atn, atv in merged.attrs.items():
             print(atn.replace("_", " "), ":", atv)
 
@@ -476,8 +481,8 @@ def main():
         })
         draw_single_plot(merged, ax[2], {
             'data': 'ratio',
-            'xlabel': ratio_label,
-            'title': ratio_label,
+            'xlabel': rlabel,
+            'title': rlabel,
             'fmt': '%.3f',
             'eng_fmt': False
         })
