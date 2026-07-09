@@ -9,8 +9,45 @@ import pandas as pd
 from dep_scan import search, search_args
 from ruamel.yaml import YAML
 from run_analysis import icfg, load_inst_prof
+from tda import classify_and_sort_counters
 from utils import (DELIM, INDENT, get_test_title, print_file_saved,
                    smarter_eng_formatter)
+
+# NOTES: known gaps to RTL with current uarch
+# all of these combined usually cause 0.1% or less 'cycles' difference to RTL
+#
+# for load inst that causes both dcache miss and a load_to_use hazard, only
+# dcache miss is attributed to cycle tag in RTL; this is not modelled here
+# (dcache miss rate is taken as a counter from the model, hazards from rf_trace)
+# and therefore 'stall_be_core' can overcount on some workloads
+#
+# 'stall_l1d_r' is not estimated, as getting accurate number requires stats
+# on whether the read caused dcache writeback or not on read reference;
+# this could be collected in the future if needed, or can be broadly estimated
+# based on 'stall_l1d', 'l1d_miss', 'l1d_miss_r', and 'l1d_writeback' stats;
+# as a subset of 'stall_l1d', it has no impact on the stall estimates, it's the
+# breakdown that's not available
+#
+# frontend will usually speculatively fetch two instructions (two l1i_refs)
+# since branch resolution is 2 cycles away (in most cases); exception to this is
+# when first spec fetch causes icache miss, or the first fetched instruction is
+# jalr (causes fe stall); only first spec fetch is captured by isa sim currently
+#
+# overlap between stalls in fe and be can exist, though is rare in practice;
+# 'best case' scenario is provided where all possible stalls between fe and be
+# are overlapped; this is a theoretical max, and should be treated as such
+# main estimation result is 'expected case'
+#
+# further drifts can occur due to branch predictor's model idealized behavior
+# bp is indexed, branch resolved, and pht/ghr updated in a single instruction;
+# RTL takes 3 cycles in most cases for this, and workloads that have denser
+# branch distribution (commonly in bursts) can drift in bp state and miss rate
+# and in general, wrong-path speculative execution will have an impact on
+# icache and bp tables structures that are not modelled in isa sim
+#
+# lost_other cycles are due to pipeline inefficiencies, and are non-trivial
+# to estimate; perf_est only includes csr drain cycles;
+# others are extremely rare, but possible
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -58,6 +95,7 @@ class perf:
         "jump_direct", "jump_indirect",
         "mul", "div", "simd_dot", "simd_mul", #"simd_sdd_sub"
         "dcache_load", #"dcache_store",
+        "csr",
         # names
         "icache_name", "dcache_name", "bpred_name"
     ]
@@ -124,6 +162,7 @@ class perf:
         self.c_simd_mul = hwpm['simd_mul']
         self.c_dc_load = hwpm['dcache_load']
         #self.c_dc_store = hwpm['dcache_store']
+        self.c_csr = hwpm['csr']
 
         self.ic_name = hwpm['icache_name']
         self.dc_name = hwpm['dcache_name']
@@ -186,6 +225,7 @@ class perf:
         self.simd_add_sub_inst = sum_up(self.simd_add_sub_inst_a)
         self.simd_arith = sum_up(self.simd_arith_a)
         self.simd_data_fmt = sum_up(self.simd_data_fmt_a)
+        self.csr_inst = sum_up(self.csr_inst_a)
 
         # ipc = 1 -> best case, at least this many cycles needed
         self.ipc_1_cycles = self.c_pipeline + self.inst_total
@@ -233,6 +273,8 @@ class perf:
             self.div_stats["common_bits"]
         self.all_div_stalls = sum(vars(self.div_stalls).values())
 
+        self.csr_stalls = (self.c_csr - 1) * self.csr_inst
+
         def find_hazards(win, src, dep="_any_"):
             r, _ = search(search_args(rf_trace, src=src, dep=dep, window=win))
             #print(r)
@@ -241,7 +283,7 @@ class perf:
             return sum(r.dep_arr_cnt), sum(r.dep_arr_cnt_dot_acc)
 
         self.hazards = {
-            "dcache": 0, "mul": 0, "div": 0,
+            "dcache": 0, "mul": 0,
             "simd_dot": 0, "simd_mul": 0,
         }
         hazard_penalty = {
@@ -272,10 +314,17 @@ class perf:
         )
 
         self.all_hazards = sum(self.hazards.values())
-        self.simd_mul_hazards = (
-            self.hazards["mul"] + \
-            self.hazards["simd_dot"] + \
-            self.hazards["simd_add_sub"]
+        # RTL stall_be_core children (autogen_perf_events_config.yaml)
+        self.stall_load_use = self.hazards["dcache"]
+        self.stall_mul_simd_use = (
+            self.hazards["mul"]
+            + self.hazards["simd_dot"]
+            + self.hazards["simd_mul"]
+            + self.hazards["simd_add_sub"]
+        )
+        self.stall_div = self.all_div_stalls
+        self.stall_be_core = (
+            self.stall_load_use + self.stall_mul_simd_use + self.stall_div
         )
 
         # FIXME: this needs to be reworked, heavily dependent of main mem ports
@@ -291,7 +340,8 @@ class perf:
         #    self.mwpc_stalls = int(count_num * self.c_dc_miss * self.mwpc)
 
         self.fe_stalls = self.ic_stalls + self.j_stalls
-        self.be_stalls = self.dc_stalls + self.all_hazards + self.all_div_stalls
+        self.be_stalls = self.dc_stalls + self.stall_be_core
+        self.lost_other = self.csr_stalls
 
         self._est_stalls()
 
@@ -453,10 +503,10 @@ class perf:
             f"Core: {FMT(self.j_stalls)}" + \
             f"{DELIM}BE bound: {FMT(self.be_stalls)} - " + \
             f"DCache: {FMT(self.dc_stalls)} (AMAT: {self.dc_amat}), " + \
-            f"Core: {FMT(self.all_hazards + self.all_div_stalls)} " + \
-            f"(SIMD {FMT(self.simd_mul_hazards)}, " + \
-            f"DIV {FMT(self.all_div_stalls)}, " + \
-            f"Load {FMT(self.hazards['dcache'])})"
+            f"Core: {FMT(self.stall_be_core)} " + \
+            f"(Load {FMT(self.stall_load_use)}, " + \
+            f"SIMD {FMT(self.stall_mul_simd_use)}, " + \
+            f"DIV {FMT(self.stall_div)})"
             #f"{DELIM}Memory contention: " + \
             #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
@@ -476,33 +526,53 @@ class perf:
         stall_be = self.be_stalls
         bad_spec = self.bp_stalls
         stalls = stall_fe + stall_be
-        lost_other = 0
+        lost_other = self.csr_stalls
         lost = bad_spec + lost_other
         ret_simd = self.simd_data_fmt + self.simd_arith
         ret_int = self.inst_total - ret_simd
+        l1d_ref_r = (
+            self.dc_stats["hits"]["reads"]
+            + self.dc_stats["misses"]["reads"]
+        )
         return {
-            "cycles":           int(self.t_clk_ec),
-            "cycles_opt":       int(self.t_clk_bc),
-            "empty":            int(stalls + lost),
-            "stalls":           int(stalls),
-            "lost":             int(lost),
-            "lost_other":       int(lost_other),
-            "bad_spec":         int(bad_spec),
-            "stall_be":         int(stall_be),
-            "stall_l1d":        int(self.dc_stalls),
-            "stall_be_core":    int(self.all_hazards + self.all_div_stalls),
-            "stall_fe":         int(stall_fe),
-            "stall_l1i":        int(self.ic_stalls),
-            "stall_fe_core":    int(self.j_stalls),
-            "ret_inst":         int(self.inst_total),
-            "ret_simd":         int(ret_simd),
-            "ret_int":          int(ret_int),
+            "bad_spec": int(bad_spec),
+            "stall_be": int(stall_be),
+            "stall_l1d": int(self.dc_stalls),
+            "stall_fe": int(stall_fe),
+            "stall_l1i": int(self.ic_stalls),
+            "stall_load_use": int(self.stall_load_use),
+            "stall_mul_simd_use": int(self.stall_mul_simd_use),
+            "stall_div": int(self.stall_div),
+            "ret_ctrl_flow": int(self.jd_inst + self.ji_inst + self.b_inst),
+            "ret_ctrl_flow_jr": int(self.ji_inst),
             "ret_ctrl_flow_br": int(self.b_inst),
-            "bp_miss":          int(self.bp_stats['mispred']),
-            "l1i_ref":          int(self.ic_stats['references']),
-            "l1i_miss":         int(sum(self.ic_stats['misses'].values())),
-            "l1d_ref":          int(self.dc_stats['references']),
-            "l1d_miss":         int(sum(self.dc_stats['misses'].values())),
+            "ret_mem": int(self.ld_inst + self.st_inst),
+            "ret_mem_load": int(self.ld_inst),
+            "ret_mul": int(self.mul_inst),
+            "ret_div": int(self.div_inst),
+            "ret_simd": int(ret_simd),
+            "ret_simd_arith": int(self.simd_arith),
+            "ret_simd_arith_dot": int(self.simd_dot_inst),
+            "bp_miss": int(self.bp_stats['mispred']),
+            "l1i_ref": int(self.ic_stats['references']),
+            "l1i_miss": int(sum(self.ic_stats['misses'].values())),
+            "l1d_ref": int(self.dc_stats['references']),
+            "l1d_ref_r": int(l1d_ref_r),
+            "l1d_miss": int(sum(self.dc_stats['misses'].values())),
+            "l1d_miss_r": int(self.dc_stats['misses']['reads']),
+            "l1d_writeback": int(self.dc_stats['writebacks']),
+            "ret_inst": int(self.inst_total),
+            "cycles": int(self.t_clk_ec),
+            "cycles_opt": int(self.t_clk_bc),
+            "empty": int(stalls + lost),
+            "stalls": int(stalls),
+            "lost": int(lost),
+            "lost_other": int(lost_other),
+            "stall_fe_core": int(self.j_stalls),
+            "stall_be_core": int(self.stall_be_core),
+            "ret_int": int(ret_int),
+            "cpi": self.est["exp"]["cpi"],
+            "ipc": self.est["exp"]["ipc"],
         }
 
     def save_as_json(self) -> None:
@@ -534,6 +604,7 @@ def parse_args(argv=None):
     parser.add_argument("-c", "--corr", type=str, default=None, help="Path to RTL hw_stats JSON for cycles range and per-metric correlation analysis")
     parser.add_argument("-s", "--silent", action="store_true", help="Suppress all output to stdout. Requires running with -j/--save_json or -c/--corr")
     parser.add_argument("--plot", action="store_true", help="Show plots. Applicable only for correlation runs")
+    parser.add_argument("--plot_abs", action='store_true', default=False, help="Plot absolute self counts instead of percentages. Applicable only for correlation runs")
     parser.add_argument("-p", "--places", type=int, default=2, help="Number of decimal places for formatted output (default: 2)")
     parser.add_argument("--save_json", action="store_true", help="Save performance estimates as JSON (tda.py-compatible)")
     parser.add_argument("--save_corr_csv", action="store_true", help="Save correlation stats as csv")
@@ -586,10 +657,18 @@ def main(args: argparse.Namespace):
 
         # --- Per-metric correlation ---
         est_core = res._core_dict()
+        # filter and sort in the same order as tda
+        est_core = classify_and_sort_counters(est_core)
+        # returns e.g. `[('cycles', 25431, 'cycles'), ...`
+        # back to dict, without category
+        est_core = {name:val for name,val,cat in est_core}
 
         comp = []
         for k, e in est_core.items():
             if k not in rtl_core:
+                continue
+            if k.startswith("ret_") and k != "ret_inst":
+                # ret_inst has to match, others just noise if ret_inst matches
                 continue
             r = rtl_core[k]
             diff = e - r
@@ -660,21 +739,29 @@ def main(args: argparse.Namespace):
         fig.tight_layout()
 
         # --- Per-metric correlation plot ---
+        cdiff = dfc['diff'] if args.plot_abs else dfc['diff%'].round(2)
         fig2, ax2 = plt.subplots(figsize=(8, 6))
-        rect = ax2.bar(dfc['metric'], dfc['diff%'].round(2))
+        rect = ax2.bar(dfc['metric'], cdiff)
         ax2.bar_label(rect, padding=4, size=8)
         ax2.tick_params(axis='x', labelrotation=90)
         ax2.grid(which='major', axis='y')
         ax2.set_title(
-            f"Correlation for '{testname}' - Per metric difference [%]")
+            f"Correlation for '{testname}' - Per metric difference" +
+            (f" [%]" if not args.plot_abs else "") +
+            f"\nExecuted cycles: {FMT(corr)}"
+        )
         fig2.tight_layout()
         ax2.margins(0.02, 0.08)
 
+        out_suff = "_abs" if args.plot_abs else ""
         plot_args = [("png", args.save_corr_png), ("svg", args.save_corr_svg)]
         for ext, do_save in plot_args:
             if not do_save:
                 continue
-            pairs = [(fig, "correlation_cycles"), (fig2, "correlation_metrics")]
+            pairs = [
+                (fig, "correlation_cycles"),
+                (fig2, f"correlation_metrics{out_suff}")
+            ]
             for fig_obj, stem in pairs:
                 p = os.path.join(os.path.dirname(p_inst), f"{stem}.{ext}")
                 fig_obj.savefig(p)

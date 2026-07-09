@@ -20,6 +20,7 @@ simd_mul: 2 # R2U
 #simd_add_sub: 2 # R2U
 dcache_load: 2 # R2U
 #dcache_store: 1
+csr: 5 # 4 to drain the pipe, 1 to retire
 
 div: # 3 classes: cache, special, common (as overhead + clk/dividend bit)
   cache: 2 # 1 + 1 (extra clk due to integration, cache hit is combinational)
