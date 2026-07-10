@@ -99,6 +99,7 @@ class perf:
         # names
         "icache_name", "dcache_name", "bpred_name"
     ]
+    stats_name = "hw_stats_perf_est"
 
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, rf_trace=None):
         self.inst_profile = inst_profile
@@ -577,7 +578,7 @@ class perf:
 
     def save_as_json(self) -> None:
         p = os.path.join(
-            os.path.dirname(self.inst_profile), "perf_est.json"
+            os.path.dirname(self.inst_profile), f"{self.stats_name}.json"
         )
         with open(p, "w") as f:
             json.dump({"core": self._core_dict()}, f, indent=4)
@@ -591,7 +592,7 @@ class perf:
         _ = attrs.pop('perf_str')
         all_flat = {**attrs, **branches, **est}
         df = pd.DataFrame([all_flat])
-        csv_out = self.inst_profile.replace(".json", "_perf_est.csv")
+        csv_out = self.inst_profile.replace(".json", f"_{self.stats_name}.csv")
         df.to_csv(csv_out, index=False)
         print_file_saved("performance estimation", csv_out, nl=True)
 
@@ -667,9 +668,6 @@ def main(args: argparse.Namespace):
         for k, e in est_core.items():
             if k not in rtl_core:
                 continue
-            if k.startswith("ret_") and k != "ret_inst":
-                # ret_inst has to match, others just noise if ret_inst matches
-                continue
             r = rtl_core[k]
             diff = e - r
             dn = e if e else r # denominator
@@ -680,12 +678,19 @@ def main(args: argparse.Namespace):
             comp, columns=["metric", "est", "rtl", "diff", "diff%"]
         )
 
+        # ret_inst has to match, others often noise if ret_inst matches
+        dfc_f = dfc[
+            ~(dfc["metric"].str.startswith("ret_") &
+            (dfc["metric"] != "ret_inst"))
+        ].copy()
+
         if not args.silent:
             print("\nCorrelation:")
-            print(dfc.to_string(index=False), "\n")
+            print(dfc_f.to_string(index=False), "\n")
 
+        corr_name = "hw_perf_est_correlation"
         if args.save_corr_csv:
-            p = os.path.join(os.path.dirname(p_inst), "correlation.csv")
+            p = os.path.join(os.path.dirname(p_inst), f"{corr_name}.csv")
             dfc.to_csv(p, index=False)
             print_file_saved("correlation stats", p)
 
@@ -739,9 +744,9 @@ def main(args: argparse.Namespace):
         fig.tight_layout()
 
         # --- Per-metric correlation plot ---
-        cdiff = dfc['diff'] if args.plot_abs else dfc['diff%'].round(2)
+        cdiff = dfc_f['diff'] if args.plot_abs else dfc_f['diff%'].round(2)
         fig2, ax2 = plt.subplots(figsize=(8, 6))
-        rect = ax2.bar(dfc['metric'], cdiff)
+        rect = ax2.bar(dfc_f['metric'], cdiff)
         ax2.bar_label(rect, padding=4, size=8)
         ax2.tick_params(axis='x', labelrotation=90)
         ax2.grid(which='major', axis='y')
@@ -759,8 +764,8 @@ def main(args: argparse.Namespace):
             if not do_save:
                 continue
             pairs = [
-                (fig, "correlation_cycles"),
-                (fig2, f"correlation_metrics{out_suff}")
+                (fig, f"{corr_name}_cycles"),
+                (fig2, f"{corr_name}_metrics{out_suff}")
             ]
             for fig_obj, stem in pairs:
                 p = os.path.join(os.path.dirname(p_inst), f"{stem}.{ext}")
