@@ -644,7 +644,7 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
     new_dasm_ext = ".prof" + dasm_ext
     if section == "data":
         # avoid writing to the inst annotated file, no annotations for data
-        new_dasm_ext = ".dummy" + dasm_ext
+        new_dasm_ext = ".temp" + dasm_ext
     if section == "text":
         PADDING = len(str(int(df['count'].max()))) + 1
         total_count = int(df['count'].sum())
@@ -730,6 +730,9 @@ Tuple[Dict[str, Dict[str, int]], pd.DataFrame]:
                 outfile.write(f"{orig_line.rstrip()} ({sym_pct:5.2f}%)\n")
             else:
                 outfile.write(entry[1])
+        if section == "text":
+            # only text actually saved, data removed later
+            print_file_saved("Profiled dasm", outfile_name)
 
     filter_str = []
     if section == "text":
@@ -1540,7 +1543,7 @@ Tuple[plt.Figure, RangeSlider]:
 
     #ax_tl.set_ylabel("Symbol")
     ax_tl.grid(axis='x', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(ax_tl, df.smp[0], args.sample_begin_norm)
+    ax_top, xlabel = draw_exec_finish(ax_tl, df.smp[0], args.trace_norm)
     ax_tl2.set_xlabel(xlabel)
 
     S_GAP = 0.04
@@ -1650,8 +1653,7 @@ Tuple[plt.Figure, RangeSlider, RangeSlider]:
     ax_t.set_title(get_title(TRACE_SOURCE, trace_type, title))
     ax_t.set_ylabel(ylabel)
     ax_t.grid(axis='both', linestyle='-', alpha=.6, which='major')
-    ax_top, xlabel = draw_exec_finish(
-        ax_t, df.smp.iloc[0], args.sample_begin_norm)
+    ax_top, xlabel = draw_exec_finish(ax_t, df.smp.iloc[0], args.trace_norm)
     ax_t.set_xlabel(xlabel)
 
     S_GAP = 0.04
@@ -1812,7 +1814,7 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
         ax_bd.set_ylabel('Flow Control\nDensity')
 
     ax[-1].set_xlabel(
-        X_LABEL + ' (normalized)' if args.sample_begin_norm else '')
+        X_LABEL + ' (normalized)' if args.trace_norm else '')
 
     def double_y(a):
         ar = a.twinx()
@@ -1909,7 +1911,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     if len(df.index) == 0:
         raise ValueError("Empty ISA sim trace")
     df = df.drop(columns=[c for c in df.columns if pad_str in c])
-    if args.sample_begin_norm:
+    if args.trace_norm:
         df.smp = df.smp - df.smp.head(1).values[0] + 1 # normalize smp to 1
 
     # enum class dmem_size_t {
@@ -1934,7 +1936,7 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df.bp = df.bp.replace(hw_status_t_none, TRACE_NA)
     # cpi in isa sim is just 1
     df['cpi'] = df[df['inst'] != 0]['smp'].diff().fillna(df['smp']).astype(int)
-    if not args.sample_begin_norm:
+    if not args.trace_norm:
         i0 = df.index[0]
         df.at[i0, 'cpi'] = int(df.at[i0, 'inst'] != 0)
     if args.clk:
@@ -1949,9 +1951,20 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     df.inst = df.inst.replace(0, np.nan) # replace NOP/bubbles with NaN
     df.pc = df.pc.replace(0, np.nan) # same as for inst
 
-    df_start = int(args.sample_begin) if args.sample_begin else df.smp.min()
-    df_end = int(args.sample_end) if args.sample_end else df.smp.max()
+    # smp is an absolute counter, not always profiling start
+    smp_lo, smp_hi = int(df.smp.min()), int(df.smp.max())
+    smp_off = smp_lo if args.sample_rel else 0
+    df_start = smp_off + int(args.sample_begin) if args.sample_begin else smp_lo
+    df_end = smp_off + int(args.sample_end) if args.sample_end else smp_hi
     df = df.loc[df['smp'].between(df_start, df_end)]
+
+    if df.empty:
+        raise ValueError(
+            f"No trace samples in requested range [{df_start}, {df_end}]; "
+            f"trace covers smp [{smp_lo}, {smp_hi}]. "
+            f"--sample_begin/_end are absolute smp values; "
+            f"pass --sample_rel to treat them as relative to the trace start."
+        )
 
     return df
 
@@ -2209,9 +2222,10 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument('--sample_begin', type=int, help=f"Show only samples after this sample. Applied before any other filtering options. {TRACE_ONLY}")
     parser.add_argument('--sample_end', type=int, help=f"Show only samples before this sample. Applied before any other filtering options. {TRACE_ONLY}")
+    parser.add_argument('--sample_rel', action='store_true', help=f"Treat --sample_begin/_end as relative to the trace beginning, instead of 0th sample. {TRACE_ONLY}")
     parser.add_argument('--clk', action='store_true', help=f"Trace is from the RTL simulation with real clock. {TRACE_ONLY}") # TODO: can it be autodetected?
     parser.add_argument('--freq', type=int, default=FREQ_DEFAULT, help=f"Core clock frequency in [MHz]. {TRACE_ONLY}")
-    parser.add_argument('--sample_begin_norm', action='store_true', help=f"Normalize trace start to 0th sample. {TRACE_ONLY}")
+    parser.add_argument('--trace_norm', action='store_true', help=f"Normalize trace start to 0th sample. {TRACE_ONLY}")
 
     parser.add_argument('--timeline', action='store_true', help=f"Plot top of callstack trace as timeline. Requires --dasm. {TRACE_ONLY}")
     parser.add_argument('--add_sp_plot', action='store_true', help=f"Plot stack pointer (x2/sp) with the timeline plot. {TRACE_ONLY}")
