@@ -1124,7 +1124,7 @@ def plot_sp(ax, df) -> None:
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     on_xlim_changed_default(ax, line, LW_OFF)
 
-def plot_ipc(ax, df) -> None:
+def plot_ipc(ax, df, ipc_rolling) -> None:
     LW_OFF = .65
     lw = progressive_lw(df.index.size) * LW_OFF
 
@@ -1134,15 +1134,17 @@ def plot_ipc(ax, df) -> None:
     ipc = round(1/cpi, 3)
     label = f" IPC: {ipc}\n(CPI: {cpi})"
 
-    line, = ax.plot(df.smp, df.ipc_rolling, lw=lw, color=CLR_TAB_BLUE)
+    line, = ax.plot(df.smp, ipc_rolling, lw=lw, color=CLR_TAB_BLUE)
     plot_dummy_line(ax, CLR_TAB_BLUE, 1.5, label)
     H_OFFSET = .05
     ax.set_ylim(0-H_OFFSET, 1+H_OFFSET)
     on_xlim_changed_default(ax, line, LW_OFF)
 
 def plot_stat(
-    ax, x, y, unit, win_size, metric, agg='sum',
+    ax, x, x_rolling, y, unit, metric, agg='sum',
     clr="def", yscale=1, allow_zero=False) -> None:
+    # x: raw series (for the legend aggregate)
+    # x_rolling: rolling mean
 
     LW_OFF = .65
     lw = progressive_lw(len(y)) * LW_OFF
@@ -1157,8 +1159,8 @@ def plot_stat(
     elif agg != '':
         raise ValueError(f"Invalid aggregation '{agg}'. Use 'sum' or 'mean'.")
 
-    xr = rolling_mean(x, win_size)
-    xr /= yscale # to make y axis more readable, then manually label it outisde
+    # to make y axis more readable, then manually label it outisde
+    xr = x_rolling / yscale
     label = f"{metric}"
     if agg != '': # label it
         label += f": {fmt.format_eng(x_agg)}"
@@ -1175,7 +1177,7 @@ def plot_stat(
     ax.grid(axis='y', linestyle='-', alpha=.6, which='major')
     ax.grid(axis='y', linestyle='--', alpha=0.4, which='minor')
 
-def plot_hw_hm(ax, df, col, win_size) -> None:
+def plot_hw_hm(ax, df, col, win_size, running_avg) -> None:
     H_OFFSET = .3
     exec_inst = df.inst.where(df.inst != 0).count()
     df[col] = df[col].replace(TRACE_NA, np.nan)
@@ -1196,10 +1198,6 @@ def plot_hw_hm(ax, df, col, win_size) -> None:
     LW_OFF = .5
     lw = progressive_lw(df.index.size) * LW_OFF
 
-    # drop NaNs to have continuous mean
-    running_avg = rolling_mean(df[col].dropna(), win_size)
-    # reindex and forward fill to account for NaNs in the source
-    running_avg = running_avg.reindex(df.index, method='ffill')
     # if win_size is larger than data, skip running mean
     if (win_size*2 > df[col].dropna().size):
         # plot nothing so xlim doesn't error out
@@ -1683,6 +1681,47 @@ def draw_exec_finish(ax, xlim_low, norm) -> Tuple[plt.Axes, str]:
 
     return ax_top, xlabel
 
+def compute_rolling_stats(df, args) -> dict:
+    # returns precomputed series (keyed per signal)
+    # for plot_ipc/plot_stat/plot_hw_hm
+    win_s = args.win_size_stats
+    win_hw = args.win_size_hw
+    R = {'ipc': None, 'ops': {}, 'bd': {}, 'ct': {}, 'hw': {}}
+
+    if args.clk:
+        # bubbles have inst==NaN so use notna() to mark retires
+        ipc_inst = df['inst'].notna().astype(int)
+        R['ipc'] = rolling_mean(ipc_inst, win_s)
+
+    # OPS per instruction type (raw kept for the legend aggregate)
+    for k in (icfg.k_alu, icfg.k_mul, icfg.k_div, icfg.k_mem,
+              icfg.k_simd_arith, icfg.k_simd_data_fmt):
+        raw = df.ops.where(df.i_type == k, 0)
+        R['ops'][k] = (raw, rolling_mean(raw, win_s))
+
+    if args.clk:
+        # cache<->core/mem bandwidth (RTL only)
+        for col in ('ct_imem_core', 'ct_imem_mem',
+                    'ct_dmem_core_r', 'ct_dmem_core_w',
+                    'ct_dmem_mem_r', 'ct_dmem_mem_w'):
+            raw = df[col]
+            R['ct'][col] = (raw, rolling_mean(raw, win_s))
+    else:
+        # flow-control (branch/jump) density (ISA sim only)
+        for k in (icfg.k_branch, icfg.k_jump):
+            raw = df.br_dens.where(df.i_type == k, 0)
+            R['bd'][k] = (raw, rolling_mean(raw, win_s))
+
+    # BP/IC/DC hit-rate running average:
+    # drop no-access samples to keep the mean continuous,
+    # then reindex+ffill back onto the full frame
+    for col in ('bp', 'ic', 'dc'):
+        s = df[col].replace(TRACE_NA, np.nan)
+        R['hw'][col] = rolling_mean(s.dropna(), win_hw) \
+            .reindex(df.index, method='ffill')
+
+    return R
+
 def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     if not exec_df_within_limits(df.index.size, args.trace_limit):
         return None, None
@@ -1722,25 +1761,22 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     win_s = args.win_size_stats
     win_hw = args.win_size_hw
     y = df.smp
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_alu, 0), y,
-              'ops', win_s, icfg.k_alu, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mul, 0), y,
-              'ops', win_s, icfg.k_mul, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_div, 0), y,
-              'ops', win_s, icfg.k_div, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_mem, 0), y,
-              'ops', win_s, icfg.k_mem, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_arith, 0), y,
-              'ops', win_s, icfg.k_simd_arith, clr="lut")
-    plot_stat(ax_ops, df.ops.where(df.i_type==icfg.k_simd_data_fmt, 0), y,
-              'ops', win_s, icfg.k_simd_data_fmt, clr="lut")
+    R = compute_rolling_stats(df, args)
+    plot_stat(ax_ops, *R['ops'][icfg.k_alu], y, 'ops', icfg.k_alu, clr="lut")
+    plot_stat(ax_ops, *R['ops'][icfg.k_mul], y, 'ops', icfg.k_mul, clr="lut")
+    plot_stat(ax_ops, *R['ops'][icfg.k_div], y, 'ops', icfg.k_div, clr="lut")
+    plot_stat(ax_ops, *R['ops'][icfg.k_mem], y, 'ops', icfg.k_mem, clr="lut")
+    plot_stat(ax_ops, *R['ops'][icfg.k_simd_arith], y,
+              'ops', icfg.k_simd_arith, clr="lut")
+    plot_stat(ax_ops, *R['ops'][icfg.k_simd_data_fmt], y,
+              'ops', icfg.k_simd_data_fmt, clr="lut")
 
-    plot_hw_hm(ax_bp, df, 'bp', win_hw)
-    plot_hw_hm(ax_ic, df, 'ic', win_hw)
-    plot_hw_hm(ax_dc, df, 'dc', win_hw)
+    plot_hw_hm(ax_bp, df, 'bp', win_hw, R['hw']['bp'])
+    plot_hw_hm(ax_ic, df, 'ic', win_hw, R['hw']['ic'])
+    plot_hw_hm(ax_dc, df, 'dc', win_hw, R['hw']['dc'])
 
     if args.clk:
-        plot_ipc(ax_ipc, df)
+        plot_ipc(ax_ipc, df, R['ipc'])
         s = 1_000_000 # scale to MB/s
         u = 'MB/s'
         if df.ct_imem_core.max() > 1e9:
@@ -1748,23 +1784,23 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
             u = 'GB/s'
         w_clr = CLR_HL[2]
         agg_ct = 'mean'
-        plot_stat(ax_ct_i2c, df.ct_imem_core, y, 'B/s', win_s,
+        plot_stat(ax_ct_i2c, *R['ct']['ct_imem_core'], y, 'B/s',
                   'Read', agg=agg_ct, yscale=s, allow_zero=True)
-        plot_stat(ax_ct_i2m, df.ct_imem_mem, y, 'B/s', win_s,
+        plot_stat(ax_ct_i2m, *R['ct']['ct_imem_mem'], y, 'B/s',
                   'Read', agg=agg_ct, yscale=s, allow_zero=True)
-        plot_stat(ax_ct_d2c, df.ct_dmem_core_r, y, 'B/s', win_s,
+        plot_stat(ax_ct_d2c, *R['ct']['ct_dmem_core_r'], y, 'B/s',
                   'Read', agg=agg_ct, yscale=s, allow_zero=True)
-        plot_stat(ax_ct_d2c, df.ct_dmem_core_w, y, 'B/s', win_s,
+        plot_stat(ax_ct_d2c, *R['ct']['ct_dmem_core_w'], y, 'B/s',
                   'Write', agg=agg_ct, clr=w_clr, yscale=s, allow_zero=True)
-        plot_stat(ax_ct_d2m, df.ct_dmem_mem_r, y, 'B/s', win_s,
+        plot_stat(ax_ct_d2m, *R['ct']['ct_dmem_mem_r'], y, 'B/s',
                   'Read', agg=agg_ct, yscale=s, allow_zero=True)
-        plot_stat(ax_ct_d2m, df.ct_dmem_mem_w, y, 'B/s', win_s,
+        plot_stat(ax_ct_d2m, *R['ct']['ct_dmem_mem_w'], y, 'B/s',
                   'Write', agg=agg_ct, clr=w_clr, yscale=s, allow_zero=True)
     else:
-        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.k_branch, 0), y,
-                  'ops', win_s, icfg.k_branch, clr="lut")
-        plot_stat(ax_bd, df.br_dens.where(df.i_type==icfg.k_jump, 0), y,
-                  'ops', win_s, icfg.k_jump, clr="lut")
+        plot_stat(ax_bd, *R['bd'][icfg.k_branch], y,
+                  'ops', icfg.k_branch, clr="lut")
+        plot_stat(ax_bd, *R['bd'][icfg.k_jump], y,
+                  'ops', icfg.k_jump, clr="lut")
 
     # update axis
     # x
@@ -1940,8 +1976,6 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
         i0 = df.index[0]
         df.at[i0, 'cpi'] = int(df.at[i0, 'inst'] != 0)
     if args.clk:
-        df['ipc_inst'] = df['inst'].ne(0).astype(int)
-        df['ipc_rolling'] = rolling_mean(df['ipc_inst'], args.win_size_stats)
         for m in mem_stats: # from bytes/cycle to bytes/sec
             df[m] = df[m].astype(np.uint64) * args.freq * 1_000_000
 
