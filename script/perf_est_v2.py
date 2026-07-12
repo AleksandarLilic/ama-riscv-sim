@@ -46,8 +46,13 @@ from utils import (DELIM, INDENT, get_test_title, print_file_saved,
 # icache and bp tables structures that are not modelled in isa sim
 #
 # lost_other cycles are due to pipeline inefficiencies, and are non-trivial
-# to estimate; perf_est only includes csr drain cycles;
-# others are extremely rare, but possible
+# to estimate; perf_est: 'lost_other' == 0
+# known gaps
+# - spec_ic_miss_sink: wrong-path speculative i$ miss completing after the
+#   redirect, whose response the core sinks in one cycle;
+#   classified as 'stall_fe_core' in RTL;
+#   ties into the above 'two l1i_refs' work probably
+# - others: rare, but possible
 
 yaml = YAML()
 yaml.preserve_quotes = True
@@ -325,7 +330,8 @@ class perf:
         )
         self.stall_div = self.all_div_stalls
         self.stall_be_core = (
-            self.stall_load_use + self.stall_mul_simd_use + self.stall_div
+            self.stall_load_use + self.stall_mul_simd_use + self.stall_div +
+            self.csr_stalls
         )
 
         # FIXME: this needs to be reworked, heavily dependent of main mem ports
@@ -342,7 +348,7 @@ class perf:
 
         self.fe_stalls = self.ic_stalls + self.j_stalls
         self.be_stalls = self.dc_stalls + self.stall_be_core
-        self.lost_other = self.csr_stalls
+        self.lost_other = 0
 
         self._est_stalls()
 
@@ -507,7 +513,8 @@ class perf:
             f"Core: {FMT(self.stall_be_core)} " + \
             f"(Load {FMT(self.stall_load_use)}, " + \
             f"SIMD {FMT(self.stall_mul_simd_use)}, " + \
-            f"DIV {FMT(self.stall_div)})"
+            f"DIV {FMT(self.stall_div)}, " + \
+            f"CSR {FMT(self.csr_stalls)})"
             #f"{DELIM}Memory contention: " + \
             #    f"{FMT(self.mrpc_stalls + self.mwpc_stalls)} "
 
@@ -527,7 +534,7 @@ class perf:
         stall_be = self.be_stalls
         bad_spec = self.bp_stalls
         stalls = stall_fe + stall_be
-        lost_other = self.csr_stalls
+        lost_other = self.lost_other
         lost = bad_spec + lost_other
         ret_simd = self.simd_data_fmt + self.simd_arith
         ret_int = self.inst_total - ret_simd
