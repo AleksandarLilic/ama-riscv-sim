@@ -90,8 +90,8 @@ void core::simd_ss_finish_dot(int32_t res, int32_t c_in) {
     if (!ip.rd()) return;
     dasm.simd_ss << "RD = " << res << ", "
                  << "RS1 = " << dasm.simd_a.str() << "], "
-                 << "RS2 = " << dasm.simd_b.str() << "]; "
-                 << ", RS3 = " << c_in << "; ";
+                 << "RS2 = " << dasm.simd_b.str() << "], "
+                 << "RS3 = " << c_in << "; ";
 }
 
 void core::simd_ss_finish_vins(int32_t a, int32_t idx) {
