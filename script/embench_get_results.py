@@ -51,11 +51,11 @@ def compute_geosd(values, geomean):
     return math.exp(math.sqrt(lnsize / len(values)))
 
 def get_size_tool():
-    rv_gnu = os.environ.get("RV_GNU_LATEST")
+    rv_gnu = os.environ.get("RV_GNU_DEV")
     if not rv_gnu:
-        raise EnvironmentError("RV_GNU_LATEST environment variable is not set")
+        raise EnvironmentError("RV_GNU_DEV environment variable is not set")
 
-    size_tool = f"{rv_gnu}-size"
+    size_tool = f"{rv_gnu}/riscv32-unknown-elf-size"
     if not shutil.which(size_tool):
         raise FileNotFoundError(f"'{size_tool}' not found on PATH")
 
