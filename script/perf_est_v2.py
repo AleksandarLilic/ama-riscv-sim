@@ -16,11 +16,6 @@ from utils import (DELIM, INDENT, get_test_title, print_file_saved,
 # NOTES: known gaps to RTL with current uarch
 # all of these combined usually cause 0.1% or less 'cycles' difference to RTL
 #
-# for load inst that causes both dcache miss and a load_to_use hazard, only
-# dcache miss is attributed to cycle tag in RTL; this is not modelled here
-# (dcache miss rate is taken as a counter from the model, hazards from rf_trace)
-# and therefore 'stall_be_core' can overcount on some workloads
-#
 # 'stall_l1d_r' is not estimated, as getting accurate number requires stats
 # on whether the read caused dcache writeback or not on read reference;
 # this could be collected in the future if needed, or can be broadly estimated
@@ -52,6 +47,9 @@ from utils import (DELIM, INDENT, get_test_title, print_file_saved,
 #   redirect, whose response the core sinks in one cycle;
 #   classified as 'stall_fe_core' in RTL;
 #   ties into the above 'two l1i_refs' work probably
+# - bubbles: on overlaps between fe and be stalls, or back-to-back d$ stalls
+#   there may be an empty slot in between that isn't always chased down by the
+#   following instruction
 # - others: rare, but possible
 
 yaml = YAML()
@@ -680,6 +678,11 @@ def main(args: argparse.Namespace):
             dn = e if e else r # denominator
             diff_p = round(diff / dn * 100, 3) if dn else 0
             comp.append([k, e, r, diff, diff_p])
+            if k == "ret_inst" and diff != 0:
+                raise ValueError(
+                    f"Retired instructions count 'ret_inst' must match between "
+                    f"RTL and ISA sim. Difference '(est-rtl)' is {diff}"
+                )
 
         dfc = pd.DataFrame(
             comp, columns=["metric", "est", "rtl", "diff", "diff%"]
