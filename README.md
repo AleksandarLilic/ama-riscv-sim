@@ -747,11 +747,11 @@ It also backannotates the disassembly and saves it as `dhrystone.prof.dasm`
 
 ### Hardware performance estimates
 
-The microarchitecture description at [script/hw_perf_metrics_v2.yaml](script/hw_perf_metrics_v2.yaml) is based on the [ama-riscv](https://github.com/AleksandarLilic/ama-riscv) implementation
+The microarchitecture description at [script/hw_perf_est_uarch.yaml](script/hw_perf_est_uarch.yaml) is based on the [ama-riscv](https://github.com/AleksandarLilic/ama-riscv) implementation
 
 Run with positional arguments and also save as json file with estimates
 ```sh
-./script/perf_est_v2.py \
+./script/hw_perf_est.py \
     examples/dhrystone_dhrystone_out/inst_profile.json \
     examples/dhrystone_dhrystone_out/hw_stats.json \
     examples/dhrystone_dhrystone_out/rf_trace.bin -j
@@ -764,7 +764,7 @@ Additionally, script assumes perfect correlation between hardware models and act
 Performance estimate breakdown for: 
     ../workdir/dhrystone_dhrystone_out/inst_profile.json
     ../workdir/dhrystone_dhrystone_out/hw_stats.json
-    <home_path>/sim/script/hw_perf_metrics_v2.yaml
+    <home_path>/sim/script/hw_perf_est_uarch.yaml
     ../workdir/dhrystone_dhrystone_out/rf_trace.bin
 
 Peak Stack usage: 352 bytes
