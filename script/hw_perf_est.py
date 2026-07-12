@@ -56,7 +56,7 @@ yaml = YAML()
 yaml.preserve_quotes = True
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_HW_YAML = f"{SCRIPT_PATH}/hw_perf_metrics_v2.yaml"
+DEFAULT_HW_YAML = f"{SCRIPT_PATH}/hw_perf_est_uarch.yaml"
 
 FMT   = smarter_eng_formatter(unit='', places=2, sep="")
 FMT_T = smarter_eng_formatter(unit='s', places=2, sep="")
