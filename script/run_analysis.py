@@ -1957,13 +1957,15 @@ def load_bin_trace(bin_log, args) -> pd.DataFrame:
     # };
     # decode dsz to size in bytes and type (load/store) based on the above enum
     NA = 8 # no_access enum value
-    df['dtyp'] = df['dsz'].apply(lambda x: 'store' if 7 >= x >= 4 else 'load')
-    df['dsz'] = df['dsz'].apply(lambda x: x-4 if 7 >= x >= 4 else x)
-    df['dsz'] = df['dsz'] + 1 # makes 1=byte, 2=half, 3=word, 4=dword
-    df['dsz'] = df['dsz'].apply(lambda x: TRACE_NA if x == (NA + 1) else x)
-    df['dsz'] = df['dsz'].apply(lambda x: 8 if x == 4 else x) # dw to 8B
-    df['dsz'] = df['dsz'].apply(lambda x: 4 if x == 3 else x) # w to 4B
-    df.loc[df['dsz'] == TRACE_NA, 'dtyp'] = ""
+    # vectorized decode of dsz enum -> (size in bytes, load/store type):
+    #   raw 0-3 = lb/lh/lw/ld, 4-7 = sb/sh/sw/sd, 8 = no_access
+    #   size follows (raw % 4): byte/half/word/dword; no_access -> TRACE_NA
+    raw_dsz = df['dsz'].to_numpy()
+    is_na = raw_dsz == NA
+    size_lut = np.array([1, 2, 4, 8]) # byte, half, word, dword
+    df['dsz'] = np.where(is_na, TRACE_NA, size_lut[raw_dsz % 4])
+    df['dtyp'] = np.where(
+        is_na, "", np.where((raw_dsz >= 4) & (raw_dsz <= 7), 'store', 'load'))
 
     # enum class hw_status_t { miss, hit, none };
     hw_status_t_none = 2
