@@ -221,7 +221,7 @@ bool core::check_interrupts(bool defer_trap) {
     #ifndef DPI
     mem->update_mtime();
     #ifdef UART_INPUT_EN
-    mem->update_uart_input(sim_cnt.inst);
+    mem->update_uart_input(sim_cnt.step);
     #endif
     #endif
 

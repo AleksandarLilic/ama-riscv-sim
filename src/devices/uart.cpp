@@ -15,7 +15,7 @@ uart::uart(cfg_t cfg) :
     #ifdef UART_INPUT_EN
     , uart_in(cfg.uart_in)
     , uart_in_idx(0)
-    , next_rx_inst(BAUD_STRIDE)
+    , next_rx_time(BAUD_STRIDE)
     , csr_mip(nullptr)
     #endif
     #endif
@@ -60,6 +60,7 @@ uint32_t uart::rd(uint32_t address, uint32_t size) {
 }
 
 void uart::refresh_meip() {
+    // drive mip.MEIP from RX_VALID (level-sensitive)
     if (csr_mip == nullptr) return;
     if (mem[UART_STATUS] & UART_RX_VALID) *csr_mip |= csr_map::mip::meip;
     else *csr_mip &= ~csr_map::mip::meip;
@@ -81,10 +82,11 @@ int32_t uart::next_byte() {
     return -1; // nothing available (or EOF)
 }
 
-void uart::update_input(uint64_t instr_cnt) {
+void uart::update_input(uint64_t time) {
     #ifndef DPI
-    if (instr_cnt >= next_rx_inst) {
-        next_rx_inst += BAUD_STRIDE;
+    // paced RX drain
+    if (time >= next_rx_time) {
+        next_rx_time += BAUD_STRIDE;
         // only pull a new byte once the previous one is consumed,
         // so MEIP stays a clean level and no source byte is dropped
         if (!(mem[UART_STATUS] & UART_RX_VALID)) {
@@ -96,7 +98,7 @@ void uart::update_input(uint64_t instr_cnt) {
         }
     }
     #else
-    (void)instr_cnt;
+    (void)time;
     #endif
     refresh_meip();
 }
