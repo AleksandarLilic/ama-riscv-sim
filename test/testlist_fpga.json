@@ -46,6 +46,7 @@
 
     "uart_direct_send": ["hello_world"],
     "uart_printf_nano": ["hello_world"],
-    "uart_direct_loopback": ["test"]
+    "uart_direct_loopback": ["test"],
+    "interrupt_uart_wfi": ["all"]
 
 }
