@@ -44,8 +44,8 @@ void core::csr_cnt_update(uint16_t addr) {
     skip = csr_updated;
     skip &= ((addr == m::addr::mcycle) || (addr == m::addr::mcycleh));
     // inst=cycle in isa sim
-    uint64_t cycle_elapsed = (sim_cnt.inst - csr_cnt.step);
-    csr_cnt.step = (sim_cnt.inst + skip);
+    uint64_t cycle_elapsed = (sim_cnt.step - csr_cnt.step);
+    csr_cnt.step = (sim_cnt.step + skip);
 
     csr.at(m::addr::minstret).value += (inst_elapsed & 0xFFFFFFFF);
     csr.at(m::addr::minstreth).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
