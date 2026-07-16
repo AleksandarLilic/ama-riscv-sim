@@ -3,15 +3,13 @@
 import argparse
 import json
 import statistics
-import subprocess
 import sys
-import time
 
 import regex
 from hw_model_sweep import get_test_name
-from sim_run_utils import (add_common_args, host_meta, is_pass,
-                           parse_inst_counts, perf_available, prepare, sim_cmd,
-                           write_json)
+from sim_run_utils import (add_common_args_perfrun, host_meta, output_tail,
+                           parse_inst_counts, perf_available, prepare, run_cmd,
+                           run_died, run_status, sim_cmd, write_json)
 from utils import INDENT
 
 PERF_EVENTS = [
@@ -25,17 +23,23 @@ def parse_sim_self_mips(stdout: str):
     m = regex.search(r"Simulation performance: ([\d.]+) MIPS", stdout)
     return float(m.group(1)) if m else None
 
-def run_perf_stat(cmd, work_dir):
-    pcmd = ["perf", "stat", "-x,", "-e", ",".join(PERF_EVENTS)] + cmd
-    res = subprocess.run(pcmd, cwd=work_dir, capture_output=True, text=True)
+def run_perf_stat(cmd, work_dir, timeout=None):
+    DELIM = ","
+    pcmd = ["perf", "stat", f"-x{DELIM}", "-e", ",".join(PERF_EVENTS)] + cmd
+    res = run_cmd(pcmd, work_dir, timeout)
+    if run_died(run_status(res)):
+        print(f"{INDENT}[WARN] perf stat failed "
+              f"({res['error_msg']}); skipping counters")
+        return None
     counters = {}
-    for line in res.stderr.splitlines():
+    for line in res["stderr"].splitlines():
+        # e.g. "2135111562,,cycles,459307980,100.00,,"
         parts = line.split(",")
         if len(parts) >= 3:
             try:
-                counters[parts[2]] = int(parts[0])  # raw counts are integers
+                counters[parts[2]] = int(parts[0])
             except ValueError:
-                pass  # "<not supported>" / "<not counted>"
+                pass # "<not supported>" / "<not counted>"
     if "instructions" not in counters or "cycles" not in counters:
         return None
     return counters
@@ -57,34 +61,61 @@ def bench_one(sim, app, sim_args, args, perf_ok):
     name = get_test_name(app)
     cmd = sim_cmd(sim, app, sim_args, args.pin)
 
-    for _ in range(max(0, args.warmup)):
-        subprocess.run(cmd, cwd=args.work_dir, capture_output=True, text=True)
+    res = {
+        "name": name,
+        "passed": False,
+        "status": None,
+        "returncode": None,
+        "executed": None,
+        "runtime_s_min": None,
+        "runtime_s_median": None,
+        "mips": None,
+        "sim_self_mips": None,
+    }
+
+    # fail fast on the first run the sim didn't survive (crash/timeout/spawn)
+    # timing a dying binary is meaningless;
+    # FAIL (clean exit, no pass string) keeps going, the timing is still valid
+    def fail(stage, r, status):
+        res.update(
+            status=status,
+            returncode=r["returncode"],
+            error=f"{stage}: {r['error_msg']}",
+            output_tail=output_tail(r),
+        )
+        return res
+
+    for i in range(args.warmup):
+        r = run_cmd(cmd, args.work_dir, args.timeout)
+        st = run_status(r)
+        if run_died(st):
+            return fail(f"warmup run {i+1}/{args.warmup}", r, st)
 
     times = []
     last = None
-    for _ in range(args.repeats):
-        t0 = time.perf_counter()
-        last = subprocess.run(
-            cmd, cwd=args.work_dir, capture_output=True, text=True
-        )
-        times.append(time.perf_counter() - t0)
+    for i in range(args.repeats):
+        last = run_cmd(cmd, args.work_dir, args.timeout)
+        st = run_status(last)
+        if run_died(st):
+            return fail(f"timed run {i+1}/{args.repeats}", last, st)
+        times.append(last["elapsed_s"])
 
-    passed = is_pass(last.stdout)
-    executed, _ = parse_inst_counts(last.stdout)
+    status = run_status(last)
+    executed, _ = parse_inst_counts(last["stdout"])
     median = statistics.median(times)
-    mips = round(executed / median / 1e6, 2) if executed and median else None
-    res = {
-        "name": name,
-        "passed": passed,
-        "executed": executed,
-        "runtime_s_min": round(min(times), 6),
-        "runtime_s_median": round(median, 6),
-        "mips": mips,
-        "sim_self_mips": parse_sim_self_mips(last.stdout),
-    }
+    res.update(
+        passed=(status == "PASS"),
+        status=status,
+        returncode=last["returncode"],
+        executed=executed,
+        runtime_s_min=round(min(times), 6),
+        runtime_s_median=round(median, 6),
+        mips=round(executed / median / 1e6, 2) if executed and median else None,
+        sim_self_mips=parse_sim_self_mips(last["stdout"]),
+    )
 
     if perf_ok:
-        counters = run_perf_stat(cmd, args.work_dir)
+        counters = run_perf_stat(cmd, args.work_dir, args.timeout)
         if counters:
             # raw counters first, derived stats after
             res["perf"] = {**counters, **perf_metrics(counters)}
@@ -93,7 +124,7 @@ def bench_one(sim, app, sim_args, args, perf_ok):
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Benchmark host throughput (MIPS) of the ISA sim")
-    add_common_args(p)
+    add_common_args_perfrun(p)
     p.add_argument("--repeats", type=int, default=5, help="Timed runs per workload (median/min reported)")
     p.add_argument("--warmup", type=int, default=1, help="Warmup runs per workload (discarded)")
     p.add_argument("--perf", action="store_true", help="Wrap each workload in `perf stat` for IPC/branch/cache counters")
@@ -102,6 +133,10 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
+    if args.repeats < 1:
+        sys.exit("ERROR: --repeats must be >= 1")
+    if args.warmup < 0:
+        sys.exit("ERROR: --warmup must be >= 0")
     isa_sim_args, workloads = prepare(args)
 
     perf_ok = args.perf
@@ -122,23 +157,28 @@ def main():
         print(f"sim args: {' '.join(isa_sim_args)}")
 
     results = []
+    fmt = lambda v: "-" if v is None else v # metrics can be missing on FAIL
     for app in workloads:
         r = bench_one(args.isa_sim, app, isa_sim_args, args, perf_ok)
         results.append(r)
-        status = "PASS" if r["passed"] else "FAIL"
+        if run_died(r["status"]):
+            print(f"{INDENT}[{r['status']}] {r['name']:<24} {r['error']}")
+            if r["output_tail"]:
+                print(r["output_tail"])
+            continue
         extra = ""
         p = r.get("perf")
         if p and p.get("ipc") is not None:
             extra = (
                 f"IPC: {p['ipc']:<5}, "
-                f"bp miss [%]: {p.get('branch_miss_pct'):<5}, "
-                f"cache miss [%]: {p.get('cache_miss_pct'):<6}"
+                f"bp miss [%]: {fmt(p.get('branch_miss_pct'))!s:<5}, "
+                f"cache miss [%]: {fmt(p.get('cache_miss_pct'))!s:<6}"
             )
         print(
-            f"{INDENT}[{status}] {r['name']:<24} "
-            f"{str(r['mips']):<5} MIPS "
+            f"{INDENT}[{r['status']}] {r['name']:<24} "
+            f"{fmt(r['mips'])!s:<5} MIPS "
             f"(median {r['runtime_s_median']:.4f}s, "
-            f"self {r['sim_self_mips']:<5})\t"
+            f"self {fmt(r['sim_self_mips'])!s:<5})\t"
             f"{extra}"
         )
 
@@ -168,7 +208,7 @@ def main():
                 f"{r['mips']:<8} MIPS  ({d:+.1f}%)"
             )
 
-    sys.exit(0 if all(r["passed"] for r in results) else 1)
+    sys.exit(0 if all(r["status"] == "PASS" for r in results) else 1)
 
 if __name__ == "__main__":
     main()

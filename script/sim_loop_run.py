@@ -2,39 +2,34 @@
 
 import argparse
 import os
-import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from hw_model_sweep import get_test_name
-from sim_run_utils import (default_isa_sim, is_pass, load_config,
-                           parse_inst_counts, resolve_workloads)
+from sim_run_utils import (add_common_args, output_tail, parse_inst_counts,
+                           prepare, run_cmd, run_status)
 from utils import INDENT
 
 # globals
 MAX_WORKERS = int(os.cpu_count())
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser( description="Run a batch of workloads through the ISA sim in parallel")
-    parser.add_argument("-c", "--config", required=True, help="Path to the YAML config (workloads + isa_sim_args)")
-    parser.add_argument("--isa_sim", default=default_isa_sim(), help="Path to the ISA sim binary (defaults to the build/ one)")
-    parser.add_argument("-f", "--filter", type=str, nargs='*', help="Filter (whitespace separated list of regex patterns) to only run workloads whose path matches any of the patterns matches any of the patterns")
-    parser.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of parallel workers")
-    parser.add_argument("--work_dir", default=os.getcwd(), help="Directory to run in and store sim outputs")
-    parser.add_argument("--save_log", action="store_true", help="Save each workload's stdout to <name>.log")
-    return parser.parse_args()
+    p = argparse.ArgumentParser( description="Run a batch of workloads through the ISA sim in parallel")
+    add_common_args(p)
+    p.add_argument("--save_log", action="store_true", help="Save each workload's stdout to <name>.log")
+    p.add_argument("--max_workers", type=int, default=MAX_WORKERS, help="Maximum number of parallel workers")
+    return p.parse_args()
 
-def run_one(sim: str, app: str, sim_args, work_dir: str, save_log: bool):
+def run_one(
+    sim: str, app: str, sim_args, work_dir: str, save_log: bool, timeout=None
+):
     name = get_test_name(app)
     cmd = [sim, app] + sim_args
-    t_start = time.time()
-    res = subprocess.run(cmd, cwd=work_dir, capture_output=True, text=True)
-    runtime = time.time() - t_start
+    res = run_cmd(cmd, work_dir, timeout)
+    status = run_status(res)
 
-    passed = is_pass(res.stdout)
-
-    executed, profiled = parse_inst_counts(res.stdout)
+    executed, profiled = parse_inst_counts(res["stdout"])
     insts = ""
     if executed is not None:
         if profiled is not None:
@@ -48,37 +43,24 @@ def run_one(sim: str, app: str, sim_args, work_dir: str, save_log: bool):
 
     if save_log:
         with open(os.path.join(work_dir, f"{name}.log"), "w") as f:
-            f.write(res.stdout)
+            f.write(res["stdout"])
 
     fail_out = ""
-    if not passed:
-        fail_out = (f"{INDENT}cmd: {' '.join(cmd)}\n"
-                    f"{INDENT}stderr:\n{res.stderr}\n"
-                    f"{INDENT}stdout (tail):\n"
-                    + "\n".join(res.stdout.splitlines()[-20:]))
+    if status != "PASS":
+        fail_out = f"{INDENT}cmd: {' '.join(cmd)}\n" + output_tail(res, 20)
 
     return {
         "name": name,
-        "passed": passed,
-        "runtime": runtime,
+        "status": status,
+        "runtime": res["elapsed_s"],
         "insts": insts,
-        "returncode": res.returncode,
+        "error_msg": res["error_msg"],
         "fail_out": fail_out,
     }
 
 def main():
     args = parse_args()
-    args.isa_sim = os.path.abspath(args.isa_sim)
-
-    if not os.path.exists(args.config):
-        raise FileNotFoundError(f"Config not found at: {args.config}")
-    if not os.path.exists(args.isa_sim):
-        raise FileNotFoundError(f"Simulator not found at: {args.isa_sim}")
-    if not os.path.exists(args.work_dir):
-        os.makedirs(args.work_dir)
-
-    isa_sim_args, workloads = load_config(args.config)
-    workloads = resolve_workloads(workloads, args.filter)
+    isa_sim_args, workloads = prepare(args)
 
     max_workers = min(MAX_WORKERS, args.max_workers)
     print(f"Running {len(workloads)} workload(s) with {max_workers} workers "
@@ -92,25 +74,26 @@ def main():
         futures = {
             executor.submit(
                 run_one,
-                args.isa_sim, app, isa_sim_args, args.work_dir, args.save_log
+                args.isa_sim, app, isa_sim_args, args.work_dir, args.save_log,
+                args.timeout
             ): app for app in workloads
         }
         for future in as_completed(futures):
             r = future.result()
             results.append(r)
-            status = "PASS" if r["passed"] else "FAIL"
-            print(f"{INDENT}[{status}] {r['name']} "
+            print(f"{INDENT}[{r['status']}] {r['name']} "
                   f"({r['runtime']:.2f}s){r['insts']}")
 
     total = time.time() - t_start
 
-    passed = [r for r in results if r["passed"]]
-    failed = [r for r in results if not r["passed"]]
+    passed = [r for r in results if r["status"] == "PASS"]
+    failed = [r for r in results if r["status"] != "PASS"]
 
     if failed:
         print("\nFailures:")
         for r in failed:
-            print(f"{INDENT}{r['name']} (rc={r['returncode']}):")
+            why = f": {r['error_msg']}" if r["error_msg"] else ""
+            print(f"{INDENT}{r['name']} [{r['status']}]{why}")
             print(r["fail_out"])
 
     print(f"\n{len(passed)} passed / {len(failed)} failed. "

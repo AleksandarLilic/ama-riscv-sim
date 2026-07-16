@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import platform
+import signal
 import subprocess
 import time
 
@@ -70,15 +71,83 @@ def parse_inst_counts(stdout: str):
 def is_pass(stdout: str) -> bool:
     return (SIM_PASS_STRING in stdout) or (SIM_EARLY_EXIT_STRING in stdout)
 
+def run_cmd(cmd, cwd, timeout=None) -> dict:
+    # one sim/perf invocation: capture output, survive spawn failure and hang
+    # Popen + start_new_session so a timeout can kill the whole process group
+    # (subprocess.run's timeout only kills the direct child - a perf-wrapped
+    # sim would keep the pipes open and block the post-kill read forever)
+    res = {
+        "stdout": "",
+        "stderr": "",
+        "returncode": None,
+        "elapsed_s": 0.0,
+        "error": None, # None | "timeout" | "spawn"
+        "error_msg": "", # set whenever the run is unusable (incl. rc != 0)
+    }
+    t0 = time.perf_counter()
+
+    # try running, if possible
+    try:
+        p = subprocess.Popen(
+            cmd, cwd=cwd,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True
+        )
+    except OSError as e:
+        res["error"] = "spawn"
+        res["error_msg"] = f"failed to start: {e}"
+        return res
+
+    # keep running, and check for timeout
+    try:
+        res["stdout"], res["stderr"] = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL) # pgid == pid (new session)
+        except ProcessLookupError:
+            pass
+        res["stdout"], res["stderr"] = p.communicate()
+        res["error"] = "timeout"
+        res["error_msg"] = f"timed out after {timeout:g}s"
+
+    # wrap up
+    res["returncode"] = p.returncode
+    if not res["error"] and p.returncode != 0:
+        res["error_msg"] = f"rc={p.returncode}"
+    res["elapsed_s"] = time.perf_counter() - t0
+
+    return res
+
+def run_status(r: dict) -> str:
+    # classify a run_cmd result; CRASH covers signals (negative rc)
+    if r["error"] == "timeout":
+        return "TIMEOUT"
+    if r["error"]:
+        return "ERROR"
+    if r["returncode"] != 0:
+        return "CRASH"
+    return "PASS" if is_pass(r["stdout"]) else "FAIL"
+
+def run_died(status: str) -> bool:
+    # process didn't survive to produce a usable run
+    # (unlike FAIL: clean exit, just no pass string)
+    return status in ("CRASH", "TIMEOUT", "ERROR")
+
+def output_tail(r: dict, n=10) -> str:
+    # last n lines of stderr (stdout as fallback) for failure reports
+    text = r["stderr"].strip() or r["stdout"].strip()
+    if not text:
+        return ""
+    return "\n".join(f"{INDENT*2}{ln}" for ln in text.splitlines()[-n:])
+
 # host environment info
 def get_build_info(sim: str) -> dict:
-    try:
-        out = subprocess.run(
-            [sim, "--version"], capture_output=True, text=True).stdout
-    except OSError:
+    # short timeout: a broken sim must not hang the metadata query
+    r = run_cmd([sim, "--version"], cwd=None, timeout=2)
+    if run_died(run_status(r)):
         return {}
     info = {}
-    for line in out.splitlines():
+    for line in r["stdout"].splitlines():
         if ":" in line:
             k, v = line.split(":", 1)
             info[k.strip()] = v.strip()
@@ -120,6 +189,10 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--isa_sim", default=default_isa_sim(), help="Path to the ISA sim binary (defaults to the build/ one)")
     parser.add_argument("-f", "--filter", type=str, nargs='*', help="Regex pattern(s); only run workloads whose path matches any")
     parser.add_argument("--work_dir", default=os.getcwd(), help="Directory to run in and store sim outputs")
+    parser.add_argument("--timeout", type=float, default=60, help="Per-run timeout in seconds for each sim/perf invocation")
+
+def add_common_args_perfrun(parser: argparse.ArgumentParser) -> None:
+    add_common_args(parser)
     parser.add_argument("--pin", type=int, default=None, help="Pin to a CPU core via taskset -c")
     parser.add_argument("--json", dest="json_out", default=None, help="Write results JSON to this path")
 

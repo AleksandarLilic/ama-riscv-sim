@@ -13,8 +13,9 @@ import subprocess
 import sys
 
 from hw_model_sweep import get_test_name
-from sim_run_utils import (add_common_args, get_build_info, host_meta, is_pass,
-                           perf_available, prepare, sim_cmd, write_json)
+from sim_run_utils import (add_common_args_perfrun, get_build_info, host_meta,
+                           output_tail, perf_available, prepare, run_cmd,
+                           run_died, run_status, sim_cmd, write_json)
 from utils import INDENT
 
 SCRIPT_PATH = os.path.dirname(os.path.realpath(__file__))
@@ -22,14 +23,14 @@ STACKCOLLAPSE = os.path.join(SCRIPT_PATH, "FlameGraph", "stackcollapse-perf.pl")
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Sample-profile the host execution of the ISA sim (perf record -> folded stacks)")
-    add_common_args(p)
+    add_common_args_perfrun(p)
     p.add_argument("-e", "--event", default="cycles", help="perf event(s) to sample; comma-separated for multiple independent streams, each written to its own folded file (e.g. 'cycles,instructions' -> per-function IPC via prof_stats -t/-s). Comma = separate streams; a {...} group is one stream and can't be split per event")
     p.add_argument("-F", "--freq", type=int, default=999, help="perf sampling frequency in Hz")
     p.add_argument("--call-graph", dest="call_graph", choices=["fp", "dwarf"], default="fp", help="perf stack unwind method (fp needs PERF=1 frame pointers)")
     p.add_argument("--top", type=int, default=0, help="Top-N hot symbols to print to stdout")
     return p.parse_args()
 
-def record(cmd, data, freq, cg_mode, events, cwd):
+def record(cmd, data, freq, cg_mode, events, cwd, timeout=None):
     rec = ([
         "perf", "record",
         "-F", str(freq),
@@ -38,7 +39,7 @@ def record(cmd, data, freq, cg_mode, events, cwd):
         "-o", data, "--"
         ] + cmd
     )
-    return subprocess.run(rec, cwd=cwd, capture_output=True, text=True)
+    return run_cmd(rec, cwd, timeout)
 
 # perf script sample header: "ama-riscv-sim 1234 5.67: 890 cycles: <ip> ..."
 # the event name is the token right before its trailing colon
@@ -127,35 +128,53 @@ def profile_one(sim, app, sim_args, args):
     cmd = sim_cmd(sim, app, sim_args, args.pin)
     ev_req = [e.strip() for e in args.event.split(",") if e.strip()]
 
-    rec = record(cmd, data, args.freq, args.call_graph, args.event, out_dir)
-    passed = is_pass(rec.stdout)
-    if rec.returncode != 0:
-        print(
-            f"{INDENT}[ERROR] {name}: perf record failed (rc={rec.returncode})"
-        )
-        print("\n".join(rec.stderr.splitlines()[-10:]))
-        return None
+    # every workload stores its results, even when profiling breaks
+    res = {
+        "name": name,
+        "passed": False,
+        "status": None,
+        "returncode": None,
+        "perf_data": data,
+        "folded": {},
+    }
+
+    r = record(
+        cmd, data, args.freq, args.call_graph, args.event, out_dir, args.timeout
+    )
+    status = run_status(r) # perf record passes sim stdout/rc through
+    res.update(status=status, returncode=r["returncode"])
+
+    # don't fold after a kill - perf.data likely incomplete
+    if run_died(status):
+        res.update(error=f"perf record: {r['error_msg']}")
+        print(f"{INDENT}[{status}] {name}: {res['error']}")
+        tail = output_tail(r)
+        if tail:
+            print(tail)
+        return res
+
+    res.update(passed=(status == "PASS"))
 
     ok, err, folded_map = collapse(data, out_dir, ev_req)
     if not ok:
-        print(f"{INDENT}[ERROR] {name}: folding failed\n{err}")
-        return None
+        first = (err or "").strip().splitlines()
+        msg = "folding failed: " + (first[0] if first else "unknown")
+        res.update(status="ERROR", error=msg)
+        print(f"{INDENT}[ERROR] {name}: {msg}")
+        return res
 
     # stdout glance only; render folded with get_flamegraph.py / prof_stats.py
-    status = "PASS" if passed else "FAIL"
+    print(f"{INDENT}[{status}] {name} ({r['elapsed_s']:.3f}s)")
     for ev, folded in folded_map.items():
         self_counts, total = parse_folded(folded)
-        print(f"{INDENT}[{status}] {name} [{ev}]  ({total:,} weight, "
-              f"{len(self_counts)} symbols)")
+        print(f"{INDENT*2} "
+              f"{ev}: {total:,} weight, {len(self_counts)} symbols"
+        )
         for s in top_symbols(self_counts, total, args.top):
-            print(f"{INDENT * 2}{s['self_pct']:>6.2f}%  {s['symbol']}")
+            print(f"{INDENT*3}{s['self_pct']:>6.2f}%  {s['symbol']}")
 
-    return {
-        "name": name,
-        "passed": passed,
-        "perf_data": data,
-        "folded": folded_map,
-    }
+    res.update(folded=folded_map)
+    return res
 
 def main():
     args = parse_args()
@@ -175,7 +194,11 @@ def main():
 
     build_info = get_build_info(args.isa_sim)
     cxxflags = build_info.get("CXXFLAGS", "")
-    if args.call_graph == "fp" and "fno-omit-frame-pointer" not in cxxflags:
+    # empty build_info means --version itself failed - don't pile on
+    if ((args.call_graph == "fp") and
+        build_info and
+        ("fno-omit-frame-pointer" not in cxxflags)
+    ):
         print(
             "WARNING: sim not built with PERF=1 (no frame pointers); "
             "fp call graphs may be shallow. "
@@ -196,9 +219,7 @@ def main():
 
     results = []
     for app in workloads:
-        entry = profile_one(args.isa_sim, app, isa_sim_args, args)
-        if entry is not None:
-            results.append(entry)
+        results.append(profile_one(args.isa_sim, app, isa_sim_args, args))
 
     out = {
         "meta": host_meta(
@@ -212,7 +233,7 @@ def main():
         write_json(args.json_out, out)
         print(f"\nWrote {args.json_out}")
 
-    sys.exit(0 if results and all(r["passed"] for r in results) else 1)
+    sys.exit(0 if all(r["status"] == "PASS" for r in results) else 1)
 
 if __name__ == "__main__":
     main()
