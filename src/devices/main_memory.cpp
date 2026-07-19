@@ -119,11 +119,11 @@ void main_memory::burn_elf(std::string test_elf) {
 
     #ifdef PROFILERS_EN
     // generate symbol map
-    for (size_t i = 0; i < reader.sections.size(); i++) {
-        ELFIO::section* sec = reader.sections[i];
+    for (const auto& sec_ptr : reader.sections) {
+        ELFIO::section* sec = sec_ptr.get();
         if (sec->get_type() == ELFIO::SHT_SYMTAB) {
             ELFIO::symbol_section_accessor symbols(reader, sec);
-            for (size_t j = 0; j < symbols.get_symbols_num(); j++) {
+            for (uint64_t j = 0; j < symbols.get_symbols_num(); j++) {
                 std::string name;
                 ELFIO::Elf64_Addr value = 0;
                 ELFIO::Elf_Xword size  = 0;
@@ -258,7 +258,7 @@ std::array<uint8_t, cache_cfg::line_size> main_memory::rd_line(
     std::array<uint8_t, cache_cfg::line_size> data;
     uint32_t base = align_to_cache_line(addr.v);
     for (uint32_t i = 0; i < cache_cfg::line_size; i++) {
-        data[i] = dev::rd(base+i, 1);
+        data[i] = TO_U8(dev::rd((base + i), 1));
     }
     return data;
 }

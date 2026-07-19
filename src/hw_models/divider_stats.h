@@ -120,7 +120,7 @@ struct div_stats_t {
     public:
         static float_t fraction(uint64_t count, uint64_t total) {
             if (total == 0) return -1.0;
-            return (TO_F32(count) / TO_F32(total) * 100.0);
+            return (TO_F32(count) / TO_F32(total) * 100.0f);
         }
 
         void profiling(bool enable) { prof_active = enable; }

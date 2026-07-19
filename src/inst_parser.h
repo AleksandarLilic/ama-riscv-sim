@@ -68,8 +68,8 @@ class inst_parser {
         }
 
         uint32_t c_imm_arith() {
-            int16_t imm_5 = (TO_I16(inst << (15-12)) >> (15-5)) & 0xffe0;
-            int16_t imm_4_0 = TO_I16((inst & M_IMM_6_2) >> 2);
+            int32_t imm_5 = (TO_I32(inst << (31-12)) >> (31-5)) & 0xffffffe0;
+            int32_t imm_4_0 = TO_I32((inst & M_IMM_6_2) >> 2);
             return (imm_5 | imm_4_0);
         }
 
@@ -86,32 +86,35 @@ class inst_parser {
         }
 
         uint32_t c_imm_16sp() {
-            int16_t imm_9 = (TO_I16(inst << (15-12)) >> (15-9)) & 0xfe00;
-            int16_t imm_8_7 = (TO_I16(inst & M_IMM_4_3) << 4);
-            int16_t imm_6 = (TO_I16(inst & M_IMM_5) << 1);
-            int16_t imm_5 = (TO_I16(inst & M_IMM_2) << 3);
-            int16_t imm_4 = (TO_I16(inst & M_IMM_6) >> 2);
+            int32_t imm_9 = ((TO_I32(inst << (31-12)) >> (31-9)) & 0xfffffe00);
+            int32_t imm_8_7 = (TO_I32(inst & M_IMM_4_3) << 4);
+            int32_t imm_6 = (TO_I32(inst & M_IMM_5) << 1);
+            int32_t imm_5 = (TO_I32(inst & M_IMM_2) << 3);
+            int32_t imm_4 = (TO_I32(inst & M_IMM_6) >> 2);
             return (imm_9 | imm_8_7 | imm_6 | imm_5 | imm_4);
         }
 
         uint32_t c_imm_b() {
-            int16_t imm_8 = (TO_I16(inst << (15-12)) >> (15-8)) & 0xff00;
-            int16_t imm_7_6 = (TO_I16(inst & M_IMM_6_5) << 1);
-            int16_t imm_5 = (TO_I16(inst & M_IMM_2) << 3);
-            int16_t imm_4_3 = (TO_I16(inst & M_IMM_11_10) >> 7);
-            int16_t imm_2_1 = (TO_I16(inst & M_IMM_4_3) >> 2);
+            uint32_t ic = (inst & 0xffff);
+            int32_t imm_8 = ((TO_I32(ic << (31-12)) >> (31-8)) & 0xffffff00);
+            int32_t imm_7_6 = (TO_I32(ic & M_IMM_6_5) << 1);
+            int32_t imm_5 = (TO_I32(ic & M_IMM_2) << 3);
+            int32_t imm_4_3 = (TO_I32(ic & M_IMM_11_10) >> 7);
+            int32_t imm_2_1 = (TO_I32(ic & M_IMM_4_3) >> 2);
             return (imm_8 | imm_7_6 | imm_5 | imm_4_3 | imm_2_1);
         }
 
         uint32_t c_imm_j() {
-            int16_t imm_11 = ((TO_I16(inst << (15-12)) >> (15-11)) & 0xf800);
-            int16_t imm_10 = (TO_I16(inst & M_IMM_8) << 2);
-            int16_t imm_9_8 = (TO_I16(inst & M_IMM_10_9) >> 1);
-            int16_t imm_7 = (TO_I16(inst & M_IMM_6) << 1);
-            int16_t imm_6 = (TO_I16(inst & M_IMM_7) >> 1);
-            int16_t imm_5 = (TO_I16(inst & M_IMM_2) << 3);
-            int16_t imm_4 = (TO_I16(inst & M_IMM_11) >> 7);
-            int16_t imm_3_1 = (TO_I16(inst & M_IMM_5_3) >> 2);
+            int32_t imm_11 = (
+                (TO_I32(inst << (31-12)) >> (31-11)) & 0xfffff800
+            );
+            int32_t imm_10 = (TO_I32(inst & M_IMM_8) << 2);
+            int32_t imm_9_8 = (TO_I32(inst & M_IMM_10_9) >> 1);
+            int32_t imm_7 = (TO_I32(inst & M_IMM_6) << 1);
+            int32_t imm_6 = (TO_I32(inst & M_IMM_7) >> 1);
+            int32_t imm_5 = (TO_I32(inst & M_IMM_2) << 3);
+            int32_t imm_4 = (TO_I32(inst & M_IMM_11) >> 7);
+            int32_t imm_3_1 = (TO_I32(inst & M_IMM_5_3) >> 2);
             return (
                 imm_11 | imm_10 | imm_9_8 | imm_7 |
                 imm_6 | imm_5 | imm_4 | imm_3_1

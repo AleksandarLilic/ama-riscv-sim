@@ -5,24 +5,24 @@ void core::csr_rw(uint32_t init_val_rs1) { W_CSR(init_val_rs1); }
 
 void core::csr_rs(uint32_t init_val_rs1) {
     if (ip.rs1() == 0) return;
-    W_CSR(csr.at(ip.csr_addr()).value | init_val_rs1);
+    W_CSR(csr.at(TO_U16(ip.csr_addr())).value | init_val_rs1);
 }
 
 void core::csr_rc(uint32_t init_val_rs1) {
     if (ip.rs1() == 0) return;
-    W_CSR(csr.at(ip.csr_addr()).value & ~init_val_rs1);
+    W_CSR(csr.at(TO_U16(ip.csr_addr())).value & ~init_val_rs1);
 }
 
 void core::csr_rwi() { W_CSR(ip.uimm_csr()); }
 
 void core::csr_rsi() {
     if (ip.rs1() == 0) return;
-    W_CSR(csr.at(ip.csr_addr()).value | ip.uimm_csr());
+    W_CSR(csr.at(TO_U16(ip.csr_addr())).value | ip.uimm_csr());
 }
 
 void core::csr_rci() {
     if (ip.rs1() == 0) return;
-    W_CSR(csr.at(ip.csr_addr()).value & ~ip.uimm_csr());
+    W_CSR(csr.at(TO_U16(ip.csr_addr())).value & ~ip.uimm_csr());
 }
 
 void core::csr_cnt_update(uint16_t addr) {
@@ -47,20 +47,18 @@ void core::csr_cnt_update(uint16_t addr) {
     uint64_t cycle_elapsed = (sim_cnt.step - csr_cnt.step);
     csr_cnt.step = (sim_cnt.step + skip);
 
-    csr.at(m::addr::minstret).value += (inst_elapsed & 0xFFFFFFFF);
-    csr.at(m::addr::minstreth).value += ((inst_elapsed >> 32) & 0xFFFFFFFF);
-    csr.at(m::addr::mcycle).value += (cycle_elapsed & 0xFFFFFFFF);
-    csr.at(m::addr::mcycleh).value += ((cycle_elapsed >> 32) & 0xFFFFFFFF);
+    csr_wide_add(m::addr::minstret, inst_elapsed);
+    csr_wide_add(m::addr::mcycle, cycle_elapsed);
 
     // user mode shadows
     for (auto &c : csr) {
         if (c.second.perm != csr_def::perm_t::ro_u_shadow) continue;
-        if (c.second.s_addr == 0x0) continue; // MMIO shadows, handled after
+        if (c.second.s_addr == 0x0) continue; // skip mmio shadows
         c.second.value = csr.at(c.second.s_addr).value;
     }
 
-    uint64_t mtime_shadow = mem->get_mtime_shadow();
-    csr_wide_assign(m::addr::time, mtime_shadow);
+    // mmio shadows
+    csr_wide_assign(m::addr::time, mem->get_mtime_shadow());
 
     // no perf counters update, events don't exist in the standalone ISA sim
 }

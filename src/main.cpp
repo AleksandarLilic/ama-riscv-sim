@@ -28,9 +28,12 @@
 #define CXXOPTS_VAL_STR cxxopts::value<std::string>()
 #define CXXOPTS_VAL_BOOL cxxopts::value<bool>()
 
-#define ARG2HEX(x) std::stoul(x.as<std::string>(), nullptr, 16)
-#define ARG2SIZE(x) std::stoul(x.as<std::string>(), nullptr, 10)
-#define ARG2BOOL(x) x.as<bool>()
+#define ARG_U32H(x) TO_U32(std::stoul(x.as<std::string>(), nullptr, 16))
+#define ARG_UL(x) std::stoul(x.as<std::string>(), nullptr, 10)
+#define ARG_I8(x) TO_U8(ARG_UL(x))
+#define ARG_U32(x) TO_U32(ARG_UL(x))
+#define ARG_U64(x) TO_U64(ARG_UL(x))
+#define ARG_BOOL(x) x.as<bool>()
 
 #define RESOLVE_ARG(str, map) \
     resolve_arg(str, result[str].as<std::string>(), map)
@@ -452,57 +455,57 @@ int main(int argc, char* argv[]) {
 
     try {
         test_elf = result["path"].as<std::string>();
-        cfg.show_state = ARG2BOOL(result["show_state"]);
-        cfg.exit_on_trap = ARG2BOOL(result["exit_on_trap"]);
-        cfg.mem_dump_start = ARG2HEX(result["mem_dump_start"]);
-        cfg.mem_dump_size = ARG2SIZE(result["mem_dump_size"]);
-        cfg.run_insts = ARG2SIZE(result["run_insts"]);
-        cfg.run_steps = ARG2SIZE(result["run_steps"]);
+        cfg.show_state = ARG_BOOL(result["show_state"]);
+        cfg.exit_on_trap = ARG_BOOL(result["exit_on_trap"]);
+        cfg.mem_dump_start = ARG_U32H(result["mem_dump_start"]);
+        cfg.mem_dump_size = ARG_U32(result["mem_dump_size"]);
+        cfg.run_insts = ARG_U64(result["run_insts"]);
+        cfg.run_steps = ARG_U64(result["run_steps"]);
         out_dir_tag = result["out_dir_tag"].as<std::string>();
         #ifdef UART_EN
-        cfg.uart_show = ARG2BOOL(result["uart_show"]);
+        cfg.uart_show = ARG_BOOL(result["uart_show"]);
         #ifdef UART_INPUT_EN
         cfg.uart_in = result["uart_in"].as<std::string>();
         #endif
         #endif
 
         #ifdef PROFILERS_EN
-        cfg.prof_pc.start = ARG2HEX(result["prof_pc_start"]);
-        cfg.prof_pc.stop = ARG2HEX(result["prof_pc_stop"]);
-        cfg.prof_pc.single_match_num = ARG2SIZE(result["prof_pc_single_match"]);
-        cfg.prof_pc.exit_on_prof_stop = ARG2BOOL(result["exit_on_prof_stop"]);
-        cfg.prof_trace = ARG2BOOL(result["prof_trace"]);
+        cfg.prof_pc.start = ARG_U32H(result["prof_pc_start"]);
+        cfg.prof_pc.stop = ARG_U32H(result["prof_pc_stop"]);
+        cfg.prof_pc.single_match_num = ARG_U32(result["prof_pc_single_match"]);
+        cfg.prof_pc.exit_on_prof_stop = ARG_BOOL(result["exit_on_prof_stop"]);
+        cfg.prof_trace = ARG_BOOL(result["prof_trace"]);
         cfg.perf_events = RESOLVE_ARG_LIST("perf_event", perf_event_map);
-        cfg.rf_usage = ARG2BOOL(result["rf_usage"]);
-        cfg.no_callstack = ARG2BOOL(result["no_callstack"]);
-        cfg.prof_show = ARG2BOOL(result["prof_show"]);
+        cfg.rf_usage = ARG_BOOL(result["rf_usage"]);
+        cfg.no_callstack = ARG_BOOL(result["no_callstack"]);
+        cfg.prof_show = ARG_BOOL(result["prof_show"]);
         #endif
 
         #ifdef DASM_EN
-        cfg.log = ARG2BOOL(result["log"]);
+        cfg.log = ARG_BOOL(result["log"]);
         #ifdef PROFILERS_EN
-        cfg.log_always = ARG2BOOL(result["log_always"]);
+        cfg.log_always = ARG_BOOL(result["log_always"]);
         #else
         cfg.log_always = true;
         #endif
-        cfg.log_state = ARG2BOOL(result["log_state"]);
+        cfg.log_state = ARG_BOOL(result["log_state"]);
         cfg.rf_names = RESOLVE_ARG("rf_names", rf_names_map);
         #ifdef HW_MODELS_EN
-        cfg.log_hw_models = ARG2BOOL(result["log_hw_models"]);
+        cfg.log_hw_models = ARG_BOOL(result["log_hw_models"]);
         #endif
         #endif
 
         #ifdef HW_MODELS_EN
         // icache
-        hw_cfg.icache_sets = ARG2SIZE(result["icache_sets"]);
-        hw_cfg.icache_ways = ARG2SIZE(result["icache_ways"]);
+        hw_cfg.icache_sets = ARG_U32(result["icache_sets"]);
+        hw_cfg.icache_ways = ARG_U32(result["icache_ways"]);
         hw_cfg.icache_re_policy =
             RESOLVE_ARG("icache_re_policy", cache_re_policy_map);
         hw_cfg.icache_in_policy =
             RESOLVE_ARG("icache_in_policy", cache_in_policy_map);
         // dcache
-        hw_cfg.dcache_sets = ARG2SIZE(result["dcache_sets"]);
-        hw_cfg.dcache_ways = ARG2SIZE(result["dcache_ways"]);
+        hw_cfg.dcache_sets = ARG_U32(result["dcache_sets"]);
+        hw_cfg.dcache_ways = ARG_U32(result["dcache_ways"]);
         hw_cfg.dcache_re_policy =
             RESOLVE_ARG("dcache_re_policy", cache_re_policy_map);
         hw_cfg.dcache_in_policy =
@@ -510,10 +513,10 @@ int main(int argc, char* argv[]) {
         hw_cfg.dcache_wr_policy =
             RESOLVE_ARG("dcache_wr_policy", cache_wr_policy_map);
         // caches other configs
-        hw_cfg.roi_start = ARG2HEX(result["roi_start"]);
-        hw_cfg.roi_size = ARG2SIZE(result["roi_size"]);
-        hw_cfg.show_cache_state = ARG2BOOL(result["show_cache_state"]);
-        hw_cfg.div_cache_entries = ARG2SIZE(result["div_cache_entries"]);
+        hw_cfg.roi_start = ARG_U32H(result["roi_start"]);
+        hw_cfg.roi_size = ARG_U32(result["roi_size"]);
+        hw_cfg.show_cache_state = ARG_BOOL(result["show_cache_state"]);
+        hw_cfg.div_cache_entries = ARG_U32(result["div_cache_entries"]);
 
         // branch predictors
         hw_cfg.bp = RESOLVE_ARG("bp", bp_names_map);
@@ -527,27 +530,27 @@ int main(int argc, char* argv[]) {
         }
         // per predictor configurations
         hw_cfg.bp_static_method = RESOLVE_ARG("bp_static_method",bp_sttc_map);
-        hw_cfg.bp_pc_bits = ARG2SIZE(result["bp_pc_bits"]);
-        hw_cfg.bp_cnt_bits = ARG2SIZE(result["bp_cnt_bits"]);
-        hw_cfg.bp_lhist_bits = ARG2SIZE(result["bp_lhist_bits"]);
-        hw_cfg.bp_ghr_bits = ARG2SIZE(result["bp_ghr_bits"]);
+        hw_cfg.bp_pc_bits = ARG_I8(result["bp_pc_bits"]);
+        hw_cfg.bp_cnt_bits = ARG_I8(result["bp_cnt_bits"]);
+        hw_cfg.bp_lhist_bits = ARG_I8(result["bp_lhist_bits"]);
+        hw_cfg.bp_ghr_bits = ARG_I8(result["bp_ghr_bits"]);
         hw_cfg.bp_fold_pc = RESOLVE_ARG("bp_fold_pc", bp_pc_folds_map);
 
         hw_cfg.bp2_static_method = RESOLVE_ARG("bp2_static_method",bp_sttc_map);
-        hw_cfg.bp2_pc_bits = ARG2SIZE(result["bp2_pc_bits"]);
-        hw_cfg.bp2_cnt_bits = ARG2SIZE(result["bp2_cnt_bits"]);
-        hw_cfg.bp2_lhist_bits = ARG2SIZE(result["bp2_lhist_bits"]);
-        hw_cfg.bp2_ghr_bits = ARG2SIZE(result["bp2_ghr_bits"]);
+        hw_cfg.bp2_pc_bits = ARG_I8(result["bp2_pc_bits"]);
+        hw_cfg.bp2_cnt_bits = ARG_I8(result["bp2_cnt_bits"]);
+        hw_cfg.bp2_lhist_bits = ARG_I8(result["bp2_lhist_bits"]);
+        hw_cfg.bp2_ghr_bits = ARG_I8(result["bp2_ghr_bits"]);
         hw_cfg.bp2_fold_pc = RESOLVE_ARG("bp2_fold_pc", bp_pc_folds_map);
 
-        hw_cfg.bp_combined_pc_bits = ARG2SIZE(result["bp_combined_pc_bits"]);
-        hw_cfg.bp_combined_cnt_bits = ARG2SIZE(result["bp_combined_cnt_bits"]);
+        hw_cfg.bp_combined_pc_bits = ARG_I8(result["bp_combined_pc_bits"]);
+        hw_cfg.bp_combined_cnt_bits = ARG_I8(result["bp_combined_cnt_bits"]);
         hw_cfg.bp_combined_fold_pc =
             RESOLVE_ARG("bp_combined_fold_pc", bp_pc_folds_map);
 
         // bp other configs
-        hw_cfg.bp_run_all = ARG2BOOL(result["bp_run_all"]);
-        hw_cfg.bp_dump_csv = ARG2BOOL(result["bp_dump_csv"]);
+        hw_cfg.bp_run_all = ARG_BOOL(result["bp_run_all"]);
+        hw_cfg.bp_dump_csv = ARG_BOOL(result["bp_dump_csv"]);
         #endif
 
     } catch (const cxxopts::exceptions::option_has_no_value& e) {

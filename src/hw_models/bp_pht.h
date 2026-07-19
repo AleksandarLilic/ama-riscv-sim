@@ -64,7 +64,7 @@ class bp_pht {
             cnt_bits(cfg.cnt_bits),
             pht_entries_num(TO_U32(1 << cfg.pht_idx_bits)),
             pht_entries_mask(pht_entries_num - 1),
-            cnt_max((1 << cnt_bits) - 1),
+            cnt_max(TO_U8((1 << cnt_bits) - 1)),
             thr_taken(cnt_max == 1 ? cnt_max : cnt_max >> 1),
             bit_size(pht_entries_num * cnt_bits),
             pht(pht_entries_num, thr_taken),

@@ -55,7 +55,7 @@ class bp_local : public bp {
             pht({hist_bits, cfg.cnt_bits, cfg.type_name})
         {
             for (auto& e : hist_table) e.hist_pattern = 0;
-            size = hist_table.size() * hist_bits;
+            size = (TO_U32(hist_table.size()) * hist_bits);
             size += pht.get_bit_size();
             size = (size + 4) >> 3;
             pht_ptr = &pht;

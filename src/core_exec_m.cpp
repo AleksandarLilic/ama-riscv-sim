@@ -7,15 +7,15 @@ uint32_t core::alu_mul(uint32_t a, uint32_t b) {
 }
 uint32_t core::alu_mulh(uint32_t a, uint32_t b) {
     int64_t res = TO_I64(TO_I32(a)) * TO_I64(TO_I32(b));
-    return res >> 32;
+    return TO_I32(res >> 32);
 }
 uint32_t core::alu_mulhsu(uint32_t a, uint32_t b) {
     int64_t res = TO_I64(TO_I32(a)) * TO_I64(b);
-    return res >> 32;
+    return TO_I32(res >> 32);
 }
 uint32_t core::alu_mulhu(uint32_t a, uint32_t b) {
     uint64_t res = TO_U64(a) * TO_U64(b);
-    return res >> 32;
+    return TO_U32(res >> 32);
 }
 uint32_t core::alu_div(uint32_t a, uint32_t b) {
     // division by zero

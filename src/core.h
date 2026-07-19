@@ -42,9 +42,9 @@ class core {
         #ifdef DPI
         uint32_t get_pc() { return pc; }
         uint32_t get_inst() { return inst; }
-        uint32_t get_csr(uint32_t addr) { return csr.at(addr).value; }
+        uint32_t get_csr(uint16_t addr) { return csr.at(addr).value; }
         uint32_t get_reg(uint32_t reg) { return rf[reg]; }
-        uint32_t get_inst_cnt() { return sim_cnt.inst; }
+        uint64_t get_inst_cnt() { return sim_cnt.inst; }
         void update_clk(uint64_t clk) { clk_src.update(clk); }
         void save_trace_entry(trace_entry te);
         void set_perf_event_flag(perf_event_t perf_event, bool set) {
@@ -125,9 +125,17 @@ class core {
             c.value = (c.value & ~c.wmask) | (data & c.wmask);
         }
 
-        void csr_wide_assign(uint32_t addr, uint64_t val) {
+        void csr_wide_assign(uint16_t addr, uint64_t val) {
             csr.at(addr).value = TO_U32(val);
             csr.at(addr + csr_def::low_to_high_off).value = TO_U32(val >> 32);
+        }
+
+        void csr_wide_add(uint16_t addr, uint64_t delta) {
+            const uint16_t high_addr = (addr + csr_def::low_to_high_off);
+            const uint64_t value = (
+                (TO_U64(csr.at(high_addr).value) << 32) | csr.at(addr).value
+            );
+            csr_wide_assign(addr, value + delta);
         }
 
         void prof_state(bool enable);

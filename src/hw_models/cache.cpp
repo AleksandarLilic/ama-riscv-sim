@@ -47,7 +47,7 @@ cache::cache(
     tag_off = (cache_cfg::byte_addr_bits + index_bits_num);
     max_scp_ways = ways - 1; // should be fw configurable as MMIO, max = ways-1
     metadata_bits_num = metadata_t::get_bits_num();
-    metadata_bits_num += log2(ways); // lru counters
+    metadata_bits_num += TO_U32(log2(ways)); // lru counters
     size = {
         sets, ways, cache_cfg::line_size, tag_bits_num, metadata_bits_num
     };
@@ -502,19 +502,20 @@ void cache::show_stats(bool show_state) {
 
     if (show_state) {
         // find n as a largest number of digits - for alignment in stdout
-        int32_t n = 0;
+        uint64_t n = 0;
         for (uint32_t set = 0; set < sets; set++) {
             for (uint32_t way = 0; way < ways; way++) {
-                uint32_t cnt = cache_array[set][way].get_ref();
-                n = std::max(n, TO_I32(std::to_string(cnt).size()));
+                uint64_t cnt = cache_array[set][way].get_ref();
+                n = std::max(n, TO_U64(std::to_string(cnt).size()));
             }
         }
+        const int32_t width = TO_I32(std::to_string(n).size());
 
         for (uint32_t set = 0; set < sets; set++) {
             std::cout << INDENT << "s" << std::left << std::setw(2) << set
                       << ": " << std::right;
             for (uint32_t way = 0; way < ways; way++) {
-                std::cout << " w" << way << " [" << std::setw(n)
+                std::cout << " w" << way << " [" << std::setw(width)
                         << cache_array[set][way].get_ref() << "] ";
             }
             std::cout << "\n";

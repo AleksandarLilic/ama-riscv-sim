@@ -83,12 +83,12 @@ struct bp_stats_t {
             #endif
             total_branches = (predicted + mispredicted);
             if ((total_insts == 0) || (total_branches == 0)) return;
-            accuracy = (TO_F32(predicted) / TO_F32(total_branches) * 100.0);
+            accuracy = (TO_F32(predicted) / TO_F32(total_branches) * 100.0f);
             mpki = 0;
             if (mispredicted == 0) return;
-            mpki = (TO_F32(mispredicted) / (TO_F32(total_insts) / 1000.0));
+            mpki = (TO_F32(mispredicted) / (TO_F32(total_insts) / 1000.0f));
         }
-        uint32_t get_predicted(uint32_t pc) const {
+        uint64_t get_predicted(uint32_t pc) const {
             if (bi_predictor_stats.find(pc) == bi_predictor_stats.end()) {
                 return 0;
             }

@@ -377,7 +377,7 @@
         PROF_RD_RS1 \
 
 #define CASE_CSR(op) \
-    case TO_U8(csr_op_t::op_##op): \
+    case csr_op_t::op_##op: \
         csr_##op(init_val_rs1); \
         DASM_OP(csr##op) \
         PROF_G(csr##op) \
@@ -386,7 +386,7 @@
         break;
 
 #define CASE_CSR_I(op) \
-    case TO_U8(csr_op_t::op_##op): \
+    case csr_op_t::op_##op: \
         csr_##op(); \
         DASM_OP(csr##op) \
         PROF_G(csr##op) \
@@ -394,7 +394,7 @@
         DASM_CSR_IMM \
         break;
 
-#define W_CSR(expr) write_csr(ip.csr_addr(), expr)
+#define W_CSR(expr) write_csr(TO_U16(ip.csr_addr()), expr)
 
 #define SIM_ERROR std::cerr << "\n >> SIM RUNTIME ERROR: "
 #define SIM_WARNING std::cout << "\n >> SIM RUNTIME WARNING: "
@@ -448,12 +448,12 @@
 
 #define DASM_CSR_REG \
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx] << "," \
-                << csr.at(ip.csr_addr()).name << "," \
+                << csr.at(TO_U16(ip.csr_addr())).name << "," \
                 << rf_names[ip.rs1()][rf_names_idx];
 
 #define DASM_CSR_IMM \
     dasm.asm_ss << dasm.op << " " << rf_names[ip.rd()][rf_names_idx] << "," \
-                << csr.at(ip.csr_addr()).name << "," \
+                << csr.at(TO_U16(ip.csr_addr())).name << "," \
                 << ip.uimm_csr();
 
 #define DASM_OP_RD \
@@ -469,7 +469,7 @@
     rf_names[ip.c_regl()][rf_names_idx]
 
 #define DASM_ALIGN \
-    dasm.asm_ss << std::setw(38 - inst_w - dasm.asm_ss.tellp()) \
+    dasm.asm_ss << std::setw(38 - TO_I32(inst_w) - TO_I32(dasm.asm_ss.tellp()))\
                 << std::setfill(' ') << "  "
 
 // parametrized
@@ -570,19 +570,19 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof_rf.te.opc_b_val = TO_U8(opc_b::i_##op);
 
 #define PROF_RD \
-    prof_rf.log_reg_use(reg_use_t::rd, ip.rd()); \
-    prof_rf.te.rd = ip.rd();
+    prof_rf.log_reg_use(reg_use_t::rd, TO_U8(ip.rd())); \
+    prof_rf.te.rd = TO_U8(ip.rd());
 
 #define PROF_RDP \
-    prof_rf.log_reg_use(reg_use_t::rdp, ip.rd()+1);
+    prof_rf.log_reg_use(reg_use_t::rdp, TO_U8(ip.rd()+1));
 
 #define PROF_RS1 \
-    prof_rf.log_reg_use(reg_use_t::rs1, ip.rs1()); \
-    prof_rf.te.rs1 = ip.rs1();
+    prof_rf.log_reg_use(reg_use_t::rs1, TO_U8(ip.rs1())); \
+    prof_rf.te.rs1 = TO_U8(ip.rs1());
 
 #define PROF_RS2 \
-    prof_rf.log_reg_use(reg_use_t::rs2, ip.rs2()); \
-    prof_rf.te.rs2 = ip.rs2();
+    prof_rf.log_reg_use(reg_use_t::rs2, TO_U8(ip.rs2())); \
+    prof_rf.te.rs2 = TO_U8(ip.rs2());
 
 #define PROF_RD_ZERO(val) \
     prof_rf.te.rd_val_zero = ((val) == 0) ? 1u : 0u;
@@ -591,28 +591,28 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof_rf.te.rdp_val_zero = ((val) == 0) ? 1u : 0u;
 
 #define PROF_C_RD_REGH \
-    prof_rf.log_reg_use(reg_use_t::rd,  ip.c_regh()); \
-    prof_rf.te.rd  = ip.c_regh();
+    prof_rf.log_reg_use(reg_use_t::rd,  TO_U8(ip.c_regh())); \
+    prof_rf.te.rd  = TO_U8(ip.c_regh());
 
 #define PROF_C_RD_REGL \
-    prof_rf.log_reg_use(reg_use_t::rd,  ip.c_regl()); \
-    prof_rf.te.rd  = ip.c_regl();
+    prof_rf.log_reg_use(reg_use_t::rd,  TO_U8(ip.c_regl())); \
+    prof_rf.te.rd  = TO_U8(ip.c_regl());
 
 #define PROF_C_RS1_RD \
-    prof_rf.log_reg_use(reg_use_t::rs1, ip.rd()); \
-    prof_rf.te.rs1 = ip.rd();
+    prof_rf.log_reg_use(reg_use_t::rs1, TO_U8(ip.rd())); \
+    prof_rf.te.rs1 = TO_U8(ip.rd());
 
 #define PROF_C_RS1_REGH \
-    prof_rf.log_reg_use(reg_use_t::rs1, ip.c_regh()); \
-    prof_rf.te.rs1 = ip.c_regh();
+    prof_rf.log_reg_use(reg_use_t::rs1, TO_U8(ip.c_regh())); \
+    prof_rf.te.rs1 = TO_U8(ip.c_regh());
 
 #define PROF_C_RS2_REGL \
-    prof_rf.log_reg_use(reg_use_t::rs2, ip.c_regl()); \
-    prof_rf.te.rs2 = ip.c_regl();
+    prof_rf.log_reg_use(reg_use_t::rs2, TO_U8(ip.c_regl())); \
+    prof_rf.te.rs2 = TO_U8(ip.c_regl());
 
 #define PROF_C_RS2_RS2 \
-    prof_rf.log_reg_use(reg_use_t::rs2, ip.c_rs2()); \
-    prof_rf.te.rs2 = ip.c_rs2();
+    prof_rf.log_reg_use(reg_use_t::rs2, TO_U8(ip.c_rs2())); \
+    prof_rf.te.rs2 = TO_U8(ip.c_rs2());
 
 #define PROF_C_RD_LIT(n) \
     prof_rf.log_reg_use(reg_use_t::rd,  (n)); \
@@ -623,7 +623,7 @@ inline std::string dasm_ascii_hint(int32_t val, uint32_t addr) {
     prof_rf.te.rs1 = (n);
 
 #define PROF_RS3 \
-    prof_rf.log_reg_use(reg_use_t::rs3, ip.rd());
+    prof_rf.log_reg_use(reg_use_t::rs3, TO_U8(ip.rd()));
 
 #define PROF_RD_RS1_RS2 \
     PROF_RD \

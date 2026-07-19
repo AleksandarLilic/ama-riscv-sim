@@ -132,15 +132,15 @@ struct stack_access_t {
 
 struct inst_prof_g {
     std::string name;
-    uint32_t count;
+    uint64_t count;
 };
 
 struct inst_prof_b {
     std::string name;
-    uint32_t count_taken;
-    uint32_t count_taken_fwd;
-    uint32_t count_not_taken;
-    uint32_t count_not_taken_fwd;
+    uint64_t count_taken;
+    uint64_t count_taken_fwd;
+    uint64_t count_not_taken;
+    uint64_t count_not_taken_fwd;
 };
 
 // TODO: add instruction dasm to the profiler as another entry?
@@ -196,29 +196,29 @@ struct trace_entry {
 
 struct cnt_t {
     public:
-        uint32_t tot = 0;
-        uint32_t rest = 0;
-        uint32_t nop = 0;
-        uint32_t branch = 0;
-        uint32_t jal = 0;
-        uint32_t jalr = 0;
-        uint32_t load = 0;
-        uint32_t store = 0;
-        uint32_t mem = 0;
-        uint32_t mul = 0;
-        uint32_t div = 0;
-        uint32_t alu = 0;
-        uint32_t zbb = 0;
-        uint32_t dot_c = 0;
-        uint32_t alu_c = 0;
-        uint32_t wmul_c = 0;
-        uint32_t widen_c = 0;
-        uint32_t narrow_c = 0;
-        uint32_t txp_c = 0;
-        uint32_t dup_c = 0;
-        uint32_t vins_c = 0;
-        uint32_t vext_c = 0;
-        uint32_t scp_c = 0;
+        uint64_t tot = 0;
+        uint64_t rest = 0;
+        uint64_t nop = 0;
+        uint64_t branch = 0;
+        uint64_t jal = 0;
+        uint64_t jalr = 0;
+        uint64_t load = 0;
+        uint64_t store = 0;
+        uint64_t mem = 0;
+        uint64_t mul = 0;
+        uint64_t div = 0;
+        uint64_t alu = 0;
+        uint64_t zbb = 0;
+        uint64_t dot_c = 0;
+        uint64_t alu_c = 0;
+        uint64_t wmul_c = 0;
+        uint64_t widen_c = 0;
+        uint64_t narrow_c = 0;
+        uint64_t txp_c = 0;
+        uint64_t dup_c = 0;
+        uint64_t vins_c = 0;
+        uint64_t vext_c = 0;
+        uint64_t scp_c = 0;
 
     public:
         void find_mem() { mem = load + store; }
@@ -231,9 +231,9 @@ struct cnt_t {
                 scp_c
             );
         }
-        float_t get_perc(uint32_t count) {
+        float_t get_perc(uint64_t count) {
             if (count == 0 || tot == 0) return 0.0;
-            return 100.0 * count / tot;
+            return (100.0f * TO_F32(count) / TO_F32(tot));
         }
 };
 
@@ -269,7 +269,7 @@ struct sparsity_cnt_t {
     uint64_t sparse = 0;
     float_t get_perc() {
         if (total == 0) return 0.0;
-        return 100.0 * sparse / total;
+        return (100.0f * TO_F32(sparse) / TO_F32(total));
     }
 };
 

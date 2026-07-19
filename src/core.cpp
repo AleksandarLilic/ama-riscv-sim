@@ -796,8 +796,8 @@ void core::d_misc_mem() {
 
 #ifdef SIMD_EN
 void core::d_custom_ext() {
-    uint8_t funct3 = ip.funct3();
-    uint8_t funct7 = ip.funct7();
+    uint8_t funct3 = TO_U8(ip.funct3());
+    uint8_t funct7 = TO_U8(ip.funct7());
     uint32_t shamt = ip.rs2();
     uint32_t res;
     reg_pair rp;
@@ -1063,7 +1063,7 @@ void core::d_csr_access() {
         #endif
 
         // FIXME: rw/rwi should not read CSR on rd=x0; no impact w/ current CSRs
-        switch (ip.funct3()) {
+        switch (static_cast<csr_op_t>(ip.funct3())) {
             CASE_CSR(rw)
             CASE_CSR(rs)
             CASE_CSR(rc)

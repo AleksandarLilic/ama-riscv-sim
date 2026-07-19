@@ -293,7 +293,7 @@ void bp_if::dump_csv(std::string out_dir) {
     for (auto& [pc, stats] : bi_app_stats) {
         float_t branches_total = TO_F32(stats.total);
         size_t idx_best = 0; // defaults to first, the active_bp
-        std::vector<uint32_t> pred;
+        std::vector<uint64_t> pred;
         std::vector<float_t> acc;
         for (uint8_t i = 0; i < all_bps.size(); i++) {
             pred.push_back(all_bps[i]->get_predicted_stats(pc));
@@ -303,7 +303,7 @@ void bp_if::dump_csv(std::string out_dir) {
         }
 
         std::string best_name = all_bps[idx_best]->type_name;
-        uint32_t best_p = pred[idx_best];
+        uint64_t best_p = pred[idx_best];
         float_t best_acc = acc[idx_best];
         float_t taken_ratio = (TO_F32(stats.taken)/branches_total)*100;
         std::string pattern_str = find_run_length(stats.pattern);

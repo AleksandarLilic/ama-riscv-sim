@@ -344,11 +344,13 @@ void profiler::log_to_file_and_print(bool show) {
 
     #ifdef RV32C_EN
     // compressed inst cnt
-    uint32_t comp_cnt = 0;
+    uint64_t comp_cnt = 0;
     for (auto &c: comp_opcs_alu) comp_cnt += prof_g_arr[TO_U32(c)].count;
     for (auto &c: comp_opcs_b) {
-        comp_cnt += prof_b_arr[TO_U32(c)].count_taken +
-                    prof_b_arr[TO_U32(c)].count_not_taken;
+        comp_cnt += (
+            prof_b_arr[TO_U32(c)].count_taken +
+            prof_b_arr[TO_U32(c)].count_not_taken
+        );
     }
     float_t comp_perc = cnt.get_perc(comp_cnt);
     #endif
@@ -483,9 +485,10 @@ void profiler::log_to_file_and_print(bool show) {
     float_t sa_perc = 0.0;
     float_t sa_perc_load = 0.0;
     float_t sa_perc_store = 0.0;
-    if (cnt.mem) sa_perc = (100.0 * sa_cnt / cnt.mem);
-    if (cnt.load) sa_perc_load = (100.0 * sa_cnt_load / cnt.mem);
-    if (cnt.store) sa_perc_store = (100.0 * sa_cnt_store / cnt.mem);
+    float_t cnt_mem_f = TO_F32(cnt.mem);
+    if (cnt.mem) sa_perc = (100.0f * TO_F32(sa_cnt) / cnt_mem_f);
+    if (cnt.load) sa_perc_load = (100.0f * TO_F32(sa_cnt_load) / cnt_mem_f);
+    if (cnt.store) sa_perc_store = (100.0f * TO_F32(sa_cnt_store) / cnt_mem_f);
     std::cout << "Profiler - Stack:\n";
     std::cout << INDENT << "Peak usage: " << min_sp << " B\n"
               << INDENT << "Accesses: "

@@ -136,7 +136,7 @@ void memory::dump_as_words(uint32_t start, uint32_t size, std::string out_dir){
         // ready and pack bytes it into word as big-endian
         for (uint32_t i = 0; i < word_bytes; ++i) {
             uint32_t phys = set_addr(addr + i, mem_op_t::read, 1u);
-            uint8_t b = dev_ptr->rd(phys, 1u);
+            uint8_t b = TO_U8(dev_ptr->rd(phys, 1u));
             word |= static_cast<uint32_t>(b) << (8 * (i));
         }
         ofs << std::hex << std::setw(8) << std::setfill('0') << word << "\n";

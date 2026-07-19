@@ -83,7 +83,7 @@ struct cache_traffic_t {
             idx++;
             if (idx == (std::size(suffixes) - 1)) break; // leave at TB
         }
-        size_t prec = ((rd < PREC_THR) || (wr < PREC_THR)) ? 1 : 0;
+        int32_t prec = ((rd < PREC_THR) || (wr < PREC_THR)) ? 1 : 0;
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(prec)
             << rd << "/" << wr << " " << suffixes[idx];
@@ -150,12 +150,12 @@ struct cache_stats_t {
     public:
         void summarize(cache_type_t type, uint64_t total_insts) {
             if (total_insts == 0 || references == 0) return;
-            hr = (TO_F32(hits.all()) / TO_F32(references) * 100);
+            hr = (TO_F32(hits.all()) / TO_F32(references) * 100.0f);
             uint64_t total_misses =
                 (type == cache_type_t::inst) ? misses.ld : misses.all();
             mpki = 0;
             if (total_misses == 0) return;
-            mpki = (TO_F32(total_misses) / (TO_F32(total_insts) / 1000.0));
+            mpki = (TO_F32(total_misses) / (TO_F32(total_insts) / 1000.0f));
         }
         void show(cache_type_t type) {
             std::cout << "Ref: " << references

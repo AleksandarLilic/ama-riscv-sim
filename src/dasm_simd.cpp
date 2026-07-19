@@ -62,8 +62,8 @@ void core::simd_ss_append_cab(int32_t c, int32_t a, int32_t b) {
 }
 
 void core::simd_ss_append_imm(int32_t c, int32_t a, size_t w) {
-    dasm.simd_c << FHEXZ(c, w) << " ";
-    dasm.simd_a << FHEXZ(a, w) << " ";
+    dasm.simd_c << FHEXZ(c, TO_I32(w)) << " ";
+    dasm.simd_a << FHEXZ(a, TO_I32(w)) << " ";
 }
 
 void core::simd_ss_finish_ca() {
