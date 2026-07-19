@@ -110,10 +110,9 @@ def run_config(c, jobs, log_dir, ld):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ISA sim build config sweep")
     parser.add_argument("--filter", help="only run configs whose name contains this substring")
-    parser.add_argument("--jobs", type=int, default=multiprocessing.cpu_count(), help="make -j per config (default: nproc)")
+    parser.add_argument("--jobs", type=int, default=multiprocessing.cpu_count(), help="'make -j' per config (default: nproc)")
     parser.add_argument("--dry-run", action="store_true", help="list configs and exit")
-    parser.add_argument("--ld", action="store_true",
-                         help="also link each config into a binary (make all instead of make obj)")
+    parser.add_argument("--ld", action="store_true", help="also link each config into a binary ('make all' instead of 'make obj')")
     return parser.parse_args()
 
 def main():
@@ -133,6 +132,7 @@ def main():
 
     st_all = time.time()
     results = []
+    print("Building...")
     for i, c in enumerate(configs, 1):
         name, ok, rt, log_path = run_config(c, args.jobs, log_dir, args.ld)
         status = "PASS" if ok else "FAIL"
