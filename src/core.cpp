@@ -227,14 +227,20 @@ bool core::check_interrupts(bool defer_trap) {
 
     uint32_t mie_val = csr.at(csr_map::addr::mie).value;
     uint32_t mip_val = csr.at(csr_map::addr::mip).value;
-    bool mstatus_MIE = (csr.at(csr_map::addr::mstatus).value & csr_map::mstatus::mie);
-    bool mti = ((mie_val & csr_map::mie::mtie) && (mip_val & csr_map::mip::mtip));
+    bool mstatus_MIE = (
+        csr.at(csr_map::addr::mstatus).value & csr_map::mstatus::mie
+    );
+    bool mti = (
+        (mie_val & csr_map::mie::mtie) && (mip_val & csr_map::mip::mtip)
+    );
     bool mti_no_trap = (mti && !mstatus_MIE);
 
     #ifdef UART_INPUT_EN
     // priv spec: external (MEI) before timer (MTI), one trap per step
-    // UART RX is the sole MEI source, so MEI lives under UART_INPUT_EN
-    bool mei = ((mie_val & csr_map::mie::meie) && (mip_val & csr_map::mip::meip));
+    // UART RX is the only MEI source
+    bool mei = (
+        (mie_val & csr_map::mie::meie) && (mip_val & csr_map::mip::meip)
+    );
     bool mei_no_trap = (mei && !mstatus_MIE);
     if (mstatus_MIE && mei) {
         tu.e_external_interrupt();
