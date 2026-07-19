@@ -3,7 +3,7 @@ isa_sim_args:
   - -t
   - --bp2 global
   - --no_callstack
-  - --silent
+  - -l
 
 workloads:
   - sw/arch-tests/riscv-arch-test/work/ama-riscv-rv32imc/elfs/rv32i/I/I-lbu-00.elf
