@@ -72,6 +72,12 @@ ifeq ($(strip $(CACHE_VERIFY)), 1)
 DEFINES += -DCACHE_VERIFY
 endif
 
+TEST_BUILD ?= 0
+ifeq ($(strip $(TEST_BUILD)), 1)
+DEFINES += -DTEST_BUILD
+endif
+
+
 DPI ?= 0
 ifeq ($(strip $(DPI)), 1)
 #DPI requires more than just -DDPI, check defines.h

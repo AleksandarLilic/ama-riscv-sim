@@ -12,7 +12,7 @@ CXXFLAGS := -g -std=gnu++17
 GTEST_LIBS := -lgtest -lgtest_main -pthread
 LDFLAGS := -lgcov
 SIM_FLAGS := CXX=$(CXX) # use the same compiler as for tests
-SIM_FLAGS += DEFINES="-DTEST_BUILD -DRV32C -DPROFILERS_EN -DHW_MODELS_EN"
+SIM_FLAGS += TEST_BUILD=1 RV32C=1 PROFILERS=1 HW_MODELS=1
 SIM_FLAGS += USER_DEFINES=--coverage LDFLAGS=-lgcov
 
 TIMESTAMP := $(shell date +"%Y-%m-%d_%H-%M-%S")
@@ -58,7 +58,7 @@ clean_tests:
 	@./prepare_riscv_tests.py --testlist testlist.json --isa_tests --clean_only
 
 build_sim:
-	$(MAKE) -C ../src --no-print-directory BDIR=$(BDIR) NO_SYMLINK=1 $(SIM_FLAGS)
+	$(MAKE) -C ../src --no-print-directory BDIR=$(BDIR) $(SIM_FLAGS)
 	@echo "Simulator build done."
 
 cleanlogs:
@@ -71,7 +71,7 @@ cleantestruns:
 	rm -rf testrun_*
 
 clean: cleanlogs cleanbins
-	rm -rf $(TEST_DIR) $(TEST) $(COV_DIR) *.gc*
+	rm -rf $(TEST) *.gc*
 
 cleansim:
 	$(MAKE) -C ../src --no-print-directory BDIR=$(BDIR) clean
