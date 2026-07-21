@@ -34,15 +34,16 @@ code.append(f"#define A_COLS_B_ROWS {A_COLS_B_ROWS}\n")
 
 random.seed(0)
 value = NUM[NF]
-ctype = np2c_type(value["nf"])
 shift_amount = 0
-typ_min = np.iinfo(value["nf"]).min >> shift_amount
-typ_max = np.iinfo(value["nf"]).max >> shift_amount
+typ_min = value["min"] >> shift_amount
+typ_max = value["max"] >> shift_amount
 
 value['a'] = rnd_gen_2d_arr(
-    typ_min, typ_max, A_ROWS, A_COLS_B_ROWS, value["nf"])
+    typ_min, typ_max, A_ROWS, A_COLS_B_ROWS, value["nf"]
+)
 value['b'] = rnd_gen_2d_arr(
-    typ_min, typ_max, A_COLS_B_ROWS, B_COLS, value["nf"])
+    typ_min, typ_max, A_COLS_B_ROWS, B_COLS, value["nf"]
+)
 ref = np.matmul(value['a'].astype(np.int32), value['b'].astype(np.int32))
 
 #print(value['a'])

@@ -1,12 +1,6 @@
 import random
 import numpy as np
 
-# format numpy array as C array
-def np2c_type(nf):
-    if nf in FP_C_MAP:
-        return FP_C_MAP[nf]
-    return nf.__name__ + "_t"
-
 def np2c_1d_arr(
     var, arr, nf="NF", dim="ARR_LEN", align="", suffix="", str_type=False):
     if str_type:
@@ -26,22 +20,45 @@ def np2c_2d_arr(var, arr, nf="NF", dim=["A", "B"], suffix=""):
         f"{suffix}, ".join(arr_out) + suffix + "\n};"
 
 NUM = {
-    "uint8_t": {"off_add": 2, "off_sub": 2, "off_mul": 1, "nf": np.uint8},
-    "int8_t": {"off_add": 2, "off_sub": 2, "off_mul": 1, "nf": np.int8},
-    "uint16_t": {"off_add": 2, "off_sub": 2, "off_mul": 2, "nf": np.uint16},
-    "int16_t": {"off_add": 2, "off_sub": 2, "off_mul": 2, "nf": np.int16},
-    "uint32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "nf": np.uint32},
-    "int32_t": {"off_add": 2, "off_sub": 2, "off_mul": 16, "nf": np.int32},
-    "uint64_t": {
-        "off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2,"nf":np.uint64},
-    "int64_t": {
-        "off_add": 2, "off_sub": 3, "off_mul": 34, "off_div": 2,"nf":np.int64},
-    #"half": {"min": -1, "max": 1, "nf": np.float16, "nf_out": np.float32},
-    "float": {"min": -1, "max": 1, "nf": np.float32, "nf_out": np.float32},
-    "double": {"min": -1, "max": 1, "nf": np.float64, "nf_out": np.float64},
+    "uint8_t":  { "offset": {"add": 2, "sub": 2, "mul": 1},            "nf": np.uint8},
+    "int8_t":   { "offset": {"add": 2, "sub": 2, "mul": 1},            "nf": np.int8},
+    "uint16_t": { "offset": {"add": 2, "sub": 2, "mul": 2},            "nf": np.uint16},
+    "int16_t":  { "offset": {"add": 2, "sub": 2, "mul": 2},            "nf": np.int16},
+    "uint32_t": { "offset": {"add": 2, "sub": 2, "mul": 16},           "nf": np.uint32},
+    "int32_t":  { "offset": {"add": 2, "sub": 2, "mul": 16},           "nf": np.int32},
+    "uint64_t": { "offset": {"add": 2, "sub": 3, "mul": 34, "div": 2}, "nf": np.uint64},
+    "int64_t":  { "offset": {"add": 2, "sub": 3, "mul": 34, "div": 2}, "nf": np.int64},
+    #"half":   {"min": -1, "max": 1, "nf": np.float16},
+    "float":  {"min": -1, "max": 1, "nf": np.float32},
+    "double": {"min": -1, "max": 1, "nf": np.float64},
 }
 
 FP_C_MAP = {np.float16: "_Float16", np.float32: "float", np.float64: "double"}
+
+# fill in the fields
+for key, value in NUM.items():
+    nf = value["nf"]
+    if "min" in value: # min/max already set for floats
+        value["kind"] = "fp"
+        value["macro"] = nf.__name__.upper() # "float32" -> "FLOAT32"
+        value["ctype"] = FP_C_MAP[nf]
+    else:
+        value["min"] = np.iinfo(nf).min
+        value["max"] = np.iinfo(nf).max
+        value["kind"] = "int" if np.issubdtype(nf, np.signedinteger) else "uint"
+        value["macro"] = nf.__name__.upper() # "int8" -> "INT8"
+        value["ctype"] = key
+
+def iter_num(*kinds, narrow=None):
+    return (
+        (key, value)
+        for key, value in NUM.items()
+        if (not kinds or value["kind"] in kinds)
+        and (
+            narrow is None
+            or ("narrow_bits" in value) == narrow
+        )
+    )
 
 def rnd_gen_1d_arr(min, max, len, dtype):
     return np.array(

@@ -4,8 +4,6 @@ import os
 import random
 import sys
 
-import numpy as np
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from codegen_common import *
 
@@ -29,24 +27,13 @@ code.append("#include <stdint.h>\n")
 code.append(f"#define ARR_LEN {arr_len}\n")
 
 random.seed(0)
-for key,value in NUM.items():
-    if not key.startswith("int"):
-        continue
-    def_check = "#if " if key == "int8_t" else "#elif "
-    code.append(def_check + "defined(NF_" + \
-                value["nf"].__name__.upper() + ")")
-
-    if "float" in value["nf"].__name__:
-        typ_min = value["min"]
-        typ_max = value["max"]
-        ctypes = FP_C_MAP[value["nf"]]
-    else:
-        typ_min = np.iinfo(value["nf"]).min
-        typ_max = np.iinfo(value["nf"]).max
-        ctypes = value["nf"].__name__ + "_t"
-
-    code.append("#define NF_IN " + ctypes)
-    value['a'] = rnd_gen_1d_arr(typ_min, typ_max, arr_len, value["nf"])
+for idx, (key, value) in enumerate(iter_num("int", narrow=False)):
+    ifdef = "#if " if not idx else "#elif "
+    code.append(ifdef + "defined(NF_" + value["macro"] + ")")
+    code.append("#define NF_IN " + value["ctype"])
+    value['a'] = rnd_gen_1d_arr(
+        value["min"], value["max"], arr_len, value["nf"]
+    )
     code.append(np2c_1d_arr('a', value['a'], "NF_IN", align=" A_ALIGN") + "\n")
 
 finish_gen(code, OUT)

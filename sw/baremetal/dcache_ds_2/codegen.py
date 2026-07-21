@@ -52,8 +52,7 @@ bad = (flags == 0)
 value['ax'][bad] = value['ay'][bad] = value['az'][bad] = 0
 value['gx'][bad] = value['gy'][bad] = value['gz'][bad] = 0
 
-ctype = np2c_type(value["nf"])
-code.append("#define NF " + ctype)
+code.append("#define NF " + value["ctype"])
 
 code.append(np2c_1d_arr('ax', value['ax']))
 code.append(np2c_1d_arr('ay', value['ay']))
