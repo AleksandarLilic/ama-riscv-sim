@@ -32,27 +32,28 @@
 
     "rd_pairing": ["test"],
 
-    "dcache_set_thrashing": ["test"],
-    "dcache_peak": ["all"],
-    "dcache_ds_2": ["all"],
-    "dcache_ds_all": ["all"],
-    "memcpy": ["all"],
-    "conv1d": ["all"],
-
     "factorial": [["n_20"], ["LOOPS=10"]],
     "fibonacci": [["n_18"], ["LOOPS=10"]],
     "gcd_lcm": [["n_large"], ["LOOPS=10"]],
     "prime_numbers": [["n_3000"], ["LOOPS=10"]],
     "arena_demo": ["all"],
 
+    "dcache_set_thrashing": ["test"],
+    "dcache_peak": ["all"],
+    "dcache_ds_2": ["all"],
+    "dcache_ds_all": ["all"],
+    "memcpy": ["all"],
+
     "vector_ew_al_uint8": ["test"],
     "vector_ew_mac_uint8": ["test"],
-    "vector_ew_basic": ["all"],
-    "matmul": ["all"],
+    "vector_ew_ops": ["all"],
+    "vector_dot_product": ["all"],
+    "vector_dot_product_peak": ["all"],
+    "vector_dot_product_unaligned_len_even": ["all"],
+    "matmul_generic": ["all"],
     "matmul_opt": ["all"],
-    "dot_product": ["all"],
-    "dot_product_peak": ["all"],
-    "dot_product_unaligned_len_even": ["all"],
+    "conv1d": ["all"],
+
     "sorting_num": [["all"], ["LOOPS=2"]],
     "sorting_str": [["all"], ["LOOPS=2"]],
 

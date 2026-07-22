@@ -1,1 +1,1 @@
-../matmul/codegen.py
+../matmul_generic/codegen.py
