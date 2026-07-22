@@ -5,16 +5,14 @@
 #endif
 
 // perfect LRU assumed
-#define CACHE_LINE_SIZE 64
-#define DCACHE_SETS 8
-#define DCACHE_WAYS 2
-#define ARR_LEN (CACHE_LINE_SIZE >> 3) * (DCACHE_SETS << 1)
-
 #ifdef CACHE_ALIGNED
 #define ALIGN __attribute__((aligned(CACHE_LINE_SIZE)))
 #else
 #define ALIGN
 #endif
+
+#define WORDS_PER_LINE (CACHE_LINE_SIZE >> 2)
+#define ARR_LEN (DCACHE_SETS * WORDS_PER_LINE)
 
 volatile int32_t data[DCACHE_WAYS+1][ARR_LEN] ALIGN = {0};
 
