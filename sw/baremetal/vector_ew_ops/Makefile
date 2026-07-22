@@ -1,5 +1,13 @@
-NFS := uint8 int8 uint16 int16 uint32 int32 uint64 int64 float32 float64
-OPS := add sub mul div
+
+SIMD_ONLY ?= 1
+NFS := uint8 int8 uint16 int16
+OPS := add sub mul
+
+ifeq ($(strip $(SIMD_ONLY)), 0)
+NFS += uint32 int32 uint64 int64 float32 float64
+OPS += div
+endif
+
 LOOPS := 1
 
 -include parametrize.mk
