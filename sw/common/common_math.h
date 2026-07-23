@@ -53,31 +53,23 @@ int32_t _simd_dot_product_int8(
     const int8_t* a, const int8_t* b, const size_t len);
 int32_t _simd_dot_product_int4(
     const int8_t* a, const int8_t* b, const size_t len);
+int32_t _simd_dot_product_int2(
+    const int8_t* a, const int8_t* b, const size_t len);
 
 // dot product w/ widening
 int32_t _simd_dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len);
 int32_t _simd_dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len);
-//int32_t _simd_dot_product_int16_int2(
-//    const int16_t* a, const int8_t* b, const size_t len);
+int32_t _simd_dot_product_int16_int2(
+    const int16_t* a, const int8_t* b, const size_t len);
 
 int32_t _simd_dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len);
 int32_t _simd_dot_product_int8_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
-//int32_t _simd_dot_product_int4_int2(
-//    const int8_t* a, const int8_t* b, const size_t len);
-
-// these have the 'unrolled' optimized option, so '_core' is provided for
-// 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
-// 2. (#else) indirection in the regular version
-int32_t _simd_dot_product_int8_core(
-    const int8_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int8_int4_core(
-    const int8_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int8_int2_core(
+int32_t _simd_dot_product_int4_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
 // -----------------------------------------------------------------------------
@@ -881,15 +873,20 @@ void mul_uint8(
 int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len);
 int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len);
+int32_t dot_product_int2(const int8_t* a, const int8_t* b, const size_t len);
 
 // dot product w/ unpacking
 int32_t dot_product_int16_int8(
     const int16_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int16_int4(
     const int16_t* a, const int8_t* b, const size_t len);
+int32_t dot_product_int16_int2(
+    const int16_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int8_int4(
     const int8_t* a, const int8_t* b, const size_t len);
 int32_t dot_product_int8_int2(
+    const int8_t* a, const int8_t* b, const size_t len);
+int32_t dot_product_int4_int2(
     const int8_t* a, const int8_t* b, const size_t len);
 
 #endif // __riscv_xsimd

@@ -1,5 +1,10 @@
 #include "common_math.h"
 
+#ifdef __riscv_xsimd
+// when possible, keep dot/arithmetic instructions groupped in the same
+// `asm volatile` block - good default as it often yields best scheduling
+#endif
+
 #ifdef PARTIAL_ZBB_SUPPORT
 int32_t max(int32_t a, int32_t b) {
     int32_t c;
@@ -59,10 +64,175 @@ uint32_t minu(uint32_t a, uint32_t b) {
 }
 #endif
 
+// -----------------------------------------------------------------------------
+// scalar dot product cores
+// -----------------------------------------------------------------------------
+static INLINE
+int32_t dot_product_int16_scalar_core(
+    const int16_t* a, const int16_t* b, const size_t len)
+{
+    int32_t c = 0;
+    for (size_t k = 0; k < len; k++) c += a[k] * b[k];
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int8_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    for (size_t k = 0; k < len; k++) c += a[k] * b[k];
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int4_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t al, bl;
+    size_t len_bytes = len >> 1; // len passed in as number of nibbles
+    for (size_t k = 0; k < len_bytes; k++) {
+        al = a[k];
+        bl = b[k];
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 4);
+        al <<= 4;
+        bl <<= 4;
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 4);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int2_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t al, bl;
+    size_t len_bytes = len >> 2; // len passed in as number of crumbs
+    for (size_t k = 0; k < len_bytes; k++) {
+        al = a[k];
+        bl = b[k];
+        c += (int8_t)(al >> 6) * (int8_t)(bl >> 6);
+        al <<= 2;
+        bl <<= 2;
+        c += (int8_t)(al >> 6) * (int8_t)(bl >> 6);
+        al <<= 2;
+        bl <<= 2;
+        c += (int8_t)(al >> 6) * (int8_t)(bl >> 6);
+        al <<= 2;
+        bl <<= 2;
+        c += (int8_t)(al >> 6) * (int8_t)(bl >> 6);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int16_int8_scalar_core(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    for (size_t k = 0; k < len; k++) c += a[k] * (int16_t)b[k];
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int16_int4_scalar_core(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t bl;
+    for (size_t k = 0; k < len; k += 2) {
+        bl = b[k>>1];
+        c += a[k+1] * (int16_t)(bl >> 4);
+        bl <<= 4;
+        c += a[k] * (int16_t)(bl >> 4);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int16_int2_scalar_core(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t bl;
+    for (size_t k = 0; k < len; k += 4) {
+        bl = b[k>>2];
+        c += a[k+3] * (int16_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+2] * (int16_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+1] * (int16_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k] * (int16_t)(bl >> 6);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int8_int4_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t bl;
+    for (size_t k = 0; k < len; k += 2) {
+        bl = b[k>>1];
+        c += a[k+1] * (int8_t)(bl >> 4);
+        bl <<= 4;
+        c += a[k] * (int8_t)(bl >> 4);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int8_int2_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t bl;
+    for (size_t k = 0; k < len; k += 4) {
+        bl = b[k>>2];
+        c += a[k+3] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+2] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k+1] * (int8_t)(bl >> 6);
+        bl <<= 2;
+        c += a[k] * (int8_t)(bl >> 6);
+    }
+    return c;
+}
+
+static INLINE
+int32_t dot_product_int4_int2_scalar_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    int8_t al, bl;
+    for (size_t k = 0; k < len; k += 4) {
+        al = a[(k>>1) + 1];
+        bl = b[k>>2];
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 6);
+        al <<= 4;
+        bl <<= 2;
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 6);
+        al = a[k>>1];
+        bl <<= 2;
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 6);
+        al <<= 4;
+        bl <<= 2;
+        c += (int8_t)(al >> 4) * (int8_t)(bl >> 6);
+    }
+    return c;
+}
+
 #ifdef __riscv_xsimd
+
 INLINE_OPTION
 void _simd_add_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     int16x2_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -79,7 +249,8 @@ void _simd_add_int16(
 
 INLINE_OPTION
 void _simd_add_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     size_t len_s4 = ((len >> 2) << 2);
     int8x4_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -96,7 +267,8 @@ void _simd_add_int8(
 
 INLINE_OPTION
 void _simd_sub_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     int16x2_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -113,7 +285,8 @@ void _simd_sub_int16(
 
 INLINE_OPTION
 void _simd_sub_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     size_t len_s4 = ((len >> 2) << 2);
     int8x4_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -130,7 +303,8 @@ void _simd_sub_int8(
 
 INLINE_OPTION
 void _simd_mul_int16(
-    const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
         const int16x2_t a_slice = v_load_int16x2(a + k);
@@ -147,7 +321,8 @@ void _simd_mul_int16(
 
 INLINE_OPTION
 void _simd_mul_uint16(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
         const uint16x2_t a_slice = v_load_uint16x2(a + k);
@@ -164,7 +339,8 @@ void _simd_mul_uint16(
 
 INLINE_OPTION
 void _simd_mul_int8(
-    const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+{
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
         const int8x4_t a_slice = v_load_int8x4(a + k);
@@ -181,7 +357,8 @@ void _simd_mul_int8(
 
 INLINE_OPTION
 void _simd_mul_uint8(
-    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
+{
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
         const uint8x4_t a_slice = v_load_uint8x4(a + k);
@@ -196,9 +373,23 @@ void _simd_mul_uint8(
     }
 }
 
+// these have the 'unrolled' optimized option, so '_core' is provided for
+// 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
+// 2. (#else) indirection in the regular version
+static INLINE int32_t _simd_dot_product_int8_core(
+    const int8_t* a, const int8_t* b, const size_t len
+);
+static INLINE int32_t _simd_dot_product_int8_int4_core(
+    const int8_t* a, const int8_t* b, const size_t len
+);
+static INLINE int32_t _simd_dot_product_int8_int2_core(
+    const int8_t* a, const int8_t* b, const size_t len
+);
+
 INLINE_OPTION
 int32_t _simd_dot_product_int16(
-    const int16_t* a, const int16_t* b, const size_t len) {
+    const int16_t* a, const int16_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -208,7 +399,7 @@ int32_t _simd_dot_product_int16(
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c += a[i] * b[i];
+        c += dot_product_int16_scalar_core(a + len_s2, b + len_s2, rem);
     }
     return c;
 }
@@ -216,7 +407,8 @@ int32_t _simd_dot_product_int16(
 #ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     static const size_t udeg = 3; // unroll degree
     static const size_t deg = (2 + udeg); // +2 for bytes to words
@@ -257,12 +449,10 @@ int32_t _simd_dot_product_int8(
         );
     }
 
-    // large tiles exhausted, do 4 bytes instead, if any
-    size_t tile_single = (((len - tile) >> 2) << 2);
-    if (tile_single > 0) {
-        size_t start = tile;
-        size_t end = (tile + tile_single);
-        c += _simd_dot_product_int8_core((a + start), (b + start), end);
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += _simd_dot_product_int8_core(a + tile, b + tile, rem);
     }
     return c;
 }
@@ -270,15 +460,17 @@ int32_t _simd_dot_product_int8(
 #else
 INLINE_OPTION
 int32_t _simd_dot_product_int8(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     return _simd_dot_product_int8_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
-INLINE_OPTION
+static INLINE
 int32_t _simd_dot_product_int8_core(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -288,14 +480,15 @@ int32_t _simd_dot_product_int8_core(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] * b[i];
+        c += dot_product_int8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t _simd_dot_product_int4(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_bytes = (len >> 1); // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
@@ -304,37 +497,43 @@ int32_t _simd_dot_product_int4(
         const int4x8_t b_slice = v_load_int4x8(b + k);
         _dot4(a_slice, b_slice, &c);
     }
-    size_t rem = len_bytes - len_s4;
+    size_t rem = (len_bytes - len_s4);
     if (rem > 0) {
-        int8_t al, bl;
-        for (size_t i = len_s4; i < len_bytes; i++) {
-            al = a[i];
-            bl = b[i];
-            c += (al >> 4) * (bl >> 4);
-            al <<= 4;
-            bl <<= 4;
-            c += (al >> 4) * (bl >> 4);
-        }
+        c += dot_product_int4_scalar_core(a + len_s4, b + len_s4, rem << 1);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t _simd_dot_product_int2(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_bytes = (len >> 2); // len passed in as number of crumbs
+    size_t len_s4 = ((len_bytes) >> 2) << 2;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        const int2x16_t a_slice = v_load_int2x16(a + k);
+        const int2x16_t b_slice = v_load_int2x16(b + k);
+        _dot2(a_slice, b_slice, &c);
+    }
+    size_t rem = (len_bytes - len_s4);
+    if (rem > 0) {
+        c += dot_product_int2_scalar_core(a + len_s4, b + len_s4, rem << 2);
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t _simd_dot_product_int16_int8(
-    const int16_t* a, const int8_t* b, const size_t len) {
+    const int16_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
         const int8x4_t b_slice = v_load_int8x4(b + k);
         const int16x2_t a_slice_1 = v_load_int16x2(a + k);
         const int16x2_t a_slice_2 = v_load_int16x2(a + k + 2);
-        int16x4_t b_slice_wide;
-        asm volatile (
-            "widen8 %[bw], %[b], 0\n\t"
-            // bw.w.lo = 2 lower halves, bw.w.hi = 2 upper halves
-            : [bw] "=r" (b_slice_wide.d)
-            : [b] "r" (b_slice)
-        );
+        const int16x4_t b_slice_wide = _widen8(b_slice, 0u);
         asm volatile (
             "dot16 %[c], %[a1], %[bw_lo]\n\t"
             "dot16 %[c], %[a2], %[bw_hi]\n\t"
@@ -345,14 +544,15 @@ int32_t _simd_dot_product_int16_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] * (int16_t)b[i];
+        c += dot_product_int16_int8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t _simd_dot_product_int16_int4(
-    const int16_t* a, const int8_t* b, const size_t len) {
+    const int16_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
@@ -363,16 +563,8 @@ int32_t _simd_dot_product_int16_int4(
         const int16x2_t a_slice_4 = v_load_int16x2(a + k + 6);
         int8x8_t b_slice_wide_b;
         int16x4_t b_slice_wide_h;
-        asm volatile (
-            "widen4 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_b.d)
-            : [b] "r" (b_slice) // nibbles to bytes
-        );
-        asm volatile (
-            "widen8 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_h.d)
-            : [b] "r" (b_slice_wide_b.w.lo) // low bytes to halfwords
-        );
+        b_slice_wide_b = _widen4(b_slice, 0u); // low N to B
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
         asm volatile (
             "dot16 %[c], %[a1], %[bw_lo]\n\t"
             "dot16 %[c], %[a2], %[bw_hi]\n\t"
@@ -381,11 +573,7 @@ int32_t _simd_dot_product_int16_int4(
               [bw_hi] "r" (b_slice_wide_h.w.hi),
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
-        asm volatile (
-            "widen8 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_h.d)
-            : [b] "r" (b_slice_wide_b.w.hi) // high bytes to halfwords
-        );
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
         asm volatile (
             "dot16 %[c], %[a3], %[bw_lo]\n\t"
             "dot16 %[c], %[a4], %[bw_hi]\n\t"
@@ -397,13 +585,59 @@ int32_t _simd_dot_product_int16_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s8; i < len; i += 2) {
-            bl = b[i>>1];
-            c += a[i+1] * (int16_t)(bl >> 4);
-            bl <<= 4;
-            c += a[i] * (int16_t)(bl >> 4);
-        }
+        c += dot_product_int16_int4_scalar_core(
+            a + len_s8, b + (len_s8 >> 1), rem
+        );
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t _simd_dot_product_int16_int2(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
+        int4x16_t b_slice_wide_n;
+        int8x8_t b_slice_wide_b;
+        int16x4_t b_slice_wide_h;
+        int16x2_t a_slice_1, a_slice_2;
+
+        a_slice_1 = v_load_int16x2(a + k);
+        a_slice_2 = v_load_int16x2(a + k + 2);
+        b_slice_wide_n = _widen2(b_slice, 0u); // C to N
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
+        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
+        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+
+        a_slice_1 = v_load_int16x2(a + k + 4);
+        a_slice_2 = v_load_int16x2(a + k + 6);
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
+        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
+        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+
+        a_slice_1 = v_load_int16x2(a + k + 8);
+        a_slice_2 = v_load_int16x2(a + k + 10);
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
+        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
+        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+
+        a_slice_1 = v_load_int16x2(a + k + 12);
+        a_slice_2 = v_load_int16x2(a + k + 14);
+        b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
+        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
+        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+    }
+
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += dot_product_int16_int2_scalar_core(
+            a + len_s16, b + (len_s16 >> 2), rem
+        );
     }
     return c;
 }
@@ -411,7 +645,8 @@ int32_t _simd_dot_product_int16_int4(
 #ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int4(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     static const size_t udeg = 3; // unroll degree
     static const size_t deg = (2 + 1 + udeg); // +2 for bytes to words, +1 widen
@@ -428,12 +663,7 @@ int32_t _simd_dot_product_int8_int4(
             b_slice = v_load_int4x8(b + ((k + i * 8) >> 1)); // 0,  4,  8, 12
             a_slice_1 = v_load_int8x4(a + k     + i * 8);    // 0,  8, 16, 24
             a_slice_2 = v_load_int8x4(a + k + 4 + i * 8);    // 4, 12, 20, 28
-
-            asm volatile (
-                "widen4 %[bw], %[b], 0\n\t"
-                : [bw] "=r" (b_slice_wide.d)
-                : [b] "r" (b_slice)
-            );
+            b_slice_wide = _widen4(b_slice, 0u);
             asm volatile (
                 "dot8 %[c], %[a1], %[bw_lo]\n\t"
                 "dot8 %[c], %[a2], %[bw_hi]\n\t"
@@ -446,12 +676,12 @@ int32_t _simd_dot_product_int8_int4(
         }
     }
 
-    // large tiles exhausted, do 4 bytes instead, if any
-    size_t tile_single = (((len - tile) >> 3) << 3);
-    if (tile_single > 0) {
-        size_t start = tile;
-        size_t end = (tile + tile_single);
-        c += _simd_dot_product_int8_int4_core((a + start), (b + start), end);
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += _simd_dot_product_int8_int4_core(
+            a + tile, b + (tile >> 1), rem
+        );
     }
     return c;
 }
@@ -459,27 +689,24 @@ int32_t _simd_dot_product_int8_int4(
 #else
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int4(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     return _simd_dot_product_int8_int4_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
-INLINE_OPTION
+static INLINE
 int32_t _simd_dot_product_int8_int4_core(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
         const int4x8_t b_slice = v_load_int4x8(b + (k >> 1));
         const int8x4_t a_slice_1 = v_load_int8x4(a + k);
         const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
-        int8x8_t b_slice_wide;
-        asm volatile (
-            "widen4 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide.d)
-            : [b] "r" (b_slice)
-        );
+        const int8x8_t b_slice_wide = _widen4(b_slice, 0u);
         asm volatile (
             "dot8 %[c], %[a1], %[bw_lo]\n\t"
             "dot8 %[c], %[a2], %[bw_hi]\n\t"
@@ -490,13 +717,9 @@ int32_t _simd_dot_product_int8_int4_core(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s8; i < len; i += 2) {
-            bl = b[i>>1];
-            c += a[i+1] * (int8_t)(bl >> 4);
-            bl <<= 4;
-            c += a[i] * (int8_t)(bl >> 4);
-        }
+        c += dot_product_int8_int4_scalar_core(
+            a + len_s8, b + (len_s8 >> 1), rem
+        );
     }
     return c;
 }
@@ -504,7 +727,8 @@ int32_t _simd_dot_product_int8_int4_core(
 #ifdef SIMD_UNROLL
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int2(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     static const size_t udeg = 2; // unroll degree
     static const size_t deg = (2 + 2 + udeg); // +2 for bytes to words, +2 widen
@@ -525,16 +749,8 @@ int32_t _simd_dot_product_int8_int2(
             a_slice_3 = v_load_int8x4(a + k +  8 + i * 16);    // 8,  24, 40
             a_slice_4 = v_load_int8x4(a + k + 12 + i * 16);    // 12, 28, 44
 
-            asm volatile (
-                "widen2 %[bw], %[b], 0\n\t"
-                : [bw] "=r" (b_slice_wide_n.d)
-                : [b] "r" (b_slice) // crumbs to nibbles
-            );
-            asm volatile (
-                "widen4 %[bw], %[b], 0\n\t"
-                : [bw] "=r" (b_slice_wide_b.d)
-                : [b] "r" (b_slice_wide_n.w.lo) // low nibbles to bytes
-            );
+            b_slice_wide_n = _widen2(b_slice, 0u); // C to N
+            b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
             asm volatile (
                 "dot8 %[c], %[a1], %[bw_lo]\n\t"
                 "dot8 %[c], %[a2], %[bw_hi]\n\t"
@@ -543,11 +759,7 @@ int32_t _simd_dot_product_int8_int2(
                   [bw_hi] "r" (b_slice_wide_b.w.hi),
                   [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
             );
-            asm volatile (
-                "widen4 %[bw], %[b], 0\n\t"
-                : [bw] "=r" (b_slice_wide_b.d)
-                : [b] "r" (b_slice_wide_n.w.hi) // high nibbles to bytes
-            );
+            b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
             asm volatile (
                 "dot8 %[c], %[a3], %[bw_lo]\n\t"
                 "dot8 %[c], %[a4], %[bw_hi]\n\t"
@@ -559,12 +771,12 @@ int32_t _simd_dot_product_int8_int2(
         }
     }
 
-    // large tiles exhausted, do 4 bytes instead, if any
-    size_t tile_single = (((len - tile) >> 3) << 3);
-    if (tile_single > 0) {
-        size_t start = tile;
-        size_t end = (tile + tile_single);
-        c += _simd_dot_product_int8_int2_core((a + start), (b + start), end);
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += _simd_dot_product_int8_int2_core(
+            a + tile, b + (tile >> 2), rem
+        );
     }
     return c;
 }
@@ -572,13 +784,14 @@ int32_t _simd_dot_product_int8_int2(
 #else
 INLINE_OPTION
 int32_t _simd_dot_product_int8_int2(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     return _simd_dot_product_int8_int2_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
-INLINE_OPTION
+static INLINE
 int32_t _simd_dot_product_int8_int2_core(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
@@ -591,16 +804,9 @@ int32_t _simd_dot_product_int8_int2_core(
         const int8x4_t a_slice_4 = v_load_int8x4(a + k + 12);
         int4x16_t b_slice_wide_n;
         int8x8_t b_slice_wide_b;
-        asm volatile (
-            "widen2 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_n.d)
-            : [b] "r" (b_slice) // crumbs to nibbles
-        );
-        asm volatile (
-            "widen4 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_b.d)
-            : [b] "r" (b_slice_wide_n.w.lo) // low nibbles to bytes
-        );
+
+        b_slice_wide_n = _widen2(b_slice, 0u); // C to N
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
         asm volatile (
             "dot8 %[c], %[a1], %[bw_lo]\n\t"
             "dot8 %[c], %[a2], %[bw_hi]\n\t"
@@ -609,11 +815,7 @@ int32_t _simd_dot_product_int8_int2_core(
               [bw_hi] "r" (b_slice_wide_b.w.hi),
               [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
         );
-        asm volatile (
-            "widen4 %[bw], %[b], 0\n\t"
-            : [bw] "=r" (b_slice_wide_b.d)
-            : [b] "r" (b_slice_wide_n.w.hi) // high nibbles to bytes
-        );
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
         asm volatile (
             "dot8 %[c], %[a3], %[bw_lo]\n\t"
             "dot8 %[c], %[a4], %[bw_hi]\n\t"
@@ -625,17 +827,39 @@ int32_t _simd_dot_product_int8_int2_core(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s16; i < len; i += 4) {
-            bl = b[i>>2];
-            c += a[i+3] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i+2] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i+1] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i] * (int8_t)(bl >> 6);
-        }
+        c += dot_product_int8_int2_scalar_core(
+            a + len_s16, b + (len_s16 >> 2), rem
+        );
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t _simd_dot_product_int4_int2(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
+        const int4x8_t a_slice_1 = v_load_int4x8(a + (k >> 1));
+        const int4x8_t a_slice_2 = v_load_int4x8(a + (k >> 1) + 4);
+        const int4x16_t b_slice_wide = _widen2(b_slice, 0u); // C to N
+        asm volatile (
+            "dot4 %[c], %[a1], %[bw_lo]\n\t"
+            "dot4 %[c], %[a2], %[bw_hi]\n\t"
+            : [c] "+r" (c)
+            : [bw_lo] "r" (b_slice_wide.w.lo),
+              [bw_hi] "r" (b_slice_wide.w.hi),
+              [a1] "r" (a_slice_1),
+              [a2] "r" (a_slice_2)
+        );
+    }
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += dot_product_int4_int2_scalar_core(
+            a + (len_s16 >> 1), b + (len_s16 >> 2), rem
+        );
     }
     return c;
 }
@@ -645,7 +869,8 @@ int32_t _simd_dot_product_int8_int2_core(
 #ifdef LOAD_OPT
 INLINE_OPTION
 void add_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -672,7 +897,8 @@ void add_int16(
 
 INLINE_OPTION
 void add_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     // FIXME: doesn't yield better performance than generic implementation
     size_t len_s4 = ((len >> 2) << 2);
     int32_t c_slice;
@@ -700,7 +926,8 @@ void add_int8(
 
 INLINE_OPTION
 void sub_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     size_t len_s2 = ((len >> 1) << 1);
     int32_t c_slice;
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -727,7 +954,8 @@ void sub_int16(
 
 INLINE_OPTION
 void sub_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     // FIXME: doesn't yield better performance than generic implementation
     size_t len_s4 = ((len >> 2) << 2);
     int32_t c_slice;
@@ -772,7 +1000,7 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c += a[i] * b[i];
+        c += dot_product_int16_scalar_core(a + len_s2, b + len_s2, rem);
     }
     return c;
 }
@@ -796,7 +1024,7 @@ int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] * b[i];
+        c += dot_product_int8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
@@ -821,22 +1049,40 @@ int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     }
     size_t rem = len_bytes - len_s4;
     if (rem > 0) {
-        int8_t al, bl;
-        for (size_t i = len_s4; i < len_bytes; i++) {
-            al = a[i];
-            bl = b[i];
-            c += (al >> 4) * (bl >> 4);
-            al <<= 4;
-            bl <<= 4;
-            c += (al >> 4) * (bl >> 4);
+        c += dot_product_int4_scalar_core(a + len_s4, b + len_s4, rem << 1);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t dot_product_int2(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    size_t len_bytes = (len >> 2); // len passed in as number of crumbs
+    size_t len_s4 = ((len_bytes) >> 2) << 2;
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(const int32_t*)(a + k);
+        int32_t b_slice = *(const int32_t*)(b + k);
+        // Loop through each crumb in the 32-bit slice
+        int8_t a_crumb, b_crumb;
+        for (size_t i = 0; i < 16; i++) {
+            a_crumb = a_slice >> 30;
+            b_crumb = b_slice >> 30;
+            c += a_crumb * b_crumb;
+            a_slice <<= 2;
+            b_slice <<= 2;
         }
+    }
+    size_t rem = (len_bytes - len_s4);
+    if (rem > 0) {
+        c += dot_product_int2_scalar_core(a + len_s4, b + len_s4, rem << 2);
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t dot_product_int16_int8(
-    const int16_t* a, const int8_t* b, const size_t len) {
+    const int16_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -856,14 +1102,15 @@ int32_t dot_product_int16_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] * (int16_t)b[i];
+        c += dot_product_int16_int8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t dot_product_int16_int4(
-    const int16_t* a, const int8_t* b, const size_t len) {
+    const int16_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
@@ -883,20 +1130,47 @@ int32_t dot_product_int16_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s8; i < len; i += 2) {
-            bl = b[i>>1];
-            c += a[i+1] * (int16_t)(bl >> 4);
-            bl <<= 4;
-            c += a[i] * (int16_t)(bl >> 4);
+        c += dot_product_int16_int4_scalar_core(
+            a + len_s8, b + (len_s8 >> 1), rem
+        );
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t dot_product_int16_int2(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        int32_t b_slice = *(const int32_t*)(b + (k >> 2));
+        for (size_t j = 0; j < 16; j += 2) {
+            int32_t a_slice = *(const int32_t*)(a + k + 14 - j);
+            int8_t b_crumb;
+            int16_t a_half;
+            for (size_t i = 0; i < 2; i++) {
+                b_crumb = b_slice >> 30;
+                a_half = a_slice >> 16;
+                c += a_half * (int16_t)b_crumb;
+                b_slice <<= 2;
+                a_slice <<= 16;
+            }
         }
+    }
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += dot_product_int16_int2_scalar_core(
+            a + len_s16, b + (len_s16 >> 2), rem
+        );
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t dot_product_int8_int4(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s8 = ((len >> 3) << 3);
     for (size_t k = 0; k < len_s8; k += 8) {
@@ -916,20 +1190,17 @@ int32_t dot_product_int8_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s8; i < len; i += 2) {
-            bl = b[i>>1];
-            c += a[i+1] * (int8_t)(bl >> 4);
-            bl <<= 4;
-            c += a[i] * (int8_t)(bl >> 4);
-        }
+        c += dot_product_int8_int4_scalar_core(
+            a + len_s8, b + (len_s8 >> 1), rem
+        );
     }
     return c;
 }
 
 INLINE_OPTION
 int32_t dot_product_int8_int2(
-    const int8_t* a, const int8_t* b, const size_t len) {
+    const int8_t* a, const int8_t* b, const size_t len)
+{
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);
     for (size_t k = 0; k < len_s16; k += 16) {
@@ -949,152 +1220,158 @@ int32_t dot_product_int8_int2(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        int8_t bl;
-        for (size_t i = len_s16; i < len; i += 4) {
-            bl = b[i>>2];
-            c += a[i+3] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i+2] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i+1] * (int8_t)(bl >> 6);
-            bl <<= 2;
-            c += a[i] * (int8_t)(bl >> 6);
+        c += dot_product_int8_int2_scalar_core(
+            a + len_s16, b + (len_s16 >> 2), rem
+        );
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t dot_product_int4_int2(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        int32_t b_slice = *(const int32_t*)(b + (k >> 2));
+        for (size_t j = 0; j < 8; j += 4) {
+            int32_t a_slice = *(const int32_t*)(a + (k >> 1) + 4 - j);
+            int8_t b_crumb;
+            int8_t a_nibble;
+            for (size_t i = 0; i < 8; i++) {
+                b_crumb = b_slice >> 30;
+                a_nibble = a_slice >> 28;
+                c += a_nibble * (int8_t)b_crumb;
+                b_slice <<= 2;
+                a_slice <<= 4;
+            }
         }
+    }
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += dot_product_int4_int2_scalar_core(
+            a + (len_s16 >> 1), b + (len_s16 >> 2), rem
+        );
     }
     return c;
 }
 
 #else // generic implementation
 INLINE_OPTION
-void add_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+void add_int16(const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] + b[k];
 }
 
 INLINE_OPTION
-void add_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+void add_int8(const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] + b[k];
 }
 
 INLINE_OPTION
-void sub_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len) {
+void sub_int16(const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] - b[k];
 }
 
 INLINE_OPTION
-void sub_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len) {
+void sub_int8(const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] - b[k];
 }
 
 INLINE_OPTION
-void mul_int16(
-    const int16_t* a, const int16_t* b, int32_t* c, const size_t len) {
+void mul_int16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
-void mul_int8(
-    const int8_t* a, const int8_t* b, int16_t* c, const size_t len) {
+void mul_int8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
 void mul_uint16(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len) {
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
 void mul_uint8(
-    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len) {
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
+{
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
-int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
-    int32_t c = 0;
-    for (size_t k = 0; k < len; k++) c += a[k] * b[k];
-    return c;
+int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len)
+{
+    return dot_product_int16_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
-int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    for (size_t k = 0; k < len; k++) c += a[k] * b[k];
-    return c;
+int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int8_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
-int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    int8_t al, bl;
-    size_t len_bytes = len >> 1; // len passed in as number of nibbles
-    for (size_t k = 0; k < len_bytes; k++) {
-        al = a[k];
-        bl = b[k];
-        c += (al >> 4) * (bl >> 4);
-        al <<= 4;
-        bl <<= 4;
-        c += (al >> 4) * (bl >> 4);
-    }
-    return c;
+int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int4_scalar_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t dot_product_int2(const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int2_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
 int32_t dot_product_int16_int8(
-    const int16_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    for (size_t k = 0; k < len; k++) c += a[k] * (int16_t)b[k];
-    return c;
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int16_int8_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
 int32_t dot_product_int16_int4(
-    const int16_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    int8_t bl;
-    for (size_t k = 0; k < len; k += 2) {
-        bl = b[k>>1];
-        c += a[k+1] * (int16_t)(bl >> 4);
-        bl <<= 4;
-        c += a[k] * (int16_t)(bl >> 4);
-    }
-    return c;
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int16_int4_scalar_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t dot_product_int16_int2(
+    const int16_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int16_int2_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
 int32_t dot_product_int8_int4(
-    const int8_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    int8_t bl;
-    for (size_t k = 0; k < len; k += 2) {
-        bl = b[k>>1];
-        c += a[k+1] * (int8_t)(bl >> 4);
-        bl <<= 4;
-        c += a[k] * (int8_t)(bl >> 4);
-    }
-    return c;
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int8_int4_scalar_core(a, b, len);
 }
 
 INLINE_OPTION
 int32_t dot_product_int8_int2(
-    const int8_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    int8_t bl;
-    for (size_t k = 0; k < len; k += 4) {
-        bl = b[k>>2];
-        c += a[k+3] * (int8_t)(bl >> 6);
-        bl <<= 2;
-        c += a[k+2] * (int8_t)(bl >> 6);
-        bl <<= 2;
-        c += a[k+1] * (int8_t)(bl >> 6);
-        bl <<= 2;
-        c += a[k] * (int8_t)(bl >> 6);
-    }
-    return c;
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int8_int2_scalar_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t dot_product_int4_int2(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    return dot_product_int4_int2_scalar_core(a, b, len);
 }
 
 #endif // LOAD_OPT
