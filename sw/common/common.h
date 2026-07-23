@@ -26,6 +26,14 @@ extern "C" {
 #define TESTNUM_REG x28
 #define INDENT "    "
 
+#define INLINE inline __attribute__((always_inline))
+
+#ifdef FORCE_INLINE
+#define INLINE_OPTION INLINE
+#else
+#define INLINE_OPTION
+#endif
+
 #define NOP asm volatile ("nop")
 #define WFI asm volatile ("wfi")
 

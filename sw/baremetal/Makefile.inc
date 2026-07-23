@@ -18,7 +18,8 @@ endif
 
 # if not set in test's Makefile, default to all object files w/o newlib
 DEFAULT_COMMON_OBJ_NAMES = crt0.o memset.o common.o \
-    common_math.o nanoprintf.o
+    common_math_scalar.o common_math_scalar_load_opt.o common_math_simd.o \
+    nanoprintf.o
 COMMON_OBJ_NAMES ?= $(DEFAULT_COMMON_OBJ_NAMES)
 
 ifeq ($(strip $(USE_NEWLIB)), 1)
