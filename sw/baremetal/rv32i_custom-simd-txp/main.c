@@ -20,7 +20,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp16");
                 uint16_t a[] = {0x2222, 0x1111};
                 uint16_t b[] = {0x4444, 0x3333};
-                uint16x4_t c = _txp16(v_load_uint16x2(a), v_load_uint16x2(b));
+                uint16x4_t c = _txp16u(v_load_uint16x2(a), v_load_uint16x2(b));
                 CHECK(c.w.lo.v, 0x44442222U, 101);
                 CHECK(c.w.hi.v, 0x33331111U, 102);
             }
@@ -28,7 +28,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp16_zeros_ones");
                 uint16_t a[] = {0xFFFF, 0x0000};
                 uint16_t b[] = {0x0000, 0xFFFF};
-                uint16x4_t c = _txp16(v_load_uint16x2(a), v_load_uint16x2(b));
+                uint16x4_t c = _txp16u(v_load_uint16x2(a), v_load_uint16x2(b));
                 CHECK(c.w.lo.v, 0x0000FFFFU, 103);
                 CHECK(c.w.hi.v, 0xFFFF0000U, 104);
             }
@@ -36,7 +36,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp16_alternating");
                 uint16_t a[] = {0xBBBB, 0xAAAA};
                 uint16_t b[] = {0xDDDD, 0xCCCC};
-                uint16x4_t c = _txp16(v_load_uint16x2(a), v_load_uint16x2(b));
+                uint16x4_t c = _txp16u(v_load_uint16x2(a), v_load_uint16x2(b));
                 CHECK(c.w.lo.v, 0xDDDDBBBBU, 105);
                 CHECK(c.w.hi.v, 0xCCCCAAAAU, 106);
             }
@@ -47,7 +47,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp8");
                 uint8_t a[] = {0x04, 0x03, 0x02, 0x01};
                 uint8_t b[] = {0x08, 0x07, 0x06, 0x05};
-                uint8x8_t c = _txp8(v_load_uint8x4(a), v_load_uint8x4(b));
+                uint8x8_t c = _txp8u(v_load_uint8x4(a), v_load_uint8x4(b));
                 CHECK(c.w.lo.v, 0x06020804U, 201);
                 CHECK(c.w.hi.v, 0x05010703U, 202);
             }
@@ -55,7 +55,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp8_edge");
                 uint8_t a[] = {0x00, 0xFF, 0x00, 0xFF};
                 uint8_t b[] = {0xFF, 0x00, 0xFF, 0x00};
-                uint8x8_t c = _txp8(v_load_uint8x4(a), v_load_uint8x4(b));
+                uint8x8_t c = _txp8u(v_load_uint8x4(a), v_load_uint8x4(b));
                 CHECK(c.w.lo.v, 0xFF00FF00U, 203);
                 CHECK(c.w.hi.v, 0x00FF00FFU, 204);
             }
@@ -69,7 +69,7 @@ void main() {
                 // rd (evens): 0, 4, 2, 6... -> bytes 0x40, 0x62...
                 uint8_t a[] = {0x10, 0x32, 0x10, 0x32};
                 uint8_t b[] = {0x54, 0x76, 0x54, 0x76};
-                uint4x16_t c = _txp4(v_load_uint4x8(a), v_load_uint4x8(b));
+                uint4x16_t c = _txp4u(v_load_uint4x8(a), v_load_uint4x8(b));
                 CHECK(c.w.lo.v, 0x62406240U, 301);
                 CHECK(c.w.hi.v, 0x73517351U, 302);
             }
@@ -77,7 +77,7 @@ void main() {
                 GLOBAL_SYMBOL("op_txp4_edge");
                 uint8_t a[] = {0x00, 0x00, 0x00, 0x00};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
-                uint4x16_t c = _txp4(v_load_uint4x8(a), v_load_uint4x8(b));
+                uint4x16_t c = _txp4u(v_load_uint4x8(a), v_load_uint4x8(b));
                 CHECK(c.w.lo.v, 0xF0F0F0F0U, 303);
                 CHECK(c.w.hi.v, 0xF0F0F0F0U, 304);
             }
@@ -89,7 +89,7 @@ void main() {
                 // check both even and odd lanes have data, verifying rd and rdp
                 uint8_t a[] = {0x55, 0x55, 0x55, 0x55}; // lanes: 1, 1, 1, 1...
                 uint8_t b[] = {0xAA, 0xAA, 0xAA, 0xAA}; // lanes: 2, 2, 2, 2...
-                uint2x32_t c = _txp2(v_load_uint2x16(a), v_load_uint2x16(b));
+                uint2x32_t c = _txp2u(v_load_uint2x16(a), v_load_uint2x16(b));
 
                 // rd: 1, 2, 1, 2... -> 0x99
                 // rdp: 1, 2, 1, 2... -> 0x99
@@ -102,7 +102,7 @@ void main() {
                 // b (rs2) provides the ODD lanes (0, 2...)  -> MSBs -> 3
                 uint8_t a[] = {0x00, 0x00, 0x00, 0x00};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
-                uint2x32_t c = _txp2(v_load_uint2x16(a), v_load_uint2x16(b));
+                uint2x32_t c = _txp2u(v_load_uint2x16(a), v_load_uint2x16(b));
 
                 // binary per nibble: 11 (from b) | 00 (from a) -> 1100 -> 0xc
                 CHECK(c.w.lo.v, 0xCCCCCCCCU, 403);

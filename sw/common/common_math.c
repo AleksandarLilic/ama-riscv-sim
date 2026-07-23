@@ -1100,6 +1100,7 @@ int32_t dot_product_int8_int2(
 #endif // LOAD_OPT
 #endif // __riscv_xsimd
 
+#ifdef __riscv_xsimd
 // -----------------------------------------------------------------------------
 // SIMD data formatting functions
 // -----------------------------------------------------------------------------
@@ -1113,13 +1114,8 @@ void _simd_txp_2x2_int16(
     // b_cols = row stride (B_COLS), k = A_COLS_B_ROWS index, j = B_COLS index
     const int16x2_t bs_0 = v_load_int16x2(&b[(k<<1) + 0][j<<1]);
     const int16x2_t bs_1 = v_load_int16x2(&b[(k<<1) + 1][j<<1]);
-
     // b transpose
-    asm volatile(
-        "txp16 %0, %1, %2"
-        : "=r"(*bs_t16)
-        : "r"(bs_0), "r"(bs_1)
-    );
+    *bs_t16 = _txp16(bs_0, bs_1);
 }
 
 void _simd_txp_4x4_int8(
@@ -1136,27 +1132,40 @@ void _simd_txp_4x4_int8(
 
     // b transpose
     int8x8_t bs_t8_01, bs_t8_23;
-    asm volatile(
-        "txp8 %0, %1, %2"
-        : "=r"(bs_t8_01)
-        : "r"(bs_0), "r"(bs_1)
-    );
-
-    asm volatile(
-        "txp8 %0, %1, %2"
-        : "=r"(bs_t8_23)
-        : "r"(bs_2), "r"(bs_3)
-    );
-
+    asm volatile("txp8 %0, %1, %2" : "=r"(bs_t8_01) : "r"(bs_0), "r"(bs_1));
+    asm volatile("txp8 %0, %1, %2" : "=r"(bs_t8_23) : "r"(bs_2), "r"(bs_3));
     asm volatile(
         "txp16 %0, %1, %2"
         : "=r"(*bs_t16_02)
         : "r"(bs_t8_01.w.lo), "r"(bs_t8_23.w.lo)
     );
-
     asm volatile(
         "txp16 %0, %1, %2"
         : "=r"(*bs_t16_13)
         : "r"(bs_t8_01.w.hi), "r"(bs_t8_23.w.hi)
     );
+
+    /*
+    // wrappers require quite a bit of casting, and have worse scheduling
+    // b transpose
+    int8x8_t bs_t8_01, bs_t8_23;
+    bs_t8_01 = _txp8(bs_0, bs_1);
+    bs_t8_23 = _txp8(bs_2, bs_3);
+
+    // type casts for txp
+    int16x2_t bs_t8_01_tc, bs_t8_23_tc;
+    int16x4_t bs_t16_tc;
+
+    bs_t8_01_tc.v = (int32_t)bs_t8_01.w.lo.v;
+    bs_t8_23_tc.v = (int32_t)bs_t8_23.w.lo.v;
+    bs_t16_tc = _txp16(bs_t8_01_tc, bs_t8_23_tc);
+    bs_t16_02->d = bs_t16_tc.d;
+
+    bs_t8_01_tc.v = (int32_t)bs_t8_01.w.hi.v;
+    bs_t8_23_tc.v = (int32_t)bs_t8_23.w.hi.v;
+    bs_t16_tc = _txp16(bs_t8_01_tc, bs_t8_23_tc);
+    bs_t16_13->d = bs_t16_tc.d;
+    */
 }
+
+#endif // __riscv_xsimd

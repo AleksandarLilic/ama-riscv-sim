@@ -676,29 +676,60 @@ uint2x16_t _qnarrow4u(const uint4x8_t a, const uint4x8_t b) {
 
 // -----------------------------------------------------------------------------
 // data formatting - transpose across pair
+
+// signed wrappers
 static INLINE
-uint16x4_t _txp16(uint16x2_t a, uint16x2_t b) {
+int16x4_t _txp16(int16x2_t a, int16x2_t b) {
+    int16x4_t c;
+    asm volatile("txp16 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int8x8_t _txp8(int8x4_t a, int8x4_t b) {
+    int8x8_t c;
+    asm volatile("txp8 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int4x16_t _txp4(int4x8_t a, int4x8_t b) {
+    int4x16_t c;
+    asm volatile("txp4 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+static INLINE
+int2x32_t _txp2(int2x16_t a, int2x16_t b) {
+    int2x32_t c;
+    asm volatile("txp2 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
+    return c;
+}
+
+// unsigned wrappers
+static INLINE
+uint16x4_t _txp16u(uint16x2_t a, uint16x2_t b) {
     uint16x4_t c;
     asm volatile("txp16 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
     return c;
 }
 
 static INLINE
-uint8x8_t _txp8(uint8x4_t a, uint8x4_t b) {
+uint8x8_t _txp8u(uint8x4_t a, uint8x4_t b) {
     uint8x8_t c;
     asm volatile("txp8 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
     return c;
 }
 
 static INLINE
-uint4x16_t _txp4(uint4x8_t a, uint4x8_t b) {
+uint4x16_t _txp4u(uint4x8_t a, uint4x8_t b) {
     uint4x16_t c;
     asm volatile("txp4 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
     return c;
 }
 
 static INLINE
-uint2x32_t _txp2(uint2x16_t a, uint2x16_t b) {
+uint2x32_t _txp2u(uint2x16_t a, uint2x16_t b) {
     uint2x32_t c;
     asm volatile("txp2 %0, %1, %2" : "=r"(c): "r"(a), "r"(b));
     return c;
