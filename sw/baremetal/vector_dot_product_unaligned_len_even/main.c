@@ -132,7 +132,7 @@ void main(void) {
     int32_t result;
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
-        result = FUNC(a, b, ARR_LEN);
+        result = FUNC(a, b, len);
     }
     PROF_STOP;
     //printf("%d\n",result);
