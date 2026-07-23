@@ -17,7 +17,15 @@ Q =
 endif
 
 # if not set in test's Makefile, default to all object files w/o newlib
-COMMON_OBJ_NAMES ?= crt0.o memset.o common.o common_math.o nanoprintf.o # newlib_defs.o
+DEFAULT_COMMON_OBJ_NAMES = crt0.o memset.o common.o \
+    common_math.o nanoprintf.o
+COMMON_OBJ_NAMES ?= $(DEFAULT_COMMON_OBJ_NAMES)
+
+ifeq ($(strip $(USE_NEWLIB)), 1)
+COMMON_OBJ_NAMES += newlib_defs.o
+CFLAGS += -D_USE_NEWLIB
+endif
+
 SW_COMMON_DIR ?= $(REPO_ROOT)/sw/common
 COMMON_SRC_PATH ?= $(SW_COMMON_DIR)
 COMMON_BUILD_DIR := ./common_build

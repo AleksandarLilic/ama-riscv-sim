@@ -3,7 +3,6 @@ LOOPS ?= 400
 CFLAGS += -DLOOPS=$(LOOPS)
 
 LIBS += -lc
-COMMON_OBJ_NAMES = crt0.o common.o nanoprintf.o newlib_defs.o
-CFLAGS += -D_USE_NEWLIB
+USE_NEWLIB := 1
 
 include ../Makefile.ustress.inc

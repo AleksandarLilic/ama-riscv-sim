@@ -5,8 +5,7 @@ INC_PATHS += ../support
 C_SRCS += ../support/main.c ../support/beebsc.c
 
 LIBS += -lm -lc
-COMMON_OBJ_NAMES = crt0.o common.o nanoprintf.o newlib_defs.o
-CFLAGS += -D_USE_NEWLIB
+USE_NEWLIB := 1
 
 CPU_MHZ ?= 100
 WARMUP ?= 10
