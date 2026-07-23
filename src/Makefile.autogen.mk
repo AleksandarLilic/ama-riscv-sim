@@ -13,7 +13,7 @@ GIT_SHA        := $(shell git rev-parse HEAD 2>/dev/null || echo "00000000000000
 GIT_SHORT      := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo "000000000000")
 GIT_BRANCH     := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 GIT_TAG        := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-GIT_DIRTY      := $(shell test -n "$$(git status --porcelain 2>/dev/null)" && echo "dirty" || echo "clean")
+GIT_DIRTY      := $(shell test -n "$$(git status --porcelain . 2>/dev/null)" && echo "dirty" || echo "clean")
 GIT_COMMIT_ISO := $(shell git show -s --date=iso-strict --format=%cd 2>/dev/null || echo "$(NOW_ISO_UTC)")
 GIT_REMOTE     := $(shell git config --get remote.origin.url 2>/dev/null || echo "unknown")
 
