@@ -6,22 +6,22 @@
 #include "test_matrices_int8.h"
 
 void matmul() {
-    for (size_t i = 0; i < (A_ROWS >> 2); i++) {
-        for (size_t j = 0; j < (B_COLS >> 2); j++) {
-            size_t cj = (j << 2);
-            for (size_t k = 0; k < (A_COLS_B_ROWS >> 2); k++) {
+    for (size_t m = 0; m < (M >> 2); m++) {
+        for (size_t n = 0; n < (N >> 2); n++) {
+            size_t cn = (n << 2);
+            for (size_t k = 0; k < (K >> 2); k++) {
 
                 int8x8_t bs_t16_02, bs_t16_13;
-                _simd_txp_4x4_int8(B_COLS, b, k, j, &bs_t16_02, &bs_t16_13);
+                _simd_txp_4x4_int8(N, b, k, n, &bs_t16_02, &bs_t16_13);
 
                 int32_t c_arr[4];
                 for (size_t tr = 0; tr < 4; tr++) { // tile rows
                     // load first to prevent load-to-use dependency
-                    const int8x4_t as = v_load_int8x4(&a[(i<<2)+tr][k<<2]);
-                    c_arr[0] = c[(i<<2) + tr][cj + 0];
-                    c_arr[1] = c[(i<<2) + tr][cj + 1];
-                    c_arr[2] = c[(i<<2) + tr][cj + 2];
-                    c_arr[3] = c[(i<<2) + tr][cj + 3];
+                    const int8x4_t as = v_load_int8x4(&a[(m<<2)+tr][k<<2]);
+                    c_arr[0] = c[(m<<2) + tr][cn + 0];
+                    c_arr[1] = c[(m<<2) + tr][cn + 1];
+                    c_arr[2] = c[(m<<2) + tr][cn + 2];
+                    c_arr[3] = c[(m<<2) + tr][cn + 3];
 
                     // dotp
                     asm volatile (
@@ -42,10 +42,10 @@ void matmul() {
                     );
 
                     // store back
-                    c[(i<<2) + tr][cj + 0] = c_arr[0];
-                    c[(i<<2) + tr][cj + 1] = c_arr[1];
-                    c[(i<<2) + tr][cj + 2] = c_arr[2];
-                    c[(i<<2) + tr][cj + 3] = c_arr[3];
+                    c[(m<<2) + tr][cn + 0] = c_arr[0];
+                    c[(m<<2) + tr][cn + 1] = c_arr[1];
+                    c[(m<<2) + tr][cn + 2] = c_arr[2];
+                    c[(m<<2) + tr][cn + 3] = c_arr[3];
                 }
             }
         }
@@ -58,20 +58,20 @@ void matmul() {
 #include "test_matrices_int16.h"
 
 void matmul() {
-    for (size_t i = 0; i < (A_ROWS >> 1); i++) {
-        for (size_t j = 0; j < (B_COLS >> 1); j++) {
-            size_t cj = (j << 1);
-            for (size_t k = 0; k < (A_COLS_B_ROWS >> 1); k++) {
+    for (size_t m = 0; m < (M >> 1); m++) {
+        for (size_t n = 0; n < (N >> 1); n++) {
+            size_t cn = (n << 1);
+            for (size_t k = 0; k < (K >> 1); k++) {
 
                 int16x4_t bs_t16;
-                _simd_txp_2x2_int16(B_COLS, b, k, j, &bs_t16);
+                _simd_txp_2x2_int16(N, b, k, n, &bs_t16);
 
                 int32_t c_arr[2];
                 for (size_t tr = 0; tr < 2; tr++) { // tile rows
                     // load first to prevent load-to-use dependency
-                    const int16x2_t as = v_load_int16x2(&a[(i<<1)+tr][k<<1]);
-                    c_arr[0] = c[(i<<1) + tr][cj + 0];
-                    c_arr[1] = c[(i<<1) + tr][cj + 1];
+                    const int16x2_t as = v_load_int16x2(&a[(m<<1)+tr][k<<1]);
+                    c_arr[0] = c[(m<<1) + tr][cn + 0];
+                    c_arr[1] = c[(m<<1) + tr][cn + 1];
 
                     // dotp
                     asm volatile (
@@ -86,8 +86,8 @@ void matmul() {
                     );
 
                     // store back
-                    c[(i<<1) + tr][cj + 0] = c_arr[0];
-                    c[(i<<1) + tr][cj + 1] = c_arr[1];
+                    c[(m<<1) + tr][cn + 0] = c_arr[0];
+                    c[(m<<1) + tr][cn + 1] = c_arr[1];
                 }
             }
         }

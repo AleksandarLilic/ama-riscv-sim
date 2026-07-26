@@ -6,22 +6,22 @@
 #include "test_matrices_int8.h"
 
 void matmul() {
-    for (size_t j = 0; j < (B_COLS >> 2); j++) {
-        for (size_t k = 0; k < (A_COLS_B_ROWS >> 2); k++) {
+    for (size_t n = 0; n < (N >> 2); n++) {
+        for (size_t k = 0; k < (K >> 2); k++) {
 
             int8x8_t bs_t16_02, bs_t16_13;
-            _simd_txp_4x4_int8(B_COLS, b, k, j, &bs_t16_02, &bs_t16_13);
+            _simd_txp_4x4_int8(N, b, k, n, &bs_t16_02, &bs_t16_13);
 
-            size_t cj = (j << 2);
-            for (size_t i = 0; i < (A_ROWS); i++) {
-                const int8x4_t as = v_load_int8x4(&a[i][k<<2]);
+            size_t cn = (n << 2);
+            for (size_t m = 0; m < M; m++) {
+                const int8x4_t as = v_load_int8x4(&a[m][k<<2]);
 
                 // load first to prevent load-to-use dependency
                 int32_t c_arr[4];
-                c_arr[0] = c[i][cj + 0];
-                c_arr[1] = c[i][cj + 1];
-                c_arr[2] = c[i][cj + 2];
-                c_arr[3] = c[i][cj + 3];
+                c_arr[0] = c[m][cn + 0];
+                c_arr[1] = c[m][cn + 1];
+                c_arr[2] = c[m][cn + 2];
+                c_arr[3] = c[m][cn + 3];
 
                 // dotp
                 asm volatile (
@@ -42,10 +42,10 @@ void matmul() {
                 );
 
                 // store back
-                c[i][cj + 0] = c_arr[0];
-                c[i][cj + 1] = c_arr[1];
-                c[i][cj + 2] = c_arr[2];
-                c[i][cj + 3] = c_arr[3];
+                c[m][cn + 0] = c_arr[0];
+                c[m][cn + 1] = c_arr[1];
+                c[m][cn + 2] = c_arr[2];
+                c[m][cn + 3] = c_arr[3];
             }
         }
     }
@@ -57,20 +57,20 @@ void matmul() {
 #include "test_matrices_int16.h"
 
 void matmul() {
-    for (size_t j = 0; j < (B_COLS >> 1); j++) {
-        for (size_t k = 0; k < (A_COLS_B_ROWS >> 1); k++) {
+    for (size_t n = 0; n < (N >> 1); n++) {
+        for (size_t k = 0; k < (K >> 1); k++) {
 
             int16x4_t bs_t16;
-            _simd_txp_2x2_int16(B_COLS, b, k, j, &bs_t16);
+            _simd_txp_2x2_int16(N, b, k, n, &bs_t16);
 
-            size_t cj = (j << 1);
-            for (size_t i = 0; i < (A_ROWS); i++) {
-                const int16x2_t as = v_load_int16x2(&a[i][k<< 1]);
+            size_t cn = (n << 1);
+            for (size_t m = 0; m < M; m++) {
+                const int16x2_t as = v_load_int16x2(&a[m][k<< 1]);
 
                 // load first to prevent load-to-use dependency
                 int32_t c_arr[2];
-                c_arr[0] = c[i][cj + 0];
-                c_arr[1] = c[i][cj + 1];
+                c_arr[0] = c[m][cn + 0];
+                c_arr[1] = c[m][cn + 1];
 
                 // dotp
                 asm volatile (
@@ -85,8 +85,8 @@ void matmul() {
                 );
 
                 // store back
-                c[i][cj + 0] = c_arr[0];
-                c[i][cj + 1] = c_arr[1];
+                c[m][cn + 0] = c_arr[0];
+                c[m][cn + 1] = c_arr[1];
             }
         }
     }

@@ -23,8 +23,10 @@
 #endif
 
 void set_c() {
-    for (size_t i = 0; i < A_ROWS; i++) {
-        for (size_t j = 0; j < B_COLS; j++) c[i][j] = 0;
+    for (size_t m = 0; m < M; m++) {
+        for (size_t n = 0; n < N; n++) {
+            c[m][n] = 0;
+        }
     }
 }
 
@@ -44,19 +46,19 @@ void main(void) {
 
         /*
         printf("Result of matrix multiplication (C = A * B):\n");
-        for (int i = 0; i < A_ROWS; i++) {
-            for (int j = 0; j < B_COLS; j++) {
-                printf("%d ", c[i][j]);
+        for (int m = 0; m < M; m++) {
+            for (int n = 0; n < N; n++) {
+                printf("%d ", c[m][n]);
             }
             printf("\n");
         }
         */
 
         GLOBAL_SYMBOL("check");
-        for (size_t i = 0; i < A_ROWS; i++) {
-            for (size_t j = 0; j < B_COLS; j++) {
-                if (c[i][j] != ref[i][j]) {
-                    write_mismatch(c[i][j], ref[i][j], i * B_COLS + j + 1);
+        for (size_t m = 0; m < M; m++) {
+            for (size_t n = 0; n < N; n++) {
+                if (c[m][n] != ref[m][n]) {
+                    write_mismatch(c[m][n], ref[m][n], m * N + n + 1);
                     fail();
                 }
             }

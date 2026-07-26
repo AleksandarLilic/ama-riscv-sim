@@ -1,4 +1,4 @@
-LOOP_ORDERS := ijk jik jki ikj kij kji
+LOOP_ORDERS := mnk nmk nkm mkn kmn knm
 LOOPS := 1
 
 NF := int8
@@ -23,13 +23,13 @@ clean_codegen: clean_headers
 
 headers: $(HEADERS)
 
-# dependent on the dcache size
-A_ROWS = 64
-B_COLS = 64
-A_COLS_B_ROWS = 64
+# dependent on the dcache size, data shouldn't fit in dcache
+M = 64
+N = 64
+K = 64
 
 $(HEADERS): $(CODEGEN_PY)
-	$(CODEGEN_PY) $(NF) $(A_ROWS) $(B_COLS) $(A_COLS_B_ROWS)
+	$(CODEGEN_PY) $(NF) $(M) $(N) $(K)
 
 clean_headers:
 	rm -f $(HEADERS)

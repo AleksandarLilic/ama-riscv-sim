@@ -65,13 +65,13 @@ int32_t _simd_dot_product_int4_int2(
 void _simd_txp_2x2_int16(
     const size_t b_cols,
     const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
-    const size_t k, const size_t j,
+    const size_t k, const size_t n,
     int16x4_t* bs_t16);
 
 void _simd_txp_4x4_int8(
     const size_t b_cols,
     const int8_t b[][b_cols],
-    const size_t k, const size_t j,
+    const size_t k, const size_t n,
     int8x8_t* bs_t16_02, int8x8_t* bs_t16_13);
 
 // -----------------------------------------------------------------------------

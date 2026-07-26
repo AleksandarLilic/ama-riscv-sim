@@ -648,12 +648,12 @@ int32_t _simd_dot_product_int4_int2(
 void _simd_txp_2x2_int16(
     const size_t b_cols,
     const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
-    const size_t k, const size_t j,
+    const size_t k, const size_t n,
     int16x4_t* bs_t16)
 {
-    // b_cols = row stride (B_COLS), k = A_COLS_B_ROWS index, j = B_COLS index
-    const int16x2_t bs_0 = v_load_int16x2(&b[(k<<1) + 0][j<<1]);
-    const int16x2_t bs_1 = v_load_int16x2(&b[(k<<1) + 1][j<<1]);
+    // b_cols = row stride (N), k = K index, n = N index
+    const int16x2_t bs_0 = v_load_int16x2(&b[(k<<1) + 0][n<<1]);
+    const int16x2_t bs_1 = v_load_int16x2(&b[(k<<1) + 1][n<<1]);
     // b transpose
     *bs_t16 = _txp16(bs_0, bs_1);
 }
@@ -661,14 +661,14 @@ void _simd_txp_2x2_int16(
 void _simd_txp_4x4_int8(
     const size_t b_cols,
     const int8_t b[][b_cols],
-    const size_t k, const size_t j,
+    const size_t k, const size_t n,
     int8x8_t* bs_t16_02, int8x8_t* bs_t16_13)
 {
-    // b_cols = row stride (B_COLS), k = A_COLS_B_ROWS index, j = B_COLS index
-    const int8x4_t bs_0 = v_load_int8x4(&b[(k<<2) + 0][j<<2]);
-    const int8x4_t bs_1 = v_load_int8x4(&b[(k<<2) + 1][j<<2]);
-    const int8x4_t bs_2 = v_load_int8x4(&b[(k<<2) + 2][j<<2]);
-    const int8x4_t bs_3 = v_load_int8x4(&b[(k<<2) + 3][j<<2]);
+    // b_cols = row stride (N), k = K index, n = N index
+    const int8x4_t bs_0 = v_load_int8x4(&b[(k<<2) + 0][n<<2]);
+    const int8x4_t bs_1 = v_load_int8x4(&b[(k<<2) + 1][n<<2]);
+    const int8x4_t bs_2 = v_load_int8x4(&b[(k<<2) + 2][n<<2]);
+    const int8x4_t bs_3 = v_load_int8x4(&b[(k<<2) + 3][n<<2]);
 
     // b transpose
     int8x8_t bs_t8_01, bs_t8_23;

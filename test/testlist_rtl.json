@@ -51,7 +51,7 @@
     "vector_dot_product": [["all"], ["SIMD=1"]],
     "vector_dot_product_peak": ["all"],
     "matmul_generic": ["all"],
-    "matmul_opt": ["all"],
+    "matmul": ["all"],
     "conv1d": ["all"],
 
     "uart_direct_send": ["hello_world"],
