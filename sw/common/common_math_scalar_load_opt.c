@@ -57,7 +57,7 @@ void add_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] + b[i];
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
     }
 }
 
@@ -114,7 +114,7 @@ void sub_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c += a[i] - b[i];
+        for (size_t i = len_s4; i < len; i++) c[i] = a[i] - b[i];
     }
 }
 
