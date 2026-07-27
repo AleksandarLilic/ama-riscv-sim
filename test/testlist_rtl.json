@@ -47,7 +47,7 @@
 
     "vector_ew_al_uint8": ["test"],
     "vector_ew_mac_uint8": ["test"],
-    "vector_ew_ops": ["all"],
+    "vector_ew_ops": [["all"], ["SIMD=1"]],
     "vector_dot_product": [["all"], ["SIMD=1"]],
     "vector_dot_product_peak": ["all"],
     "matmul_generic": ["all"],

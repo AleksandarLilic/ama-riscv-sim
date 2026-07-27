@@ -22,10 +22,21 @@ CODEGEN_PY := codegen.py
 OPT := -O1 -flto
 CFLAGS := -DLOOPS=$(LOOPS)
 
-#MATH_LIB_FLAGS := -DLOAD_OPT
-#MATH_LIB_FLAGS :=
+MARCH := rv32im_zicsr_zifencei_zicntr
+MATH_LIB_FLAGS :=
+
+ifeq ($(strip $(LOAD_OPT)), 1)
+MATH_LIB_FLAGS += -DLOAD_OPT
+$(info Building LOAD_OPT)
+else ifeq ($(strip $(SIMD)), 1)
+$(info Building SIMD)
+MARCH := rv32im_zicsr_zifencei_zicntr_xsimd
 #MATH_LIB_FLAGS += -DFORCE_INLINE
 #MATH_LIB_FLAGS += -DSIMD_UNROLL
+else
+$(info Building generic)
+endif
+
 CFLAGS += $(MATH_LIB_FLAGS)
 
 all: add sub mul div
