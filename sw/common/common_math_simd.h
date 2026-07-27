@@ -9,66 +9,18 @@ extern "C" {
 
 #ifdef __riscv_xsimd
 
-// -----------------------------------------------------------------------------
-// high level SIMD arithmetic functions
-// -----------------------------------------------------------------------------
-
-// add & sub
-void _simd_add_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len);
-void _simd_add_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len);
-void _simd_sub_int16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len);
-void _simd_sub_int8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len);
-
-// mul and mul unsigned
-void _simd_mul_int16(
-    const int16_t* a, const int16_t* b, int32_t* c, const size_t len);
-void _simd_mul_int8(
-    const int8_t* a, const int8_t* b, int16_t* c, const size_t len);
-void _simd_mul_uint16(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len);
-void _simd_mul_uint8(
-    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len);
-
-// dot product
-int32_t _simd_dot_product_int16(
-    const int16_t* a, const int16_t* b, const size_t len);
-int32_t _simd_dot_product_int8(
-    const int8_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int4(
-    const int8_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int2(
-    const int8_t* a, const int8_t* b, const size_t len);
-
-// dot product w/ widening
-int32_t _simd_dot_product_int16_int8(
-    const int16_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int16_int4(
-    const int16_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int16_int2(
-    const int16_t* a, const int8_t* b, const size_t len);
-
-int32_t _simd_dot_product_int8_int4(
-    const int8_t* a, const int8_t* b, const size_t len);
-int32_t _simd_dot_product_int8_int2(
-    const int8_t* a, const int8_t* b, const size_t len);
-
-int32_t _simd_dot_product_int4_int2(
-    const int8_t* a, const int8_t* b, const size_t len);
+// only routines not already existing under common_math.h (simd-unique)
 
 // -----------------------------------------------------------------------------
 // high level SIMD data formatting functions
 // -----------------------------------------------------------------------------
-void _simd_txp_2x2_int16(
+void m_txp_2x2_i16(
     const size_t b_cols,
     const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
     const size_t k, const size_t n,
     int16x4_t* bs_t16);
 
-void _simd_txp_4x4_int8(
+void m_txp_4x4_i8(
     const size_t b_cols,
     const int8_t b[][b_cols],
     const size_t k, const size_t n,

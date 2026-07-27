@@ -45,27 +45,15 @@ static void fc_layer(
     for (uint32_t i = 0; i < n_output; i++) {
         #ifdef W8A8
         const int8_t* weight_idx = (weights + i * n_input);
-        #ifdef __riscv_xsimd
-        output[i] = _simd_dot_product_int8(activations, weight_idx, n_input);
-        #else
-        output[i] = dot_product_int8(activations, weight_idx, n_input);
-        #endif
+        output[i] = m_dotv_i8_i8(activations, weight_idx, n_input);
 
         #elif defined(W4A8)
         const int8_t* weight_idx = (weights + (i * (n_input >> 1)));
-        #ifdef __riscv_xsimd
-        output[i] = _simd_dot_product_int8_int4(activations, weight_idx,n_input);
-        #else
-        output[i] = dot_product_int8_int4(activations, weight_idx, n_input);
-        #endif
+        output[i] = m_dotv_i8_i4(activations, weight_idx, n_input);
 
         #elif defined(W2A8)
         const int8_t* weight_idx = (weights + (i * (n_input >> 2)));
-        #ifdef __riscv_xsimd
-        output[i] = _simd_dot_product_int8_int2(activations, weight_idx,n_input);
-        #else
-        output[i] = dot_product_int8_int2(activations, weight_idx, n_input);
-        #endif
+        output[i] = m_dotv_i8_i2(activations, weight_idx, n_input);
 
         #endif
     }

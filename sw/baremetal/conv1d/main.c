@@ -66,13 +66,13 @@ void conv1d_int16(
     int32_t sum = 0;
     for (size_t i = 0; i < out_size; i+=2) {
         const int16_t *in_ptr = in + i;
-        sum = _simd_dot_product_int16(in_ptr, filter_ptr, filter_size);
+        sum = m_dotv_i16_i16(in_ptr, filter_ptr, filter_size);
         *(out + i) = sum;
 
         const int16_t *in_ptr2 = in + i + 1;
         sum = *(in_ptr2) * *(filter_ptr); // handle unaligned input element
 
-        sum += _simd_dot_product_int16(in_ptr2+1, filter2_ptr, filter_size-1);
+        sum += m_dotv_i16_i16(in_ptr2+1, filter2_ptr, filter_size-1);
         *(out + i + 1) = sum;
     }
 }

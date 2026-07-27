@@ -8,40 +8,29 @@
 #define LOOPS 1
 #endif
 
-// function
-#ifdef __riscv_xsimd
-#define FUNC_PREFIX _simd_
-#else
-#define FUNC_PREFIX
-#endif
-
 #if defined(NF_INT16)
-#define FUNC_NAME dot_product_int16
+#define FUNC m_dotv_i16_i16
 #elif defined(NF_INT8)
-#define FUNC_NAME dot_product_int8
+#define FUNC m_dotv_i8_i8
 #elif defined(NF_INT4)
-#define FUNC_NAME dot_product_int4
+#define FUNC m_dotv_i4_i4
 #elif defined(NF_INT2)
-#define FUNC_NAME dot_product_int2
+#define FUNC m_dotv_i2_i2
 #elif defined(NF_INT16_INT8)
-#define FUNC_NAME dot_product_int16_int8
+#define FUNC m_dotv_i16_i8
 #elif defined(NF_INT16_INT4)
-#define FUNC_NAME dot_product_int16_int4
+#define FUNC m_dotv_i16_i4
 #elif defined(NF_INT16_INT2)
-#define FUNC_NAME dot_product_int16_int2
+#define FUNC m_dotv_i16_i2
 #elif defined(NF_INT8_INT4)
-#define FUNC_NAME dot_product_int8_int4
+#define FUNC m_dotv_i8_i4
 #elif defined(NF_INT8_INT2)
-#define FUNC_NAME dot_product_int8_int2
+#define FUNC m_dotv_i8_i2
 #elif defined(NF_INT4_INT2)
-#define FUNC_NAME dot_product_int4_int2
+#define FUNC m_dotv_i4_i2
 #else
-_Static_assert(0, "Unsupported number format: FUNC_NAME");
+_Static_assert(0, "Unsupported number format: FUNC");
 #endif
-
-#define CONCAT(a, b) a##b
-#define EXPAND_CONCAT(a, b) CONCAT(a, b)
-#define FUNC EXPAND_CONCAT(FUNC_PREFIX, FUNC_NAME)
 
 void main(void) {
     int32_t result;

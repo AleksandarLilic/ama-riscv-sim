@@ -13,52 +13,41 @@
 _Static_assert(0, "No operation defined");
 #endif
 
-// function
-#ifdef __riscv_xsimd
-#define FUNC_PREFIX _simd_
-#else
-#define FUNC_PREFIX
-#endif
-
 #if defined(OP_ADD)
     #if defined(NF_INT16) || defined(NF_UINT16)
-        #define FUNC_NAME add_int16
+        #define FUNC m_add_i16
     #elif defined(NF_INT8) || defined(NF_UINT8)
-        #define FUNC_NAME add_int8
+        #define FUNC m_add_i8
     #else
-        #define NO_SIMD
+        #define NO_VEC
     #endif
 
 #elif defined(OP_SUB)
     #if defined(NF_INT16) || defined(NF_UINT16)
-        #define FUNC_NAME sub_int16
+        #define FUNC m_sub_i16
     #elif defined(NF_INT8) || defined(NF_UINT8)
-        #define FUNC_NAME sub_int8
+        #define FUNC m_sub_i8
     #else
-        #define NO_SIMD
+        #define NO_VEC
     #endif
 
 #elif defined(OP_MUL)
     #if defined(NF_INT16)
-        #define FUNC_NAME mul_int16
+        #define FUNC m_mul_i16
     #elif defined(NF_UINT16)
-        #define FUNC_NAME mul_uint16
+        #define FUNC m_mul_u16
     #elif defined(NF_INT8)
-        #define FUNC_NAME mul_int8
+        #define FUNC m_mul_i8
     #elif defined(NF_UINT8)
-        #define FUNC_NAME mul_uint8
+        #define FUNC m_mul_u8
     #else
-        #define NO_SIMD
+        #define NO_VEC
     #endif
 
 #elif defined(OP_DIV)
-    #define NO_SIMD // no SIMD support for div
+    #define NO_VEC // no vector routines for div
 
-#endif // OP_ADD
-
-#define CONCAT(a, b) a##b
-#define EXPAND_CONCAT(a, b) CONCAT(a, b)
-#define FUNC EXPAND_CONCAT(FUNC_PREFIX, FUNC_NAME)
+#endif // OP_*
 
 #ifndef LOOPS
 #define LOOPS 1u
@@ -76,7 +65,7 @@ void main(void) {
         asm("compute:");
         PROF_START;
 
-        #ifdef NO_SIMD
+        #ifdef NO_VEC
         // generic scalar version
         for (size_t k = 0; k < ARR_LEN; k++) c[k] = a[k] OP b[k];
         #else

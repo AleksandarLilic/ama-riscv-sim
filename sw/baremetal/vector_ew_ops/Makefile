@@ -1,9 +1,9 @@
 
-SIMD_ONLY ?= 1
+VEC_ONLY ?= 1 # not every (type x op) combination has vectorized flavor
 NFS := uint8 int8 uint16 int16
 OPS := add sub mul
 
-ifeq ($(strip $(SIMD_ONLY)), 0)
+ifeq ($(strip $(VEC_ONLY)), 0)
 NFS += uint32 int32 uint64 int64 float32 float64
 OPS += div
 endif

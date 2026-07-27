@@ -8,10 +8,41 @@ extern "C" {
 #include "common.h"
 
 // -----------------------------------------------------------------------------
+// scalar elementwise mul cores
+// -----------------------------------------------------------------------------
+static INLINE
+void m_mul_i16_scalar_core(
+    const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+{
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+static INLINE
+void m_mul_i8_scalar_core(
+    const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+{
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+static INLINE
+void m_mul_u16_scalar_core(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
+{
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+static INLINE
+void m_mul_u8_scalar_core(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
+{
+    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
+}
+
+// -----------------------------------------------------------------------------
 // scalar dot product cores
 // -----------------------------------------------------------------------------
 static INLINE
-int32_t dot_product_int16_scalar_core(
+int32_t m_dotv_i16_i16_scalar_core(
     const int16_t* a, const int16_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -20,7 +51,7 @@ int32_t dot_product_int16_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int8_scalar_core(
+int32_t m_dotv_i8_i8_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -29,7 +60,7 @@ int32_t dot_product_int8_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int4_scalar_core(
+int32_t m_dotv_i4_i4_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -47,7 +78,7 @@ int32_t dot_product_int4_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int2_scalar_core(
+int32_t m_dotv_i2_i2_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -71,7 +102,7 @@ int32_t dot_product_int2_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int16_int8_scalar_core(
+int32_t m_dotv_i16_i8_scalar_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -80,7 +111,7 @@ int32_t dot_product_int16_int8_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int16_int4_scalar_core(
+int32_t m_dotv_i16_i4_scalar_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -95,7 +126,7 @@ int32_t dot_product_int16_int4_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int16_int2_scalar_core(
+int32_t m_dotv_i16_i2_scalar_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -114,7 +145,7 @@ int32_t dot_product_int16_int2_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int8_int4_scalar_core(
+int32_t m_dotv_i8_i4_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -129,7 +160,7 @@ int32_t dot_product_int8_int4_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int8_int2_scalar_core(
+int32_t m_dotv_i8_i2_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -148,7 +179,7 @@ int32_t dot_product_int8_int2_scalar_core(
 }
 
 static INLINE
-int32_t dot_product_int4_int2_scalar_core(
+int32_t m_dotv_i4_i2_scalar_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;

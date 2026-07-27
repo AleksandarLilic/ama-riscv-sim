@@ -11,7 +11,7 @@ void transpose() {
         for (size_t k = 0; k < (K >> 2); k++) {
 
             int8x8_t bs_t16_02, bs_t16_13;
-            _simd_txp_4x4_int8(N, b, k, n, &bs_t16_02, &bs_t16_13);
+            m_txp_4x4_i8(N, b, k, n, &bs_t16_02, &bs_t16_13);
 
             v_store_int8x4(&b_T[(n<<2) + 0][(k<<2)], bs_t16_02.w.lo);
             v_store_int8x4(&b_T[(n<<2) + 1][(k<<2)], bs_t16_13.w.lo);
@@ -56,7 +56,7 @@ void matmul() {
             c[m][n] = c_acc;
 
             #else // K < 8
-            c[m][n] = _simd_dot_product_int8(a[m], b_T[n], K);
+            c[m][n] = m_dotv_i8_i8(a[m], b_T[n], K);
             #endif
         }
     }
@@ -73,7 +73,7 @@ void transpose() {
         for (size_t k = 0; k < (K >> 1); k++) {
 
             int16x4_t bs_t16;
-            _simd_txp_2x2_int16(N, b, k, n, &bs_t16);
+            m_txp_2x2_i16(N, b, k, n, &bs_t16);
 
             v_store_int16x2(&b_T[(n<<1) + 0][(k<<1)], bs_t16.w.lo);
             v_store_int16x2(&b_T[(n<<1) + 1][(k<<1)], bs_t16.w.hi);
@@ -116,7 +116,7 @@ void matmul() {
             c[m][n] = c_acc;
 
             #else // K < 4
-            c[m][n] = _simd_dot_product_int16(a[m], b_T[n], K);
+            c[m][n] = m_dotv_i16_i16(a[m], b_T[n], K);
             #endif
         }
     }

@@ -12,7 +12,7 @@ void matmul() {
             for (size_t k = 0; k < (K >> 2); k++) {
 
                 int8x8_t bs_t16_02, bs_t16_13;
-                _simd_txp_4x4_int8(N, b, k, n, &bs_t16_02, &bs_t16_13);
+                m_txp_4x4_i8(N, b, k, n, &bs_t16_02, &bs_t16_13);
 
                 int32_t c_arr[4];
                 for (size_t tr = 0; tr < 4; tr++) { // tile rows
@@ -64,7 +64,7 @@ void matmul() {
             for (size_t k = 0; k < (K >> 1); k++) {
 
                 int16x4_t bs_t16;
-                _simd_txp_2x2_int16(N, b, k, n, &bs_t16);
+                m_txp_2x2_i16(N, b, k, n, &bs_t16);
 
                 int32_t c_arr[2];
                 for (size_t tr = 0; tr < 2; tr++) { // tile rows

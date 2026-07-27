@@ -5,7 +5,7 @@
 #if !defined(__riscv_xsimd) && defined(LOAD_OPT)
 
 INLINE_OPTION
-void add_int16(
+void m_add_i16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -33,10 +33,10 @@ void add_int16(
 }
 
 INLINE_OPTION
-void add_int8(
+void m_add_i8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
 {
-    // FIXME: doesn't yield better performance than generic implementation
+    // doesn't yield better performance than generic implementation
     size_t len_s4 = ((len >> 2) << 2);
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -62,7 +62,7 @@ void add_int8(
 }
 
 INLINE_OPTION
-void sub_int16(
+void m_sub_i16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -90,10 +90,10 @@ void sub_int16(
 }
 
 INLINE_OPTION
-void sub_int8(
+void m_sub_i8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
 {
-    // FIXME: doesn't yield better performance than generic implementation
+    // doesn't yield better performance than generic implementation
     size_t len_s4 = ((len >> 2) << 2);
     int32_t c_slice;
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -118,8 +118,110 @@ void sub_int8(
     }
 }
 
+// mul and mul unsigned
+
+// widening mul perfrorms badly on load opt due to packing overhead
+// 16-bit purely matches scalar, 8-bit executes ~50% more instructions
+// 'define LOAD_OPT_USE_SCALAR' to fall back to the scalar cores for these four
+
 INLINE_OPTION
-int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
+void m_mul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+{
+    #ifdef LOAD_OPT_USE_SCALAR
+    m_mul_i16_scalar_core(a, b, c, len);
+    #else
+    size_t len_s2 = ((len >> 1) << 1);
+    for (size_t k = 0; k < len_s2; k += 2) {
+        int32_t a_slice = *(const int32_t*)(a + k);
+        int32_t b_slice = *(const int32_t*)(b + k);
+        // int32 output: one word per element, nothing to repack
+        c[k + 1] = (a_slice >> 16) * (b_slice >> 16);
+        c[k]     = (int16_t)a_slice * (int16_t)b_slice;
+    }
+    size_t rem = (len - len_s2);
+    if (rem > 0) {
+        m_mul_i16_scalar_core(a + len_s2, b + len_s2, c + len_s2, rem);
+    }
+    #endif
+}
+
+INLINE_OPTION
+void m_mul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+{
+    #ifdef LOAD_OPT_USE_SCALAR
+    m_mul_i8_scalar_core(a, b, c, len);
+    #else
+    size_t len_s4 = ((len >> 2) << 2);
+    for (size_t k = 0; k < len_s4; k += 4) {
+        int32_t a_slice = *(const int32_t*)(a + k);
+        int32_t b_slice = *(const int32_t*)(b + k);
+        int32_t p[4];
+        for (size_t i = 0; i < 4; i++) {
+            p[3 - i] = (a_slice >> 24) * (b_slice >> 24);
+            a_slice <<= 8;
+            b_slice <<= 8;
+        }
+        // int16 output: two results per word, repack
+        *(int32_t*)(c + k)     = (p[1] << 16) | (p[0] & 0xFFFF);
+        *(int32_t*)(c + k + 2) = (p[3] << 16) | (p[2] & 0xFFFF);
+    }
+    size_t rem = (len - len_s4);
+    if (rem > 0) {
+        m_mul_i8_scalar_core(a + len_s4, b + len_s4, c + len_s4, rem);
+    }
+    #endif
+}
+
+INLINE_OPTION
+void m_mul_u16(
+    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
+{
+    #ifdef LOAD_OPT_USE_SCALAR
+    m_mul_u16_scalar_core(a, b, c, len);
+    #else
+    size_t len_s2 = ((len >> 1) << 1);
+    for (size_t k = 0; k < len_s2; k += 2) {
+        uint32_t a_slice = *(const uint32_t*)(a + k);
+        uint32_t b_slice = *(const uint32_t*)(b + k);
+        c[k + 1] = (a_slice >> 16) * (b_slice >> 16);
+        c[k]     = (uint16_t)a_slice * (uint16_t)b_slice;
+    }
+    size_t rem = (len - len_s2);
+    if (rem > 0) {
+        m_mul_u16_scalar_core(a + len_s2, b + len_s2, c + len_s2, rem);
+    }
+    #endif
+}
+
+INLINE_OPTION
+void m_mul_u8(
+    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
+{
+    #ifdef LOAD_OPT_USE_SCALAR
+    m_mul_u8_scalar_core(a, b, c, len);
+    #else
+    size_t len_s4 = ((len >> 2) << 2);
+    for (size_t k = 0; k < len_s4; k += 4) {
+        uint32_t a_slice = *(const uint32_t*)(a + k);
+        uint32_t b_slice = *(const uint32_t*)(b + k);
+        uint32_t p[4];
+        for (size_t i = 0; i < 4; i++) {
+            p[3 - i] = (a_slice >> 24) * (b_slice >> 24);
+            a_slice <<= 8;
+            b_slice <<= 8;
+        }
+        *(uint32_t*)(c + k)     = (p[1] << 16) | (p[0] & 0xFFFF);
+        *(uint32_t*)(c + k + 2) = (p[3] << 16) | (p[2] & 0xFFFF);
+    }
+    size_t rem = (len - len_s4);
+    if (rem > 0) {
+        m_mul_u8_scalar_core(a + len_s4, b + len_s4, c + len_s4, rem);
+    }
+    #endif
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len){
     int32_t c = 0;
     size_t len_s2 = ((len >> 1) << 1);
     for (size_t k = 0; k < len_s2; k += 2) {
@@ -137,13 +239,13 @@ int32_t dot_product_int16(const int16_t* a, const int16_t* b, const size_t len){
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
-        c += dot_product_int16_scalar_core(a + len_s2, b + len_s2, rem);
+        c += m_dotv_i16_i16_scalar_core(a + len_s2, b + len_s2, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
+int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s4 = ((len >> 2) << 2);
     for (size_t k = 0; k < len_s4; k += 4) {
@@ -161,13 +263,13 @@ int32_t dot_product_int8(const int8_t* a, const int8_t* b, const size_t len) {
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        c += dot_product_int8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i8_i8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
+int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_bytes = (len >> 1); // len passed in as number of nibbles
     size_t len_s4 = ((len_bytes) >> 2) << 2;
@@ -186,13 +288,13 @@ int32_t dot_product_int4(const int8_t* a, const int8_t* b, const size_t len) {
     }
     size_t rem = len_bytes - len_s4;
     if (rem > 0) {
-        c += dot_product_int4_scalar_core(a + len_s4, b + len_s4, rem << 1);
+        c += m_dotv_i4_i4_scalar_core(a + len_s4, b + len_s4, rem << 1);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t dot_product_int2(const int8_t* a, const int8_t* b, const size_t len) {
+int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_bytes = (len >> 2); // len passed in as number of crumbs
     size_t len_s4 = ((len_bytes) >> 2) << 2;
@@ -211,13 +313,13 @@ int32_t dot_product_int2(const int8_t* a, const int8_t* b, const size_t len) {
     }
     size_t rem = (len_bytes - len_s4);
     if (rem > 0) {
-        c += dot_product_int2_scalar_core(a + len_s4, b + len_s4, rem << 2);
+        c += m_dotv_i2_i2_scalar_core(a + len_s4, b + len_s4, rem << 2);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t dot_product_int16_int8(
+int32_t m_dotv_i16_i8(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -239,13 +341,13 @@ int32_t dot_product_int16_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        c += dot_product_int16_int8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i16_i8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t dot_product_int16_int4(
+int32_t m_dotv_i16_i4(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -267,7 +369,7 @@ int32_t dot_product_int16_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += dot_product_int16_int4_scalar_core(
+        c += m_dotv_i16_i4_scalar_core(
             a + len_s8, b + (len_s8 >> 1), rem
         );
     }
@@ -275,7 +377,7 @@ int32_t dot_product_int16_int4(
 }
 
 INLINE_OPTION
-int32_t dot_product_int16_int2(
+int32_t m_dotv_i16_i2(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -297,7 +399,7 @@ int32_t dot_product_int16_int2(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int16_int2_scalar_core(
+        c += m_dotv_i16_i2_scalar_core(
             a + len_s16, b + (len_s16 >> 2), rem
         );
     }
@@ -305,7 +407,7 @@ int32_t dot_product_int16_int2(
 }
 
 INLINE_OPTION
-int32_t dot_product_int8_int4(
+int32_t m_dotv_i8_i4(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -327,7 +429,7 @@ int32_t dot_product_int8_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += dot_product_int8_int4_scalar_core(
+        c += m_dotv_i8_i4_scalar_core(
             a + len_s8, b + (len_s8 >> 1), rem
         );
     }
@@ -335,7 +437,7 @@ int32_t dot_product_int8_int4(
 }
 
 INLINE_OPTION
-int32_t dot_product_int8_int2(
+int32_t m_dotv_i8_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -357,7 +459,7 @@ int32_t dot_product_int8_int2(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int8_int2_scalar_core(
+        c += m_dotv_i8_i2_scalar_core(
             a + len_s16, b + (len_s16 >> 2), rem
         );
     }
@@ -365,7 +467,7 @@ int32_t dot_product_int8_int2(
 }
 
 INLINE_OPTION
-int32_t dot_product_int4_int2(
+int32_t m_dotv_i4_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -387,7 +489,7 @@ int32_t dot_product_int4_int2(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int4_int2_scalar_core(
+        c += m_dotv_i4_i2_scalar_core(
             a + (len_s16 >> 1), b + (len_s16 >> 2), rem
         );
     }

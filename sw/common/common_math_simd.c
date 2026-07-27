@@ -7,7 +7,7 @@
 // `asm volatile` block - good default as it often yields best scheduling
 
 INLINE_OPTION
-void _simd_add_int16(
+void m_add_i16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -25,7 +25,7 @@ void _simd_add_int16(
 }
 
 INLINE_OPTION
-void _simd_add_int8(
+void m_add_i8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
 {
     size_t len_s4 = ((len >> 2) << 2);
@@ -43,7 +43,7 @@ void _simd_add_int8(
 }
 
 INLINE_OPTION
-void _simd_sub_int16(
+void m_sub_i16(
     const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -61,7 +61,7 @@ void _simd_sub_int16(
 }
 
 INLINE_OPTION
-void _simd_sub_int8(
+void m_sub_i8(
     const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
 {
     size_t len_s4 = ((len >> 2) << 2);
@@ -79,7 +79,7 @@ void _simd_sub_int8(
 }
 
 INLINE_OPTION
-void _simd_mul_int16(
+void m_mul_i16(
     const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -97,7 +97,7 @@ void _simd_mul_int16(
 }
 
 INLINE_OPTION
-void _simd_mul_uint16(
+void m_mul_u16(
     const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
 {
     size_t len_s2 = ((len >> 1) << 1);
@@ -115,7 +115,7 @@ void _simd_mul_uint16(
 }
 
 INLINE_OPTION
-void _simd_mul_int8(
+void m_mul_i8(
     const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
 {
     size_t len_s4 = ((len >> 2) << 2);
@@ -133,7 +133,7 @@ void _simd_mul_int8(
 }
 
 INLINE_OPTION
-void _simd_mul_uint8(
+void m_mul_u8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
 {
     size_t len_s4 = ((len >> 2) << 2);
@@ -153,18 +153,18 @@ void _simd_mul_uint8(
 // these have the 'unrolled' optimized option, so '_core' is provided for
 // 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
 // 2. (#else) indirection in the regular version
-static INLINE int32_t _simd_dot_product_int8_core(
+static INLINE int32_t m_dotv_i8_i8_simd_core(
     const int8_t* a, const int8_t* b, const size_t len
 );
-static INLINE int32_t _simd_dot_product_int8_int4_core(
+static INLINE int32_t m_dotv_i8_i4_simd_core(
     const int8_t* a, const int8_t* b, const size_t len
 );
-static INLINE int32_t _simd_dot_product_int8_int2_core(
+static INLINE int32_t m_dotv_i8_i2_simd_core(
     const int8_t* a, const int8_t* b, const size_t len
 );
 
 INLINE_OPTION
-int32_t _simd_dot_product_int16(
+int32_t m_dotv_i16_i16(
     const int16_t* a, const int16_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -176,14 +176,14 @@ int32_t _simd_dot_product_int16(
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
-        c += dot_product_int16_scalar_core(a + len_s2, b + len_s2, rem);
+        c += m_dotv_i16_i16_scalar_core(a + len_s2, b + len_s2, rem);
     }
     return c;
 }
 
 #ifdef SIMD_UNROLL
 INLINE_OPTION
-int32_t _simd_dot_product_int8(
+int32_t m_dotv_i8_i8(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -229,23 +229,23 @@ int32_t _simd_dot_product_int8(
     // large tiles exhausted, finish with the regular SIMD core
     size_t rem = (len - tile);
     if (rem > 0) {
-        c += _simd_dot_product_int8_core(a + tile, b + tile, rem);
+        c += m_dotv_i8_i8_simd_core(a + tile, b + tile, rem);
     }
     return c;
 }
 
 #else
 INLINE_OPTION
-int32_t _simd_dot_product_int8(
+int32_t m_dotv_i8_i8(
     const int8_t* a, const int8_t* b, const size_t len)
 {
-    return _simd_dot_product_int8_core(a, b, len);
+    return m_dotv_i8_i8_simd_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
 static INLINE
-int32_t _simd_dot_product_int8_core(
+int32_t m_dotv_i8_i8_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -257,13 +257,13 @@ int32_t _simd_dot_product_int8_core(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        c += dot_product_int8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i8_i8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int4(
+int32_t m_dotv_i4_i4(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -276,13 +276,13 @@ int32_t _simd_dot_product_int4(
     }
     size_t rem = (len_bytes - len_s4);
     if (rem > 0) {
-        c += dot_product_int4_scalar_core(a + len_s4, b + len_s4, rem << 1);
+        c += m_dotv_i4_i4_scalar_core(a + len_s4, b + len_s4, rem << 1);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int2(
+int32_t m_dotv_i2_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -295,13 +295,13 @@ int32_t _simd_dot_product_int2(
     }
     size_t rem = (len_bytes - len_s4);
     if (rem > 0) {
-        c += dot_product_int2_scalar_core(a + len_s4, b + len_s4, rem << 2);
+        c += m_dotv_i2_i2_scalar_core(a + len_s4, b + len_s4, rem << 2);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int16_int8(
+int32_t m_dotv_i16_i8(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -321,13 +321,13 @@ int32_t _simd_dot_product_int16_int8(
     }
     size_t rem = (len - len_s4);
     if (rem > 0) {
-        c += dot_product_int16_int8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i16_i8_scalar_core(a + len_s4, b + len_s4, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int16_int4(
+int32_t m_dotv_i16_i4(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -362,7 +362,7 @@ int32_t _simd_dot_product_int16_int4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += dot_product_int16_int4_scalar_core(
+        c += m_dotv_i16_i4_scalar_core(
             a + len_s8, b + (len_s8 >> 1), rem
         );
     }
@@ -370,7 +370,7 @@ int32_t _simd_dot_product_int16_int4(
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int16_int2(
+int32_t m_dotv_i16_i2(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -412,7 +412,7 @@ int32_t _simd_dot_product_int16_int2(
 
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int16_int2_scalar_core(
+        c += m_dotv_i16_i2_scalar_core(
             a + len_s16, b + (len_s16 >> 2), rem
         );
     }
@@ -421,7 +421,7 @@ int32_t _simd_dot_product_int16_int2(
 
 #ifdef SIMD_UNROLL
 INLINE_OPTION
-int32_t _simd_dot_product_int8_int4(
+int32_t m_dotv_i8_i4(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -456,7 +456,7 @@ int32_t _simd_dot_product_int8_int4(
     // large tiles exhausted, finish with the regular SIMD core
     size_t rem = (len - tile);
     if (rem > 0) {
-        c += _simd_dot_product_int8_int4_core(
+        c += m_dotv_i8_i4_simd_core(
             a + tile, b + (tile >> 1), rem
         );
     }
@@ -465,16 +465,16 @@ int32_t _simd_dot_product_int8_int4(
 
 #else
 INLINE_OPTION
-int32_t _simd_dot_product_int8_int4(
+int32_t m_dotv_i8_i4(
     const int8_t* a, const int8_t* b, const size_t len)
 {
-    return _simd_dot_product_int8_int4_core(a, b, len);
+    return m_dotv_i8_i4_simd_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
 static INLINE
-int32_t _simd_dot_product_int8_int4_core(
+int32_t m_dotv_i8_i4_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -494,7 +494,7 @@ int32_t _simd_dot_product_int8_int4_core(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += dot_product_int8_int4_scalar_core(
+        c += m_dotv_i8_i4_scalar_core(
             a + len_s8, b + (len_s8 >> 1), rem
         );
     }
@@ -503,7 +503,7 @@ int32_t _simd_dot_product_int8_int4_core(
 
 #ifdef SIMD_UNROLL
 INLINE_OPTION
-int32_t _simd_dot_product_int8_int2(
+int32_t m_dotv_i8_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -551,7 +551,7 @@ int32_t _simd_dot_product_int8_int2(
     // large tiles exhausted, finish with the regular SIMD core
     size_t rem = (len - tile);
     if (rem > 0) {
-        c += _simd_dot_product_int8_int2_core(
+        c += m_dotv_i8_i2_simd_core(
             a + tile, b + (tile >> 2), rem
         );
     }
@@ -560,16 +560,16 @@ int32_t _simd_dot_product_int8_int2(
 
 #else
 INLINE_OPTION
-int32_t _simd_dot_product_int8_int2(
+int32_t m_dotv_i8_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
-    return _simd_dot_product_int8_int2_core(a, b, len);
+    return m_dotv_i8_i2_simd_core(a, b, len);
 }
 
 #endif // SIMD_UNROLL
 
 static INLINE
-int32_t _simd_dot_product_int8_int2_core(
+int32_t m_dotv_i8_i2_simd_core(
     const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);
@@ -604,7 +604,7 @@ int32_t _simd_dot_product_int8_int2_core(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int8_int2_scalar_core(
+        c += m_dotv_i8_i2_scalar_core(
             a + len_s16, b + (len_s16 >> 2), rem
         );
     }
@@ -612,7 +612,7 @@ int32_t _simd_dot_product_int8_int2_core(
 }
 
 INLINE_OPTION
-int32_t _simd_dot_product_int4_int2(
+int32_t m_dotv_i4_i2(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -634,7 +634,7 @@ int32_t _simd_dot_product_int4_int2(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += dot_product_int4_int2_scalar_core(
+        c += m_dotv_i4_i2_scalar_core(
             a + (len_s16 >> 1), b + (len_s16 >> 2), rem
         );
     }
@@ -645,7 +645,7 @@ int32_t _simd_dot_product_int4_int2(
 // SIMD data formatting functions
 // -----------------------------------------------------------------------------
 
-void _simd_txp_2x2_int16(
+void m_txp_2x2_i16(
     const size_t b_cols,
     const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
     const size_t k, const size_t n,
@@ -658,7 +658,7 @@ void _simd_txp_2x2_int16(
     *bs_t16 = _txp16(bs_0, bs_1);
 }
 
-void _simd_txp_4x4_int8(
+void m_txp_4x4_i8(
     const size_t b_cols,
     const int8_t b[][b_cols],
     const size_t k, const size_t n,

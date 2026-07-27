@@ -101,7 +101,7 @@ void main() {
     sum += small_sum;
 
     // generate some simd instructions
-    int32_t dot_result = _simd_dot_product_int8(arr_dot, arr_dot, 8);
+    int32_t dot_result = m_dotv_i8_i8(arr_dot, arr_dot, 8);
     sum += dot_result;
 
     GLOBAL_SYMBOL("check");

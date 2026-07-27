@@ -5,12 +5,23 @@ OPT := -O3 -flto
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):" > $@
 
+MARCH := rv32im_zicsr_zifencei_zicntr
+MATH_LIB_FLAGS := -DPARTIAL_ZBB_SUPPORT
+
+ifeq ($(strip $(LOAD_OPT)), 1)
+MATH_LIB_FLAGS += -DLOAD_OPT
+$(info Building LOAD_OPT)
+else ifeq ($(strip $(SIMD)), 1)
+$(info Building SIMD)
+MARCH := rv32im_zicsr_zifencei_zicntr_xsimd
+MATH_LIB_FLAGS += -DFORCE_INLINE
+MATH_LIB_FLAGS += -DSIMD_UNROLL
+else
+$(info Building generic)
+endif
+
 # so the icache is happy
 #CODE_ALIGN := -falign-loops=64 # -falign-functions=64
-
-#MATH_LIB_FLAGS := -DLOAD_OPT # drop xsimd before using this
-MATH_LIB_FLAGS := -DPARTIAL_ZBB_SUPPORT -DSIMD_UNROLL
-MATH_LIB_FLAGS += -DFORCE_INLINE
 CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN)
 GCC_OPTS += -Wall -Werror
 
