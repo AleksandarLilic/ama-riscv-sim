@@ -1,154 +1,9 @@
 #include "common_math.h"
-#include "common_math_simd.h"
-#include "common_math_scalar_core.h"
+#include "common_math_dotv_scalar_core.h"
+#include "common_math_simd_intrinsics.h"
+#include "common_math_simd_v_load.h"
 
 #ifdef __riscv_xsimd
-// when possible, keep dot/arithmetic instructions groupped in the same
-// `asm volatile` block - good default as it often yields best scheduling
-
-INLINE_OPTION
-void m_add_i16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
-{
-    size_t len_s2 = ((len >> 1) << 1);
-    int16x2_t c_slice;
-    for (size_t k = 0; k < len_s2; k += 2) {
-        const int16x2_t a_slice = v_load_int16x2(a + k);
-        const int16x2_t b_slice = v_load_int16x2(b + k);
-        c_slice = _add16(a_slice, b_slice);
-        v_store_int16x2(c + k, c_slice);
-    }
-    size_t rem = (len - len_s2);
-    if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c[i] = a[i] + b[i];
-    }
-}
-
-INLINE_OPTION
-void m_add_i8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
-{
-    size_t len_s4 = ((len >> 2) << 2);
-    int8x4_t c_slice;
-    for (size_t k = 0; k < len_s4; k += 4) {
-        const int8x4_t a_slice = v_load_int8x4(a + k);
-        const int8x4_t b_slice = v_load_int8x4(b + k);
-        c_slice = _add8(a_slice, b_slice);
-        v_store_int8x4(c + k, c_slice);
-    }
-    size_t rem = (len - len_s4);
-    if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c[i] = a[i] + b[i];
-    }
-}
-
-INLINE_OPTION
-void m_sub_i16(
-    const int16_t* a, const int16_t* b, int16_t* c, const size_t len)
-{
-    size_t len_s2 = ((len >> 1) << 1);
-    int16x2_t c_slice;
-    for (size_t k = 0; k < len_s2; k += 2) {
-        const int16x2_t a_slice = v_load_int16x2(a + k);
-        const int16x2_t b_slice = v_load_int16x2(b + k);
-        c_slice = _sub16(a_slice, b_slice);
-        v_store_int16x2(c + k, c_slice);
-    }
-    size_t rem = (len - len_s2);
-    if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c[i] = a[i] - b[i];
-    }
-}
-
-INLINE_OPTION
-void m_sub_i8(
-    const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
-{
-    size_t len_s4 = ((len >> 2) << 2);
-    int8x4_t c_slice;
-    for (size_t k = 0; k < len_s4; k += 4) {
-        const int8x4_t a_slice = v_load_int8x4(a + k);
-        const int8x4_t b_slice = v_load_int8x4(b + k);
-        c_slice = _sub8(a_slice, b_slice);
-        v_store_int8x4(c + k, c_slice);
-    }
-    size_t rem = (len - len_s4);
-    if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c[i] = a[i] - b[i];
-    }
-}
-
-INLINE_OPTION
-void m_mul_i16(
-    const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
-{
-    size_t len_s2 = ((len >> 1) << 1);
-    for (size_t k = 0; k < len_s2; k += 2) {
-        const int16x2_t a_slice = v_load_int16x2(a + k);
-        const int16x2_t b_slice = v_load_int16x2(b + k);
-        int32x2_t c_slice = _wmul16(a_slice, b_slice);
-        *(c + k) = c_slice.w.lo;
-        *(c + k + 1) = c_slice.w.hi;
-    }
-    size_t rem = (len - len_s2);
-    if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
-    }
-}
-
-INLINE_OPTION
-void m_mul_u16(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
-{
-    size_t len_s2 = ((len >> 1) << 1);
-    for (size_t k = 0; k < len_s2; k += 2) {
-        const uint16x2_t a_slice = v_load_uint16x2(a + k);
-        const uint16x2_t b_slice = v_load_uint16x2(b + k);
-        uint32x2_t c_slice = _wmul16u(a_slice, b_slice);
-        *(c + k) = c_slice.w.lo;
-        *(c + k + 1) = c_slice.w.hi;
-    }
-    size_t rem = (len - len_s2);
-    if (rem > 0) {
-        for (size_t i = len_s2; i < len; i++) c[i] = a[i] * b[i];
-    }
-}
-
-INLINE_OPTION
-void m_mul_i8(
-    const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
-{
-    size_t len_s4 = ((len >> 2) << 2);
-    for (size_t k = 0; k < len_s4; k += 4) {
-        const int8x4_t a_slice = v_load_int8x4(a + k);
-        const int8x4_t b_slice = v_load_int8x4(b + k);
-        int16x4_t c_slice = _wmul8(a_slice, b_slice);
-        v_store_int16x2(c + k, c_slice.w.lo);
-        v_store_int16x2(c + k + 2, c_slice.w.hi);
-    }
-    size_t rem = (len - len_s4);
-    if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
-    }
-}
-
-INLINE_OPTION
-void m_mul_u8(
-    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
-{
-    size_t len_s4 = ((len >> 2) << 2);
-    for (size_t k = 0; k < len_s4; k += 4) {
-        const uint8x4_t a_slice = v_load_uint8x4(a + k);
-        const uint8x4_t b_slice = v_load_uint8x4(b + k);
-        uint16x4_t c_slice = _wmul8u(a_slice, b_slice);
-        v_store_uint16x2(c + k, c_slice.w.lo);
-        v_store_uint16x2(c + k + 2, c_slice.w.hi);
-    }
-    size_t rem = (len - len_s4);
-    if (rem > 0) {
-        for (size_t i = len_s4; i < len; i++) c[i] = a[i] * b[i];
-    }
-}
 
 // these have the 'unrolled' optimized option, so '_core' is provided for
 // 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
@@ -362,9 +217,7 @@ int32_t m_dotv_i16_i4(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += m_dotv_i16_i4_scalar_core(
-            a + len_s8, b + (len_s8 >> 1), rem
-        );
+        c += m_dotv_i16_i4_scalar_core(a + len_s8, b + (len_s8 >> 1), rem);
     }
     return c;
 }
@@ -373,6 +226,17 @@ INLINE_OPTION
 int32_t m_dotv_i16_i2(
     const int16_t* a, const int8_t* b, const size_t len)
 {
+
+    #define DOT16_BLOCK_2() \
+        asm volatile ( \
+            "dot16 %[c], %[a1], %[bw_lo]\n\t" \
+            "dot16 %[c], %[a2], %[bw_hi]\n\t" \
+            : [c] "+r" (c) \
+            : [a1] "r" (a_slice_1), [a2] "r" (a_slice_2), \
+              [bw_lo] "r" (b_slice_wide_h.w.lo), \
+              [bw_hi] "r" (b_slice_wide_h.w.hi) \
+        );
+
     int32_t c = 0;
     size_t len_s16 = ((len >> 4) << 4);
     for (size_t k = 0; k < len_s16; k += 16) {
@@ -384,37 +248,34 @@ int32_t m_dotv_i16_i2(
 
         a_slice_1 = v_load_int16x2(a + k);
         a_slice_2 = v_load_int16x2(a + k + 2);
+
         b_slice_wide_n = _widen2(b_slice, 0u); // C to N
         b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
         b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
-        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
-        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+        DOT16_BLOCK_2()
 
         a_slice_1 = v_load_int16x2(a + k + 4);
         a_slice_2 = v_load_int16x2(a + k + 6);
         b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
-        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
-        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+        DOT16_BLOCK_2()
 
         a_slice_1 = v_load_int16x2(a + k + 8);
         a_slice_2 = v_load_int16x2(a + k + 10);
         b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
         b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
-        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
-        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+        DOT16_BLOCK_2()
 
         a_slice_1 = v_load_int16x2(a + k + 12);
         a_slice_2 = v_load_int16x2(a + k + 14);
         b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
-        _dot16(a_slice_1, b_slice_wide_h.w.lo, &c);
-        _dot16(a_slice_2, b_slice_wide_h.w.hi, &c);
+        DOT16_BLOCK_2()
     }
+
+    #undef DOT16_BLOCK_2
 
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += m_dotv_i16_i2_scalar_core(
-            a + len_s16, b + (len_s16 >> 2), rem
-        );
+        c += m_dotv_i16_i2_scalar_core(a + len_s16, b + (len_s16 >> 2), rem);
     }
     return c;
 }
@@ -494,9 +355,7 @@ int32_t m_dotv_i8_i4_simd_core(
     }
     size_t rem = (len - len_s8);
     if (rem > 0) {
-        c += m_dotv_i8_i4_scalar_core(
-            a + len_s8, b + (len_s8 >> 1), rem
-        );
+        c += m_dotv_i8_i4_scalar_core(a + len_s8, b + (len_s8 >> 1), rem);
     }
     return c;
 }
@@ -604,9 +463,7 @@ int32_t m_dotv_i8_i2_simd_core(
     }
     size_t rem = (len - len_s16);
     if (rem > 0) {
-        c += m_dotv_i8_i2_scalar_core(
-            a + len_s16, b + (len_s16 >> 2), rem
-        );
+        c += m_dotv_i8_i2_scalar_core(a + len_s16, b + (len_s16 >> 2), rem);
     }
     return c;
 }

@@ -1,42 +1,11 @@
-#ifndef COMMON_MATH_SCALAR_CORE_H
-#define COMMON_MATH_SCALAR_CORE_H
+#ifndef COMMON_MATH_DOTV_SCALAR_CORE_H
+#define COMMON_MATH_DOTV_SCALAR_CORE_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include "common.h"
-
-// -----------------------------------------------------------------------------
-// scalar elementwise mul cores
-// -----------------------------------------------------------------------------
-static INLINE
-void m_mul_i16_scalar_core(
-    const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
-{
-    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
-}
-
-static INLINE
-void m_mul_i8_scalar_core(
-    const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
-{
-    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
-}
-
-static INLINE
-void m_mul_u16_scalar_core(
-    const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
-{
-    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
-}
-
-static INLINE
-void m_mul_u8_scalar_core(
-    const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
-{
-    for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
-}
 
 // -----------------------------------------------------------------------------
 // scalar dot product cores
@@ -205,4 +174,4 @@ int32_t m_dotv_i4_i2_scalar_core(
 }
 #endif
 
-#endif // COMMON_MATH_SCALAR_CORE_H
+#endif // COMMON_MATH_DOTV_SCALAR_CORE_H

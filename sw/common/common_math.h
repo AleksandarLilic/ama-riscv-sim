@@ -115,8 +115,21 @@ int32_t m_dotv_i4_i2(
     const int8_t* a, const int8_t* b, const size_t len);
 
 #ifdef __riscv_xsimd
-// SIMD intrinsics, and the routines that have no scalar implementation yet
-#include "common_math_simd.h"
+// TODO: add scalar versions, currently only supported by SIMD
+// and also to move to dedicated .h/.c
+
+void m_txp_2x2_i16(
+    const size_t b_cols,
+    const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
+    const size_t k, const size_t n,
+    int16x4_t* bs_t16);
+
+void m_txp_4x4_i8(
+    const size_t b_cols,
+    const int8_t b[][b_cols],
+    const size_t k, const size_t n,
+    int8x8_t* bs_t16_02, int8x8_t* bs_t16_13);
+
 #endif
 
 #ifdef __cplusplus
