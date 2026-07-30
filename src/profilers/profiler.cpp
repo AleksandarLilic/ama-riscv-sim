@@ -472,12 +472,37 @@ void profiler::log_to_file_and_print(bool show) {
               << "\n";
 
     std::cout << "Profiler - Sparsity:\n";
-    for (size_t i = 0; i < TO_U32(sparsity_t::_count); i++) {
-        sparsity_cnt_t* ptr = &sparsity_cnt[i];
-        const char* n = sparsity_cnt_names[i];
-        std::cout << INDENT << n << ": " << ptr->total << "/" << ptr->sparse
-                  << "(" << TO_F32(ptr->get_perc()) << "%)" << "\n";
-    }
+    uint32_t i;
+    sparsity_cnt_t* ptr;
+    #define SPARSITY_PRINT(sp) \
+        i = TO_U32(sp); \
+        ptr = &sparsity_cnt[i]; \
+        std::cout << sparsity_cnt_names[i] << ": " << ptr->total << "/" \
+                  << ptr->sparse << "(" << TO_F32(ptr->get_perc()) << "%)";
+
+    std::cout << INDENT << "(1) ";
+    SPARSITY_PRINT(sparsity_t::sp_any)
+    std::cout << "\n" << INDENT << "(2) ";
+    SPARSITY_PRINT(sparsity_t::sp_mem_l)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_mem_s)
+    std::cout << "\n" << INDENT << "(3) ";
+    SPARSITY_PRINT(sparsity_t::sp_alu)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_mul)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_div_a)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_div_b)
+    std::cout << "\n" << INDENT << "(3) ";
+    SPARSITY_PRINT(sparsity_t::sp_simd_dot)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_simd_mul)
+    std::cout << ", ";
+    SPARSITY_PRINT(sparsity_t::sp_simd_alu)
+    std::cout << "\n";
+
+    #undef SPARSITY_PRINT
 
     uint64_t sa_cnt = stack_access.total();
     uint64_t sa_cnt_load = stack_access.get_load();

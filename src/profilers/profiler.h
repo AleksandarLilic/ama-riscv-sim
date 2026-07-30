@@ -284,10 +284,13 @@ enum class sparsity_t {
 static constexpr std::array<const char*, TO_U32(sparsity_t::_count)>
     sparsity_cnt_names =
     {{
-        "(1) ANY",
-        "(2) MEM_L", "(2) MEM_S",
-        "(3) ALU", "(3) MUL", "(3) DIV_A", "(3) DIV_B",
-        "(3) SIMD_DOT", "(3) SIMD_MUL", "(3) SIMD_ALU"
+        // group 1: result of an operation was 0
+        "ANY",
+        // group 2: value loaded or stored was 0
+        "MEM_L", "MEM_S",
+        // group 3: input operands were 0
+        // (div has them separated, dot excludes accumulator)
+        "ALU", "MUL", "DIV_A", "DIV_B", "SIMD_DOT", "SIMD_MUL", "SIMD_ALU"
     }};
 
 class profiler {
