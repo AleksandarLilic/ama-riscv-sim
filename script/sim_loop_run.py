@@ -33,13 +33,13 @@ def run_one(
     insts = ""
     if executed is not None:
         if profiled is not None:
-            insts = f" - executed: {executed:,}, profiled: {profiled:,}"
+            insts = f"executed: {executed:,},  profiled: {profiled:,}"
             if executed == profiled:
                 insts += " (all)"
             else:
-                insts += f", diff: {profiled - executed:,}"
+                insts += f",  diff: {profiled - executed:,}"
         else:
-            insts = f" - executed: {executed:,}"
+            insts = f"executed: {executed:,}"
 
     if save_log:
         with open(os.path.join(work_dir, f"{name}.log"), "w") as f:
@@ -68,6 +68,10 @@ def main():
     if isa_sim_args:
         print(f"sim args: {' '.join(isa_sim_args)}")
 
+    slm = 0 # string length max (for stdout print)
+    for w in workloads:
+        slm = max(slm, len(get_test_name(w)))
+
     results = []
     t_start = time.time()
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -81,8 +85,8 @@ def main():
         for future in as_completed(futures):
             r = future.result()
             results.append(r)
-            print(f"{INDENT}[{r['status']}] {r['name']} "
-                  f"({r['runtime']:.2f}s){r['insts']}")
+            print(f"{INDENT}[{r['status']}] {r['name']:<{slm}} "
+                  f"  ({r['runtime']:.2f}s)  {r['insts']}")
 
     total = time.time() - t_start
 
@@ -93,7 +97,7 @@ def main():
         print("\nFailures:")
         for r in failed:
             why = f": {r['error_msg']}" if r["error_msg"] else ""
-            print(f"{INDENT}{r['name']} [{r['status']}]{why}")
+            print(f"{INDENT}{r['name']:<{slm}} [{r['status']}]{why}")
             print(r["fail_out"])
 
     print(f"\n{len(passed)} passed / {len(failed)} failed. "
