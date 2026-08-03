@@ -9,6 +9,7 @@ sw/baremetal/ustress/** linguist-vendored
 
 # generated
 sw/baremetal/aapg/aapg_rv32*/** linguist-generated
+sw/baremetal/mlp/input_img.h linguist-generated
 uv.lock linguist-generated=true
 
 # overrides
