@@ -12,5 +12,11 @@ sw/baremetal/aapg/aapg_rv32*/** linguist-generated
 sw/baremetal/mlp/input_img.h linguist-generated
 uv.lock linguist-generated=true
 
+# docs and scripts for docs
+script/draw_hw.py linguist-documentation
+script/dhry_calc.py linguist-documentation
+script/embench_get_results.py linguist-documentation
+examples/**
+
 # overrides
 Makefile*inc linguist-language=Makefile
