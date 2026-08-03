@@ -458,8 +458,8 @@ class profiler {
 
         static constexpr std::array narrow_c_opcs = {
             // truncating
-            opc_g::i_qnarrow32, opc_g::i_qnarrow16,
-            opc_g::i_qnarrow8, opc_g::i_qnarrow4,
+            opc_g::i_narrow32, opc_g::i_narrow16,
+            opc_g::i_narrow8, opc_g::i_narrow4,
             // saturating
             opc_g::i_qnarrow32, opc_g::i_qnarrow32u,
             opc_g::i_qnarrow16, opc_g::i_qnarrow16u,
