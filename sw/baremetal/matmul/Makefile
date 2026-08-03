@@ -24,13 +24,14 @@ codegen: headers
 clean_codegen: clean_headers
 
 headers: $(HEADERS)
+APP_REQS := $(HEADERS)
 
 # dependent on the dcache size, data shouldn't fit in dcache
 M = 64
 N = 64
 K = 64
 
-$(HEADERS): $(CODEGEN_PY)
+$(HEADERS): $(CODEGEN_PY) ../codegen_common.py
 	$(CODEGEN_PY) $(word 3, $(subst _, ,$*)) $(M) $(N) $(K)
 
 clean_headers:

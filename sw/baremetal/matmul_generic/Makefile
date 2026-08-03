@@ -10,7 +10,7 @@ parametrize.mk: ../parametrize.py
 OPT := -O1 -flto
 CFLAGS += -DLOOPS=$(LOOPS)
 
-HEADERS := test_matrices.h
+HEADERS := $(addsuffix .h, $(addprefix test_matrices_, $(NF)))
 CODEGEN_PY := ./codegen.py
 INC_PATHS += .
 
@@ -22,13 +22,14 @@ codegen: headers
 clean_codegen: clean_headers
 
 headers: $(HEADERS)
+APP_REQS := $(HEADERS)
 
 # dependent on the dcache size, data shouldn't fit in dcache
 M = 64
 N = 64
 K = 64
 
-$(HEADERS): $(CODEGEN_PY)
+$(HEADERS): $(CODEGEN_PY) ../codegen_common.py
 	$(CODEGEN_PY) $(NF) $(M) $(N) $(K)
 
 clean_headers:

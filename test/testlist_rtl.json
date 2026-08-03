@@ -47,12 +47,15 @@
 
     "vector_ew_al_uint8": ["test"],
     "vector_ew_mac_uint8": ["test"],
-    "vector_ew_ops": [["all"], ["SIMD=1"]],
-    "vector_dotv": [["all"], ["SIMD=1"]],
     "vector_dot8_peak": ["all"],
     "matmul_generic": ["all"],
     "matmul": ["all"],
-    "conv1d": ["all"],
+
+    "ukr_m_arithv": [["all"], ["MATH_LIB_SIMD=1"]],
+    "ukr_m_dotv": [["all"], ["MATH_LIB_SIMD=1"]],
+    "ukr_m_dotf": [["all"], ["MATH_LIB_SIMD=1"]],
+    "ukr_m_gemv": [["all"], ["MATH_LIB_SIMD=1"]],
+    "ukr_conv1d": [["all"], ["MATH_LIB_SIMD=1"]],
 
     "uart_direct_send": ["hello_world"],
     "uart_printf_nano": ["hello_world"],
@@ -60,7 +63,7 @@
 
     "cpp_smoke": ["test"],
 
-    "mlp": [["all"], ["SIMD=1"]],
+    "mlp": [["all"], ["MATH_LIB_SIMD=1"]],
 
     "dhrystone": [["dhrystone"], ["DHRY_ITERS=20"]],
     "coremark": [["coremark"], ["ITERATIONS=5"]],

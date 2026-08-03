@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-include $(dir $(lastword $(MAKEFILE_LIST)))Makefile.setup.inc
+include $(dir $(lastword $(MAKEFILE_LIST)))Makefile.setup.mk
 
 # Turn on increased build verbosity by defining BUILD_VERBOSE in test Makefile
 # or use V=1 on the make command line
@@ -20,6 +20,8 @@ endif
 DEFAULT_COMMON_OBJ_NAMES = crt0.o memset.o common.o \
 	common_math_arithv_scalar.o common_math_arithv_scalar_load_opt.o common_math_arithv_simd.o \
 	common_math_dotv_scalar.o common_math_dotv_scalar_load_opt.o common_math_dotv_simd.o \
+	common_math_dotf_scalar.o common_math_dotf_scalar_load_opt.o common_math_dotf_simd.o \
+	common_math_gemv.o \
     nanoprintf.o
 COMMON_OBJ_NAMES ?= $(DEFAULT_COMMON_OBJ_NAMES)
 
@@ -36,6 +38,7 @@ $(shell mkdir -p $(COMMON_BUILD_DIR))
 vpath %.c $(COMMON_SRC_PATH)
 vpath %.h $(COMMON_SRC_PATH)
 vpath %.S $(COMMON_SRC_PATH)
+MATH_LIB_FLAGS_STR ?= SCALAR
 
 ifneq ($(EXPLICIT_SRCS), 1)
 C_SRCS += $(wildcard *.c)
@@ -124,6 +127,7 @@ HEX_GEN = \
 	$(Q)$(SIZE) -G $@
 
 build_common: $(COMMON_OBJS)
+	@echo "math library built as '$(MATH_LIB_FLAGS_STR)'"
 
 COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
 COMMON_FLAGS += -Werror -pedantic

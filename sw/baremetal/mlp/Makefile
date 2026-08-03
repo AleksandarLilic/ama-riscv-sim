@@ -1,29 +1,20 @@
 TYPES := w8a8 w4a8 w2a8
-OPT := -O3 -flto
 
 -include parametrize.mk
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):" > $@
 
-MARCH := rv32im_zicsr_zifencei_zicntr
-MATH_LIB_FLAGS := -DPARTIAL_ZBB_SUPPORT
-
-ifeq ($(strip $(LOAD_OPT)), 1)
-MATH_LIB_FLAGS += -DLOAD_OPT
-$(info Building LOAD_OPT)
-else ifeq ($(strip $(SIMD)), 1)
-$(info Building SIMD)
-MARCH := rv32im_zicsr_zifencei_zicntr_xsimd
+MATH_LIB_UNROLL ?= 1
+include ../Makefile.math_lib_opts.mk
+MATH_LIB_FLAGS += -DPARTIAL_ZBB_SUPPORT
 MATH_LIB_FLAGS += -DFORCE_INLINE
-MATH_LIB_FLAGS += -DSIMD_UNROLL
-else
-$(info Building generic)
-endif
+#MATH_LIB_FLAGS += -DCUSTOM_ISA_SCP
 
 # so the icache is happy
 #CODE_ALIGN := -falign-loops=64 # -falign-functions=64
 CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN)
 GCC_OPTS += -Wall -Werror
+OPT := -O3 -flto
 
 APP_REQS := model_w8a8_64-64-64-10.h \
 			model_w4a8_64-64-64-10.h \

@@ -16,7 +16,7 @@ CFLAGS := -DLOOPS=$(LOOPS)
 #MATH_LIB_FLAGS := -DLOAD_OPT
 #MATH_LIB_FLAGS :=
 #MATH_LIB_FLAGS += -DFORCE_INLINE
-#MATH_LIB_FLAGS += -DSIMD_UNROLL
+#MATH_LIB_FLAGS += -DM_UNROLL
 CFLAGS += $(MATH_LIB_FLAGS)
 
 all: $(TARGETS)
@@ -25,9 +25,10 @@ codegen: headers
 clean_codegen: clean_headers
 
 headers: $(HEADERS)
+APP_REQS := $(HEADERS)
 
 ARR_LEN = 1000
-$(HEADERS): $(CODEGEN_PY)
+$(HEADERS): $(CODEGEN_PY) ../codegen_common.py
 	$(CODEGEN_PY) $(ARR_LEN)
 
 clean_headers:

@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include "common.h"
 #include "common_math.h"
+#include "common_math_simd_intrinsics.h"
+#include "common_math_simd_v_load_store.h"
 
 #include "c_test_common.h"
 

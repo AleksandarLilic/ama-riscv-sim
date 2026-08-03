@@ -1,23 +1,44 @@
 import random
+
 import numpy as np
 
+
+def align_attr(align):
+    """align:\n
+    None -> no attribute\n
+    int  -> byte count, wrapped as: 4 -> __attribute__((aligned(4)))\n
+    str  -> a C-side macro, pasted as-is: "A_ALIGN" -> A_ALIGN"""
+    if align is None:
+        return ""
+    if isinstance(align, str):
+        return f" {align.strip()}"
+    return f" __attribute__((aligned({align})))"
+
 def np2c_1d_arr(
-    var, arr, nf="NF", dim="ARR_LEN", align="", suffix="", str_type=False):
+    var, arr, nf="NF", dim="ARR_LEN",
+    align=None, suffix="", str_type=False, row_len=None
+):
     if str_type:
         arr_out = [f"\"{x}\"" for x in arr]
     else:
         arr_out = [f"{x}" for x in arr]
 
-    return f"{nf} " + var + f"[{dim}]{align}" + " = {" + \
-        f"{suffix}, ".join(arr_out) + suffix + "};"
+    decl = f"{nf} " + var + f"[{dim}]{align_attr(align)}" + " = {"
+    if not row_len:
+        return decl + f"{suffix}, ".join(arr_out) + suffix + "};"
 
-def np2c_2d_arr(var, arr, nf="NF", dim=["A", "B"], suffix=""):
+    # row_len: C header file entries per line for readibility, None for 1 line
+    rows = [arr_out[i:i + row_len] for i in range(0, len(arr_out), row_len)]
+    return decl + "\n    " + ",\n    ".join(
+        f"{suffix}, ".join(r) + suffix for r in rows) + "\n};"
+
+def np2c_2d_arr(var, arr, nf="NF", dim=["A", "B"], align=None, suffix=""):
     arr_out = []
     for row in arr:
         arr_out.append("\n    {" + ", ".join([f"{x}" for x in row]) + "}")
 
-    return f"{nf} " + var + f"[{dim[0]}][{dim[1]}]" + " = {" + \
-        f"{suffix}, ".join(arr_out) + suffix + "\n};"
+    return f"{nf} " + var + f"[{dim[0]}][{dim[1]}]{align_attr(align)}" + \
+        " = {" + f"{suffix}, ".join(arr_out) + suffix + "\n};"
 
 NUM = {
     "uint8_t":  { "offset": {"add": 2, "sub": 2, "mul": 1},            "nf": np.uint8},
@@ -62,19 +83,60 @@ for key, value in NUM.items():
         value["macro"] = nf.__name__.upper() # "int8" -> "INT8"
         value["ctype"] = key
 
+def nkey(t):
+    """convenience, pass int8 or int8_t, both resolve to NUM key"""
+    return t if t in NUM else f"{t}_t"
+
+# element geometry, derived from NUM
+def bits_per_el(t):
+    """logical bits per element: int16 -> 16, int8 -> 8, int4 -> 4, int2 -> 2"""
+    value = NUM[t]
+    if "narrow_bits" in value:
+        return value["narrow_bits"]
+    return 8 * np.dtype(value["nf"]).itemsize
+
+def el_per_byte(t):
+    """elements sharing one storage byte; 1 for anything byte-wide or wider"""
+    return max(1, 8 // bits_per_el(t))
+
+def el_per_word(t):
+    """elements in one 32-bit word\n
+    doubles as the row-stride slice: a 2D panel whose stride is a multiple of
+    this has every row starting on a 4-byte boundary,
+    which -mstrict-align requires for the SIMD/LOAD_OPT word loads"""
+    return (32 // bits_per_el(t))
+
+def n_bytes(n_el, t):
+    """storage bytes for n_el logical elements"""
+    return (n_el * bits_per_el(t) // 8)
+
+def storage_dim(el_expr, t):
+    """C dim expression for storage, given one for the logical element count:\n
+    'M*LDA' -> 'M*LDA' (int8/int16), '(M*LDA)>>1' (int4), '(M*LDA)>>2' (int2)"""
+    shift = {16: 0, 8: 0, 4: 1, 2: 2}[bits_per_el(t)]
+    return el_expr if not shift else f"({el_expr})>>{shift}"
+
+POISON = {32: 0xDEADBEEF, 16: 0xBEEF, 8: 0xBE}
+
+def poison_arr(n_el, nf):
+    bits = 8 * np.dtype(nf).itemsize
+    v = POISON[bits]
+    # wrap into the signed range so values are meaningful downstream (numpy & C)
+    if np.issubdtype(nf, np.signedinteger) and v >= (1 << (bits - 1)):
+        v -= (1 << bits)
+    return np.full(n_el, v, dtype=nf)
+
 def iter_num(*kinds, narrow=None):
+    """return iterator over NUM for the given 'kinds', w/ or w/o narrow types"""
     return (
         (key, value)
         for key, value in NUM.items()
-        if (not kinds or value["kind"] in kinds)
-        and (
-            narrow is None
-            or ("narrow_bits" in value) == narrow
-        )
+        if ((not kinds) or (value["kind"] in kinds)) and
+            ((narrow is None) or ("narrow_bits" in value) == narrow)
     )
 
-# randint is inclusive, so both endpoints stay reachable; uniform+cast truncates
-# toward zero and can never produce the most negative value of the type
+# randint is inclusive, so both endpoints stay reachable;
+# uniform+cast truncates toward zero and can never produce the most negative val
 def rnd_fn(dtype):
     return random.randint if np.issubdtype(dtype, np.integer) else random.uniform
 
@@ -91,11 +153,10 @@ def rnd_gen_2d_arr(min, max, rows, cols, dtype):
           for _ in range(rows)],
         dtype=dtype)
 
-# packed (narrow) types: (u)int4/(u)int2 have no native numpy/C type, so the
-# logical lanes are packed into (u)int8 storage, lane 0 in the low bits
-# (LSB-first), matching PK_SB_I4/PK_SB_I2 and v_load_int4x8/v_load_int2x16 in
-# common/c_test_common.h and common/common_math.h.
 def pack_narrow(arr, bits):
+    """packed (narrow) types: (u)int4/(u)int2 have no native numpy/C type,
+    so the logical lanes are packed into (u)int8 storage;\n
+    lane 0 in the low bits (LSB-first), matching SIMD ISA definition"""
     per_byte = 8 // bits
     assert len(arr) % per_byte == 0, \
         f"length {len(arr)} not a multiple of {per_byte} for {bits}-bit lanes"
@@ -118,27 +179,54 @@ def unpack_narrow(packed, bits, signed):
             arr.append(x)
     return np.array(arr)
 
-def rnd_gen_1d_arr_narrow(value, len):
-    """value is a NUM entry with 'narrow_bits' (e.g. NUM["int4_t"]).
-    Returns (logical, packed): logical has `len` lanes (dtype value['nf']),
-    packed has len // (8 // narrow_bits) bytes (dtype value['nf'])."""
-    arr = rnd_gen_1d_arr(value["min"], value["max"], len, value["nf"])
+def rnd_gen_1d_arr_narrow(value, len, vmin=None, vmax=None):
+    """value is a NUM entry with 'narrow_bits' (e.g. NUM["int4_t"])\n
+    returns (logical, packed): logical has `len` lanes (dtype value['nf']),
+    packed has len // (8 // narrow_bits) bytes (dtype value['nf']).
+    vmin/vmax override the type's own range, for callers that must shrink it"""
+    arr = rnd_gen_1d_arr(
+        value["min"] if vmin is None else vmin,
+        value["max"] if vmax is None else vmax,
+        len, value["nf"]
+    )
     packed = pack_narrow(arr, value["narrow_bits"]).astype(value["nf"])
     return arr, packed
 
 def np2c_1d_arr_narrow(
-    var, arr, packed, nf="NF", dim="ARR_LEN", dim_packed=None, align="",
-    suffix=""):
+    var, arr, packed, nf="NF", dim="ARR_LEN", dim_packed=None,
+    align=None, suffix="", row_len=None
+):
     """Emit '// actual var[dim] = {...}' (logical lanes) then the packed
-    C array. dim_packed defaults to 'dim>>1' (4-bit) / 'dim>>2' (2-bit)."""
+    C array. dim_packed defaults to 'dim>>1' (4-bit) / 'dim>>2' (2-bit).
+    row_len is in packed C entries, not logical lanes."""
     per_byte = len(arr) // len(packed)
     if dim_packed is None:
         dim_packed = f"{dim}>>{per_byte // 2}"
     comment = f"// actual {var}[{dim}] = " + \
         "{" + ", ".join(str(int(x)) for x in arr) + "};"
     return comment + "\n" + \
-        np2c_1d_arr(var, packed, nf=nf, dim=dim_packed, align=align,
-                    suffix=suffix)
+        np2c_1d_arr(
+            var, packed, nf=nf, dim=dim_packed, align=align, suffix=suffix,
+            row_len=row_len
+        )
+
+def np2c_2d_arr_narrow(
+    var, arr, packed, nf="NF", dim=["A", "B"], dim_packed=None,
+    align=None, suffix=""
+):
+    """2D counterpart of np2c_1d_arr_narrow: '// actual var[d0][d1] = {...}'
+    (logical lanes, one row per line) then the packed C array.
+    arr is (rows, cols) logical, packed is (rows, cols // lanes-per-byte)."""
+    per_byte = arr.shape[1] // packed.shape[1]
+    if dim_packed is None:
+        dim_packed = [dim[0], f"{dim[1]}>>{per_byte // 2}"]
+    comment = f"// actual {var}[{dim[0]}][{dim[1]}] = {{" + "".join(
+        "\n//     {" + ", ".join(str(int(x)) for x in row) + "}," for row in arr
+    ) + "\n// };"
+    return comment + "\n" + \
+        np2c_2d_arr(
+            var, packed, nf=nf, dim=dim_packed, align=align, suffix=suffix
+        )
 
 def finish_gen(code, header, add_assert=True):
     if add_assert:

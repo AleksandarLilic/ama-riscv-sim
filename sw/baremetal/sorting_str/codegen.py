@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 import os
-import sys
 import random
+import sys
+
 import nltk
 #import collections
 from nltk.corpus import words
@@ -8,6 +11,7 @@ from nltk.data import find
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from codegen_common import *
+
 
 def check_if_words_exist(path="./nltk_data"):
     if path not in nltk.data.path:

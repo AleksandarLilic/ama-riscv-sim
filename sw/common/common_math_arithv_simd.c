@@ -1,7 +1,7 @@
 #include "common_math.h"
 #include "common_math_dotv_scalar_core.h"
 #include "common_math_simd_intrinsics.h"
-#include "common_math_simd_v_load.h"
+#include "common_math_simd_v_load_store.h"
 
 #ifdef __riscv_xsimd
 

@@ -24,8 +24,9 @@ codegen: headers
 clean_codegen: clean_headers
 
 headers: $(HEADERS)
+APP_REQS := $(HEADERS)
 
-$(HEADERS): $(CODEGEN_PY)
+$(HEADERS): $(CODEGEN_PY) ../codegen_common.py
 	$(CODEGEN_PY) $(word 3, $(subst _, ,$*))
 
 clean_headers:

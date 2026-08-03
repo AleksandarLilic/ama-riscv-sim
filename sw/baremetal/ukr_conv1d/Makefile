@@ -6,10 +6,9 @@ LENGTHS := small large
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):NF" "$(LENGTHS):LEN" > $@
 
-#MATH_LIB_FLAGS := -DLOAD_OPT
-#MATH_LIB_FLAGS :=
+include ../Makefile.math_lib_opts.mk
+
 #MATH_LIB_FLAGS += -DFORCE_INLINE
-#MATH_LIB_FLAGS += -DSIMD_UNROLL
 OPT := -O2 -flto
 CFLAGS := -DLOOPS=$(LOOPS) $(MATH_LIB_FLAGS)
 CFLAGS += -DALIGNED

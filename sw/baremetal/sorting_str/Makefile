@@ -9,8 +9,7 @@ parametrize.mk: ../parametrize.py
 
 HEADER_PREFIX := test_arrays_
 HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(LENGTHS)))
-PYVER := python3
-CODEGEN_PY := codegen.py
+CODEGEN_PY := ./codegen.py
 
 OPT := -O3 -flto
 LIBS += -lc
@@ -30,9 +29,10 @@ heap: $(TARGETS_HEAP)
 quicker: $(TARGETS_QUICKER)
 
 headers: $(HEADERS)
+APP_REQS := $(HEADERS)
 
-$(HEADERS): $(CODEGEN_PY)
-	$(PYVER) $(CODEGEN_PY) $(word 3, $(subst _, ,$*))
+$(HEADERS): $(CODEGEN_PY) ../codegen_common.py
+	$(CODEGEN_PY) $(word 3, $(subst _, ,$*))
 
 clean_headers:
 	rm -f $(HEADERS)

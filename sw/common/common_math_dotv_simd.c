@@ -1,25 +1,12 @@
 #include "common_math.h"
 #include "common_math_dotv_scalar_core.h"
 #include "common_math_simd_intrinsics.h"
-#include "common_math_simd_v_load.h"
+#include "common_math_simd_v_load_store.h"
 
 #ifdef __riscv_xsimd
 
-// these have the 'unrolled' optimized option, so '_core' is provided for
-// 1. (#ifdef SIMD_UNROLL) last step if inputs are not multiple of tile size or
-// 2. (#else) indirection in the regular version
-static INLINE int32_t m_dotv_i8_i8_simd_core(
-    const int8_t* a, const int8_t* b, const size_t len
-);
-static INLINE int32_t m_dotv_i8_i4_simd_core(
-    const int8_t* a, const int8_t* b, const size_t len
-);
-static INLINE int32_t m_dotv_i8_i2_simd_core(
-    const int8_t* a, const int8_t* b, const size_t len
-);
-
-INLINE_OPTION
-int32_t m_dotv_i16_i16(
+static INLINE
+int32_t m_dotv_i16_i16_simd_core(
     const int16_t* a, const int16_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -35,69 +22,6 @@ int32_t m_dotv_i16_i16(
     }
     return c;
 }
-
-#ifdef SIMD_UNROLL
-INLINE_OPTION
-int32_t m_dotv_i8_i8(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
-    int32_t c = 0;
-    static const size_t udeg = 3; // unroll degree
-    static const size_t deg = (2 + udeg); // +2 for bytes to words
-    size_t tile = ((len >> deg) << deg); // +2 to words, +3 for 8x unroll
-
-    for (size_t k = 0; k < tile; k += (1 << deg)) {
-        int8x4_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
-
-        #pragma GCC unroll 8
-        for (size_t i = 0; i < 8; i++) {
-            a_arr[i] = v_load_int8x4(a + k + i * 4);
-            b_arr[i] = v_load_int8x4(b + k + i * 4);
-        }
-        asm volatile (
-            "dot8 %[c], %[a1], %[b1]\n\t"
-            "dot8 %[c], %[a2], %[b2]\n\t"
-            "dot8 %[c], %[a3], %[b3]\n\t"
-            "dot8 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
-            : [c] "+r" (c)
-            : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
-              [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
-              [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
-              [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
-            :
-        );
-        // let compiler schedule loads in between to reduce rf pressure
-        asm volatile (
-            "dot8 %[c], %[a5], %[b5]\n\t"
-            "dot8 %[c], %[a6], %[b6]\n\t"
-            "dot8 %[c], %[a7], %[b7]\n\t"
-            "dot8 %[c], %[a4], %[b4]\n\t"
-            : [c] "+r" (c)
-            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
-              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
-              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
-              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
-            :
-        );
-    }
-
-    // large tiles exhausted, finish with the regular SIMD core
-    size_t rem = (len - tile);
-    if (rem > 0) {
-        c += m_dotv_i8_i8_simd_core(a + tile, b + tile, rem);
-    }
-    return c;
-}
-
-#else
-INLINE_OPTION
-int32_t m_dotv_i8_i8(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
-    return m_dotv_i8_i8_simd_core(a, b, len);
-}
-
-#endif // SIMD_UNROLL
 
 static INLINE
 int32_t m_dotv_i8_i8_simd_core(
@@ -117,8 +41,8 @@ int32_t m_dotv_i8_i8_simd_core(
     return c;
 }
 
-INLINE_OPTION
-int32_t m_dotv_i4_i4(
+static INLINE
+int32_t m_dotv_i4_i4_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -136,8 +60,9 @@ int32_t m_dotv_i4_i4(
     return c;
 }
 
-INLINE_OPTION
-int32_t m_dotv_i2_i2(
+
+static INLINE
+int32_t m_dotv_i2_i2_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -155,8 +80,8 @@ int32_t m_dotv_i2_i2(
     return c;
 }
 
-INLINE_OPTION
-int32_t m_dotv_i16_i8(
+static INLINE
+int32_t m_dotv_i16_i8_simd_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -181,8 +106,8 @@ int32_t m_dotv_i16_i8(
     return c;
 }
 
-INLINE_OPTION
-int32_t m_dotv_i16_i4(
+static INLINE
+int32_t m_dotv_i16_i4_simd_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
     int32_t c = 0;
@@ -222,8 +147,9 @@ int32_t m_dotv_i16_i4(
     return c;
 }
 
-INLINE_OPTION
-int32_t m_dotv_i16_i2(
+
+static INLINE
+int32_t m_dotv_i16_i2_simd_core(
     const int16_t* a, const int8_t* b, const size_t len)
 {
 
@@ -280,60 +206,6 @@ int32_t m_dotv_i16_i2(
     return c;
 }
 
-#ifdef SIMD_UNROLL
-INLINE_OPTION
-int32_t m_dotv_i8_i4(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
-    int32_t c = 0;
-    static const size_t udeg = 3; // unroll degree
-    static const size_t deg = (2 + 1 + udeg); // +2 for bytes to words, +1 widen
-    size_t tile = ((len >> deg) << deg);
-
-    for (size_t k = 0; k < tile; k += (1 << deg)) {
-        int8x4_t a_slice_1, a_slice_2;
-        int4x8_t b_slice;
-        int8x8_t b_slice_wide;
-
-        static const size_t uval = (1 << udeg);
-        #pragma GCC unroll uval
-        for (size_t i = 0; i < uval; i++) {                  // 0,  1,  2,  3
-            b_slice = v_load_int4x8(b + ((k + i * 8) >> 1)); // 0,  4,  8, 12
-            a_slice_1 = v_load_int8x4(a + k     + i * 8);    // 0,  8, 16, 24
-            a_slice_2 = v_load_int8x4(a + k + 4 + i * 8);    // 4, 12, 20, 28
-            b_slice_wide = _widen4(b_slice, 0u);
-            asm volatile (
-                "dot8 %[c], %[a1], %[bw_lo]\n\t"
-                "dot8 %[c], %[a2], %[bw_hi]\n\t"
-                : [c] "+r" (c)
-                : [bw_lo] "r" (b_slice_wide.w.lo),
-                  [bw_hi] "r" (b_slice_wide.w.hi),
-                  [a1] "r" (a_slice_1),
-                  [a2] "r" (a_slice_2)
-            );
-        }
-    }
-
-    // large tiles exhausted, finish with the regular SIMD core
-    size_t rem = (len - tile);
-    if (rem > 0) {
-        c += m_dotv_i8_i4_simd_core(
-            a + tile, b + (tile >> 1), rem
-        );
-    }
-    return c;
-}
-
-#else
-INLINE_OPTION
-int32_t m_dotv_i8_i4(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
-    return m_dotv_i8_i4_simd_core(a, b, len);
-}
-
-#endif // SIMD_UNROLL
-
 static INLINE
 int32_t m_dotv_i8_i4_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
@@ -360,17 +232,487 @@ int32_t m_dotv_i8_i4_simd_core(
     return c;
 }
 
-#ifdef SIMD_UNROLL
-INLINE_OPTION
-int32_t m_dotv_i8_i2(
+static INLINE
+int32_t m_dotv_i8_i2_simd_core(
     const int8_t* a, const int8_t* b, const size_t len)
 {
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
+        const int8x4_t a_slice_1 = v_load_int8x4(a + k);
+        const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
+        const int8x4_t a_slice_3 = v_load_int8x4(a + k + 8);
+        const int8x4_t a_slice_4 = v_load_int8x4(a + k + 12);
+        int4x16_t b_slice_wide_n;
+        int8x8_t b_slice_wide_b;
+
+        b_slice_wide_n = _widen2(b_slice, 0u); // C to N
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
+        asm volatile (
+            "dot8 %[c], %[a1], %[bw_lo]\n\t"
+            "dot8 %[c], %[a2], %[bw_hi]\n\t"
+            : [c] "+r" (c)
+            : [bw_lo] "r" (b_slice_wide_b.w.lo),
+              [bw_hi] "r" (b_slice_wide_b.w.hi),
+              [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
+        );
+        b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
+        asm volatile (
+            "dot8 %[c], %[a3], %[bw_lo]\n\t"
+            "dot8 %[c], %[a4], %[bw_hi]\n\t"
+            : [c] "+r" (c)
+            : [bw_lo] "r" (b_slice_wide_b.w.lo),
+              [bw_hi] "r" (b_slice_wide_b.w.hi),
+              [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
+        );
+    }
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += m_dotv_i8_i2_scalar_core(a + len_s16, b + (len_s16 >> 2), rem);
+    }
+    return c;
+}
+
+static INLINE
+int32_t m_dotv_i4_i2_simd_core(
+    const int8_t* a, const int8_t* b, const size_t len)
+{
+    int32_t c = 0;
+    size_t len_s16 = ((len >> 4) << 4);
+    for (size_t k = 0; k < len_s16; k += 16) {
+        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
+        const int4x8_t a_slice_1 = v_load_int4x8(a + (k >> 1));
+        const int4x8_t a_slice_2 = v_load_int4x8(a + (k >> 1) + 4);
+        const int4x16_t b_slice_wide = _widen2(b_slice, 0u); // C to N
+        asm volatile (
+            "dot4 %[c], %[a1], %[bw_lo]\n\t"
+            "dot4 %[c], %[a2], %[bw_hi]\n\t"
+            : [c] "+r" (c)
+            : [bw_lo] "r" (b_slice_wide.w.lo),
+              [bw_hi] "r" (b_slice_wide.w.hi),
+              [a1] "r" (a_slice_1),
+              [a2] "r" (a_slice_2)
+        );
+    }
+    size_t rem = (len - len_s16);
+    if (rem > 0) {
+        c += m_dotv_i4_i2_scalar_core(
+            a + (len_s16 >> 1), b + (len_s16 >> 2), rem
+        );
+    }
+    return c;
+}
+
+#ifdef M_UNROLL
+INLINE_OPTION
+int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (1 + udeg); // +1 for halfwords to words
+    size_t tile = ((len >> deg) << deg); // +1 to words, +3 for 8x unroll
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int16x2_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
+
+        #pragma GCC unroll 8
+        for (size_t i = 0; i < 8; i++) {
+            a_arr[i] = v_load_int16x2(a + k + i * 2);
+            b_arr[i] = v_load_int16x2(b + k + i * 2);
+        }
+        asm volatile (
+            "dot16 %[c], %[a1], %[b1]\n\t"
+            "dot16 %[c], %[a2], %[b2]\n\t"
+            "dot16 %[c], %[a3], %[b3]\n\t"
+            "dot16 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
+            : [c] "+r" (c)
+            : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
+              [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
+              [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
+              [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
+            :
+        );
+        // let compiler schedule loads in between to reduce rf pressure
+        asm volatile (
+            "dot16 %[c], %[a5], %[b5]\n\t"
+            "dot16 %[c], %[a6], %[b6]\n\t"
+            "dot16 %[c], %[a7], %[b7]\n\t"
+            "dot16 %[c], %[a4], %[b4]\n\t"
+            : [c] "+r" (c)
+            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
+              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
+              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
+              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
+            :
+        );
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i16_i16_simd_core(a + tile, b + tile, rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for bytes to words
+    size_t tile = ((len >> deg) << deg); // +2 to words, +3 for 8x unroll
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int8x4_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
+
+        #pragma GCC unroll 8
+        for (size_t i = 0; i < 8; i++) {
+            a_arr[i] = v_load_int8x4(a + k + i * 4);
+            b_arr[i] = v_load_int8x4(b + k + i * 4);
+        }
+        asm volatile (
+            "dot8 %[c], %[a1], %[b1]\n\t"
+            "dot8 %[c], %[a2], %[b2]\n\t"
+            "dot8 %[c], %[a3], %[b3]\n\t"
+            "dot8 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
+            : [c] "+r" (c)
+            : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
+              [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
+              [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
+              [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
+            :
+        );
+        // let compiler schedule loads in between to reduce rf pressure
+        asm volatile (
+            "dot8 %[c], %[a5], %[b5]\n\t"
+            "dot8 %[c], %[a6], %[b6]\n\t"
+            "dot8 %[c], %[a7], %[b7]\n\t"
+            "dot8 %[c], %[a4], %[b4]\n\t"
+            : [c] "+r" (c)
+            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
+              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
+              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
+              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
+            :
+        );
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i8_i8_simd_core(a + tile, b + tile, rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (3 + udeg); // +3 for nibbles to words
+    size_t tile = ((len >> deg) << deg); // 'len' and 'k' are in nibbles
+    const int8_t* ap = a;
+    const int8_t* bp = b;
+    const size_t p_inc = (1 << deg); // pointer increment
+    const int8_t p_pinc = (p_inc >> 1); // packed increment, div 2 for i4
+
+    for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
+        int4x8_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
+
+        #pragma GCC unroll 8
+        for (size_t i = 0; i < 8; i++) {
+            a_arr[i] = v_load_int4x8(ap + i * 4);
+            b_arr[i] = v_load_int4x8(bp + i * 4);
+        }
+        asm volatile (
+            "dot4 %[c], %[a1], %[b1]\n\t"
+            "dot4 %[c], %[a2], %[b2]\n\t"
+            "dot4 %[c], %[a3], %[b3]\n\t"
+            "dot4 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
+            : [c] "+r" (c)
+            : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
+              [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
+              [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
+              [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
+            :
+        );
+        // let compiler schedule loads in between to reduce rf pressure
+        asm volatile (
+            "dot4 %[c], %[a5], %[b5]\n\t"
+            "dot4 %[c], %[a6], %[b6]\n\t"
+            "dot4 %[c], %[a7], %[b7]\n\t"
+            "dot4 %[c], %[a4], %[b4]\n\t"
+            : [c] "+r" (c)
+            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
+              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
+              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
+              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
+            :
+        );
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i4_i4_simd_core(a + (tile >> 1), b + (tile >> 1), rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 2; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for crumbs to words
+    size_t tile = ((len >> deg) << deg); // 'len' and 'k' are in crumbs
+    const int8_t* ap = a;
+    const int8_t* bp = b;
+    const size_t p_inc = (1 << deg); // pointer increment
+    const int8_t p_pinc = (p_inc >> 2); // packed increment, div 4 for i2
+
+    for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
+        int2x16_t a_arr[4], b_arr[4]; // 4=(1<<udeg), but compiler is not happy
+
+        #pragma GCC unroll 4
+        for (size_t i = 0; i < 4; i++) {
+            a_arr[i] = v_load_int2x16(ap + i * 4);
+            b_arr[i] = v_load_int2x16(bp + i * 4);
+        }
+        asm volatile (
+            "dot2 %[c], %[a1], %[b1]\n\t"
+            "dot2 %[c], %[a2], %[b2]\n\t"
+            "dot2 %[c], %[a3], %[b3]\n\t"
+            "dot2 %[c], %[a0], %[b0]\n\t" // scheduling, b0 often loaded last
+            : [c] "+r" (c)
+            : [a0] "r" (a_arr[0]), [b0] "r" (b_arr[0]),
+              [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
+              [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
+              [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
+            :
+        );
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i2_i2_simd_core(a + (tile >> 2), b + (tile >> 2), rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i8(const int16_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for 4 el per core step
+    size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int16x2_t a_slice_1, a_slice_2;
+        int8x4_t b_slice;
+        int16x4_t b_slice_wide;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            b_slice = v_load_int8x4(b + k + i * 4);
+            a_slice_1 = v_load_int16x2(a + k     + i * 4);
+            a_slice_2 = v_load_int16x2(a + k + 2 + i * 4);
+            b_slice_wide = _widen8(b_slice, 0u);
+            asm volatile (
+                "dot16 %[c], %[a1], %[bw_lo]\n\t"
+                "dot16 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide.w.lo),
+                  [bw_hi] "r" (b_slice_wide.w.hi),
+                  [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
+            );
+        }
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i16_i8_simd_core(a + tile, b + tile, rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i4(const int16_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (3 + udeg); // +3 for 8 el per core step
+    size_t tile = ((len >> deg) << deg);
+    const int8_t* bp = b;
+    const size_t p_inc = (1 << deg); // pointer increment
+    const int8_t p_pinc = (p_inc >> 1); // packed increment, div 2 for i4
+
+    for (size_t k = 0; k < tile; k += p_inc, bp += p_pinc) {
+        int16x2_t a_slice_1, a_slice_2, a_slice_3, a_slice_4;
+        int4x8_t b_slice;
+        int8x8_t b_slice_wide_b;
+        int16x4_t b_slice_wide_h;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            b_slice = v_load_int4x8(bp + i * 4);
+            a_slice_1 = v_load_int16x2(a + k     + i * 8);
+            a_slice_2 = v_load_int16x2(a + k + 2 + i * 8);
+            a_slice_3 = v_load_int16x2(a + k + 4 + i * 8);
+            a_slice_4 = v_load_int16x2(a + k + 6 + i * 8);
+
+            b_slice_wide_b = _widen4(b_slice, 0u); // low N to B
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
+            asm volatile (
+                "dot16 %[c], %[a1], %[bw_lo]\n\t"
+                "dot16 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide_h.w.lo),
+                  [bw_hi] "r" (b_slice_wide_h.w.hi),
+                  [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
+            );
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
+            asm volatile (
+                "dot16 %[c], %[a3], %[bw_lo]\n\t"
+                "dot16 %[c], %[a4], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide_h.w.lo),
+                  [bw_hi] "r" (b_slice_wide_h.w.hi),
+                  [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
+            );
+        }
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i16_i4_simd_core(a + tile, b + (tile >> 1), rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i2(const int16_t* a, const int8_t* b, const size_t len) {
+    #define DOT16_BLOCK_2() \
+        asm volatile ( \
+            "dot16 %[c], %[a1], %[bw_lo]\n\t" \
+            "dot16 %[c], %[a2], %[bw_hi]\n\t" \
+            : [c] "+r" (c) \
+            : [a1] "r" (a_slice_1), [a2] "r" (a_slice_2), \
+              [bw_lo] "r" (b_slice_wide_h.w.lo), \
+              [bw_hi] "r" (b_slice_wide_h.w.hi) \
+        );
+
+    int32_t c = 0;
+    static const size_t udeg = 2; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for 16 el per core step
+    size_t tile = ((len >> deg) << deg);
+    const int8_t* bp = b;
+    const uint8_t p_inc = (1 << deg); // pointer increment
+    const uint8_t p_pinc = (p_inc >> 2); // packed increment, div 4 for i2
+
+    for (size_t k = 0; k < tile; k += p_inc, bp += p_pinc) {
+        int2x16_t b_slice;
+        int4x16_t b_slice_wide_n;
+        int8x8_t b_slice_wide_b;
+        int16x4_t b_slice_wide_h;
+        int16x2_t a_slice_1, a_slice_2;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            const size_t ko = (k + i * 16);
+            b_slice = v_load_int2x16(bp + i * 4);
+
+            a_slice_1 = v_load_int16x2(a + ko);
+            a_slice_2 = v_load_int16x2(a + ko + 2);
+            b_slice_wide_n = _widen2(b_slice, 0u); // C to N
+            b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
+            DOT16_BLOCK_2()
+
+            a_slice_1 = v_load_int16x2(a + ko + 4);
+            a_slice_2 = v_load_int16x2(a + ko + 6);
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
+            DOT16_BLOCK_2()
+
+            a_slice_1 = v_load_int16x2(a + ko + 8);
+            a_slice_2 = v_load_int16x2(a + ko + 10);
+            b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
+            DOT16_BLOCK_2()
+
+            a_slice_1 = v_load_int16x2(a + ko + 12);
+            a_slice_2 = v_load_int16x2(a + ko + 14);
+            b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
+            DOT16_BLOCK_2()
+        }
+    }
+
+    #undef DOT16_BLOCK_2
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i16_i2_simd_core(a + tile, b + (tile >> 2), rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i4(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 3; // unroll degree
+    static const size_t deg = (2 + 1 + udeg); // +2 for bytes to words, +1 widen
+    size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int8x4_t a_slice_1, a_slice_2;
+        int4x8_t b_slice;
+        int8x8_t b_slice_wide;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {                  // 0,  1,  2,  3
+            b_slice = v_load_int4x8(b + ((k + i * 8) >> 1)); // 0,  4,  8, 12
+            a_slice_1 = v_load_int8x4(a + k     + i * 8);    // 0,  8, 16, 24
+            a_slice_2 = v_load_int8x4(a + k + 4 + i * 8);    // 4, 12, 20, 28
+            b_slice_wide = _widen4(b_slice, 0u);
+            asm volatile (
+                "dot8 %[c], %[a1], %[bw_lo]\n\t"
+                "dot8 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide.w.lo),
+                  [bw_hi] "r" (b_slice_wide.w.hi),
+                  [a1] "r" (a_slice_1),
+                  [a2] "r" (a_slice_2)
+            );
+        }
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i8_i4_simd_core(a + tile, b + (tile >> 1), rem);
+    }
+    return c;
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     static const size_t udeg = 2; // unroll degree
     static const size_t deg = (2 + 2 + udeg); // +2 for bytes to words, +2 widen
     size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg); // pointer increment
 
-    for (size_t k = 0; k < tile; k += (1 << deg)) {
+    for (size_t k = 0; k < tile; k += p_inc) {
         int8x4_t a_slice_1, a_slice_2, a_slice_3, a_slice_4;
         int2x16_t b_slice;
         int4x16_t b_slice_wide_n;
@@ -410,93 +752,108 @@ int32_t m_dotv_i8_i2(
     // large tiles exhausted, finish with the regular SIMD core
     size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i8_i2_simd_core(
-            a + tile, b + (tile >> 2), rem
-        );
+        c += m_dotv_i8_i2_simd_core(a + tile, b + (tile >> 2), rem);
     }
     return c;
 }
 
-#else
 INLINE_OPTION
-int32_t m_dotv_i8_i2(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
+    int32_t c = 0;
+    static const size_t udeg = 2; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for 16 el per core step
+    size_t tile = ((len >> deg) << deg);
+    const int8_t* ap = a;
+    const int8_t* bp = b;
+    const size_t p_inc = (1 << deg); // pointer increment
+    const int8_t p_painc = (p_inc >> 1); // packed a increment, div 2 for i4
+    const int8_t p_pbinc = (p_inc >> 2); // packed b increment, div 4 for i2
+
+    for (size_t k = 0; k < tile; k += p_inc, ap += p_painc, bp += p_pbinc) {
+        int4x8_t a_slice_1, a_slice_2;
+        int2x16_t b_slice;
+        int4x16_t b_slice_wide;
+
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            b_slice = v_load_int2x16(bp + i * 4);
+            a_slice_1 = v_load_int4x8(ap + i * 8);
+            a_slice_2 = v_load_int4x8(ap + i * 8 + 4);
+            b_slice_wide = _widen2(b_slice, 0u); // C to N
+            asm volatile (
+                "dot4 %[c], %[a1], %[bw_lo]\n\t"
+                "dot4 %[c], %[a2], %[bw_hi]\n\t"
+                : [c] "+r" (c)
+                : [bw_lo] "r" (b_slice_wide.w.lo),
+                  [bw_hi] "r" (b_slice_wide.w.hi),
+                  [a1] "r" (a_slice_1),
+                  [a2] "r" (a_slice_2)
+            );
+        }
+    }
+
+    // large tiles exhausted, finish with the regular SIMD core
+    size_t rem = (len - tile);
+    if (rem > 0) {
+        c += m_dotv_i4_i2_simd_core(a + (tile >> 1), b + (tile >> 2), rem);
+    }
+    return c;
+}
+
+#else // !M_UNROLL
+
+INLINE_OPTION
+int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
+    return m_dotv_i16_i16_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i8_i8_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i4_i4_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i2_i2_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i8(const int16_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i16_i8_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i4(const int16_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i16_i4_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i16_i2(const int16_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i16_i2_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i4(const int8_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i8_i4_simd_core(a, b, len);
+}
+
+INLINE_OPTION
+int32_t m_dotv_i8_i2(const int8_t* a, const int8_t* b, const size_t len) {
     return m_dotv_i8_i2_simd_core(a, b, len);
 }
 
-#endif // SIMD_UNROLL
-
-static INLINE
-int32_t m_dotv_i8_i2_simd_core(
-    const int8_t* a, const int8_t* b, const size_t len) {
-    int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
-        const int8x4_t a_slice_1 = v_load_int8x4(a + k);
-        const int8x4_t a_slice_2 = v_load_int8x4(a + k + 4);
-        const int8x4_t a_slice_3 = v_load_int8x4(a + k + 8);
-        const int8x4_t a_slice_4 = v_load_int8x4(a + k + 12);
-        int4x16_t b_slice_wide_n;
-        int8x8_t b_slice_wide_b;
-
-        b_slice_wide_n = _widen2(b_slice, 0u); // C to N
-        b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
-        asm volatile (
-            "dot8 %[c], %[a1], %[bw_lo]\n\t"
-            "dot8 %[c], %[a2], %[bw_hi]\n\t"
-            : [c] "+r" (c)
-            : [bw_lo] "r" (b_slice_wide_b.w.lo),
-              [bw_hi] "r" (b_slice_wide_b.w.hi),
-              [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
-        );
-        b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
-        asm volatile (
-            "dot8 %[c], %[a3], %[bw_lo]\n\t"
-            "dot8 %[c], %[a4], %[bw_hi]\n\t"
-            : [c] "+r" (c)
-            : [bw_lo] "r" (b_slice_wide_b.w.lo),
-              [bw_hi] "r" (b_slice_wide_b.w.hi),
-              [a3] "r" (a_slice_3), [a4] "r" (a_slice_4)
-        );
-    }
-    size_t rem = (len - len_s16);
-    if (rem > 0) {
-        c += m_dotv_i8_i2_scalar_core(a + len_s16, b + (len_s16 >> 2), rem);
-    }
-    return c;
-}
-
 INLINE_OPTION
-int32_t m_dotv_i4_i2(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
-    int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        const int2x16_t b_slice = v_load_int2x16(b + (k >> 2));
-        const int4x8_t a_slice_1 = v_load_int4x8(a + (k >> 1));
-        const int4x8_t a_slice_2 = v_load_int4x8(a + (k >> 1) + 4);
-        const int4x16_t b_slice_wide = _widen2(b_slice, 0u); // C to N
-        asm volatile (
-            "dot4 %[c], %[a1], %[bw_lo]\n\t"
-            "dot4 %[c], %[a2], %[bw_hi]\n\t"
-            : [c] "+r" (c)
-            : [bw_lo] "r" (b_slice_wide.w.lo),
-              [bw_hi] "r" (b_slice_wide.w.hi),
-              [a1] "r" (a_slice_1),
-              [a2] "r" (a_slice_2)
-        );
-    }
-    size_t rem = (len - len_s16);
-    if (rem > 0) {
-        c += m_dotv_i4_i2_scalar_core(
-            a + (len_s16 >> 1), b + (len_s16 >> 2), rem
-        );
-    }
-    return c;
+int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
+    return m_dotv_i4_i2_simd_core(a, b, len);
 }
+
+#endif // M_UNROLL
 
 // -----------------------------------------------------------------------------
 // SIMD data formatting functions

@@ -4,26 +4,92 @@
 
 #if !defined(__riscv_xsimd) && defined(LOAD_OPT)
 
+#ifdef M_UNROLL
+#define LO_UNROLL 1
+#else
+#define LO_UNROLL 0
+#endif
+
+#define MAC_ITER_MIXED(ew_a, ty_a, ew_b, ty_b) \
+    { \
+        ty_a _a = (a_slice >> (32 - ew_a)); \
+        ty_b _b = (b_slice >> (32 - ew_b)); \
+        c += _a * (ty_a)_b; \
+        a_slice <<= ew_a; \
+        b_slice <<= ew_b; \
+    }
+
+#define MAC_ITER(ew, ty) \
+    MAC_ITER_MIXED(ew, ty, ew, ty)
+
+#define MAC_ITER_2(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty)
+
+#define MAC_ITER_4(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty)
+
+#define MAC_ITER_8(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty) \
+    MAC_ITER(ew, ty)
+
+#define MAC_ITER_16(ew, ty) \
+    MAC_ITER_8(ew, ty) \
+    MAC_ITER_8(ew, ty)
+
+#define MAC_ITER_MIXED_2(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED(ew_a, ty_a, ew_b, ty_b)
+
+#define MAC_ITER_MIXED_4(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED_2(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED_2(ew_a, ty_a, ew_b, ty_b)
+
+#define MAC_ITER_MIXED_8(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED_4(ew_a, ty_a, ew_b, ty_b) \
+    MAC_ITER_MIXED_4(ew_a, ty_a, ew_b, ty_b)
+
+#define LOAD_SLICES(off) \
+    a_slice = *(const int32_t*)((a + k + off)); \
+    b_slice = *(const int32_t*)((b + k + off));
+
+// mixed types consume the two operands at different rates
+#define LOAD_A(off) a_slice = *(const int32_t*)((ap + (off)));
+#define LOAD_B(off) b_slice = *(const int32_t*)((bp + (off)));
+
+// tiles are sized to ~32 MACs:
+// at ~6 instructions per MAC that is a ~200 instruction body
+
 INLINE_OPTION
-int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len){
+int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s2 = ((len >> 1) << 1);
-    for (size_t k = 0; k < len_s2; k += 2) {
-        int32_t a_slice = *(const int32_t*)(a + k);
-        int32_t b_slice = *(const int32_t*)(b + k);
-        // Loop through each half in the 32-bit slice
-        int16_t a_half, b_half;
-        for (size_t i = 0; i < 2; i++) {
-            a_half = a_slice >> 16;
-            b_half = b_slice >> 16;
-            c += a_half * b_half;
-            a_slice <<= 16;
-            b_slice <<= 16;
+    static const size_t udeg = LO_UNROLL ? 3 : 0; // unroll degree
+    static const size_t deg = (1 + udeg); // +1 for halfwords to words
+    size_t tile = ((len >> deg) << deg); // +1 to words, +3 for 8x unroll
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_SLICES(i*2)
+            MAC_ITER_2(16, int16_t)
         }
     }
-    size_t rem = (len - len_s2);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i16_i16_scalar_core(a + len_s2, b + len_s2, rem);
+        c += m_dotv_i16_i16_scalar_core(a + tile, b + tile, rem);
     }
     return c;
 }
@@ -31,23 +97,24 @@ int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len){
 INLINE_OPTION
 int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s4 = ((len >> 2) << 2);
-    for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(const int32_t*)(a + k);
-        int32_t b_slice = *(const int32_t*)(b + k);
-        // Loop through each byte in the 32-bit slice
-        int8_t a_byte, b_byte;
-        for (size_t i = 0; i < 4; i++) {
-            a_byte = a_slice >> 24;
-            b_byte = b_slice >> 24;
-            c += a_byte * b_byte;
-            a_slice <<= 8;
-            b_slice <<= 8;
+    static const size_t udeg = LO_UNROLL ? 3 : 0; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for bytes to words
+    size_t tile = ((len >> deg) << deg); // +1 to words, +3 for 8x unroll
+    const size_t p_inc = (1 << deg); // pointer increment
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_SLICES(i*4)
+            MAC_ITER_4(8, int8_t)
         }
     }
-    size_t rem = (len - len_s4);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i8_i8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i8_i8_scalar_core(a + tile, b + tile, rem);
     }
     return c;
 }
@@ -55,24 +122,25 @@ int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
 INLINE_OPTION
 int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_bytes = (len >> 1); // len passed in as number of nibbles
-    size_t len_s4 = ((len_bytes) >> 2) << 2;
-    for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(const int32_t*)(a + k);
-        int32_t b_slice = *(const int32_t*)(b + k);
-        // Loop through each nibble in the 32-bit slice
-        int8_t a_nibble, b_nibble;
-        for (size_t i = 0; i < 8; i++) {
-            a_nibble = (a_slice) >> 28;
-            b_nibble = (b_slice) >> 28;
-            c += a_nibble * b_nibble;
-            a_slice <<= 4;
-            b_slice <<= 4;
+    static const size_t udeg = LO_UNROLL ? 2 : 0; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for bytes to words
+    const size_t len_bytes = (len >> 1); // len passed in as number of nibbles
+    const size_t tile = ((len_bytes >> deg) << deg); // 'k' is in bytes
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_SLICES(i*4)
+            MAC_ITER_8(4, int8_t)
         }
     }
-    size_t rem = len_bytes - len_s4;
+
+    size_t rem = (len_bytes - tile);
     if (rem > 0) {
-        c += m_dotv_i4_i4_scalar_core(a + len_s4, b + len_s4, rem << 1);
+        c += m_dotv_i4_i4_scalar_core(a + tile, b + tile, rem << 1);
     }
     return c;
 }
@@ -80,204 +148,221 @@ int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
 INLINE_OPTION
 int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_bytes = (len >> 2); // len passed in as number of crumbs
-    size_t len_s4 = ((len_bytes) >> 2) << 2;
-    for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t a_slice = *(const int32_t*)(a + k);
-        int32_t b_slice = *(const int32_t*)(b + k);
-        // Loop through each crumb in the 32-bit slice
-        int8_t a_crumb, b_crumb;
-        for (size_t i = 0; i < 16; i++) {
-            a_crumb = a_slice >> 30;
-            b_crumb = b_slice >> 30;
-            c += a_crumb * b_crumb;
-            a_slice <<= 2;
-            b_slice <<= 2;
+    static const size_t udeg = LO_UNROLL ? 1 : 0; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for bytes to words
+    const size_t len_bytes = (len >> 2); // len passed in as number of crumbs
+    const size_t tile = ((len_bytes >> deg) << deg); // 'k' is in bytes
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_SLICES(i*4)
+            MAC_ITER_16(2, int8_t)
         }
     }
-    size_t rem = (len_bytes - len_s4);
+
+    size_t rem = (len_bytes - tile);
     if (rem > 0) {
-        c += m_dotv_i2_i2_scalar_core(a + len_s4, b + len_s4, rem << 2);
+        c += m_dotv_i2_i2_scalar_core(a + tile, b + tile, rem << 2);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i16_i8(
-    const int16_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i16_i8(const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s4 = ((len >> 2) << 2);
-    for (size_t k = 0; k < len_s4; k += 4) {
-        int32_t b_slice = *(const int32_t*)(b + k);
-        for (size_t j = 0; j < 4; j += 2) {
-            int32_t a_slice = *(const int32_t*)(a + k + 2 - j); // MSB first
-            int8_t b_byte;
-            int16_t a_half;
-            for (size_t i = 0; i < 2; i++) {
-                b_byte = b_slice >> 24;
-                a_half = a_slice >> 16;
-                c += a_half * (int16_t)b_byte;
-                b_slice <<= 8;
-                a_slice <<= 16;
+    static const size_t udeg = LO_UNROLL ? 3 : 0; // unroll degree
+    static const size_t deg = (2 + udeg); // +2 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int16_t* ap = a + k;
+        const int8_t* bp = b + k;
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 4; j += 2) { // 'a' words, MSB first
+                LOAD_A(i*4 + 2 - j)
+                MAC_ITER_MIXED_2(16, int16_t, 8, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s4);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i16_i8_scalar_core(a + len_s4, b + len_s4, rem);
+        c += m_dotv_i16_i8_scalar_core(a + tile, b + tile, rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i16_i4(
-    const int16_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i16_i4(const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s8 = ((len >> 3) << 3);
-    for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t b_slice = *(const int32_t*)(b + (k >> 1));
-        for (size_t j = 0; j < 8; j += 2) {
-            int32_t a_slice = *(const int32_t*)(a + k + 6 - j);
-            int8_t b_nibble;
-            int16_t a_half;
-            for (size_t i = 0; i < 2; i++) {
-                b_nibble = b_slice >> 28;
-                a_half = a_slice >> 16;
-                c += a_half * (int16_t)b_nibble;
-                b_slice <<= 4;
-                a_slice <<= 16;
+    static const size_t udeg = LO_UNROLL ? 2 : 0; // unroll degree
+    static const size_t deg = (3 + udeg); // +3 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int16_t* ap = a + k;
+        const int8_t* bp = b + (k >> 1);
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 8; j += 2) { // 'a' words, MSB first
+                LOAD_A(i*8 + 6 - j)
+                MAC_ITER_MIXED_2(16, int16_t, 4, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s8);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i16_i4_scalar_core(
-            a + len_s8, b + (len_s8 >> 1), rem
-        );
+        c += m_dotv_i16_i4_scalar_core(a + tile, b + (tile >> 1), rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i16_i2(
-    const int16_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i16_i2(const int16_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t b_slice = *(const int32_t*)(b + (k >> 2));
-        for (size_t j = 0; j < 16; j += 2) {
-            int32_t a_slice = *(const int32_t*)(a + k + 14 - j);
-            int8_t b_crumb;
-            int16_t a_half;
-            for (size_t i = 0; i < 2; i++) {
-                b_crumb = b_slice >> 30;
-                a_half = a_slice >> 16;
-                c += a_half * (int16_t)b_crumb;
-                b_slice <<= 2;
-                a_slice <<= 16;
+    static const size_t udeg = LO_UNROLL ? 1 : 0; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int16_t* ap = a + k;
+        const int8_t* bp = b + (k >> 2);
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 16; j += 2) { // 'a' words, MSB first
+                LOAD_A(i*16 + 14 - j)
+                MAC_ITER_MIXED_2(16, int16_t, 2, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s16);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i16_i2_scalar_core(
-            a + len_s16, b + (len_s16 >> 2), rem
-        );
+        c += m_dotv_i16_i2_scalar_core(a + tile, b + (tile >> 2), rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i8_i4(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i8_i4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s8 = ((len >> 3) << 3);
-    for (size_t k = 0; k < len_s8; k += 8) {
-        int32_t b_slice = *(const int32_t*)(b + (k >> 1));
-        for (size_t j = 0; j < 8; j += 4) {
-            int32_t a_slice = *(const int32_t*)(a + k + 4 - j);
-            int8_t b_nibble;
-            int8_t a_byte;
-            for (size_t i = 0; i < 4; i++) {
-                b_nibble = b_slice >> 28;
-                a_byte = a_slice >> 24;
-                c += a_byte * (int8_t)b_nibble;
-                b_slice <<= 4;
-                a_slice <<= 8;
+    static const size_t udeg = LO_UNROLL ? 2 : 0; // unroll degree
+    static const size_t deg = (3 + udeg); // +3 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int8_t* ap = a + k;
+        const int8_t* bp = b + (k >> 1);
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 8; j += 4) { // 'a' words, MSB first
+                LOAD_A(i*8 + 4 - j)
+                MAC_ITER_MIXED_4(8, int8_t, 4, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s8);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i8_i4_scalar_core(
-            a + len_s8, b + (len_s8 >> 1), rem
-        );
+        c += m_dotv_i8_i4_scalar_core(a + tile, b + (tile >> 1), rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i8_i2(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i8_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t b_slice = *(const int32_t*)(b + (k >> 2));
-        for (size_t j = 0; j < 16; j += 4) {
-            int32_t a_slice = *(const int32_t*)(a + k + 12 - j);
-            int8_t b_crumb;
-            int8_t a_byte;
-            for (size_t i = 0; i < 4; i++) {
-                b_crumb = b_slice >> 30;
-                a_byte = a_slice >> 24;
-                c += a_byte * (int8_t)b_crumb;
-                b_slice <<= 2;
-                a_slice <<= 8;
+    static const size_t udeg = LO_UNROLL ? 1 : 0; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int8_t* ap = a + k;
+        const int8_t* bp = b + (k >> 2);
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 16; j += 4) { // 'a' words, MSB first
+                LOAD_A(i*16 + 12 - j)
+                MAC_ITER_MIXED_4(8, int8_t, 2, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s16);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i8_i2_scalar_core(
-            a + len_s16, b + (len_s16 >> 2), rem
-        );
+        c += m_dotv_i8_i2_scalar_core(a + tile, b + (tile >> 2), rem);
     }
     return c;
 }
 
 INLINE_OPTION
-int32_t m_dotv_i4_i2(
-    const int8_t* a, const int8_t* b, const size_t len)
-{
+int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    size_t len_s16 = ((len >> 4) << 4);
-    for (size_t k = 0; k < len_s16; k += 16) {
-        int32_t b_slice = *(const int32_t*)(b + (k >> 2));
-        for (size_t j = 0; j < 8; j += 4) {
-            int32_t a_slice = *(const int32_t*)(a + (k >> 1) + 4 - j);
-            int8_t b_crumb;
-            int8_t a_nibble;
-            for (size_t i = 0; i < 8; i++) {
-                b_crumb = b_slice >> 30;
-                a_nibble = a_slice >> 28;
-                c += a_nibble * (int8_t)b_crumb;
-                b_slice <<= 2;
-                a_slice <<= 4;
+    static const size_t udeg = LO_UNROLL ? 1 : 0; // unroll degree
+    static const size_t deg = (4 + udeg); // +4 for el per 'b' word
+    const size_t tile = ((len >> deg) << deg);
+    const size_t p_inc = (1 << deg);
+
+    for (size_t k = 0; k < tile; k += p_inc) {
+        int32_t a_slice, b_slice;
+        const int8_t* ap = a + (k >> 1);
+        const int8_t* bp = b + (k >> 2);
+        static const size_t uval = (1 << udeg);
+        #pragma GCC unroll uval
+        for (size_t i = 0; i < uval; i++) {
+            LOAD_B(i*4)
+            for (size_t j = 0; j < 8; j += 4) { // 'a' words, MSB first
+                LOAD_A(i*8 + 4 - j)
+                MAC_ITER_MIXED_8(4, int8_t, 2, int8_t)
             }
         }
     }
-    size_t rem = (len - len_s16);
+
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i4_i2_scalar_core(
-            a + (len_s16 >> 1), b + (len_s16 >> 2), rem
-        );
+        c += m_dotv_i4_i2_scalar_core(a + (tile >> 1), b + (tile >> 2), rem);
     }
     return c;
 }
+
+#undef MAC_ITER
+#undef MAC_ITER_2
+#undef MAC_ITER_4
+#undef MAC_ITER_8
+#undef MAC_ITER_16
+#undef MAC_ITER_MIXED
+#undef MAC_ITER_MIXED_2
+#undef MAC_ITER_MIXED_4
+#undef MAC_ITER_MIXED_8
+#undef LOAD_SLICES
+#undef LOAD_A
+#undef LOAD_B
+#undef LO_UNROLL
 
 #endif

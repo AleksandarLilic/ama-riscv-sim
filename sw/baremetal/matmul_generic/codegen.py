@@ -36,12 +36,8 @@ shift_amount = 0
 typ_min = value["min"] >> shift_amount
 typ_max = value["max"] >> shift_amount
 
-value['a'] = rnd_gen_2d_arr(
-    typ_min, typ_max, M, K, value["nf"]
-)
-value['b'] = rnd_gen_2d_arr(
-    typ_min, typ_max, K, N, value["nf"]
-)
+value['a'] = rnd_gen_2d_arr(typ_min, typ_max, M, K, value["nf"])
+value['b'] = rnd_gen_2d_arr(typ_min, typ_max, K, N, value["nf"])
 ref = np.matmul(value['a'].astype(np.int32), value['b'].astype(np.int32))
 
 #print(value['a'])

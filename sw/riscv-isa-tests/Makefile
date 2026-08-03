@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-include ../baremetal/Makefile.setup.inc
+include ../baremetal/Makefile.setup.mk
 
 LD_SRC := link.ld
 

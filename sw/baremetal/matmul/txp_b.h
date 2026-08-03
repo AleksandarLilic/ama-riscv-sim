@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "common.h"
 #include "common_math.h"
+#include "common_math_simd_v_load_store.h"
 
 #ifdef NF_INT8
 #include "test_matrices_int8.h"

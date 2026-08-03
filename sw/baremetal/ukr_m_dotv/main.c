@@ -39,8 +39,8 @@ void main(void) {
         result = FUNC(a, b, VEC_LEN);
     }
     PROF_STOP;
-    if (result != ref) {
-        write_mismatch(result, ref, 1);
+    if (result != ref[0]) {
+        write_mismatch(result, ref[0], 1);
         fail();
     }
     pass();

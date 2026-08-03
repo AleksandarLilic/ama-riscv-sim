@@ -11,9 +11,9 @@ extern "C" {
 static INLINE int32_t max(int32_t a, int32_t b) {
     int32_t c;
     asm volatile(
-        ".insn r 0x33, 0x6, 0x5, %0, %1, %2"
-        : "=r"(c)
-        : "r"(a), "r"(b)
+        ".insn r 0x33, 0x6, 0x5, %[out], %[in0], %[in1]"
+        : [out] "=r" (c)
+        : [in0] "r" (a), [in1] "r" (b)
     );
     return c;
 }
@@ -21,9 +21,9 @@ static INLINE int32_t max(int32_t a, int32_t b) {
 static INLINE uint32_t maxu(uint32_t a, uint32_t b) {
     uint32_t c;
     asm volatile(
-        ".insn r 0x33, 0x7, 0x5, %0, %1, %2"
-        : "=r"(c)
-        : "r"(a), "r"(b)
+        ".insn r 0x33, 0x7, 0x5, %[out], %[in0], %[in1]"
+        : [out] "=r" (c)
+        : [in0] "r" (a), [in1] "r" (b)
     );
     return c;
 }
@@ -31,9 +31,9 @@ static INLINE uint32_t maxu(uint32_t a, uint32_t b) {
 static INLINE int32_t min(int32_t a, int32_t b) {
     int32_t c;
     asm volatile(
-        ".insn r 0x33, 0x4, 0x5, %0, %1, %2"
-        : "=r"(c)
-        : "r"(a), "r"(b)
+        ".insn r 0x33, 0x4, 0x5, %[out], %[in0], %[in1]"
+        : [out] "=r" (c)
+        : [in0] "r" (a), [in1] "r" (b)
     );
     return c;
 }
@@ -41,9 +41,9 @@ static INLINE int32_t min(int32_t a, int32_t b) {
 static INLINE uint32_t minu(uint32_t a, uint32_t b) {
     uint32_t c;
     asm volatile(
-        ".insn r 0x33, 0x5, 0x5, %0, %1, %2"
-        : "=r"(c)
-        : "r"(a), "r"(b)
+        ".insn r 0x33, 0x5, 0x5, %[out], %[in0], %[in1]"
+        : [out] "=r" (c)
+        : [in0] "r" (a), [in1] "r" (b)
     );
     return c;
 }
@@ -67,7 +67,7 @@ static INLINE uint32_t minu(uint32_t a, uint32_t b) {
 #endif
 
 // -----------------------------------------------------------------------------
-// public API
+// arithv
 // -----------------------------------------------------------------------------
 
 // add & sub
@@ -89,6 +89,15 @@ void m_mul_u16(
     const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len);
 void m_mul_u8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len);
+
+// -----------------------------------------------------------------------------
+// level-1v: dot products
+// -----------------------------------------------------------------------------
+// m_dotv_<ta>_<tb> computes dot product of two vectors:
+//   y = sum_{j<k} a[j] * b[j]
+//
+// the type suffixes (wide, narrow)
+// -----------------------------------------------------------------------------
 
 // dot product
 int32_t m_dotv_i16_i16(
@@ -131,6 +140,97 @@ void m_txp_4x4_i8(
     int8x8_t* bs_t16_02, int8x8_t* bs_t16_13);
 
 #endif
+
+// -----------------------------------------------------------------------------
+// level-1f: fused dot products
+// -----------------------------------------------------------------------------
+// m_dotf_<ta>_<tx>_mr<MR> computes MR dot products sharing one x vector:
+//
+//   y[i] = sum_{j<k} a[i*lda + j] * x[j],  i in [0, MR)
+//
+// the type suffixes are (matrix, vector),
+// which is the reverse of dotv's (wide, narrow):
+// the same operand pair is m_dotv_i8_i4 but m_dotf_i4_i8
+//
+// 'a' is the MR-row matrix and is loaded MR times per step;
+// 'x' is the shared vector and is loaded once;
+// 'lda' is in logical elements, not storage bytes, for every type;
+//
+// kernel-private K info:
+//   K_ATOMIC  smallest number of logical k elements consumable without a
+//             partial-word access:
+//             dot width (SIMD), load slice (LOAD_OPT), packing of 'a' (scalar)
+//   K_UNROLL  K_ATOMICs per inner iteration
+//   K_STEP    K_ATOMIC * K_UNROLL, the inner-loop stride
+//
+// -----------------------------------------------------------------------------
+
+void m_dotf_i8_i8_mr4(
+    const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
+void m_dotf_i4_i8_mr4(
+    const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
+void m_dotf_i2_i8_mr4(
+    const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
+
+// MR selection
+//
+// note the +-2048 lw immediate max when raising it:
+
+// at MR=4, lda=256 the largest row offset is 780 for i8 (256*3+12),
+// but MR=8, lda=512 is 3596, and would fall back to extra pointer bumps
+// calc: (lda*(MR-1) + 4*(UNROLL-1))
+
+#define M_DOTF_I8_I8_MR 4
+#define M_DOTF_I4_I8_MR 4
+#define M_DOTF_I2_I8_MR 4
+
+#define M_CONCAT(a, b) a##b
+#define M_EXPAND_CONCAT(a, b)  M_CONCAT(a, b)
+#define M_DOTF_I8_I8_KER M_EXPAND_CONCAT(m_dotf_i8_i8_mr, M_DOTF_I8_I8_MR)
+#define M_DOTF_I4_I8_KER M_EXPAND_CONCAT(m_dotf_i4_i8_mr, M_DOTF_I4_I8_MR)
+#define M_DOTF_I2_I8_KER M_EXPAND_CONCAT(m_dotf_i2_i8_mr, M_DOTF_I2_I8_MR)
+
+_Static_assert(
+    M_DOTF_I8_I8_MR == 4, "M_DOTF_I8_I8_MR: no kernel implemented for this MR"
+);
+_Static_assert(
+    M_DOTF_I4_I8_MR == 4, "M_DOTF_I4_I8_MR: no kernel implemented for this MR"
+);
+_Static_assert(
+    M_DOTF_I2_I8_MR == 4, "M_DOTF_I2_I8_MR: no kernel implemented for this MR"
+);
+
+// -----------------------------------------------------------------------------
+// level-2: matrix-vector product
+// -----------------------------------------------------------------------------
+// m_gemv_<ta>_<tx> computes m dot products sharing one x vector:
+//
+//   y[i] = sum_{j<k} a[i*lda + j] * x[j],  i in [0, m)
+//
+// plain y = A*x: row-major 'a', no transpose, and no alpha/beta, so 'y' is
+// write-only - the caller never pre-zeroes it and the kernel never reads it back
+//
+// type suffixes and 'lda' are level-1f's, above
+//
+// where the dimensions are owned:
+//   the kernel owns the ones it chose      -> k % K_STEP, so k is passed
+//                                             through untouched
+//   gemv owns the one the caller chose     -> m % MR, blocked by MR and then
+//                                             mopped up one row at a time
+// -----------------------------------------------------------------------------
+
+void m_gemv_i8_i8(
+    const size_t m, const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
+void m_gemv_i4_i8(
+    const size_t m, const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
+void m_gemv_i2_i8(
+    const size_t m, const size_t k, const int8_t* a, const size_t lda,
+    const int8_t* x, int32_t* y);
 
 #ifdef __cplusplus
 }
