@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +21,8 @@ parser.add_argument('prof', help="Input binary profile 'rf_usage.bin'")
 parser.add_argument('--save_png', action='store_true', help="Save charts as PNG")
 parser.add_argument('--save_svg', action='store_true', help="Save charts as SVG")
 parser.add_argument('--save_csv', action='store_true', help="Save source data formatted as CSV")
+parser.add_argument('--print', action='store_true', help="Print stats to stdout")
+parser.add_argument('-s', '--silent', action='store_true', help="Don't display chart(s)")
 parser.add_argument('--single', default=None, help=f"Index of single column set to plot from {COLUMNS}")
 
 args = parser.parse_args()
@@ -54,6 +57,13 @@ if args.save_csv:
     p = args.prof.replace('.bin', '.csv')
     df.to_csv(p, index=False)
     print_file_saved("CSV", p)
+
+if args.print:
+    print(df.to_markdown())
+
+need_plot = args.save_png or args.save_svg or not args.silent
+if not need_plot:
+    sys.exit(0)
 
 base_fmt = smarter_eng_formatter()
 columns = COLUMNS
@@ -100,3 +110,5 @@ for col_set in columns:
         p = base_name.replace(".bin", f"_{name}.svg")
         fig.savefig(p)
         print_file_saved("SVG", p)
+    if args.silent:
+        plt.close('all')
