@@ -4,7 +4,7 @@
 
 #if !defined(__riscv_xsimd) && defined(LOAD_OPT)
 
-#ifdef M_UNROLL
+#ifdef M_UNROLL_DOTV
 #define LO_UNROLL 1
 #else
 #define LO_UNROLL 0

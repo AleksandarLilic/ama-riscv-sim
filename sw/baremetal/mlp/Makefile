@@ -9,7 +9,7 @@ BATCH ?= 8
 # total inferences
 INF ?= $(BATCH)
 
-MATH_LIB_UNROLL ?= 1
+MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 MATH_LIB_FLAGS += -DPARTIAL_ZBB_SUPPORT
 MATH_LIB_FLAGS += -DFORCE_INLINE

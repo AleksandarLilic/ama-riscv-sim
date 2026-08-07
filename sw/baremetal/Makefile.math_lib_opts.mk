@@ -15,7 +15,7 @@ MATH_LIB_FLAGS_STR = SCALAR
 MARCH := rv32im_zicsr_zifencei_zicntr
 endif
 
-ifeq ($(strip $(MATH_LIB_UNROLL)), 1)
-MATH_LIB_FLAGS += -DM_UNROLL
+ifeq ($(strip $(MATH_LIB_UNROLL_DOTV)), 1)
+MATH_LIB_FLAGS += -DM_UNROLL_DOTV
 MATH_LIB_FLAGS_STR += UNROLLED
 endif

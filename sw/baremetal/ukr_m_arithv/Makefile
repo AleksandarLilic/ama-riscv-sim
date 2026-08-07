@@ -21,7 +21,7 @@ CODEGEN_PY := codegen.py
 OPT := -O1 -flto
 CFLAGS := -DLOOPS=$(LOOPS)
 
-MATH_LIB_UNROLL ?= 1
+MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 CFLAGS += $(MATH_LIB_FLAGS)

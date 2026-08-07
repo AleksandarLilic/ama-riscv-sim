@@ -12,7 +12,7 @@ K_STEP := 16
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):NF" "al ual:" > $@
 
-MATH_LIB_UNROLL ?= 1
+MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 OPT := -O3 -flto

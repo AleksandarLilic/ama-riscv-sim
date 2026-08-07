@@ -304,7 +304,7 @@ int32_t m_dotv_i4_i2_simd_core(
     return c;
 }
 
-#ifdef M_UNROLL
+#ifdef M_UNROLL_DOTV
 INLINE_OPTION
 int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
@@ -801,7 +801,7 @@ int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
     return c;
 }
 
-#else // !M_UNROLL
+#else // !M_UNROLL_DOTV
 
 INLINE_OPTION
 int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
@@ -853,7 +853,7 @@ int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
     return m_dotv_i4_i2_simd_core(a, b, len);
 }
 
-#endif // M_UNROLL
+#endif // M_UNROLL_DOTV
 
 // -----------------------------------------------------------------------------
 // SIMD data formatting functions

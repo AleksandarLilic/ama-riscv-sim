@@ -2,7 +2,7 @@ LOOPS := 10
 TYPES := int2 int4 int8 int16 int16_int8 int16_int4 int16_int2 int8_int4 int8_int2 int4_int2
 
 ARR_LEN := 512
-# widest kernel K tile: M_UNROLL tiles int8_int4/int8_int2 by 64 elements
+# widest kernel K tile: M_UNROLL_DOTV tiles int8_int4/int8_int2 by 64 elements
 # (common_math_simd.c, deg=6), so ARR_LEN must clear that for a tail-free 'al'
 K_STEP := 64
 
@@ -10,7 +10,7 @@ K_STEP := 64
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):NF" "al ual:" > $@
 
-MATH_LIB_UNROLL ?= 1
+MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 OPT := -O3 -flto
