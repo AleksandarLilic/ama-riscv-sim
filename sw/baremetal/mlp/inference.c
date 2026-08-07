@@ -78,62 +78,73 @@ static uint32_t relu_norm(
     return max_pos;
 }
 
+// both operands are already k-contiguous
+// - weights are (n_output x n_input)
+// - activation panel is (batch x n_input)
+// so nothing is transposed or packed;
+// 'c_t' writes C as `c[n][m]`:
+// each image's outputs stay contiguous for relu_norm,
+// and become the next layer's activation row unchanged
 static INLINE void fc_layer(
-    int8_t* activations, const int8_t* weights,
-    int32_t* output, uint32_t n_input, uint32_t n_output)
+    const int8_t* activations, const int8_t* weights,
+    int32_t* output, size_t n_input, size_t n_output,
+    size_t batch)
 {
-    #ifdef W8A8
-    #define FUNC m_gemv_i8_i8
+    #if defined(W8A8)
+    #define FUNC m_gemm_i8_i8
     #elif defined(W4A8)
-    #define FUNC m_gemv_i4_i8
+    #define FUNC m_gemm_i4_i8
     #elif defined(W2A8)
-    #define FUNC m_gemv_i2_i8
+    #define FUNC m_gemm_i2_i8
     #endif
-    FUNC(n_output, n_input, weights, n_input, activations, output);
+    FUNC(
+        n_output, batch, n_input,
+        weights, n_input, activations, n_input, output, n_output, true
+    );
     #undef FUNC
 }
 
-uint32_t run_inference(int8_t* input_img) {
-    // align so that both fit nicely on cache boundaries
-    int32_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_out[64];
-    int8_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_in[64];
-    #ifdef CUSTOM_ISA_SCP
-    size_t stride;
-    #endif
+// max and shift are per image
+// due to c_t, images are contiguous in the array
+static INLINE void relu_norm_batch(
+    int32_t* input, int8_t* output, uint32_t n, size_t batch)
+{
+    for (size_t bi = 0; bi < batch; bi++) {
+        relu_norm((input + bi*n), (output + bi*n), n, false);
+    }
+}
 
-    #ifdef CUSTOM_ISA_SCP
-    //#pragma GCC unroll 4 // force if gcc doesn't unroll
-    stride = CACHE_LINE_SIZE/sizeof(input_img[0]);
-    for (int i = 0; i < 4; i++) SCP_LCL(input_img + stride*i);
-    #endif
+void run_inference(
+    const int8_t* img, uint8_t* predicted, const size_t batch)
+{
+    // align so that both fit nicely on cache boundaries;
+    // sized for 'BATCH' and the widest layer (64 outputs), used up to 'batch'
+    int32_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_out[BATCH*64];
+    int8_t __attribute__((aligned(CACHE_LINE_SIZE))) layer_in[BATCH*64];
 
-    fc_layer(input_img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT);
+    fc_layer(img, fc1_weight, layer_out, FC1_WEIGHT_IN, FC1_WEIGHT_OUT, batch);
+    relu_norm_batch(layer_out, layer_in, FC1_WEIGHT_OUT, batch);
 
-    #ifdef CUSTOM_ISA_SCP
-    for (int i = 0; i < 4; i++) SCP_REL(input_img + stride*i);
-    // and move 'layer_out' (allocated on the stack) to scp
-    stride = CACHE_LINE_SIZE/sizeof(layer_out[0]);
-    for (int i = 0; i < 4; i++) SCP_LCL(layer_out + stride*i);
-    SCP_LCL(layer_in);
-    #endif
+    fc_layer(
+        layer_in, fc2_weight, layer_out, FC2_WEIGHT_IN, FC2_WEIGHT_OUT, batch
+    );
+    relu_norm_batch(layer_out, layer_in, FC2_WEIGHT_OUT, batch);
 
-    relu_norm(layer_out, layer_in, FC1_WEIGHT_OUT, false);
+    fc_layer(
+        layer_in, fc3_weight, layer_out, FC3_WEIGHT_IN, FC3_WEIGHT_OUT, batch
+    );
+    relu_norm_batch(layer_out, layer_in, FC3_WEIGHT_OUT, batch);
 
-    fc_layer(layer_in, fc2_weight, layer_out, FC2_WEIGHT_IN, FC2_WEIGHT_OUT);
-    relu_norm(layer_out, layer_in, FC2_WEIGHT_OUT, false);
+    fc_layer(
+        layer_in, fc_last_weight, layer_out,
+        FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT, batch
+    );
 
-    fc_layer(layer_in, fc3_weight, layer_out, FC3_WEIGHT_IN, FC3_WEIGHT_OUT);
-    relu_norm(layer_out, layer_in, FC3_WEIGHT_OUT, false);
-
-    fc_layer(layer_in, fc_last_weight, layer_out,
-             FC_LAST_WEIGHT_IN, FC_LAST_WEIGHT_OUT);
-    uint32_t out = relu_norm(layer_out, layer_in, FC_LAST_WEIGHT_OUT, true);
-
-    #ifdef CUSTOM_ISA_SCP
-    // be a good citizen and release the scp
-    for (int i = 0; i < 4; i++) SCP_REL(layer_out + stride*i);
-    SCP_REL(layer_in);
-    #endif
-
-    return out;
+    // last layer needs no normalization, only the argmax, per image
+    for (size_t b = 0; b < batch; b++) {
+        const size_t o = (b * FC_LAST_WEIGHT_OUT);
+        predicted[b] = (uint8_t)relu_norm(
+            (layer_out + o), (layer_in + o), FC_LAST_WEIGHT_OUT, true
+        );
+    }
 }

@@ -13,13 +13,11 @@ static const char* q_str = "W2A8";
 
 #ifndef UART_INPUT
 #include "input_img.h"
-
 #else
-int8_t input_img[FC1_WEIGHT_IN] __attribute__((aligned(CACHE_LINE_SIZE)));
-
+int8_t input_img[1*FC1_WEIGHT_IN] __attribute__((aligned(CACHE_LINE_SIZE)));
 #endif
 
-void run(uint8_t* label, int8_t* input_img) {
+void run(uint8_t* label, int8_t* input_img, size_t inf, size_t batch) {
     #ifdef MHPM
     #ifdef MHPM_TDA
     tda_cnt_t tda_pe = {0ul};
@@ -32,10 +30,20 @@ void run(uint8_t* label, int8_t* input_img) {
     set_cpu_cycles(0u);
     #endif
 
+    uint8_t predicted[inf];
+    int8_t* img;
+    uint8_t* pred;
+    uint32_t runs = (inf/batch);
     uint32_t start_time = get_cpu_time();
+
     PROF_START;
-    uint32_t predicted = run_inference(input_img);
+    for (size_t r = 0; r < runs; r++) {
+        img = (input_img + (r * batch * FC1_WEIGHT_IN));
+        pred = (predicted + (r * batch));
+        run_inference(img, pred, batch);
+    }
     PROF_STOP;
+
     uint32_t end_time = get_cpu_time();
     uint32_t clks;
 
@@ -51,10 +59,19 @@ void run(uint8_t* label, int8_t* input_img) {
     clks = get_cpu_cycles();
     #endif
 
-    uint32_t time_diff = (end_time - start_time); // us
-    printf("Predicted: %u (label: %u); "
-           "Performance: cycles: %u, time: %u us, Inf/s: %u\n\n",
-           predicted, *label, clks, time_diff, (1000000 / time_diff));
+    printf("Predicted (label): ");
+    for (size_t i = 0; i < inf; i++) {
+        printf("%u (%u)", predicted[i], label[i]);
+        if (i < inf - 1) printf(", ");
+    }
+    printf("\n");
+    uint32_t time_diff = (end_time - start_time); // us, for the whole batch
+    uint32_t infs = ((1000000 * (uint32_t)inf) / time_diff); // per image
+    uint32_t bps = ((1000000 * (uint32_t)runs) / time_diff); // per batch
+    printf(
+        "Performance: cycles: %u, time: %u us, Inf/s: %u, Batch/s: %u\n\n",
+        clks, time_diff, infs, bps
+    );
 
     #ifdef MHPM
     #ifdef MHPM_TDA
@@ -67,10 +84,13 @@ void run(uint8_t* label, int8_t* input_img) {
     #endif
 
     // assumed model is accurate for the provided input
-    if (predicted != *label) {
-        write_mismatch(predicted, *label, 1);
-        fail();
+    bool failed = false;
+    for (size_t i = 0; i < inf; i++) {
+        bool mismatch = (predicted[i] != label[i]);
+        if (mismatch) write_mismatch(predicted[i], label[i], i + 1);
+        failed |= mismatch;
     }
+    if (failed) fail();
 }
 
 #ifdef UART_INPUT
@@ -87,7 +107,7 @@ void main() {
         while (!UART0_RX_VALID);
         uint8_t label = UART0->rx_data;
         printf("Got label %0d. Running...\n", label);
-        run(&label, input_img);
+        run(&label, input_img, 1);
         iter++;
         for (size_t i = 0; i < 1<<26; i++) { }
     }
@@ -95,8 +115,11 @@ void main() {
 
 #else
 void main() {
-    printf("\nMLP model quantization: %s\n", q_str);
-    run(&label_0, input_img_0);
+    printf(
+        "\nMLP model quantization: %s (inferences: %u, batch: %u)\n",
+        q_str, INF, BATCH
+    );
+    run(label, input_img, INF, BATCH);
     pass();
 }
 #endif

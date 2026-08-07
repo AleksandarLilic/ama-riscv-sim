@@ -4,6 +4,11 @@ TYPES := w8a8 w4a8 w2a8
 parametrize.mk: ../parametrize.py
 	python3 ../parametrize.py "$(TYPES):" > $@
 
+# batching
+BATCH ?= 8
+# total inferences
+INF ?= $(BATCH)
+
 MATH_LIB_UNROLL ?= 1
 include ../Makefile.math_lib_opts.mk
 MATH_LIB_FLAGS += -DPARTIAL_ZBB_SUPPORT
@@ -12,8 +17,10 @@ MATH_LIB_FLAGS += -DFORCE_INLINE
 
 # so the icache is happy
 #CODE_ALIGN := -falign-loops=64 # -falign-functions=64
-CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN)
+CFLAGS += $(MATH_LIB_FLAGS) $(CODE_ALIGN) -DINF=$(INF) -DBATCH=$(BATCH)
 GCC_OPTS += -Wall -Werror
+# fight with linker relaxation and gp-relative issues for linker script symbols
+GCC_OPTS += -Wl,--no-relax
 OPT := -O3 -flto
 
 APP_REQS := model_w8a8_64-64-64-10.h \
