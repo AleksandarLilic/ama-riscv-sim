@@ -14,9 +14,9 @@ void m_dotf_i8_i8_mr4(
     #define K_STEP   (K_ATOMIC * K_UNROLL)
 
     // 8 contiguous bytes of one 'a' row, across 2 regs
-    #define LOAD_A_ROW_2(r, off) \
-        a_arr[r][0] = v_load_int8x4(a + (r)*lda + kk + (off)); \
-        a_arr[r][1] = v_load_int8x4(a + (r)*lda + kk + (off) + 4)
+    #define LOAD_A_ROW_2(row, off) \
+        a_arr[row][0] = v_load_int8x4(a + (row)*lda + kk + (off)); \
+        a_arr[row][1] = v_load_int8x4(a + (row)*lda + kk + (off) + 4)
 
     // 4 dot8 into 2 accumulators
     #define DOT8_BLOCK_4(c0, c1, x0, x1, a00, a01, a10, a11) \
@@ -76,7 +76,7 @@ void m_dotf_i8_i8_mr4(
     // k tail: reuse dotv, which has its own tail
     if (kms < k) {
         for (size_t i = 0; i < 4; i++) {
-            c[i] += m_dotv_i8_i8(a + i*lda + kms, x + kms, k - kms);
+            c[i] += m_dotv_i8_i8((a + i*lda + kms), (x + kms), (k - kms));
         }
     }
 
@@ -102,7 +102,7 @@ void m_dotf_i4_i8_mr4(
     #define K_STEP   (K_ATOMIC * K_UNROLL)
 
     // 'a' is walked with its own pointer instead of being indexed off kk
-    #define A_ROW_ADDR(r, off) (ap + (r)*lda_b + ((off) >> 1))
+    #define A_ROW_ADDR(row, off) (ap + (row)*lda_b + ((off) >> 1))
 
     // 4 dot8 into 2 accumulators, one row each
     #define DOT8_BLOCK_4(c0, c1, x0, x1, wa0, wa1) \
@@ -152,7 +152,7 @@ void m_dotf_i4_i8_mr4(
     if (kms < k) {
         for (size_t i = 0; i < 4; i++) {
             c[i] += m_dotv_i8_i4(
-                x + kms, a + i*(lda >> 1) + (kms >> 1), k - kms
+                (x + kms), (a + i*(lda >> 1) + (kms >> 1)), (k - kms)
             );
         }
     }
@@ -229,7 +229,7 @@ void m_dotf_i2_i8_mr4(
     if (kms < k) {
         for (size_t i = 0; i < 4; i++) {
             c[i] += m_dotv_i8_i2(
-                x + kms, a + i*(lda >> 2) + (kms >> 2), k - kms
+                (x + kms), (a + i*(lda >> 2) + (kms >> 2)), (k - kms)
             );
         }
     }

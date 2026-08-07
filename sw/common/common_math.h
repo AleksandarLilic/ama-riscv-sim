@@ -232,6 +232,90 @@ void m_gemv_i2_i8(
     const size_t m, const size_t k, const int8_t* a, const size_t lda,
     const int8_t* x, int32_t* y);
 
+// -----------------------------------------------------------------------------
+// level-3: matrix-matrix product ukr
+// -----------------------------------------------------------------------------
+
+void m_gemm_ukr_i8_i8_mr4x2(
+    const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
+void m_gemm_ukr_i4_i8_mr4x2(
+    const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
+void m_gemm_ukr_i2_i8_mr4x2(
+    const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
+#define M_GEMM_I8_I8_MR 4
+#define M_GEMM_I8_I8_NR 2
+#define M_GEMM_I4_I8_MR 4
+#define M_GEMM_I4_I8_NR 2
+#define M_GEMM_I2_I8_MR 4
+#define M_GEMM_I2_I8_NR 2
+
+#define M_GEMM_I8_I8_KER \
+    M_EXPAND_CONCAT(M_EXPAND_CONCAT(m_gemm_ukr_i8_i8_mr, M_GEMM_I8_I8_MR), \
+                    M_EXPAND_CONCAT(x, M_GEMM_I8_I8_NR))
+
+#define M_GEMM_I4_I8_KER \
+    M_EXPAND_CONCAT(M_EXPAND_CONCAT(m_gemm_ukr_i4_i8_mr, M_GEMM_I4_I8_MR), \
+                    M_EXPAND_CONCAT(x, M_GEMM_I4_I8_NR))
+
+#define M_GEMM_I2_I8_KER \
+    M_EXPAND_CONCAT(M_EXPAND_CONCAT(m_gemm_ukr_i2_i8_mr, M_GEMM_I2_I8_MR), \
+                    M_EXPAND_CONCAT(x, M_GEMM_I2_I8_NR))
+
+_Static_assert(
+    (M_GEMM_I8_I8_MR == 4) && (M_GEMM_I8_I8_NR == 2),
+    "M_GEMM_I8_I8_MRxNR: no kernel implemented for this MRxNR"
+);
+
+_Static_assert(
+    (M_GEMM_I4_I8_MR == 4) && (M_GEMM_I4_I8_NR == 2),
+    "M_GEMM_I4_I8_MRxNR: no kernel implemented for this MRxNR"
+);
+
+_Static_assert(
+    (M_GEMM_I2_I8_MR == 4) && (M_GEMM_I2_I8_NR == 2),
+    "M_GEMM_I2_I8_MRxNR: no kernel implemented for this MRxNR"
+);
+
+// -----------------------------------------------------------------------------
+// level-3: matrix-matrix product driver
+// -----------------------------------------------------------------------------
+
+void m_gemm_i8_i8(
+    const size_t m, const size_t n, const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
+void m_gemm_i4_i8(
+    const size_t m, const size_t n, const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
+void m_gemm_i2_i8(
+    const size_t m, const size_t n, const size_t k,
+    const int8_t* a, const size_t lda,
+    const int8_t* b, const size_t ldb,
+    int32_t* c, const size_t ldc,
+    const bool c_t);
+
 #ifdef __cplusplus
 }
 #endif

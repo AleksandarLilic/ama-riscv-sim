@@ -21,7 +21,8 @@ DEFAULT_COMMON_OBJ_NAMES = crt0.o memset.o common.o \
 	common_math_arithv_scalar.o common_math_arithv_scalar_load_opt.o common_math_arithv_simd.o \
 	common_math_dotv_scalar.o common_math_dotv_scalar_load_opt.o common_math_dotv_simd.o \
 	common_math_dotf_scalar.o common_math_dotf_scalar_load_opt.o common_math_dotf_simd.o \
-	common_math_gemv.o \
+	common_math_gemm_scalar.o common_math_gemm_scalar_load_opt.o common_math_gemm_simd.o \
+	common_math_gemv.o common_math_gemm.o \
     nanoprintf.o
 COMMON_OBJ_NAMES ?= $(DEFAULT_COMMON_OBJ_NAMES)
 

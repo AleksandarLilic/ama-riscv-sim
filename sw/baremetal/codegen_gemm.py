@@ -8,6 +8,13 @@ A is row-major with row stride 'lda' in elements (>= K);
 columns [K, lda) are padding no correct kernel reads
 At N == 1, B is a contiguous K-vector.
 
+'b_t' flips only B's storage layout, never the math: the reference is
+a[:, :K] @ b[:K, :N] either way
+It picks which axis of B is contiguous, and therefore which one 'ldb' strides
+and where B's padding lands:
+    b_t=0: K rows of n-contiguous data, ldb strides n, padding in [N, ldb)
+    b_t=1: N rows of k-contiguous data, ldb strides k, padding in [K, ldb)
+
 tests keep their own sweep list, #if/#define emission and output filename;
 this module never emits C
 """
@@ -127,7 +134,8 @@ class data:
     a: np.ndarray # packed storage, flat
     b: np.ndarray
     a_log: np.ndarray # (M, lda) logical, padding included
-    b_log: np.ndarray # (K, ldb) logical
+    b_log: np.ndarray # logical in (k, n) order, padding included
+    b_sl: np.ndarray # b_log in storage layout: what 'b' packs and C declares
     lda: int
     ldb: int
     ref: np.ndarray # (M, N)
@@ -139,16 +147,20 @@ class data:
     ta: str
     tb: str
 
+    @property
+    def b_t(self):
+        """the 'b_t' gen() was called with:
+        b_sl is a transposed view of b_log"""
+        return self.b_log is not self.b_sl
+
     def ref_at(self, k):
-        # reference for a shorter reduction, e.g. the 'ual' length. Bounded by
-        # the same budget as ref: the worst case k*max|a|*max|b| is monotonic in
-        # k, and _inject keeps whole pairs below the 'ual' cut so none can split
+        """reference for a shorter reduction, e.g. the 'ual' length"""
         return self.a_log[:, :k] @ self.b_log[:k, :self.N]
 
 def gen(
     M, N, K,
     type_a, type_b,
-    lda=None, ldb=None,
+    lda=None, ldb=None, b_t=False,
     overflow_check=True, max_bytes=MAX_BYTES, seed_in=1
 ):
     ta, tb = nkey(type_a), nkey(type_b)
@@ -157,19 +169,25 @@ def gen(
         raise ValueError(f"K={K} must be a multiple of {q} for {ta}/{tb}")
 
     lda = _row_stride(K, ta, lda)
-    ldb = 1 if (N == 1) else _row_stride(N, tb, ldb)
+    # 'ldb' strides whichever axis is the slow one, so its meaning follows b_t
+    if b_t:
+        ldb = _row_stride(K, tb, ldb)
+        b_rows, b_used = N, K
+    else:
+        ldb = 1 if (N == 1) else _row_stride(N, tb, ldb)
+        b_rows, b_used = K, N
     data_req = {
         "a": n_bytes(M * lda, ta),
-        "b": n_bytes(K * ldb, tb),
+        "b": n_bytes(b_rows * ldb, tb),
         "c": n_bytes(M * N, "int32_t"),
         "ref": n_bytes(M * N, "int32_t"),
     }
     data_req_sum = sum(data_req.values())
     if data_req_sum > max_bytes:
         raise ValueError(
-            f"Total data required is {data_req_sum}B, over {max_bytes}B - "
-            f"a={data_req['a']}B, b={data_req['b']}B, "
-            f"c={data_req['c']}B, ref={data_req['ref']}B"
+            f"Total data required is {data_req_sum} B, over {max_bytes} B - "
+            f"a={data_req['a']} B, b={data_req['b']} B, "
+            f"c={data_req['c']} B, ref={data_req['ref']} B"
         )
 
     # reproducible seeds; adding a type pair later doesn't change existing gen
@@ -180,11 +198,14 @@ def gen(
     sa, sb = _shift(K, ta, tb, n_pairs) if overflow_check else (0, 0)
 
     a_log = _draw(M, lda, K, ta, sa)
-    b_log = _draw(K, ldb, N, tb, sb)
+    # everything downstream reads b in (k, n) order;
+    # '.T' is a view, so injecting through it lands in the storage layout also
+    b_sl = _draw(b_rows, ldb, b_used, tb, sb)
+    b_log = b_sl.T if b_t else b_sl
     if sa or sb: # put the wide bits back, only if originally shifted down
         _inject(a_log, b_log, K, ta, tb, sa, sb, n_pairs)
 
-    ref = a_log[:, :K] @ b_log[:K, :N] # columns [N, ldb) are padding
+    ref = a_log[:, :K] @ b_log[:K, :N] # the rest of either axis is padding
     ref_ib = (INT32_MIN <= ref.min()) and (ref.max() <= INT32_MAX) # in bounds
     if overflow_check and not ref_ib:
         raise RuntimeError(
@@ -192,8 +213,8 @@ def gen(
         )
 
     return data(
-        _pack_as_1d(a_log, ta), _pack_as_1d(b_log, tb),
-        a_log, b_log, lda, ldb,
+        _pack_as_1d(a_log, ta), _pack_as_1d(b_sl, tb),
+        a_log, b_log, b_sl, lda, ldb,
         ref, (sa, sb), M, N, K, _unaligned_k(K, ta, tb), ta, tb
     )
 
@@ -201,10 +222,12 @@ def self_check(d):
     # re-derive the ref from the storage actually emitted:
     # cheap check catching only packing, stride, and padding mistakes
     a = _unpack_to_2d(d.a, d.ta, d.M, d.lda)
-    b = _unpack_to_2d(d.b, d.tb, d.K, d.ldb)
+    b = _unpack_to_2d(d.b, d.tb, d.b_sl.shape[0], d.ldb)
     assert np.array_equal(a, d.a_log), f"{d.ta}: 'a' does not round-trip"
-    assert np.array_equal(b, d.b_log), f"{d.tb}: 'b' does not round-trip"
-    assert np.array_equal(a[:, :d.K] @ b[:d.K, :d.N], d.ref), "ref mismatch"
+    assert np.array_equal(b, d.b_sl), f"{d.tb}: 'b' does not round-trip"
+    # back to standard view, so the ref goes through the emitted layout
+    b_log = b.T if d.b_t else b
+    assert np.array_equal(a[:, :d.K] @ b_log[:d.K, :d.N], d.ref), "ref mismatch"
 
 def add_dim_args(parser):
     """common data dimensions argumets"""
@@ -218,7 +241,7 @@ def add_dim_args(parser):
     parser.add_argument("-N", type=p_int, default=1, help="cols of B")
     parser.add_argument("-K", type=p_int, default=1, help="reduction length")
     parser.add_argument("--lda", type=p_int, default=None, help="min row stride of A in elements, rounded up per type")
-    parser.add_argument("--ldb", type=p_int, default=None, help="min row stride of B in elements, rounded up per type, ignored at N = 1")
+    parser.add_argument("--ldb", type=p_int, default=None, help="min row stride of B in elements, rounded up per type; strides n by default (ignored at N = 1), k under --b_t")
     parser.add_argument("--max_bytes", type=p_int, default=MAX_BYTES)
     parser.add_argument("--seed", type=int, default=1, help="unique input seed")
     parser.add_argument("--no_overflow_check", action="store_true", help="let refs wrap int32 instead of bounding the operand ranges")

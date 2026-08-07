@@ -2,12 +2,13 @@
 
 """Shared codegen for the A(M x K) @ B(K x N) test family.
 
-Symlinked into each test dir; the Makefile supplies the shape via CLI:
-  dotv: -M 1 --types <10 combs>               --k_step 64 --ual
-  dotf: -M 4 --types int8 int8_int4 int8_int2 --k_step 16 --ual --out_buf y
+Symlinked into each test dir; the Makefile supplies the shape via CLI
 
-Emits one self-contained '#if defined(NF_*)' block per comb: the operands,
-the row stride, the reduction length, and the reference.
+Emits one self-contained '#if defined(NF_*)' block per comb:
+the operands, the row stride, the reduction length, and the reference
+
+--b_t and --c_t do the same thing to their respective matrices:
+flip which axis is contiguous in memory; neither touches the math
 """
 
 import argparse
@@ -39,6 +40,8 @@ parser.add_argument("--types", nargs="+", required=True, type=nf_comb, help="NF 
 parser.add_argument("--k_step", type=int, default=1, help="widest kernel K tile in elements (SIMD_UNROLL for dotv, K_STEP for dotf); K must be a multiple of it so the aligned target has no tail")
 parser.add_argument("--ual", action="store_true", help="also emit the unaligned companion length and its reference")
 parser.add_argument("--no_flatten", action="store_true", help="emit 2D arrays instead of flat pointer+stride ones")
+parser.add_argument("--b_t", action="store_true", help="store B as N rows of k-contiguous data instead of K rows of n-contiguous data, for a kernel that walks both operands along k; LDB then strides k and B's padding moves with it")
+parser.add_argument("--c_t", action="store_true", help="lay the outputs out as (N, M) instead of (M, N), for a kernel that writes C batch-major; layout only, the values are the same")
 parser.add_argument("--out_buf", nargs=2, default=None, metavar=("NAME", "INIT"), help="int32 destination buffer to emit, e.g. 'y poison'. INIT is 'poison' when the kernel owns every element (write-only, so a skipped or accumulating store is caught), or 'zero' when the kernel accumulates into it")
 args = parser.parse_args()
 
@@ -108,15 +111,17 @@ def emit_operand(name, packed, logical, t, dim_el, dim_2d, ld):
 
 def emit_out(name, arr, nf, align=None):
     """the M x N outputs: reference, or the poisoned destination buffer\n
-    follows --no_flatten with the operands, so that a 2D 'c' is never checked
-    against a flat 'ref'"""
+    --c_t transposes the layout, --no_flatten follows the operands"""
+    arr = np.asarray(arr).reshape(M, N)
+    arr = arr.T if args.c_t else arr
+    dim = ["N", "M"] if args.c_t else ["M", "N"]
     if args.no_flatten:
-        return np2c_2d_arr(
-            name, arr.reshape(M, N), nf=nf, dim=["M", "N"], align=align
-        )
+        return np2c_2d_arr(name, arr, nf=nf, dim=dim, align=align)
     return np2c_1d_arr(
-        name, [int(x) for x in arr.reshape(-1)], nf=nf, dim="M*N",
-        align=align, row_len=(N if N > 1 else None) # a column stays one line
+        name, [int(x) for x in arr.reshape(-1)], nf=nf,
+        dim=f"{dim[0]}*{dim[1]}", align=align,
+        # one row per line, so a single column stays on one line
+        row_len=(arr.shape[1] if arr.shape[1] > 1 else None)
     )
 
 def emit_ref(d, k):
@@ -129,11 +134,13 @@ code.append("#pragma once\n")
 code.append("#include <stdint.h>\n")
 code.append(f"#define M {M}")
 code.append(f"#define N {N}")
-code.append(f"#define K {K}\n")
+code.append(f"#define K {K}")
+# the outputs' inner dim, so a kernel taking an 'ldc' can be handed it; unpadded
+code.append(f"#define LDC {'M' if args.c_t else 'N'}\n")
 
 for i, (ta, tb) in enumerate(COMBS):
     d = cg.gen(
-        M, N, K, ta, tb, lda=args.lda, ldb=args.ldb,
+        M, N, K, ta, tb, lda=args.lda, ldb=args.ldb, b_t=args.b_t,
         max_bytes=args.max_bytes, seed_in=args.seed,
         overflow_check=(not args.no_overflow_check)
     )
@@ -142,15 +149,18 @@ for i, (ta, tb) in enumerate(COMBS):
     nf = ta if ta == tb else f"{ta}_{tb}"
     code.append(("#if " if not i else "#elif ") + f"defined(NF_{nf.upper()})")
     # both strides are per comb: tile size follows the type of each operand
-    # LDB is 1 at N == 1, where B is a contiguous K-vector
+    # LDB strides n, so it is 1 at N == 1 where B is a contiguous K-vector;
+    # under --b_t it strides k instead, and B's rows are the N of them
     code.append(f"#define LDA {d.lda}")
     code.append(f"#define LDB {d.ldb}")
 
+    b_dim = ["N", "LDB"] if args.b_t else ["K", "LDB"]
     code.append(emit_operand(
         "a", d.a, d.a_log, d.ta, dim_el="M*LDA", dim_2d=["M", "LDA"], ld=d.lda
     ))
     code.append(emit_operand(
-        "b", d.b, d.b_log, d.tb, dim_el="K*LDB", dim_2d=["K", "LDB"], ld=d.ldb
+        "b", d.b, d.b_sl, d.tb, dim_el=f"{b_dim[0]}*{b_dim[1]}",
+        dim_2d=b_dim, ld=d.ldb
     ))
     if args.out_buf:
         name, init = args.out_buf
@@ -174,7 +184,8 @@ for i, (ta, tb) in enumerate(COMBS):
     sa, sb = d.shift
     print(
         f"{nf:12s} a={n_bytes(M * d.lda, d.ta):5d}B "
-        f"b={n_bytes(K * d.ldb, d.tb):5d}B lda={d.lda:4d} ual={d.k_ual:4d} "
+        f"b={n_bytes(d.b_sl.shape[0] * d.ldb, d.tb):5d}B "
+        f"lda={d.lda:4d} ldb={d.ldb:4d} ual={d.k_ual:4d} "
         + ("full range" if not (sa or sb) else f"range >>{sa}/{sb} + inject")
     )
 
