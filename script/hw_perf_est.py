@@ -82,7 +82,8 @@ class perf:
     simd_dot_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_dot]
     simd_mul_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_mul] + \
         icfg.INST_T_SIMD_ARITH[icfg.k_simd_wmul]
-    simd_add_sub_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_add_sub]
+    simd_add_sub_inst_a = icfg.INST_T_SIMD_ARITH[icfg.k_simd_add_sub] + \
+        icfg.INST_T_SIMD_ARITH[icfg.k_simd_min_max]
     simd_arith_a = icfg.INST_T[icfg.k_simd_arith]
     simd_data_fmt_a = icfg.INST_T[icfg.k_simd_data_fmt]
     csr_inst_a = icfg.INST_T[icfg.k_csr]
@@ -96,7 +97,7 @@ class perf:
         #"mem_rd_port_contention", "mem_wr_port_contention",
         # pipeline latencies
         "jump_direct", "jump_indirect",
-        "mul", "div", "simd_dot", "simd_mul", #"simd_sdd_sub"
+        "mul", "div", "simd_dot", "simd_mul", "simd_add_sub",
         "dcache_load", #"dcache_store",
         "csr",
         # names
@@ -164,6 +165,7 @@ class perf:
         self.c_div.common_overhead = hwpm['div']['common_overhead']
         self.c_simd_dot = hwpm['simd_dot']
         self.c_simd_mul = hwpm['simd_mul']
+        self.c_simd_add_sub = hwpm['simd_add_sub']
         self.c_dc_load = hwpm['dcache_load']
         #self.c_dc_store = hwpm['dcache_store']
         self.c_csr = hwpm['csr']
@@ -295,6 +297,7 @@ class perf:
             "mul": (self.c_mul - 1),
             "simd_dot": (self.c_simd_dot - 1),
             "simd_mul": (self.c_simd_mul - 1),
+            "simd_add_sub": (self.c_simd_add_sub - 1),
         }
 
         fmt = lambda x: ','.join(x)
@@ -314,7 +317,7 @@ class perf:
             hazard_penalty['simd_mul'], fmt(self.simd_mul_inst_a)
         )
         self.hazards["simd_add_sub"], _ = find_hazards(
-            hazard_penalty['simd_mul'], fmt(self.simd_add_sub_inst_a)
+            hazard_penalty['simd_add_sub'], fmt(self.simd_add_sub_inst_a)
         )
 
         self.all_hazards = sum(self.hazards.values())

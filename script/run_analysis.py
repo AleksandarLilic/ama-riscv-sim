@@ -61,7 +61,7 @@ class icfg:
     k_simd_arith = "SIMD_ARITH"
     k_simd_data_fmt = "SIMD_DATA_FMT"
     k_simd_dot = "SIMD_DOT"
-    k_simd_add_sub = "SIMD_ADD_SUB"
+    k_simd_add_sub = "SIMD_ADD_SUB" # including qadd & qsub
     k_simd_min_max = "SIMD_MIN_MAX"
     k_simd_shift = "SIMD_SHIFT"
     k_simd_mul = "SIMD_MUL"
