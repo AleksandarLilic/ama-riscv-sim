@@ -1,7 +1,7 @@
 {
     "_common_args": ["USER_DEFINES=-DMHPM -DMHPM_TDA"],
 
-    "mlp": ["all"],
+    "mlp": [["all"], ["MATH_LIB_SIMD=1"]],
 
     "dhrystone": ["dhrystone"],
     "coremark": [["coremark"], ["ITERATIONS=1600"]],
