@@ -121,6 +121,10 @@ class perf:
 
         with open(inst_profile, 'r') as file:
             i_prof = json.load(file)
+
+        if i_prof['_profiled_instructions'] == 0:
+            raise ValueError("0 profiled instructions in the trace")
+
         for b in self.b_inst_a:
             if b in i_prof:
                 self._log_branches(i_prof[b])

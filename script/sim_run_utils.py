@@ -71,12 +71,8 @@ def parse_inst_counts(stdout: str):
 def is_pass(stdout: str) -> bool:
     return (SIM_PASS_STRING in stdout) or (SIM_EARLY_EXIT_STRING in stdout)
 
-def run_cmd(cmd, cwd, timeout=None) -> dict:
-    # one sim/perf invocation: capture output, survive spawn failure and hang
-    # Popen + start_new_session so a timeout can kill the whole process group
-    # (subprocess.run's timeout only kills the direct child - a perf-wrapped
-    # sim would keep the pipes open and block the post-kill read forever)
-    res = {
+def init_res():
+    return {
         "stdout": "",
         "stderr": "",
         "returncode": None,
@@ -84,6 +80,13 @@ def run_cmd(cmd, cwd, timeout=None) -> dict:
         "error": None, # None | "timeout" | "spawn"
         "error_msg": "", # set whenever the run is unusable (incl. rc != 0)
     }
+
+def run_cmd(cmd, cwd, timeout=None) -> dict:
+    # one sim/perf invocation: capture output, survive spawn failure and hang
+    # Popen + start_new_session so a timeout can kill the whole process group
+    # (subprocess.run's timeout only kills the direct child - a perf-wrapped
+    # sim would keep the pipes open and block the post-kill read forever)
+    res = init_res()
     t0 = time.perf_counter()
 
     # try running, if possible
