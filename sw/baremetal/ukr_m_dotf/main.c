@@ -5,6 +5,10 @@
 
 #include "test_arrays.h"
 
+#ifndef WARMUP
+#define WARMUP 1
+#endif
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -26,6 +30,9 @@ _Static_assert(N == 1, "dotf writes a single column of outputs");
 _Static_assert(LDA >= K, "row stride cannot be shorter than the reduction");
 
 void main(void) {
+    for (size_t i = 0; i < WARMUP; i++) {
+        FUNC(VEC_LEN, a, LDA, b, y);
+    }
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         FUNC(VEC_LEN, a, LDA, b, y);

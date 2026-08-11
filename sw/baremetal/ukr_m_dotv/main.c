@@ -4,6 +4,10 @@
 
 #include "test_arrays.h"
 
+#ifndef WARMUP
+#define WARMUP 1
+#endif
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -34,11 +38,15 @@ _Static_assert(0, "Unsupported number format: FUNC");
 
 void main(void) {
     int32_t result;
+    for (size_t i = 0; i < WARMUP; i++) {
+        result = FUNC(a, b, VEC_LEN);
+    }
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         result = FUNC(a, b, VEC_LEN);
     }
     PROF_STOP;
+
     if (result != ref[0]) {
         write_mismatch(result, ref[0], 1);
         fail();

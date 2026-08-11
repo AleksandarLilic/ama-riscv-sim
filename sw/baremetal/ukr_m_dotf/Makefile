@@ -1,4 +1,6 @@
-LOOPS := 10
+WARMUP ?= 1
+LOOPS ?= 1
+
 # types read (matrix, vector), so the narrow weight combs are <narrow>_int8
 TYPES := int8 int4_int8 int2_int8
 

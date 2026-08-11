@@ -5,6 +5,10 @@
 
 #include "test_arrays.h"
 
+#ifndef WARMUP
+#define WARMUP 1
+#endif
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -30,27 +34,38 @@
 _Static_assert(0, "Unsupported number format: FUNC");
 #endif
 
-// both panels are k-contiguous, which is the whole point of the layout
-_Static_assert(LDA >= K, "row stride of 'a' cannot be shorter than the reduction");
-_Static_assert(LDB >= K, "row stride of 'b' cannot be shorter than the reduction");
+// both panels are k-contiguous
+_Static_assert(LDA >= K,
+    "row stride of 'a' cannot be shorter than the reduction"
+);
+_Static_assert(LDB >= K,
+    "row stride of 'b' cannot be shorter than the reduction"
+);
 // test uses same orientation as MLP so C is (N, M) and its leading dim is M;
 // catches a header gen without --c_t, where LDC would be N
 _Static_assert(LDC == M, "c_t = true: the outputs' leading dim is M");
-// tails/remainders, remove if used test is used for throughput runs
+
+#ifndef NO_TAILS
+// tails/remainders
 _Static_assert(M % KER_MR,
-    "M must not be a multiple of MR: the m % MR remainder is what gemm handles"
+    "M must not be a multiple of MR - gemm handles m % MR remainder"
 );
 _Static_assert(N % KER_NR,
-    "N must not be a multiple of NR: the n % NR remainder is what gemm handles"
+    "N must not be a multiple of NR - gemm handles n % NR remainder"
 );
 _Static_assert((M > KER_MR) && (N > KER_NR),
-    "shape must leave at least one full MR x NR block besides the edges"
+    "shape must leave at least one full MR x NR block"
 );
+#endif
+
 // the n % NR edge is handed to dotf from inside an MR-blocked loop,
 // so the two blockings cannot drift apart
 _Static_assert(KER_MR == EDGE_MR, "gemm MR and dotf MR must match");
 
 void main(void) {
+    for (size_t i = 0; i < WARMUP; i++) {
+        FUNC(M, N, VEC_LEN, a, LDA, b, LDB, c, LDC, true);
+    }
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         // k is unconstrained, gemm hands it to the kernel which owns its tail

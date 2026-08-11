@@ -141,6 +141,8 @@ code.append(f"#define N {N}")
 code.append(f"#define K {K}")
 # the outputs' inner dim, so a kernel taking an 'ldc' can be handed it; unpadded
 code.append(f"#define LDC {'M' if args.c_t else 'N'}\n")
+if (M == N == K):
+    code.append(f"#define NO_TAILS\n")
 
 for i, (ta, tb) in enumerate(COMBS):
     d = cg.gen(

@@ -1,4 +1,6 @@
-LOOPS := 10
+WARMUP ?= 1
+LOOPS ?= 1
+
 TYPES := int2 int4 int8 int16 int16_int8 int16_int4 int16_int2 int8_int4 int8_int2 int4_int2
 
 ARR_LEN := 512

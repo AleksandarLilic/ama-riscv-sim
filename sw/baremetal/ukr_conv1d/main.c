@@ -2,6 +2,10 @@
 #include "common.h"
 #include "common_math.h"
 
+#ifndef WARMUP
+#define WARMUP 1
+#endif
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -78,19 +82,24 @@ void conv1d_int16(
 }
 
 void main(void) {
-    for (size_t i = 0; i < LOOPS; i++) {
-        PROF_START;
+     for (size_t i = 0; i < WARMUP; i++) {
         //SCP_LCL(in);
         conv1d_int16(in, IN_LEN, filter, F_LEN, out);
         //SCP_REL(in);
-        PROF_STOP;
+    }
+    PROF_START;
+    for (size_t i = 0; i < LOOPS; i++) {
+        //SCP_LCL(in);
+        conv1d_int16(in, IN_LEN, filter, F_LEN, out);
+        //SCP_REL(in);
+    }
+    PROF_STOP;
 
-        for (size_t j = 0; j < OUT_LEN; j++) {
-            //printf("out[%d] = %d, ref[%d] = %d\n", j, out[j], j, ref[j]);
-            if (out[j] != ref[j]) {
-                write_mismatch(out[j], ref[j], j+1); // +1 to avoid writing 0
-                fail();
-            }
+    for (size_t j = 0; j < OUT_LEN; j++) {
+        //printf("out[%d] = %d, ref[%d] = %d\n", j, out[j], j, ref[j]);
+        if (out[j] != ref[j]) {
+            write_mismatch(out[j], ref[j], j+1); // +1 to avoid writing 0
+            fail();
         }
     }
     pass();

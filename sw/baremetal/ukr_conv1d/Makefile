@@ -1,4 +1,6 @@
-LOOPS := 1
+WARMUP ?= 1
+LOOPS ?= 1
+
 TYPES := int16 # int4 int8 int16 int16_int8 int16_int4 int8_int4 int8_int2
 LENGTHS := small large
 

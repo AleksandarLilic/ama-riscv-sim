@@ -5,6 +5,10 @@
 
 #include "test_arrays.h"
 
+#ifndef WARMUP
+#define WARMUP 1
+#endif
+
 #ifndef LOOPS
 #define LOOPS 1
 #endif
@@ -26,12 +30,15 @@ _Static_assert(0, "Unsupported number format: FUNC");
 
 _Static_assert(N == 1, "gemv writes a single column of outputs");
 _Static_assert(LDA >= K, "row stride cannot be shorter than the reduction");
-// the remainder is the whole point of level-2, so refuse a shape that skips it
+// tails/remainders, remove if used test is used for throughput runs
 _Static_assert(M % KER_MR,
-    "M must not be a multiple of MR: the m % MR remainder is what gemv handles"
+    "M must not be a multiple of MR - gemv handles m % MR remainder"
 );
 
 void main(void) {
+    for (size_t i = 0; i < WARMUP; i++) {
+        FUNC(M, VEC_LEN, a, LDA, b, y);
+    }
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         // k is unconstrained, gemv hands it to the kernel which owns its tail

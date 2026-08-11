@@ -1,3 +1,5 @@
+WARMUP ?= 1
+LOOPS ?= 1
 
 VEC_ONLY ?= 1 # not every (type x op) combination has vectorized flavor
 NFS := uint8 int8 uint16 int16
@@ -7,8 +9,6 @@ ifeq ($(strip $(VEC_ONLY)), 0)
 NFS += uint32 int32 uint64 int64 float32 float64
 OPS += div
 endif
-
-LOOPS := 1
 
 -include parametrize.mk
 parametrize.mk: ../parametrize.py
