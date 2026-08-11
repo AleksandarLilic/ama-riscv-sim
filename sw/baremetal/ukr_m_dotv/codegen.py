@@ -38,6 +38,7 @@ parser = argparse.ArgumentParser()
 cg.add_dim_args(parser)
 parser.add_argument("--types", nargs="+", required=True, type=nf_comb, help="NF tokens, passed straight from the Makefile's TYPES")
 parser.add_argument("--k_step", type=int, default=1, help="widest kernel K tile in elements (SIMD_UNROLL for dotv, K_STEP for dotf); K must be a multiple of it so the aligned target has no tail")
+parser.add_argument("--skip_k_limit_check", action="store_true", help="don't enforce K-limit check")
 parser.add_argument("--ual", action="store_true", help="also emit the unaligned companion length and its reference")
 parser.add_argument("--no_flatten", action="store_true", help="emit 2D arrays instead of flat pointer+stride ones")
 parser.add_argument("--b_t", action="store_true", help="store B as N rows of k-contiguous data instead of K rows of n-contiguous data, for a kernel that walks both operands along k; LDB then strides k and B's padding moves with it")
@@ -62,11 +63,14 @@ COMBS = args.types
 # all are powers of 2, so max == lcm
 EL_TILE = max(el_per_word(nkey(t)) for c in COMBS for t in c)
 K_TILE = max(EL_TILE, args.k_step)
+if K % K_TILE:
+    sys.exit(f"K {K} has to be a multiple of {K_TILE}")
+
 # 2x: the unaligned flavor still gets at least one full tile for simd
-if (K % K_TILE) or (K < (2 * K_TILE)):
+if not args.skip_k_limit_check and (K < (2 * K_TILE)):
     sys.exit(
-        f"K {K} has to be a multiple of {K_TILE}, and at least "
-        f"{2 * K_TILE} (element tile {EL_TILE}, kernel k_step {args.k_step})"
+        f"K {K} has to be at least {2 * K_TILE} "
+        f"(element tile {EL_TILE}, kernel k_step {args.k_step})"
     )
 
 # at N == 1 'B' is a contiguous K-vector with ldb 1,
