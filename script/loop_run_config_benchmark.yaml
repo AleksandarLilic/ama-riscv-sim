@@ -4,13 +4,16 @@ isa_sim_args:
   - --prof_pc_start 80000000
   - -t
   - --bp2 global
-  - --no_callstack
+  - --prof_show
+  - --uart_show
+  #- --no_callstack
 
 # absolute (literal) or repo-root-relative .elf paths
 workloads:
   - sw/baremetal/coremark/coremark.elf
   - sw/baremetal/dhrystone/dhrystone.elf
   - sw/baremetal/stream_int/stream.elf
+  # embench
   - sw/baremetal/embench/aha-mont64/embench.elf
   - sw/baremetal/embench/crc32/embench.elf
   - sw/baremetal/embench/cubic/embench.elf
@@ -33,9 +36,11 @@ workloads:
   - sw/baremetal/embench/tarfind/embench.elf
   - sw/baremetal/embench/ud/embench.elf
   - sw/baremetal/embench/wikisort/embench.elf
+  # mlp
   - sw/baremetal/mlp/w8a8.elf
   - sw/baremetal/mlp/w4a8.elf
   - sw/baremetal/mlp/w2a8.elf
+  # ustress
   - sw/baremetal/ustress/branch_direct/ustress.elf
   - sw/baremetal/ustress/branch_indirect/ustress.elf
   - sw/baremetal/ustress/call_return/ustress.elf

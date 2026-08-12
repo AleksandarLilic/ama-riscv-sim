@@ -1,0 +1,64 @@
+
+# mathlib microkernel tests config
+
+isa_sim_args:
+  #- --prof_pc_start 80000000 # build instead w/ USER_DEFINES=-DUSE_PROF_MARKERS
+  - -t
+  - --bp2 global
+  - --prof_show
+  - --uart_show
+
+workloads:
+  # conv
+  - sw/baremetal/ukr_conv1d/int16_small.elf
+  - sw/baremetal/ukr_conv1d/int16_large.elf
+  # vector arith
+  - sw/baremetal/ukr_m_arithv/add_int16.elf
+  - sw/baremetal/ukr_m_arithv/add_int8.elf
+  - sw/baremetal/ukr_m_arithv/add_uint16.elf
+  - sw/baremetal/ukr_m_arithv/add_uint8.elf
+  - sw/baremetal/ukr_m_arithv/mul_int16.elf
+  - sw/baremetal/ukr_m_arithv/mul_int8.elf
+  - sw/baremetal/ukr_m_arithv/mul_uint16.elf
+  - sw/baremetal/ukr_m_arithv/mul_uint8.elf
+  - sw/baremetal/ukr_m_arithv/sub_int16.elf
+  - sw/baremetal/ukr_m_arithv/sub_int8.elf
+  - sw/baremetal/ukr_m_arithv/sub_uint16.elf
+  - sw/baremetal/ukr_m_arithv/sub_uint8.elf
+  # vector dot
+  - sw/baremetal/ukr_m_dotv/int16_al.elf
+  - sw/baremetal/ukr_m_dotv/int8_al.elf
+  - sw/baremetal/ukr_m_dotv/int4_al.elf
+  - sw/baremetal/ukr_m_dotv/int2_al.elf
+  - sw/baremetal/ukr_m_dotv/int16_int8_al.elf
+  - sw/baremetal/ukr_m_dotv/int16_int4_al.elf
+  - sw/baremetal/ukr_m_dotv/int16_int2_al.elf
+  - sw/baremetal/ukr_m_dotv/int8_int4_al.elf
+  - sw/baremetal/ukr_m_dotv/int8_int2_al.elf
+  - sw/baremetal/ukr_m_dotv/int4_int2_al.elf
+  # fused vector dot
+  - sw/baremetal/ukr_m_dotf/int8_al.elf
+  - sw/baremetal/ukr_m_dotf/int4_int8_al.elf
+  - sw/baremetal/ukr_m_dotf/int2_int8_al.elf
+  # vector-matrix
+  - sw/baremetal/ukr_m_gemv/int8_al.elf
+  - sw/baremetal/ukr_m_gemv/int4_int8_al.elf
+  - sw/baremetal/ukr_m_gemv/int2_int8_al.elf
+  # matrix-matrix
+  - sw/baremetal/ukr_m_gemm/int8_al.elf
+  - sw/baremetal/ukr_m_gemm/int4_int8_al.elf
+  - sw/baremetal/ukr_m_gemm/int2_int8_al.elf
+  # matmul with transpose options
+  - sw/baremetal/matmul/int16_load_b.elf
+  - sw/baremetal/matmul/int16_tiling.elf
+  - sw/baremetal/matmul/int16_txp_b.elf
+  - sw/baremetal/matmul/int8_load_b.elf
+  - sw/baremetal/matmul/int8_tiling.elf
+  - sw/baremetal/matmul/int8_txp_b.elf
+  # genric nested loops matmul
+  - sw/baremetal/matmul_generic/int8_kmn.elf
+  - sw/baremetal/matmul_generic/int8_knm.elf
+  - sw/baremetal/matmul_generic/int8_mkn.elf
+  - sw/baremetal/matmul_generic/int8_mnk.elf
+  - sw/baremetal/matmul_generic/int8_nkm.elf
+  - sw/baremetal/matmul_generic/int8_nmk.elf
