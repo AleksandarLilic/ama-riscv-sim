@@ -6,7 +6,7 @@ LOOPS ?= 1
 TYPES := int8 int4_int8 int2_int8
 
 SQUARE ?= 0
-CODEGEN_FLAGS =
+CODEGEN_FLAGS = --max_bytes 98304 # 96K for SQUARE=96, .text is up to ~6K
 
 ifeq ($(strip $(SQUARE)), 0)
 ARR_LEN := 256

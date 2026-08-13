@@ -82,11 +82,13 @@ void conv1d_int16(
 }
 
 void main(void) {
+    GLOBAL_SYMBOL("warmup");
      for (size_t i = 0; i < WARMUP; i++) {
         //SCP_LCL(in);
         conv1d_int16(in, IN_LEN, filter, F_LEN, out);
         //SCP_REL(in);
     }
+    GLOBAL_SYMBOL("bench");
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         //SCP_LCL(in);
@@ -95,6 +97,7 @@ void main(void) {
     }
     PROF_STOP;
 
+    GLOBAL_SYMBOL("check");
     for (size_t j = 0; j < OUT_LEN; j++) {
         //printf("out[%d] = %d, ref[%d] = %d\n", j, out[j], j, ref[j]);
         if (out[j] != ref[j]) {

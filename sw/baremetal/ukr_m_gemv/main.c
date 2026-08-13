@@ -36,9 +36,11 @@ _Static_assert(M % KER_MR,
 );
 
 void main(void) {
+    GLOBAL_SYMBOL("warmup");
     for (size_t i = 0; i < WARMUP; i++) {
         FUNC(M, VEC_LEN, a, LDA, b, y);
     }
+    GLOBAL_SYMBOL("bench");
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         // k is unconstrained, gemv hands it to the kernel which owns its tail
@@ -46,6 +48,7 @@ void main(void) {
     }
     PROF_STOP;
 
+    GLOBAL_SYMBOL("check");
     for (size_t i = 0; i < M; i++) {
         CHECK(y[i], ref[i], i + 1); // +1 to avoid writing 0
     }

@@ -30,15 +30,18 @@ _Static_assert(N == 1, "dotf writes a single column of outputs");
 _Static_assert(LDA >= K, "row stride cannot be shorter than the reduction");
 
 void main(void) {
+    GLOBAL_SYMBOL("warmup");
     for (size_t i = 0; i < WARMUP; i++) {
         FUNC(VEC_LEN, a, LDA, b, y);
     }
+    GLOBAL_SYMBOL("bench");
     PROF_START;
     for (size_t i = 0; i < LOOPS; i++) {
         FUNC(VEC_LEN, a, LDA, b, y);
     }
     PROF_STOP;
 
+    GLOBAL_SYMBOL("check");
     for (size_t i = 0; i < M; i++) {
         CHECK(y[i], ref[i], i + 1); // +1 to avoid writing 0
     }
