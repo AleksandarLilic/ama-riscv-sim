@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -74,10 +75,13 @@ def run_one(
 
     # only estimate for a passing run
     perf_est_res = init_res()
+    perf_est_core = 0
     if perf_est and status == "PASS":
-        perf_est_res = run_perf_est(
-            sim_out_dir(work_dir, app, sim_args), work_dir, timeout
-        )
+        out_dir = sim_out_dir(work_dir, app, sim_args)
+        perf_est_res = run_perf_est(out_dir, work_dir, timeout)
+        with open(os.path.join(out_dir, "hw_stats_perf_est.json"), "r") as f:
+            hws = json.load(f)
+            perf_est_core = hws['core']
 
     if save_log:
         with open(os.path.join(work_dir, f"{name}.log"), "w") as f:
@@ -97,6 +101,7 @@ def run_one(
         "error_msg": res["error_msg"],
         "fail_out": fail_out,
         "perf_est_runtime": perf_est_res['elapsed_s'],
+        "perf_est_core": perf_est_core,
         "perf_est_error_msg": perf_est_res['error_msg'],
     }
 
@@ -134,10 +139,17 @@ def main():
             results.append(r)
             pe_str = ""
             if args.perf_est:
-                pe_str = f";  (perf_est: {r['perf_est_runtime']:.2f}s"
+                pe_str = f";\tperf_est: ({r['perf_est_runtime']:.2f}s"
                 if r['perf_est_error_msg']:
                     pe_str += ", failed"
                 pe_str += ")"
+                hws = r['perf_est_core']
+                pe_str += f"  Cycles: {hws.get('cycles', 0)}"
+                pe_str += f", IPC: {hws.get('ipc', 0):.3f}"
+                pe_str += f", L1 empty cycles: FE: {hws.get('stall_fe', 0)}"
+                pe_str += f", BE: {hws.get('stall_be', 0)}"
+                pe_str += f", Lost: {hws.get('bad_spec', 0)}"
+
             print(f"{INDENT}[{r['status']}] {r['name']:<{slm}} "
                   f"  ({r['runtime']:.2f}s)  {r['insts']}{pe_str}")
 
