@@ -1,46 +1,40 @@
-"""Data generation for the A(M × K) @ B(K × N) -> ref(M × N) family.
+"""Data generation for the A(M × K) @ B(K × N) -> ref(M × N) family
 
 Every dot-shaped test here is that product with dimensions:
     dotv M=1 N=1 | dotf M=MR N=1 | gemv M=m N=1 | gemm M,N,K
 
-K is the inner/reduction dim.
-A is row-major with row stride 'lda' in elements (>= K);
+K is the inner/reduction dim
+A is row-major with row stride 'lda' in elements (>= K)
 columns [K, lda) are padding no correct kernel reads
-At N == 1, B is a contiguous K-vector.
+at N == 1, B is a contiguous K-vector
 
-'b_t' flips only B's storage layout, never the math: the reference is
-a[:, :K] @ b[:K, :N] either way
-It picks which axis of B is contiguous, and therefore which one 'ldb' strides
+'b_t' flips only B's storage layout, not the math:
+the reference is `a[:, :K] @ b[:K, :N]` either way
+it picks which axis of B is contiguous, and therefore which one 'ldb' strides
 and where B's padding lands:
     b_t=0: K rows of n-contiguous data, ldb strides n, padding in [N, ldb)
     b_t=1: N rows of k-contiguous data, ldb strides k, padding in [K, ldb)
 
-tests keep their own sweep list, #if/#define emission and output filename;
+tests keep their own sweep list, #if/#define and output filename;
 this module never emits C
 """
 
-import argparse
 import random
 import zlib
 from dataclasses import dataclass
 
 import numpy as np
-from codegen_common import (NUM, el_per_byte, el_per_word, n_bytes, nkey,
-                            pack_narrow, rnd_gen_2d_arr, unpack_narrow)
+from codegen_common import (MAX_BYTES, NUM, _p_int, add_common_args, draw_rnd,
+                            el_per_byte, el_per_word, n_bytes, nkey,
+                            pack_lanes, row_stride, unpack_lanes)
 
 INT32_MIN, INT32_MAX = -2**31, 2**31 - 1
-MAX_BYTES = 64 * 1024 # default total size in B, mostly dcache size driven
 INJECT_EVERY = 24 # 1 in N elements carries an injected high-magnitude value
 
 # local helpers
 def _max_mag(t):
     """get the abs max value: -MIN for int, MAX for uint"""
     return max(-NUM[nkey(t)]["min"], NUM[nkey(t)]["max"])
-
-def _row_stride(k, t, ld_min=None):
-    """>= k, rounded up so every row starts word-aligned for this type"""
-    q = el_per_word(nkey(t))
-    return ((max(k, ld_min or 0) + q - 1) // q) * q
 
 def _unaligned_k(K, ta, tb):
     """largest k < K on a storage-byte boundary for both types: the 'ual'
@@ -67,21 +61,6 @@ def _shift(K, ta, tb, n_pairs):
             raise RuntimeError(f"cannot bound {ta}x{tb} at K={K}")
     return sa, sb
 
-def _draw(rows, ld, used, t, shift):
-    """draws random values in the range [min >> shift, max >> shift]
-    for the first used columns, and [min, max] for the padding"""
-    v = NUM[nkey(t)]
-    out = np.zeros((rows, ld), dtype=np.int64)
-    out[:, :used] = rnd_gen_2d_arr(
-        (v["min"] >> shift), (v["max"] >> shift), rows, used, np.int64
-    )
-    if ld > used:
-        # padding, out of range values are preferred since they are never read
-        out[:, used:] = rnd_gen_2d_arr(
-            v["min"], v["max"], rows, (ld - used), np.int64
-        )
-    return out
-
 def _upper_band(t, shift):
     """magnitude in [shrunk_clamp, max] (top of type), random sign"""
     v = NUM[nkey(t)]
@@ -105,28 +84,11 @@ def _inject(a_log, b_log, K, ta, tb, sa, sb, n_pairs):
     samples = min(n_pairs, len(starts))
     for j in sorted(random.sample(starts, samples)):
         bw = _upper_band(tb, sb)
-        b_log[j, :] = b_log[j + 1, :] = bw # match the value on b, so a cancels
+        b_log[j, :] = b_log[j + 1, :] = bw # match the value on B, so A cancels
         for i in range(a_log.shape[0]):
             v = _upper_band(ta, sa)
             a_log[i, j] = v
             a_log[i, j + 1] = -(v - (1 if v > 0 else -1)) # bump v by 1 toward 0
-
-def _pack_as_1d(log, t):
-    v = NUM[nkey(t)]
-    flat = log.reshape(-1)
-    if "narrow_bits" in v:
-        return pack_narrow(flat, v["narrow_bits"]).astype(v["nf"])
-    return flat.astype(v["nf"])
-
-def _unpack_to_2d(packed, t, rows, ld):
-    v = NUM[nkey(t)]
-    if "narrow_bits" in v:
-        flat = unpack_narrow(
-            packed, v["narrow_bits"], np.issubdtype(v["nf"], np.signedinteger)
-        )
-    else:
-        flat = packed
-    return np.asarray(flat, dtype=np.int64).reshape(rows, ld)
 
 # datagen
 @dataclass
@@ -146,12 +108,7 @@ class data:
     k_ual: int # largest k < K on a byte boundary, for the 'ual' companion ref
     ta: str
     tb: str
-
-    @property
-    def b_t(self):
-        """the 'b_t' gen() was called with:
-        b_sl is a transposed view of b_log"""
-        return self.b_log is not self.b_sl
+    b_t: bool # storage layout of B: b_sl is a transposed view of b_log when set
 
     def ref_at(self, k):
         """reference for a shorter reduction, e.g. the 'ual' length"""
@@ -168,13 +125,13 @@ def gen(
     if K % q:
         raise ValueError(f"K={K} must be a multiple of {q} for {ta}/{tb}")
 
-    lda = _row_stride(K, ta, lda)
+    lda = row_stride(K, ta, lda)
     # 'ldb' strides whichever axis is the slow one, so its meaning follows b_t
     if b_t:
-        ldb = _row_stride(K, tb, ldb)
+        ldb = row_stride(K, tb, ldb)
         b_rows, b_used = N, K
     else:
-        ldb = 1 if (N == 1) else _row_stride(N, tb, ldb)
+        ldb = 1 if (N == 1) else row_stride(N, tb, ldb)
         b_rows, b_used = K, N
     data_req = {
         "a": n_bytes(M * lda, ta),
@@ -197,10 +154,9 @@ def gen(
     n_pairs = max(1, K // (2 * INJECT_EVERY))
     sa, sb = _shift(K, ta, tb, n_pairs) if overflow_check else (0, 0)
 
-    a_log = _draw(M, lda, K, ta, sa)
+    a_log = draw_rnd(M, lda, K, ta, sa)
     # everything downstream reads b in (k, n) order;
-    # '.T' is a view, so injecting through it lands in the storage layout also
-    b_sl = _draw(b_rows, ldb, b_used, tb, sb)
+    b_sl = draw_rnd(b_rows, ldb, b_used, tb, sb)
     b_log = b_sl.T if b_t else b_sl
     if sa or sb: # put the wide bits back, only if originally shifted down
         _inject(a_log, b_log, K, ta, tb, sa, sb, n_pairs)
@@ -213,16 +169,16 @@ def gen(
         )
 
     return data(
-        _pack_as_1d(a_log, ta), _pack_as_1d(b_sl, tb),
+        pack_lanes(a_log, ta), pack_lanes(b_sl, tb),
         a_log, b_log, b_sl, lda, ldb,
-        ref, (sa, sb), M, N, K, _unaligned_k(K, ta, tb), ta, tb
+        ref, (sa, sb), M, N, K, _unaligned_k(K, ta, tb), ta, tb, b_t
     )
 
 def self_check(d):
     # re-derive the ref from the storage actually emitted:
     # cheap check catching only packing, stride, and padding mistakes
-    a = _unpack_to_2d(d.a, d.ta, d.M, d.lda)
-    b = _unpack_to_2d(d.b, d.tb, d.b_sl.shape[0], d.ldb)
+    a = unpack_lanes(d.a, d.ta).reshape(d.M, d.lda)
+    b = unpack_lanes(d.b, d.tb).reshape(d.b_sl.shape[0], d.ldb)
     assert np.array_equal(a, d.a_log), f"{d.ta}: 'a' does not round-trip"
     assert np.array_equal(b, d.b_sl), f"{d.tb}: 'b' does not round-trip"
     # back to standard view, so the ref goes through the emitted layout
@@ -230,18 +186,12 @@ def self_check(d):
     assert np.array_equal(a[:, :d.K] @ b_log[:d.K, :d.N], d.ref), "ref mismatch"
 
 def add_dim_args(parser):
-    """common data dimensions argumets"""
-    def p_int(s):
-        v = int(s)
-        if v < 1:
-            raise argparse.ArgumentTypeError(f"{v}: must be >= 1")
-        return v
-
+    """dimensions of the A(M x K) @ B(K x N) flavor"""
+    p_int = _p_int
     parser.add_argument("-M", type=p_int, default=1, help="rows of A / outputs")
     parser.add_argument("-N", type=p_int, default=1, help="cols of B")
     parser.add_argument("-K", type=p_int, default=1, help="reduction length")
     parser.add_argument("--lda", type=p_int, default=None, help="min row stride of A in elements, rounded up per type")
     parser.add_argument("--ldb", type=p_int, default=None, help="min row stride of B in elements, rounded up per type; strides n by default (ignored at N = 1), k under --b_t")
-    parser.add_argument("--max_bytes", type=p_int, default=MAX_BYTES)
-    parser.add_argument("--seed", type=int, default=1, help="unique input seed")
     parser.add_argument("--no_overflow_check", action="store_true", help="let refs wrap int32 instead of bounding the operand ranges")
+    add_common_args(parser)

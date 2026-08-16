@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-"""Shared codegen for the A(M x K) @ B(K x N) test family.
+"""Shared codegen for the A(M x K) @ B(K x N) test family
 
-Symlinked into each test dir; the Makefile supplies the shape via CLI
+symlinked into each test dir; the Makefile supplies the shape via CLI
 
 Emits one self-contained '#if defined(NF_*)' block per comb:
 the operands, the row stride, the reduction length, and the reference
@@ -22,7 +22,6 @@ import codegen_gemm as cg
 from codegen_common import *
 
 OUT = "test_arrays.h"
-ALIGN = 4 # word loads on the SIMD/LOAD_OPT paths, -mstrict-align
 
 def nf_comb(tok):
     """'int8' -> (int8, int8); 'int16_int8' -> (int16, int8).
@@ -78,39 +77,10 @@ if not args.skip_k_limit_check and (K < (2 * K_TILE)):
 if args.no_flatten and (N == 1):
     sys.exit("--no_flatten needs N > 1, 'b' is a plain K-vector at N == 1")
 
-def emit_operand(name, packed, logical, t, dim_el, dim_2d, ld):
-    """flat 'pointer + stride' by default, 2D with --no_flatten\n
-    sub-byte types emitted packed, logical lanes kept alongside as a comment"""
-    value = NUM[t]
-    is_narrow = "narrow_bits" in value
-    # C entries per row, which is the storage count, not the logical one;
-    # <= 1 means there is no row worth breaking on, e.g. 'b' as a contiguous
-    # K-vector at N == 1, where ldb is 1
-    row_len = ld // el_per_byte(t)
-    row_len = row_len if (row_len > 1) else None
-
-    dim_2d_packed = [dim_2d[0], storage_dim(dim_2d[1], t)]
-    if args.no_flatten:
-        if not is_narrow:
-            return np2c_2d_arr(
-                name, logical, nf=value["ctype"], dim=dim_2d_packed, align=ALIGN
-            )
-        # a packed row is always a whole number of bytes, so the flat packing
-        # reshapes into rows as is - no lane straddles a row boundary
-        rows, per_row = logical.shape[0], (ld // el_per_byte(t))
-        return np2c_2d_arr_narrow(
-            name, logical, packed.reshape(rows, per_row), nf=value["ctype"],
-            dim=dim_2d, dim_packed=dim_2d_packed, align=ALIGN
-        )
-
-    if not is_narrow:
-        return np2c_1d_arr(
-            name, packed, nf=value["ctype"], dim=storage_dim(dim_el, t),
-            align=ALIGN, row_len=row_len
-        )
-    return np2c_1d_arr_narrow(
-        name, logical.reshape(-1), packed, nf=value["ctype"], dim=dim_el,
-        dim_packed=storage_dim(dim_el, t), align=ALIGN, row_len=row_len
+def emit_operand(name, packed, t, dim_el, dim_2d, ld):
+    return emit_panel(
+        name, packed, t, dim_el, dim_2d, ld,
+        align=ALIGN, flatten=(not args.no_flatten)
     )
 
 def emit_out(name, arr, nf, align=None):
@@ -162,10 +132,10 @@ for i, (ta, tb) in enumerate(COMBS):
 
     b_dim = ["N", "LDB"] if args.b_t else ["K", "LDB"]
     code.append(emit_operand(
-        "a", d.a, d.a_log, d.ta, dim_el="M*LDA", dim_2d=["M", "LDA"], ld=d.lda
+        "a", d.a, d.ta, dim_el="M*LDA", dim_2d=["M", "LDA"], ld=d.lda
     ))
     code.append(emit_operand(
-        "b", d.b, d.b_sl, d.tb, dim_el=f"{b_dim[0]}*{b_dim[1]}",
+        "b", d.b, d.tb, dim_el=f"{b_dim[0]}*{b_dim[1]}",
         dim_2d=b_dim, ld=d.ldb
     ))
     if args.out_buf:

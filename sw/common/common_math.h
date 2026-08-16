@@ -123,46 +123,16 @@ int32_t m_dotv_i8_i2(
 int32_t m_dotv_i4_i2(
     const int8_t* a, const int8_t* b, const size_t len);
 
-#ifdef __riscv_xsimd
-// TODO: add scalar versions, currently only supported by SIMD
-// and also to move to dedicated .h/.c
-
-void m_txp_2x2_i16(
-    const size_t b_cols,
-    const int16_t b[][b_cols], // pointer to an array of b_cols el, (*b)[b_cols]
-    const size_t k, const size_t n,
-    int16x4_t* bs_t16);
-
-void m_txp_4x4_i8(
-    const size_t b_cols,
-    const int8_t b[][b_cols],
-    const size_t k, const size_t n,
-    int8x8_t* bs_t16_02, int8x8_t* bs_t16_13);
-
-#endif
-
 // -----------------------------------------------------------------------------
 // level-1f: fused dot products
 // -----------------------------------------------------------------------------
 // m_dotf_<ta>_<tx>_mr<MR> computes MR dot products sharing one x vector:
 //
-//   y[i] = sum_{j<k} a[i*lda + j] * x[j],  i in [0, MR)
+//   y[i] = sum_{p<k} a[i*lda + p] * x[p],  i in [0, MR)
 //
 // the type suffixes are (matrix, vector),
 // which is the reverse of dotv's (wide, narrow):
 // the same operand pair is m_dotv_i8_i4 but m_dotf_i4_i8
-//
-// 'a' is the MR-row matrix and is loaded MR times per step;
-// 'x' is the shared vector and is loaded once;
-// 'lda' is in logical elements, not storage bytes, for every type;
-//
-// kernel-private K info:
-//   K_ATOMIC  smallest number of logical k elements consumable without a
-//             partial-word access:
-//             dot width (SIMD), load slice (LOAD_OPT), packing of 'a' (scalar)
-//   K_UNROLL  K_ATOMICs per inner iteration
-//   K_STEP    K_ATOMIC * K_UNROLL, the inner-loop stride
-//
 // -----------------------------------------------------------------------------
 
 void m_dotf_i8_i8_mr4(
@@ -176,9 +146,7 @@ void m_dotf_i2_i8_mr4(
     const int8_t* x, int32_t* y);
 
 // MR selection
-//
 // note the +-2048 lw immediate max when raising it:
-
 // at MR=4, lda=256 the largest row offset is 780 for i8 (256*3+12),
 // but MR=8, lda=512 is 3596, and would fall back to extra pointer bumps
 // calc: (lda*(MR-1) + 4*(UNROLL-1))
@@ -204,22 +172,7 @@ _Static_assert(
 );
 
 // -----------------------------------------------------------------------------
-// level-2: matrix-vector product
-// -----------------------------------------------------------------------------
-// m_gemv_<ta>_<tx> computes m dot products sharing one x vector:
-//
-//   y[i] = sum_{j<k} a[i*lda + j] * x[j],  i in [0, m)
-//
-// plain y = A*x: row-major 'a', no transpose, and no alpha/beta, so 'y' is
-// write-only - the caller never pre-zeroes it and the kernel never reads it back
-//
-// type suffixes and 'lda' are level-1f's, above
-//
-// where the dimensions are owned:
-//   the kernel owns the ones it chose      -> k % K_STEP, so k is passed
-//                                             through untouched
-//   gemv owns the one the caller chose     -> m % MR, blocked by MR and then
-//                                             mopped up one row at a time
+// level-2: matrix-vector product driver
 // -----------------------------------------------------------------------------
 
 void m_gemv_i8_i8(
@@ -234,6 +187,15 @@ void m_gemv_i2_i8(
 
 // -----------------------------------------------------------------------------
 // level-3: matrix-matrix product ukr
+// -----------------------------------------------------------------------------
+// m_gemm_ukr_<ta>_<tx>_mr<MR>x<NR> computes MRxNR dot products
+//
+//   c[i*ldc + j] = sum_{p<k} a[i*lda + p] * b[j*ldb + p],
+//       i in [0, MR), j in [0, NR)
+//
+// the type suffixes are (matrix, vector),
+// which is the reverse of dotv's (wide, narrow):
+// the same operand pair is m_dotv_i8_i4 but m_dotf_i4_i8
 // -----------------------------------------------------------------------------
 
 void m_gemm_ukr_i8_i8_mr4x2(
@@ -315,6 +277,46 @@ void m_gemm_i2_i8(
     const int8_t* b, const size_t ldb,
     int32_t* c, const size_t ldc,
     const bool c_t);
+
+// -----------------------------------------------------------------------------
+// data formatting: single block transpose
+// -----------------------------------------------------------------------------
+// m_txp_<B>x<B>_<t> transposes one B x B block of t type:
+//
+//   c[j*ldc + i] = a[i*lda + j],  i, j in [0, B)
+//
+// -----------------------------------------------------------------------------
+
+void m_txp_2x2_i16(
+    const int16_t* a, const size_t lda, int16_t* c, const size_t ldc);
+void m_txp_4x4_i8(
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
+void m_txp_8x8_i4(
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
+void m_txp_16x16_i2(
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
+
+// -----------------------------------------------------------------------------
+// data formatting: block transpose driver
+// -----------------------------------------------------------------------------
+
+#define M_TXP_I16_BLK 2
+#define M_TXP_I8_BLK 4
+#define M_TXP_I4_BLK 8
+#define M_TXP_I2_BLK 16
+
+void m_txp_i16(
+    const size_t m, const size_t n,
+    const int16_t* a, const size_t lda, int16_t* c, const size_t ldc);
+void m_txp_i8(
+    const size_t m, const size_t n,
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
+void m_txp_i4(
+    const size_t m, const size_t n,
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
+void m_txp_i2(
+    const size_t m, const size_t n,
+    const int8_t* a, const size_t lda, int8_t* c, const size_t ldc);
 
 #ifdef __cplusplus
 }

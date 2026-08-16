@@ -55,6 +55,7 @@
     "ukr_m_dotf": [["all"], ["MATH_LIB_SIMD=1"]],
     "ukr_m_gemv": [["all"], ["MATH_LIB_SIMD=1"]],
     "ukr_m_gemm": [["all"], ["MATH_LIB_SIMD=1"]],
+    "ukr_m_txp": [["all"], ["MATH_LIB_SIMD=1"]],
     "ukr_conv1d": [["all"], ["MATH_LIB_SIMD=1"]],
 
     "sorting_num": [["all"], ["LOOPS=2"]],

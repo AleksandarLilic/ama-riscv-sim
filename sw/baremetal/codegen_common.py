@@ -1,3 +1,4 @@
+import argparse
 import random
 
 import numpy as np
@@ -116,6 +117,60 @@ def storage_dim(el_expr, t):
     shift = {16: 0, 8: 0, 4: 1, 2: 2}[bits_per_el(t)]
     return el_expr if not shift else f"({el_expr})>>{shift}"
 
+def row_stride(k, t, ld_min=None):
+    """>= k, rounded up so every row starts word-aligned for this type"""
+    q = el_per_word(nkey(t))
+    return ((max(k, ld_min or 0) + q - 1) // q) * q
+
+def draw_rnd(rows, ld, used, t, shift=0):
+    """draws random values in the range [min >> shift, max >> shift]
+    for the first used columns, and [min, max] for the padding"""
+    v = NUM[nkey(t)]
+    out = np.zeros((rows, ld), dtype=np.int64)
+    out[:, :used] = rnd_gen_2d_arr(
+        (v["min"] >> shift), (v["max"] >> shift), rows, used, np.int64
+    )
+    if ld > used:
+        # padding, out of range values are fine since they are never read
+        out[:, used:] = rnd_gen_2d_arr(
+            v["min"], v["max"], rows, (ld - used), np.int64
+        )
+    return out
+
+def pack_lanes(lanes, t):
+    """logical lanes -> storage entries, the representation change only\n
+    narrow types get bit-packed, others stay the same\n
+    output is flat because storage is a sequence; reshaping is the caller's"""
+    v = NUM[nkey(t)]
+    flat = np.asarray(lanes).reshape(-1)
+    if "narrow_bits" in v:
+        return pack_narrow(flat, v["narrow_bits"]).astype(v["nf"])
+    return flat.astype(v["nf"])
+
+def unpack_lanes(storage, t):
+    """storage entries -> logical lanes, flat; the inverse of pack_lanes"""
+    v = NUM[nkey(t)]
+    if "narrow_bits" in v:
+        return unpack_narrow(
+            storage, v["narrow_bits"], np.issubdtype(v["nf"], np.signedinteger)
+        )
+    return np.asarray(storage, dtype=np.int64)
+
+# shared codegen config and CLI
+MAX_BYTES = 64 * 1024 # default total size in B, mostly dcache size driven
+ALIGN = 4 # word loads on the SIMD/LOAD_OPT paths, -mstrict-align
+
+def _p_int(s):
+    v = int(s)
+    if v < 1:
+        raise argparse.ArgumentTypeError(f"{v}: must be >= 1")
+    return v
+
+def add_common_args(parser):
+    """what every datagen needs regardless of shape"""
+    parser.add_argument("--max_bytes", type=_p_int, default=MAX_BYTES)
+    parser.add_argument("--seed", type=int, default=1, help="unique input seed")
+
 POISON = {32: 0xDEADBEEF, 16: 0xBEEF, 8: 0xBE}
 
 def poison_arr(n_el, nf):
@@ -194,7 +249,7 @@ def rnd_gen_1d_arr_narrow(value, len, vmin=None, vmax=None):
 
 def np2c_1d_arr_narrow(
     var, arr, packed, nf="NF", dim="ARR_LEN", dim_packed=None,
-    align=None, suffix="", row_len=None
+    align=None, suffix="", row_len=None, add_comment=True
 ):
     """Emit '// actual var[dim] = {...}' (logical lanes) then the packed
     C array. dim_packed defaults to 'dim>>1' (4-bit) / 'dim>>2' (2-bit).
@@ -202,9 +257,13 @@ def np2c_1d_arr_narrow(
     per_byte = len(arr) // len(packed)
     if dim_packed is None:
         dim_packed = f"{dim}>>{per_byte // 2}"
-    comment = f"// actual {var}[{dim}] = " + \
-        "{" + ", ".join(str(int(x)) for x in arr) + "};"
-    return comment + "\n" + \
+
+    comment = ""
+    if add_comment:
+        comment = \
+            f"// actual {var}[{dim}] = " + \
+            "{" + ", ".join(str(int(x)) for x in arr) + "};" + "\n"
+    return comment + \
         np2c_1d_arr(
             var, packed, nf=nf, dim=dim_packed, align=align, suffix=suffix,
             row_len=row_len
@@ -212,7 +271,7 @@ def np2c_1d_arr_narrow(
 
 def np2c_2d_arr_narrow(
     var, arr, packed, nf="NF", dim=["A", "B"], dim_packed=None,
-    align=None, suffix=""
+    align=None, suffix="", add_comment=True
 ):
     """2D counterpart of np2c_1d_arr_narrow: '// actual var[d0][d1] = {...}'
     (logical lanes, one row per line) then the packed C array.
@@ -220,13 +279,61 @@ def np2c_2d_arr_narrow(
     per_byte = arr.shape[1] // packed.shape[1]
     if dim_packed is None:
         dim_packed = [dim[0], f"{dim[1]}>>{per_byte // 2}"]
-    comment = f"// actual {var}[{dim[0]}][{dim[1]}] = {{" + "".join(
-        "\n//     {" + ", ".join(str(int(x)) for x in row) + "}," for row in arr
-    ) + "\n// };"
-    return comment + "\n" + \
+
+    comment = ""
+    if add_comment:
+        comment = \
+            f"// actual {var}[{dim[0]}][{dim[1]}] = {{" + \
+            "".join("\n//     {" + \
+                ", ".join(str(int(x)) for x in row) + "}," for row in arr) + \
+            "\n// };" + "\n"
+
+    return comment + \
         np2c_2d_arr(
             var, packed, nf=nf, dim=dim_packed, align=align, suffix=suffix
         )
+
+def emit_panel(
+    name, packed, t, dim_el, dim_2d, ld,
+    align=None, flatten=True, qual="", add_comment=True
+):
+    """typed panel: flat 'pointer + stride' by default, 2D when not flatten\n
+    sub-byte types emitted packed, logical lanes kept alongside as comment"""
+    value = NUM[t]
+    nf = qual + value["ctype"]
+    is_narrow = "narrow_bits" in value
+    rows = (len(packed) * el_per_byte(t)) // ld
+    logical = unpack_lanes(packed, t).reshape(rows, ld)
+
+    dim_2d_packed = [dim_2d[0], storage_dim(dim_2d[1], t)]
+    if not flatten:
+        if not is_narrow:
+            return np2c_2d_arr(
+                name, logical, nf=nf, dim=dim_2d_packed, align=align
+            )
+        # a packed row is always a whole number of bytes, so the flat packing
+        # reshapes into rows as is - no lane straddles a row boundary
+        rows, per_row = logical.shape[0], (ld // el_per_byte(t))
+        return np2c_2d_arr_narrow(
+            name, logical, packed.reshape(rows, per_row), nf=nf,
+            dim=dim_2d, dim_packed=dim_2d_packed, align=align,
+            add_comment=add_comment
+        )
+
+    # storage entries per emitted line, purely for readability, 2d shape only
+    row_len = ld // el_per_byte(t)
+    row_len = row_len if (row_len > 1) else None
+
+    if not is_narrow:
+        return np2c_1d_arr(
+            name, packed, nf=nf, dim=storage_dim(dim_el, t),
+            align=align, row_len=row_len
+        )
+    return np2c_1d_arr_narrow(
+        name, logical.reshape(-1), packed, nf=nf, dim=dim_el,
+        dim_packed=storage_dim(dim_el, t), align=align, row_len=row_len,
+        add_comment=add_comment
+    )
 
 def finish_gen(code, header, add_assert=True):
     if add_assert:

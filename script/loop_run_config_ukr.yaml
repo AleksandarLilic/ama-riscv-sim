@@ -48,6 +48,11 @@ workloads:
   - sw/baremetal/ukr_m_gemm/int8_al.elf
   - sw/baremetal/ukr_m_gemm/int4_int8_al.elf
   - sw/baremetal/ukr_m_gemm/int2_int8_al.elf
+  # transpose
+  - sw/baremetal/ukr_m_txp/int16.elf
+  - sw/baremetal/ukr_m_txp/int8.elf
+  - sw/baremetal/ukr_m_txp/int4.elf
+  - sw/baremetal/ukr_m_txp/int2.elf
   # matmul with transpose options
   - sw/baremetal/matmul/int16_load_b.elf
   - sw/baremetal/matmul/int16_tiling.elf
