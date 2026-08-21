@@ -171,10 +171,12 @@ $(TARGET): $(OBJECTS)
 strip: $(TARGET)
 	$(STRIP) $(STRIPFLAGS) $(TARGET)
 
+# | makes $(VER_H) an order-only prerequisite:
+# it has to exist before compiling, but its timestamp never triggers a rebuild
 $(BDIR)/%.o: %.cpp | $(VER_H)
 	@mkdir -p $(dir $@)
 	$(MSG) "  CXX     $<\n"
-	$(Q)$(CXX) $(CXXFLAGS) -MMD -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
+	$(Q)$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@ $(DEFINES) $(USER_DEFINES) $(INC)
 
 -include $(DEPS)
 
