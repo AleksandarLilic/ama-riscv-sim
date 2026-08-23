@@ -326,7 +326,7 @@ def plot_tda(data_core: dict, title: str):
 
     log_txt_tda = f"{title}\nIPC: {ipc}\n{df_tda.drop(columns=['root'])}"
 
-    return fig_tda, log_txt_tda
+    return fig_tda, log_txt_tda, df_tda.drop(columns=['root', 'cycles_e'])
 
 def main(args: argparse.Namespace):
     if not os.path.exists(args.hw_stats):
@@ -339,7 +339,7 @@ def main(args: argparse.Namespace):
     derived = compute_derived(data['core'])
     data['core'].update(derived)
     derived_names = set(derived)
-    fig_tda, log_txt_tda = plot_tda(data['core'], title)
+    fig_tda, log_txt_tda, df_tda = plot_tda(data['core'], title)
     fig_cnt, sc, log_txt_cnt = plot_counters(data['core'], title, derived_names)
 
     if not args.silent:
@@ -375,6 +375,11 @@ def main(args: argparse.Namespace):
             f.write(log_txt)
         print_file_saved("summary log", log_path)
 
+    if args.save_csv:
+        log_path = os.path.join(base_path, f"{title_path}_tda.csv")
+        df_tda.to_csv(log_path, index=False)
+        print_file_saved("TDA", log_path)
+
     if args.save_hw_stats:
         hw_stats_path = os.path.join(base_path, f"{title_path}_hw_stats.json")
         with open(hw_stats_path, "w") as f:
@@ -393,6 +398,7 @@ def parse_args():
     parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
     parser.add_argument('--save_log', action='store_true', help="Save log to a file")
+    parser.add_argument('--save_csv', action='store_true', help="Save TDA table as CSV")
     return parser.parse_args()
 
 if __name__ == "__main__":
