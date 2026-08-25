@@ -29,8 +29,10 @@ SEP_COLOR = "#bbbbbb" # light gray
 GRID_COLOR = "#dddddd" # very light gray
 
 FIG_H = 4.5
-BAR_W = 0.7
+BAR_W = 0.65
 GROUP_LABEL_Y = -0.28 # room for rotated tick labels
+LEGEND_W = 1.7 # room added on the right
+LEGEND_PAD = .55 # gap to the axes, past the IPC label on the right y-axis
 
 # scaling of the stacked values
 SC_CYCLES = "cycles" # absolute
@@ -211,11 +213,12 @@ def label_workloads(ax, workloads: list[str]):
         if end + 1 < len(workloads): # separator to the next group
             ax.axvline(end + 0.5, color=SEP_COLOR, lw=0.8, zorder=0)
 
-def plot_stacked(df: pd.DataFrame, spec: dict, name: str):
+def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
     cats, n = spec["cats"], len(df)
     x = np.arange(n)
-    FIG_W = max(6.0, 0.7 * n + 2.5)
-    fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
+    FIG_W = (0.3 * n + 2.5) if legend_right else max(6.0, 0.5 * n + 2.5)
+    fig_w = FIG_W + LEGEND_W if legend_right else FIG_W
+    fig, ax = plt.subplots(figsize=(fig_w, FIG_H))
 
     vals = stacked_values(df, cats, spec["scale"])
     bottom = np.zeros(n)
@@ -268,9 +271,20 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str):
         handles, labels = handles + h2, labels + l2
 
     fig.suptitle(f"{name}: {spec['title']}", y=0.98)
-    fig.legend(handles, labels, ncol=len(labels), loc="upper center",
-               bbox_to_anchor=(0.5, 0.93), frameon=False, fontsize=9)
-    fig.subplots_adjust(top=0.82, bottom=0.27)
+    if legend_right: # one item wide, beside the axes, top aligned on all plots
+        top = 0.92
+        right = FIG_W * 0.9 / fig_w # same axes box as the default layout
+        fig.legend(
+            handles, labels, ncol=1, loc="upper left", frameon=False,
+            bbox_to_anchor=((FIG_W * 0.9 + LEGEND_PAD) / fig_w, top), fontsize=9
+        )
+        fig.subplots_adjust(top=top, bottom=0.27, right=right)
+    else: # centered
+        fig.legend(
+            handles, labels, ncol=len(labels), loc="upper center",
+            bbox_to_anchor=(0.5, 0.93), frameon=False, fontsize=9
+        )
+        fig.subplots_adjust(top=0.82, bottom=0.27)
 
     return fig
 
@@ -314,7 +328,7 @@ def main(args: argparse.Namespace):
         if spec.get("opt") and not args.cycles_abs:
             continue
 
-        fig = plot_stacked(df, spec, name)
+        fig = plot_stacked(df, spec, name, args.legend_right)
 
         if args.save_csv:
             csv_path = os.path.join(out_dir, f"{spec['name']}.csv")
@@ -348,6 +362,7 @@ def parse_args():
     parser.add_argument("yaml", help="Path to the yaml listing [tag, 'hw_stats.json'] pairs to compare")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display plots")
     parser.add_argument('--cycles_abs', action='store_true', help="Also plot cycles as absolute counts")
+    parser.add_argument('--legend_right', '--lr', action='store_true', help="Move the legend off the plot, to the right, one item wide")
     parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
     parser.add_argument('--save_csv', action='store_true', help="Save plot data as CSV")
