@@ -1,12 +1,15 @@
 #include "profiler.h"
 
-profiler::profiler(std::string out_dir, profiler_source_t prof_src) {
+profiler::profiler(
+    std::string out_dir, profiler_source_t prof_src, elf_size_t elf_size)
+{
     inst = 0;
     inst_cnt_prof = 0;
     trace.reserve(1<<14); // reserve 16K entries to start with
     te.rst();
     this->out_dir = out_dir;
     this->prof_src = prof_src;
+    this->elf_size = elf_size;
 
     #define P_INIT(s) \
         prof_g_arr[TO_U32(opc_g::i_##s)] = {#s, 0}
@@ -332,6 +335,11 @@ void profiler::log_to_file_and_print(bool show) {
     } else {
         ofs << "\"_profiled_instructions\": " << cnt.tot;
     }
+    ofs << ",\n"
+        << INDENT << "\"_elf_text_size\": " << elf_size.text << ",\n"
+        << INDENT << "\"_elf_data_size\": " << elf_size.data << ",\n"
+        << INDENT << "\"_elf_bss_size\": " << elf_size.bss << ",\n"
+        << INDENT << "\"_elf_total_size\": " << elf_size.total();
     ofs << "\n}\n";
     ofs.close();
 

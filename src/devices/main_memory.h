@@ -22,6 +22,7 @@ class main_memory : public dev {
             norm_address_t addr, bool is_r, bool is_w, bool is_x) const;
         std::vector<mem_region_t> regions;
         std::map<uint32_t, symbol_map_entry_t> symbol_map;
+        elf_size_t elf_size;
         #ifdef HW_MODELS_EN
         cache icache;
         cache dcache;
@@ -34,6 +35,7 @@ class main_memory : public dev {
         std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
             return symbol_map;
         }
+        elf_size_t get_elf_size() { return elf_size; }
         uint32_t rd_inst(norm_address_t addr);
         uint32_t just_inst(norm_address_t addr) { return dev::rd(addr.v, 4); }
         virtual uint32_t rd(uint32_t addr, uint32_t size) override;

@@ -317,10 +317,15 @@ class profiler {
         bool trace_en;
         // stack top on boot
         uint32_t min_sp = (mem_map::base_addr + mem_map::mem_size);
+        elf_size_t elf_size;
 
     public:
         profiler() = delete;
-        profiler(std::string out_dir, profiler_source_t prof_src);
+        profiler(
+            std::string out_dir,
+            profiler_source_t prof_src,
+            elf_size_t elf_size
+        );
         void new_inst(uint32_t inst) { this->inst = inst; }
         void add_te();
         void track_sp(const uint32_t sp);

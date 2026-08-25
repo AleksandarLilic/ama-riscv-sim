@@ -118,6 +118,17 @@ void main_memory::burn_elf(std::string test_elf) {
     }
 
     #ifdef PROFILERS_EN
+    // section sizes, matching 'riscv32-unknown-elf-size -G <elf>' output
+    for (const auto& sec_ptr : reader.sections) {
+        ELFIO::section* sec = sec_ptr.get();
+        ELFIO::Elf_Xword flags = sec->get_flags();
+        if (!(flags & ELFIO::SHF_ALLOC)) continue;
+        uint32_t size = TO_U32(sec->get_size());
+        if (flags & ELFIO::SHF_EXECINSTR) elf_size.text += size;
+        else if (sec->get_type() == ELFIO::SHT_NOBITS) elf_size.bss += size;
+        else elf_size.data += size;
+    }
+
     // generate symbol map
     for (const auto& sec_ptr : reader.sections) {
         ELFIO::section* sec = sec_ptr.get();

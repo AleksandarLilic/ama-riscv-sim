@@ -38,6 +38,7 @@ class memory {
         std::map<uint32_t, symbol_map_entry_t> get_symbol_map() {
             return mm.get_symbol_map();
         }
+        elf_size_t get_elf_size() { return mm.get_elf_size(); }
         void trap_setup(trap* tu) {
             this->tu = tu;
             clint0.trap_setup(tu);

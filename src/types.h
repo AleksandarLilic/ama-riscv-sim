@@ -401,6 +401,14 @@ struct symbol_map_entry_t {
     std::string name;
 };
 
+// elf section sizes, as reported by 'riscv32-unknown-elf-size -G <elf>'
+struct elf_size_t {
+    uint32_t text = 0;
+    uint32_t data = 0;
+    uint32_t bss = 0;
+    uint32_t total() const { return text + data + bss; }
+};
+
 struct symbol_lut_entry_t {
     uint32_t pc;
     std::string name;
