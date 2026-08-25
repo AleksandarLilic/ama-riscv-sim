@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import glob
+import json
 import os
 import subprocess
 import sys
@@ -10,7 +12,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from matplotlib.ticker import MultipleLocator
-from tda import BAR_COLOR_MAP, COLOR_MAP
+from tda import BAR_COLOR_MAP, COLOR_MAP, PLOTLY_COLORS
 from utils import (FMT_AXIS, INDENT, get_reporoot, get_test_title,
                    print_file_saved, smarter_eng_formatter)
 
@@ -21,10 +23,13 @@ TDA_PY = os.path.join(SCRIPT_DIR, "tda.py")
 TDA_ARGS = [
     "--get_stats", "--silent", "--save_csv", "--save_log", "--save_hw_stats"
 ]
+PROF_GLOB = "inst_profile*.json" # '_cosim' suffixed on the RTL side
+ELF_TEXT_KEY = "_elf_text_size" # '.text' bytes, as GNU 'size -G' reports them
 
 FMT = smarter_eng_formatter(places=1)
 
 IPC_COLOR = "#2b2b2b" # very dark gray
+TEXT_SIZE_COLOR = PLOTLY_COLORS[2]
 SEP_COLOR = "#bbbbbb" # light gray
 GRID_COLOR = "#dddddd" # very light gray
 
@@ -68,6 +73,10 @@ FE_CATS = [
 CYC_CATS = [
     ("total_cycles", "cycles", "Cycles", BAR_COLOR_MAP["cycles"]),
 ]
+# drawn as a second series, beside the cycles bar
+TEXT_CATS = [
+    ("text_size", "text_size", "Text size", TEXT_SIZE_COLOR),
+]
 
 PLOTS = [
     dict(name="top_level", cats=TOP_CATS, title="Top Level",
@@ -76,8 +85,9 @@ PLOTS = [
          ylabel="cycles [%]", scale=SC_TOTAL, ylim=YL_NICE),
     dict(name="frontend_level", cats=FE_CATS, title="Frontend Level",
          ylabel="cycles [%]", scale=SC_TOTAL, ylim=YL_NICE),
-    dict(name="cycles", cats=CYC_CATS, title="Cycles",
-         ylabel="cycles [%] (group relative)", scale=SC_GROUP_BEST,
+    dict(name="cycles_size", cats=CYC_CATS, cats2=TEXT_CATS,
+         title="Cycles & Text size",
+         ylabel="cycles, text size [%] (group relative)", scale=SC_GROUP_BEST,
          ylim=YL_AUTO, totals=TL_PCT),
     dict(name="cycles_abs", cats=CYC_CATS, title="Cycles (absolute)",
          ylabel="cycles", scale=SC_CYCLES, ylim=YL_ENG, totals=TL_ENG,
@@ -108,6 +118,26 @@ def load_entries(yaml_path: str) -> list[tuple[str, str]]:
             "\n".join(f"{INDENT}{p}" for p in missing))
 
     return entries
+
+def get_text_sizes(entries: list[tuple[str, str]]) -> list[int]:
+    """'.text' bytes per run, captured into the inst profile at run time"""
+    sizes, missing = [], []
+    for _, path in entries:
+        prof = glob.glob(os.path.join(os.path.dirname(path), PROF_GLOB))
+        size = None
+        if prof:
+            with open(prof[0], 'r') as f:
+                size = json.load(f).get(ELF_TEXT_KEY)
+        if size is None:
+            missing.append(path)
+        sizes.append(size)
+
+    if missing:
+        raise ValueError(
+            f"No '{ELF_TEXT_KEY}' in the '{PROF_GLOB}' next to:\n" +
+            "\n".join(f"{INDENT}{p}" for p in missing))
+
+    return sizes
 
 def get_workload(path: str) -> str:
     """workload name from the dir holding the stats json, uniform for cosim
@@ -170,24 +200,29 @@ def contiguous_groups(names: list[str]) -> list[tuple[str, int, int]]:
             groups.append([name, i, i])
     return [tuple(g) for g in groups]
 
-def get_divisor(df: pd.DataFrame, scale: str) -> np.ndarray:
-    """per-entry divisor for the stacked values"""
-    totals = df["total_cycles"].to_numpy(dtype=float)
+def get_divisor(df: pd.DataFrame, scale: str, tops: np.ndarray) -> np.ndarray:
+    """per-entry divisor for the stacked values, 'tops' are the stack heights"""
     if scale == SC_CYCLES:
         return np.ones(len(df))
     if scale == SC_TOTAL:
-        return totals
+        return df["total_cycles"].to_numpy(dtype=float)
 
+    # SC_GROUP_BEST: the smallest stack in the group,
+    # i.e. referenced to the group's best, whichever one it is
     div = np.ones(len(df)) # just allocation
     for _, start, end in contiguous_groups(list(df["workload"])):
-        div[start:end + 1] = totals[start:end + 1].min()
+        div[start:end + 1] = tops[start:end + 1].min()
     return div
 
 def stacked_values(df: pd.DataFrame, cats: list, scale: str) -> np.ndarray:
     """stacked values as (n_categories, n_entries), already scaled"""
-    div = get_divisor(df, scale)
     vals = np.array([df[key].to_numpy(dtype=float) for key, *_ in cats])
+    div = get_divisor(df, scale, vals.sum(axis=0))
     return np.divide(vals, div, out=np.zeros_like(vals), where=div > 0)
+
+def get_series(spec: dict) -> list[list]:
+    """bar series of the plot, a second one is drawn beside the first"""
+    return [spec["cats"]] + ([spec["cats2"]] if spec.get("cats2") else [])
 
 def nice_top(vmax: float) -> float:
     """round up to the next 0.1 step,
@@ -214,20 +249,27 @@ def label_workloads(ax, workloads: list[str]):
             ax.axvline(end + 0.5, color=SEP_COLOR, lw=0.8, zorder=0)
 
 def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
-    cats, n = spec["cats"], len(df)
+    series, n = get_series(spec), len(df)
     x = np.arange(n)
     FIG_W = (0.3 * n + 2.5) if legend_right else max(6.0, 0.5 * n + 2.5)
     fig_w = FIG_W + LEGEND_W if legend_right else FIG_W
     fig, ax = plt.subplots(figsize=(fig_w, FIG_H))
 
-    vals = stacked_values(df, cats, spec["scale"])
-    bottom = np.zeros(n)
-    for (_, _, label, color), val in zip(cats, vals):
-        ax.bar(
-            x, val, BAR_W, bottom=bottom, label=label, color=color,
-            edgecolor="white", linewidth=0.4
-        )
-        bottom += val
+    bar_w = BAR_W / len(series)
+    tops = [] # (x offset, stack height) per series
+    for i, cats in enumerate(series):
+        off = (i - (len(series) - 1) / 2) * bar_w
+        vals = stacked_values(df, cats, spec["scale"])
+        bottom = np.zeros(n)
+        for (_, _, label, color), val in zip(cats, vals):
+            ax.bar(
+                x + off, val, bar_w, bottom=bottom, label=label, color=color,
+                edgecolor="white", linewidth=0.4
+            )
+            bottom += val
+        tops.append((off, bottom))
+
+    vmax = max(b.max() for _, b in tops)
 
     ax.set_xticks(x)
     ax.set_xticklabels(df["tag"], rotation=45, ha="right")
@@ -243,17 +285,18 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
         ax.set_ylim(0, 1+Y_EXTRA)
         ax.yaxis.set_major_locator(MultipleLocator(0.1))
     elif spec["ylim"] == YL_NICE:
-        ax.set_ylim(0, nice_top(bottom.max()))
+        ax.set_ylim(0, nice_top(vmax))
     else: # YL_AUTO and YL_ENG, headroom for the labels on top of the bars
-        ax.set_ylim(0, bottom.max() * (1+Y_EXTRA*2) if bottom.max() > 0 else 1)
+        ax.set_ylim(0, vmax * (1+Y_EXTRA*2) if vmax > 0 else 1)
         if spec["ylim"] == YL_ENG:
             ax.yaxis.set_major_formatter(FMT_AXIS)
 
-    if spec.get("totals"): # stack height, the bars themselves are relative
+    if spec.get("totals"): # stack height, bars themselves are relative
         pct = spec["totals"] == TL_PCT
-        for xi, y in zip(x, bottom):
-            txt = f"{y * 100:.1f}%" if pct else FMT(y)
-            ax.text(xi, y, txt, ha="center", va="bottom", fontsize=8)
+        for off, bottom in tops:
+            for xi, y in zip(x + off, bottom):
+                txt = f"{y * 100:.0f}%" if pct else FMT(y)
+                ax.text(xi, y, txt, ha="center", va="bottom", fontsize=6)
 
     label_workloads(ax, list(df["workload"]))
 
@@ -290,14 +333,17 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
 
 def build_csv(df: pd.DataFrame, spec: dict) -> pd.DataFrame:
     out = df[["workload", "tag", "label"]].copy()
-    vals = stacked_values(df, spec["cats"], spec["scale"])
-    for (_, col, _, _), val in zip(spec["cats"], vals):
-        out[col] = val.astype(np.int64) if spec["scale"] == SC_CYCLES \
-            else np.round(val, 6)
+    for cats in get_series(spec):
+        vals = stacked_values(df, cats, spec["scale"])
+        for (_, col, _, _), val in zip(cats, vals):
+            out[col] = val.astype(np.int64) if spec["scale"] == SC_CYCLES \
+                else np.round(val, 6)
     if spec["scale"] != SC_CYCLES: # otherwise it's already the plotted value
         out["total_cycles"] = df["total_cycles"].to_numpy()
+    if spec.get("cats2"): # absolutes behind the ratios
+        out["total_text_size"] = df["text_size"].to_numpy()
     if spec.get("ipc"):
-        out["ipc"] = np.round(df["ipc"].to_numpy(), 6)
+        out["ipc"] = np.round(df["ipc"].to_numpy(), 3)
     return out
 
 def main(args: argparse.Namespace):
@@ -308,13 +354,15 @@ def main(args: argparse.Namespace):
         raise RuntimeError("--silent without any --save_* flag, nothing to do")
 
     entries = load_entries(args.yaml)
+    text_sizes = get_text_sizes(entries) # run first, fails if not found
 
     rows = []
-    for i, (tag, path) in enumerate(entries, 1):
+    for i, ((tag, path), text_size) in enumerate(zip(entries, text_sizes), 1):
         workload = get_workload(path)
         label = f"{workload}_{tag}"
         print(f"[{i}/{len(entries)}] {label}")
-        row = {"label": label, "workload": workload, "tag": tag}
+        row = {"label": label, "workload": workload, "tag": tag,
+               "text_size": text_size}
         row.update(summarize(run_tda(path)))
         rows.append(row)
 
