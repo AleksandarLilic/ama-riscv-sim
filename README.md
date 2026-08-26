@@ -5,10 +5,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
 - [RISC-V ISA simulator](#risc-v-isa-simulator)
 - [Getting the project](#getting-the-project)
   - [Prerequisites](#prerequisites)
-    - [Simulator build](#simulator-build)
-    - [RISC-V software build (`sw/`)](#risc-v-software-build-sw)
-    - [Analysis scripts (`script/`)](#analysis-scripts-script)
-    - [Testing (`test/`)](#testing-test)
+    - [Setting up Python environment](#setting-up-python-environment)
   - [Quick start](#quick-start)
 - [Overview](#overview)
   - [Usage](#usage)
@@ -43,7 +40,7 @@ C++ Instruction Set Simulator for RISC-V RV32IMC & custom SIMD instructions with
   - [Instruction details](#instruction-details)
   - [Patching `binutils` to add support for custom instructions](#patching-binutils-to-add-support-for-custom-instructions)
   - [Patching `GCC` to add support for custom instructions](#patching-gcc-to-add-support-for-custom-instructions)
-  - [Patching AAPG](#patching-aapg)
+  - [Patching AAPG to add support for custom instructions](#patching-aapg-to-add-support-for-custom-instructions)
 
 # Getting the project
 Project relies on a few external libraries and tools. Clone recursively with
@@ -53,21 +50,28 @@ git clone --recurse-submodules git@github.com:AleksandarLilic/ama-riscv-sim.git
 
 ## Prerequisites
 
-Submodules are pulled automatically with `--recurse-submodules`:
+List of submodules used, pulled automatically with `--recurse-submodules`:
 - [cxxopts](https://github.com/jarro2783/cxxopts)
 - [ELFIO](https://github.com/serge1/ELFIO)
 - [FlameGraph](https://github.com/brendangregg/FlameGraph)
 - [gprof2dot](https://github.com/jrfonseca/gprof2dot)
 
-### Simulator build
+Tools:
 - GCC >= 10 (C++17, `gnu++17`)
 - Make
+- RISC-V GNU toolchain ([Building RISC-V Toolchain](#building-risc-v-toolchain) chapter)
+- AAPG ([Patching AAPG](#patching-aapg) chapter)
+- Python environment ([Setting up Python environment](#setting-up-python-environment) chapter)
+- Perl
+- Graphviz
+- testing infrastructure
+  - Google Test (`libgtest-dev` or equivalent)
+  - `lcov` and `genhtml` (for coverage reports, optional)
+  - `valgrind` (optional)
 
-### RISC-V software build (`sw/`)
-- RISC-V GNU toolchain (check build notes under [Building RISC-V Toolchain](#building-risc-v-toolchain) chapter)
-- AAPG (check patch notes under [Patching AAPG](#patching-aapg) chapter)
+Not all tools are needed right away. Having a C++ compiler, Make, default RISC-V toolchain, and Python environment will cover most of the functionality. Others can be set up later as needed.
 
-### Analysis scripts (`script/`)
+### Setting up Python environment
 Get `uv` first if needed  
 
 On Ubuntu
@@ -87,15 +91,6 @@ uv sync
 source .venv/bin/activate
 ```
 
-Other tools:
-- Perl
-- Graphviz
-
-### Testing (`test/`)
-- Google Test (`libgtest-dev` or equivalent)
-- `lcov` and `genhtml` (for coverage reports)
-- Optional: `valgrind`
-
 ## Quick start
 To check that everything is available and working as expected:
 1. build a single test
@@ -106,6 +101,8 @@ To check that everything is available and working as expected:
 # build test
 cd sw/baremetal/dhrystone
 make DHRY_ITERS=1000 # override number of iterations for testing only
+# override MARCH if custom SIMD ISA is not available
+# make DHRY_ITERS=1000 MARCH=rv32im_zicsr_zifencei_zicntr
 cd -
 
 # build ISA sim
@@ -1032,6 +1029,9 @@ For macOS
 brew install python3 gawk gnu-sed make gmp mpfr libmpc isl zlib expat texinfo flock libslirp ncurses ninja bison m4 wget
 ```
 
+> [!NOTE]
+> The specific versions of GNU toolchain and binutils are only required if SIMD ISA patches are to be applied afterwards. Otherwise, clone of the latest GNU toolchain repo is fine, and likely preferred.
+
 Build the toolchain
 ```sh
 # get the repo
@@ -1280,7 +1280,7 @@ Date:   Fri Aug 9 00:22:36 2024 +0000
     Daily bump
 ```
 
-## Patching AAPG
+## Patching AAPG to add support for custom instructions
 Automated Assembly Program Generator repo: https://gitlab.com/shaktiproject/tools/aapg
 
 Requires applying the provided [aapg.patch](./sw/baremetal/aapg/aapg.patch) to add support for custom SIMD instructions and register pair destinations
