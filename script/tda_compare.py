@@ -51,7 +51,7 @@ YL_AUTO = "auto" # autoscaled
 YL_ENG = "eng" # autoscaled, eng formatted
 
 # labels on top of the bars
-TL_PCT = "pct" # bar value as a percentage
+TL_REL = "rel" # bar value, relative
 TL_ENG = "eng" # bar value, eng formatted
 
 # (key, csv column, legend label, color); listed bottom-to-top in the stack
@@ -87,8 +87,8 @@ PLOTS = [
          ylabel="cycles [%]", scale=SC_TOTAL, ylim=YL_NICE),
     dict(name="cycles_size", cats=CYC_CATS, cats2=TEXT_CATS,
          title="Cycles & Text size",
-         ylabel="cycles, text size [%] (group relative)", scale=SC_GROUP_BEST,
-         ylim=YL_AUTO, totals=TL_PCT),
+         ylabel="cycles & text size (group relative)", scale=SC_GROUP_BEST,
+         ylim=YL_AUTO, totals=TL_REL),
     dict(name="cycles_abs", cats=CYC_CATS, title="Cycles (absolute)",
          ylabel="cycles", scale=SC_CYCLES, ylim=YL_ENG, totals=TL_ENG,
          opt=True),
@@ -244,7 +244,8 @@ def label_workloads(ax, workloads: list[str]):
             xy=((start + end) / 2, GROUP_LABEL_Y),
             xycoords=("data", "axes fraction"),
             ha="center", va="top",
-            fontsize=9, annotation_clip=False)
+            fontsize=9, annotation_clip=False
+        )
         if end + 1 < len(workloads): # separator to the next group
             ax.axvline(end + 0.5, color=SEP_COLOR, lw=0.8, zorder=0)
 
@@ -255,7 +256,7 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
     fig_w = FIG_W + LEGEND_W if legend_right else FIG_W
     fig, ax = plt.subplots(figsize=(fig_w, FIG_H))
 
-    bar_w = BAR_W / len(series)
+    bar_w = BAR_W / len(series) + (.1 if len(series) > 1 else 0)
     tops = [] # (x offset, stack height) per series
     for i, cats in enumerate(series):
         off = (i - (len(series) - 1) / 2) * bar_w
@@ -292,11 +293,12 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
             ax.yaxis.set_major_formatter(FMT_AXIS)
 
     if spec.get("totals"): # stack height, bars themselves are relative
-        pct = spec["totals"] == TL_PCT
+        rel = spec["totals"] == TL_REL
         for off, bottom in tops:
             for xi, y in zip(x + off, bottom):
-                txt = f"{y * 100:.0f}%" if pct else FMT(y)
-                ax.text(xi, y, txt, ha="center", va="bottom", fontsize=6)
+                #txt = f"{y * 100:.0f}%" if rel else FMT(y)
+                txt = ("1" if y==1 else f"{y:.2f}") if rel else FMT(y)
+                ax.text(xi, y, txt, ha="center", va="bottom", fontsize=8)
 
     label_workloads(ax, list(df["workload"]))
 
