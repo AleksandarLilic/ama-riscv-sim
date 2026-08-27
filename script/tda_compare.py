@@ -29,15 +29,21 @@ ELF_TEXT_KEY = "_elf_text_size" # '.text' bytes, as GNU 'size -G' reports them
 FMT = smarter_eng_formatter(places=1)
 
 IPC_COLOR = "#2b2b2b" # very dark gray
-TEXT_SIZE_COLOR = PLOTLY_COLORS[2]
-SEP_COLOR = "#bbbbbb" # light gray
+TEXT_SIZE_COLOR = PLOTLY_COLORS[6]
+SEP_COLOR = "#888888" # mid gray
 GRID_COLOR = "#dddddd" # very light gray
 
 FIG_H = 4.5
 BAR_W = 0.65
-GROUP_LABEL_Y = -0.28 # room for rotated tick labels
+GROUP_LABEL_Y = -0.35 # room for rotated tick labels
+SEP_DROP = .06 # how far the group separator runs past the group label
 LEGEND_W = 1.7 # room added on the right
-LEGEND_PAD = .55 # gap to the axes, past the IPC label on the right y-axis
+# all in inches, so the axes box doesn't scale with the number of entries
+MARGIN_L = .75 # y label and tick labels
+MARGIN_R = .70 # always reserved, so the IPC axis doesn't shift the box
+SLOT_W = .5 # per entry, keeps the bars equally wide in every plot
+SLOT_W_LR = .3 # per entry, with the legend to the right
+PLOT_W_MIN = 4 # so the centered legend still fits on a narrow plot
 
 # scaling of the stacked values
 SC_CYCLES = "cycles" # absolute
@@ -58,16 +64,16 @@ TL_ENG = "eng" # bar value, eng formatted
 TOP_CATS = [
     ("retiring", "retiring", "Retiring", COLOR_MAP["retiring"]),
     ("lost", "lost", "Lost", COLOR_MAP["lost"]),
-    ("frontend", "frontend", "Frontend Bound", COLOR_MAP["frontend"]),
-    ("backend", "backend", "Backend Bound", COLOR_MAP["backend"]),
+    ("frontend", "frontend", "Frontend", COLOR_MAP["frontend"]),
+    ("backend", "backend", "Backend", COLOR_MAP["backend"]),
 ]
 BE_CATS = [
-    ("be_core", "core", "Core Bound", BAR_COLOR_MAP["stall_*"]),
-    ("be_dcache", "dcache", "Dcache Bound", BAR_COLOR_MAP["l1d_*"]),
+    ("be_core", "core", "Core BE", BAR_COLOR_MAP["stall_*"]),
+    ("be_dcache", "dcache", "Dcache", BAR_COLOR_MAP["l1d_*"]),
 ]
 FE_CATS = [
-    ("fe_core", "core", "Core Bound", BAR_COLOR_MAP["stall_*"]),
-    ("fe_icache", "icache", "Icache Bound", BAR_COLOR_MAP["l1i_*"]),
+    ("fe_core", "core", "Core FE", BAR_COLOR_MAP["stall_*"]),
+    ("fe_icache", "icache", "Icache", BAR_COLOR_MAP["l1i_*"]),
 ]
 # no TDA breakdown here for plain cycles plot
 CYC_CATS = [
@@ -94,8 +100,9 @@ PLOTS = [
          opt=True),
 ]
 
-def load_entries(yaml_path: str) -> list[tuple[str, str]]:
-    """parse the input yaml into an ordered list of (tag, hw_stats path)"""
+def load_entries(yaml_path: str) -> list[tuple[str, str, str]]:
+    """parse the input yaml into an ordered list of
+    (tag, hw_stats path, string to strip from the workload name)"""
     with open(yaml_path, 'r') as f:
         cfg = yaml.safe_load(f) or {}
 
@@ -104,14 +111,14 @@ def load_entries(yaml_path: str) -> list[tuple[str, str]]:
         raise ValueError(f"No 'hw_stats' entries found in '{yaml_path}'")
 
     entries = []
-    for tag, path in raw:
+    for tag, path, *strip in raw: # 'strip' is optional, hence the unpacking
         # resolve relative paths against the repo root, keep absolute as-is
         path = os.path.expanduser(os.path.expandvars(str(path)))
         if not os.path.isabs(path):
             path = os.path.join(REPO_ROOT, path)
-        entries.append((str(tag), path))
+        entries.append((str(tag), path, str(strip[0]) if strip else ""))
 
-    missing = [p for _, p in entries if not os.path.exists(p)]
+    missing = [p for _, p, _ in entries if not os.path.exists(p)]
     if missing:
         raise FileNotFoundError(
             f"'hw_stats' file(s) from '{yaml_path}' not found:\n" +
@@ -119,10 +126,10 @@ def load_entries(yaml_path: str) -> list[tuple[str, str]]:
 
     return entries
 
-def get_text_sizes(entries: list[tuple[str, str]]) -> list[int]:
+def get_text_sizes(entries: list[tuple[str, str, str]]) -> list[int]:
     """'.text' bytes per run, captured into the inst profile at run time"""
     sizes, missing = [], []
-    for _, path in entries:
+    for _, path, _ in entries:
         prof = glob.glob(os.path.join(os.path.dirname(path), PROF_GLOB))
         size = None
         if prof:
@@ -139,23 +146,27 @@ def get_text_sizes(entries: list[tuple[str, str]]) -> list[int]:
 
     return sizes
 
-def get_workload(path: str) -> str:
+def get_workload(path: str, strip: str = "") -> str:
     """workload name from the dir holding the stats json, uniform for cosim
-    ('<workload>_out_cosim') and perf est ('<workload>_out') outputs"""
+    ('<workload>_out_cosim') and perf est ('<workload>_out') outputs, and
+    ('strip') dropped"""
     OUT_SUFFIXES = ("_cosim", "_out")
     name = os.path.basename(os.path.dirname(path))
     for suffix in OUT_SUFFIXES: # order matters, '_cosim' is the outer one
         name = name.removesuffix(suffix)
-    return name
+    return name.removeprefix(strip) if strip else name
 
-def run_tda(path: str) -> pd.DataFrame:
+def run_tda(path: str, skip_run=False) -> pd.DataFrame:
     """run tda.py on a single hw_stats.json and read back the TDA csv"""
-    cmd = [sys.executable, TDA_PY, path] + TDA_ARGS
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    if res.returncode != 0:
-        print(res.stdout, file=sys.stderr)
-        print(res.stderr, file=sys.stderr)
-        raise RuntimeError(f"'{' '.join(cmd)}' failed with {res.returncode}")
+    if not skip_run:
+        cmd = [sys.executable, TDA_PY, path] + TDA_ARGS
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode != 0:
+            print(res.stdout, file=sys.stderr)
+            print(res.stderr, file=sys.stderr)
+            raise RuntimeError(
+                f"'{' '.join(cmd)}' failed with {res.returncode}"
+            )
 
     # same naming as tda.py uses when saving
     title_path = get_test_title(path).replace(' ', '_')
@@ -247,13 +258,18 @@ def label_workloads(ax, workloads: list[str]):
             fontsize=9, annotation_clip=False
         )
         if end + 1 < len(workloads): # separator to the next group
-            ax.axvline(end + 0.5, color=SEP_COLOR, lw=0.8, zorder=0)
+            # down past the group label, so it splits the names as well
+            sep = ax.axvline(
+                end + 0.5, ymin=GROUP_LABEL_Y - SEP_DROP, ymax=1,
+                color=SEP_COLOR, lw=0.8, zorder=0
+            )
+            sep.set_clip_on(False) # ymin is outside the axes
 
 def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
     series, n = get_series(spec), len(df)
     x = np.arange(n)
-    FIG_W = (0.3 * n + 2.5) if legend_right else max(6.0, 0.5 * n + 2.5)
-    fig_w = FIG_W + LEGEND_W if legend_right else FIG_W
+    plot_w = (SLOT_W_LR * n) if legend_right else max(PLOT_W_MIN, SLOT_W * n)
+    fig_w = MARGIN_L + plot_w + MARGIN_R + (LEGEND_W if legend_right else 0)
     fig, ax = plt.subplots(figsize=(fig_w, FIG_H))
 
     bar_w = BAR_W / len(series) + (.1 if len(series) > 1 else 0)
@@ -273,7 +289,7 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
     vmax = max(b.max() for _, b in tops)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(df["tag"], rotation=45, ha="right")
+    ax.set_xticklabels(df["tag"], rotation=90, ha="right")
     ax.set_xlim(-0.5, n - 0.5)
     ax.set_ylabel(spec["ylabel"])
     ax.set_axisbelow(True)
@@ -298,7 +314,7 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
             for xi, y in zip(x + off, bottom):
                 #txt = f"{y * 100:.0f}%" if rel else FMT(y)
                 txt = ("1" if y==1 else f"{y:.2f}") if rel else FMT(y)
-                ax.text(xi, y, txt, ha="center", va="bottom", fontsize=8)
+                ax.text(xi, y, txt, ha="center", va="bottom", fontsize=7)
 
     label_workloads(ax, list(df["workload"]))
 
@@ -316,20 +332,22 @@ def plot_stacked(df: pd.DataFrame, spec: dict, name: str, legend_right=False):
         handles, labels = handles + h2, labels + l2
 
     fig.suptitle(f"{name}: {spec['title']}", y=0.98)
+    # fixed inches -> fractions
+    left, right = (MARGIN_L / fig_w), ((MARGIN_L + plot_w) / fig_w)
     if legend_right: # one item wide, beside the axes, top aligned on all plots
         top = 0.92
-        right = FIG_W * 0.9 / fig_w # same axes box as the default layout
         fig.legend(
             handles, labels, ncol=1, loc="upper left", frameon=False,
-            bbox_to_anchor=((FIG_W * 0.9 + LEGEND_PAD) / fig_w, top), fontsize=9
+            bbox_to_anchor=((MARGIN_L + plot_w + MARGIN_R) / fig_w, top),
+            fontsize=9
         )
-        fig.subplots_adjust(top=top, bottom=0.27, right=right)
     else: # centered
+        top = 0.82
         fig.legend(
             handles, labels, ncol=len(labels), loc="upper center",
             bbox_to_anchor=(0.5, 0.93), frameon=False, fontsize=9
         )
-        fig.subplots_adjust(top=0.82, bottom=0.27)
+    fig.subplots_adjust(left=left, right=right, top=top, bottom=0.27)
 
     return fig
 
@@ -359,13 +377,14 @@ def main(args: argparse.Namespace):
     text_sizes = get_text_sizes(entries) # run first, fails if not found
 
     rows = []
-    for i, ((tag, path), text_size) in enumerate(zip(entries, text_sizes), 1):
-        workload = get_workload(path)
+    for i, ((tag, path, strip), text_size) in enumerate(
+            zip(entries, text_sizes), 1):
+        workload = get_workload(path, strip)
         label = f"{workload}_{tag}"
         print(f"[{i}/{len(entries)}] {label}")
         row = {"label": label, "workload": workload, "tag": tag,
                "text_size": text_size}
-        row.update(summarize(run_tda(path)))
+        row.update(summarize(run_tda(path, args.skip_tda_run)))
         rows.append(row)
 
     df = pd.DataFrame(rows)
@@ -400,22 +419,16 @@ def main(args: argparse.Namespace):
     else:
         plt.close("all")
 
-# yaml input example
-# hw_stats:
-# - [scalar, "workdir/conv1d_scalar/ukr_conv1d_int16_large_out/hw_stats_perf_est.json"]
-# - [load_opt, "workdir/conv1d_load_opt/ukr_conv1d_int16_large_out/hw_stats_perf_est.json"]
-# - [simd, "workdir/conv1d_simd/ukr_conv1d_int16_large_out/hw_stats_perf_est.json"]
-# ...
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Compare TDA across runs")
-    parser.add_argument("yaml", help="Path to the yaml listing [tag, 'hw_stats.json'] pairs to compare")
+    parser.add_argument("yaml", help="Path to the yaml listing [tag, 'hw_stats.json'] entries to compare, with an optional third field to strip from the workload name")
     parser.add_argument('-s', '--silent', action='store_true', help="Don't display plots")
     parser.add_argument('--cycles_abs', action='store_true', help="Also plot cycles as absolute counts")
     parser.add_argument('--legend_right', '--lr', action='store_true', help="Move the legend off the plot, to the right, one item wide")
     parser.add_argument('--save_png', action='store_true', help="Save plots as PNG")
     parser.add_argument('--save_svg', action='store_true', help="Save plots as SVG")
     parser.add_argument('--save_csv', action='store_true', help="Save plot data as CSV")
+    parser.add_argument('--skip_tda_run', action='store_true', help="Don't run TDA. Assumes .csv files already exist, will error out if not found")
     return parser.parse_args()
 
 if __name__ == "__main__":
