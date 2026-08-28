@@ -171,11 +171,11 @@ def get_stats(data: dict) -> dict:
     # (e.g. when collected from emulation/runtime)
 
     def get_hr(hits: int, references: int, precision: int = 2) -> float:
-        hr = (hits / references) * 100
+        hr = (hits / references) * 100 if references else 0
         return round(hr, precision) if hr > 0 else 0
 
     def get_mpki(misses: int, ret_inst: int, precision: int = 2) -> float:
-        mpki = (misses / (ret_inst / 1000))
+        mpki = (misses / (ret_inst / 1000)) if ret_inst else 0
         return round(mpki, precision) if mpki > 0 else 0
 
     cnt = data["core"]
