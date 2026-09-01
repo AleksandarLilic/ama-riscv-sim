@@ -50,6 +50,9 @@ class core {
         void set_perf_event_flag(perf_event_t perf_event, bool set) {
             prof_perf.set_perf_event_flag(perf_event, set);
         }
+        void set_exec_cnt(uint64_t inst, uint64_t cycle) {
+            prof.set_exec_cnt(inst, cycle);
+        }
         void force_irq(bool mtip, bool meip) {
             if (mtip) csr.at(csr_map::addr::mip).value |= csr_map::mip::mtip;
             if (meip) csr.at(csr_map::addr::mip).value |= csr_map::mip::meip;

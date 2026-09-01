@@ -381,7 +381,11 @@ void core::finish(bool dump_regs) {
         mem->dump_as_words(cfg.mem_dump_start, cfg.mem_dump_size, cfg.out_dir);
     }
     #ifdef PROFILERS_EN
-    prof.finish(cfg.prof_show);
+    #ifndef DPI
+    // execution stats come from TB for DPI
+    prof.set_exec_cnt(sim_cnt.inst, 0ull);
+    #endif
+    prof.finish(cfg.prof_show, csr.at(csr_map::addr::tohost).value);
     prof_perf.finish(cfg.prof_show);
     prof_fusion.finish(cfg.prof_show);
     prof_rf.finish(cfg.out_dir);

@@ -3,8 +3,6 @@
 profiler::profiler(
     std::string out_dir, profiler_source_t prof_src, elf_size_t elf_size)
 {
-    inst = 0;
-    inst_cnt_prof = 0;
     trace.reserve(1<<14); // reserve 16K entries to start with
     te.rst();
     this->out_dir = out_dir;
@@ -253,6 +251,9 @@ void profiler::add_te() {
 void profiler::log_inst(opc_g opc, uint64_t inc) {
     if (active) {
         inst_cnt_prof++;
+        #ifdef DPI
+        cycle_cnt_prof += inc;
+        #endif
         if (inst == inst::nop) {
             prof_g_arr[TO_U32(opc_g::i_nop)].count += inc;
         #ifdef RV32C_EN
@@ -272,6 +273,9 @@ void profiler::log_inst(opc_g opc, uint64_t inc) {
 void profiler::log_inst(opc_b opc, bool taken, b_dir_t b_dir, uint64_t inc) {
     if (active) {
         inst_cnt_prof++;
+        #ifdef DPI
+        cycle_cnt_prof += inc;
+        #endif
         if (taken) {
             prof_b_arr[TO_U32(opc)].count_taken += inc;
             if (b_dir == b_dir_t::forward) {
@@ -295,7 +299,8 @@ void profiler::track_sp(const uint32_t sp) {
     if ((sp > mem_map::base_addr) && (sp < min_sp)) min_sp = sp;
 }
 
-void profiler::log_to_file_and_print(bool show) {
+void profiler::log_to_file_and_print(bool show, uint32_t tohost)
+{
     cnt_t cnt;
     std::string pt = prof_src_tag(prof_src);
 
@@ -328,21 +333,39 @@ void profiler::log_to_file_and_print(bool show) {
         }
     }
 
-    min_sp = (mem_map::base_addr + mem_map::mem_size - min_sp); // remove stack_top offset
-    ofs << INDENT << "\"_max_sp_usage\": " << min_sp << ",\n" << INDENT;
+    // remove stack_top offset
+    min_sp = (mem_map::base_addr + mem_map::mem_size - min_sp);
+
+    // write to json
+    ofs << INDENT << "\"_stack\": {"
+        << "\"peak_usage\": " << min_sp << ", "
+        << "\"accesses\": {"
+        << "\"loads\": " << stack_access.get_load() << ", "
+        << "\"stores\": " << stack_access.get_store()
+        << "}},\n";
+
+    ofs << INDENT << "\"_profiled_instructions\": " << inst_cnt_prof << ",\n";
+    #ifdef DPI
     if (prof_src == profiler_source_t::clock) {
-        ofs << "\"_profiled_cycles\": " << cnt.tot;
-    } else {
-        ofs << "\"_profiled_instructions\": " << cnt.tot;
+        ofs << INDENT << "\"_profiled_cycles\": " << cycle_cnt_prof << ",\n";
     }
-    ofs << ",\n"
-        << INDENT << "\"_elf_text_size\": " << elf_size.text << ",\n"
-        << INDENT << "\"_elf_data_size\": " << elf_size.data << ",\n"
-        << INDENT << "\"_elf_bss_size\": " << elf_size.bss << ",\n"
-        << INDENT << "\"_elf_total_size\": " << elf_size.total();
+    #endif
+    ofs << INDENT << "\"_executed_instructions\": " << inst_cnt_exec << ",\n";
+    #ifdef DPI
+    ofs << INDENT << "\"_executed_cycles\": " << cycle_cnt_exec << ",\n";
+    #endif
+
+    ofs << INDENT << "\"_tohost_end\": " << tohost << ",\n";
+    ofs << INDENT << "\"_elf_size\": {"
+        << "\"text\": " << elf_size.text << ", "
+        << "\"data\": " << elf_size.data << ", "
+        << "\"bss\": " << elf_size.bss << ", "
+        << "\"total\": " << elf_size.total()
+        << "}";
     ofs << "\n}\n";
     ofs.close();
 
+    // write trace if enabled
     if (trace_en) {
         ofs.open(out_dir + "trace" + pt + ".bin", std::ios::binary);
         ofs.write(reinterpret_cast<const char*>(trace.data()),

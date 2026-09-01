@@ -24,7 +24,8 @@ TDA_ARGS = [
     "--get_stats", "--silent", "--save_csv", "--save_log", "--save_hw_stats"
 ]
 PROF_GLOB = "inst_profile*.json" # '_cosim' suffixed on the RTL side
-ELF_TEXT_KEY = "_elf_text_size" # '.text' bytes, as GNU 'size -G' reports them
+ELF_SIZE_KEY = "_elf_size" # section sizes, as GNU 'size -G' reports them
+ELF_TEXT_KEY = "text" # '.text' bytes, within the 'ELF_SIZE_KEY' group
 
 FMT = smarter_eng_formatter(places=1)
 
@@ -134,15 +135,15 @@ def get_text_sizes(entries: list[tuple[str, str, str]]) -> list[int]:
         size = None
         if prof:
             with open(prof[0], 'r') as f:
-                size = json.load(f).get(ELF_TEXT_KEY)
+                size = json.load(f).get(ELF_SIZE_KEY, {}).get(ELF_TEXT_KEY)
         if size is None:
             missing.append(path)
         sizes.append(size)
 
     if missing:
         raise ValueError(
-            f"No '{ELF_TEXT_KEY}' in the '{PROF_GLOB}' next to:\n" +
-            "\n".join(f"{INDENT}{p}" for p in missing))
+            f"No '{ELF_SIZE_KEY}.{ELF_TEXT_KEY}' in the '{PROF_GLOB}' " +
+            "next to:\n" + "\n".join(f"{INDENT}{p}" for p in missing))
 
     return sizes
 

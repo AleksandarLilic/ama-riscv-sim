@@ -108,12 +108,8 @@ class perf:
     def __init__(self, inst_profile, hw_stats, hw_perf_metrics, rf_trace=None):
         self.inst_profile = inst_profile
         self.inputs = [inst_profile, hw_stats, hw_perf_metrics, rf_trace]
-        df = load_inst_prof(inst_profile, allow_internal=True)
-        # get internal keys into dfi and remove from df
-        dfi = df.loc[df['name'].str.startswith('_')]
-        df = df.loc[df['name'].str.startswith('_') == False]
+        df = load_inst_prof(inst_profile)
         self.inst_total = df['count'].sum()
-        self.sp_usage = dfi[dfi['name'] == "_max_sp_usage"]['count'].tolist()[0]
 
         self.b = {"taken": 0, "taken_fwd": 0, "taken_bwd": 0,
                   "not_taken": 0, "not_taken_fwd": 0, "not_taken_bwd": 0}
@@ -121,6 +117,8 @@ class perf:
 
         with open(inst_profile, 'r') as file:
             i_prof = json.load(file)
+
+        self.sp_usage = i_prof['_stack']['peak_usage']
 
         if i_prof['_profiled_instructions'] == 0:
             raise ValueError("0 profiled instructions in the trace")

@@ -302,9 +302,14 @@ class profiler {
         std::string out_dir;
         profiler_source_t prof_src;
         std::ofstream ofs;
-        uint64_t inst_cnt_prof;
+        uint64_t inst_cnt_prof = 0;
+        uint64_t inst_cnt_exec = 0;
+        #ifdef DPI
+        uint64_t cycle_cnt_prof = 0;
+        uint64_t cycle_cnt_exec = 0;
+        #endif
         stack_access_t stack_access;
-        uint32_t inst;
+        uint32_t inst = 0;
         #ifdef PROF_MEM_USAGE
         logging_resource logres;
         std::pmr::vector<trace_entry> trace{ &logres };
@@ -344,10 +349,18 @@ class profiler {
         }
         void set_active(bool active) { this->active = active; }
         void set_trace_en(bool trace_en) { this->trace_en = trace_en; }
-        void finish(bool show) { log_to_file_and_print(show); }
+        void set_exec_cnt(uint64_t inst, [[maybe_unused]] uint64_t cycle) {
+            inst_cnt_exec = inst;
+            #ifdef DPI
+            cycle_cnt_exec = cycle;
+            #endif
+        }
+        void finish(bool show, uint32_t tohost) {
+            log_to_file_and_print(show, tohost);
+        }
 
     private:
-        void log_to_file_and_print(bool show);
+        void log_to_file_and_print(bool show, uint32_t tohost);
 
     private:
         // all compressed instructions

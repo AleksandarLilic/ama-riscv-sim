@@ -1890,14 +1890,13 @@ def draw_stats_exec(df, title, args) -> Tuple[plt.Figure, RangeSlider]:
     return fig, rsx
 
 # data loading (json/bin)
-def load_inst_prof(log, allow_internal=False) -> pd.DataFrame:
+def load_inst_prof(log) -> pd.DataFrame:
     ar = []
     with open(log, 'r') as file:
         data = json.load(file)
         for key in data:
+            # '_' prefixed keys are metadata (groups incl.), not inst counts
             if key.startswith('_'):
-                if allow_internal:
-                    ar.append([key, data[key]])
                 continue
             ar.append([key, data[key]['count']])
 
