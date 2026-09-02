@@ -84,6 +84,11 @@ CYC_CATS = [
 TEXT_CATS = [
     ("text_size", "text_size", "Text size", TEXT_SIZE_COLOR),
 ]
+# all memory instructions, split to show the load/store contributions
+MEM_CATS = [
+    ("mem_loads", "mem_loads", "Loads", PLOTLY_COLORS[0]),
+    ("mem_stores", "mem_stores", "Stores", PLOTLY_COLORS[4]),
+]
 
 PLOTS = [
     dict(name="top_level", cats=TOP_CATS, title="Top Level",
@@ -95,7 +100,12 @@ PLOTS = [
     dict(name="cycles_size", cats=CYC_CATS, cats2=TEXT_CATS,
          title="Cycles & Text size",
          ylabel="cycles & text size (group relative)", scale=SC_GROUP_BEST,
-         ylim=YL_AUTO, totals=TL_REL),
+         ylim=YL_AUTO, totals=TL_REL,
+         csv_totals={"total_text_size": ["text_size"]}),
+    dict(name="mem_profile", cats=MEM_CATS, title="Memory accesses",
+         ylabel="memory accesses (group relative)", scale=SC_GROUP_BEST,
+         ylim=YL_AUTO, totals=TL_REL,
+         csv_totals={"total_mem": ["mem_loads", "mem_stores"]}),
     dict(name="cycles_abs", cats=CYC_CATS, title="Cycles (absolute)",
          ylabel="cycles", scale=SC_CYCLES, ylim=YL_ENG, totals=TL_ENG,
          opt=True),
@@ -146,6 +156,13 @@ def get_text_sizes(entries: list[tuple[str, str, str]]) -> list[int]:
             "next to:\n" + "\n".join(f"{INDENT}{p}" for p in missing))
 
     return sizes
+
+def get_mem_accesses(path: str) -> dict:
+    """load/store counts, from the run's core counters"""
+    with open(path, 'r') as f:
+        cnt = json.load(f)["core"]
+    return {"mem_loads": cnt["ret_mem_load"],
+            "mem_stores": cnt["ret_mem"] - cnt["ret_mem_load"]}
 
 def get_workload(path: str, strip: str = "") -> str:
     """workload name from the dir holding the stats json, uniform for cosim
@@ -361,8 +378,8 @@ def build_csv(df: pd.DataFrame, spec: dict) -> pd.DataFrame:
                 else np.round(val, 6)
     if spec["scale"] != SC_CYCLES: # otherwise it's already the plotted value
         out["total_cycles"] = df["total_cycles"].to_numpy()
-    if spec.get("cats2"): # absolutes behind the ratios
-        out["total_text_size"] = df["text_size"].to_numpy()
+    for col, keys in spec.get("csv_totals", {}).items(): # absolutes for ratios
+        out[col] = df[keys].sum(axis=1).to_numpy()
     if spec.get("ipc"):
         out["ipc"] = np.round(df["ipc"].to_numpy(), 3)
     return out
@@ -385,6 +402,7 @@ def main(args: argparse.Namespace):
         print(f"[{i}/{len(entries)}] {label}")
         row = {"label": label, "workload": workload, "tag": tag,
                "text_size": text_size}
+        row.update(get_mem_accesses(path))
         row.update(summarize(run_tda(path, args.skip_tda_run)))
         rows.append(row)
 
