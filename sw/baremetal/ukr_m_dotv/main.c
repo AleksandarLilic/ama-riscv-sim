@@ -37,7 +37,7 @@ _Static_assert(0, "Unsupported number format: FUNC");
 #endif
 
 void main(void) {
-    int32_t result;
+    volatile int32_t result;
     GLOBAL_SYMBOL("warmup");
     for (size_t i = 0; i < WARMUP; i++) {
         result = FUNC(a, b, VEC_LEN);
