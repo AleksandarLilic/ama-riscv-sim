@@ -42,14 +42,14 @@ def np2c_2d_arr(var, arr, nf="NF", dim=["A", "B"], align=None, suffix=""):
         " = {" + f"{suffix}, ".join(arr_out) + suffix + "\n};"
 
 NUM = {
-    "uint8_t":  { "offset": {"add": 2, "sub": 2, "mul": 1},            "nf": np.uint8},
-    "int8_t":   { "offset": {"add": 2, "sub": 2, "mul": 1},            "nf": np.int8},
-    "uint16_t": { "offset": {"add": 2, "sub": 2, "mul": 2},            "nf": np.uint16},
-    "int16_t":  { "offset": {"add": 2, "sub": 2, "mul": 2},            "nf": np.int16},
-    "uint32_t": { "offset": {"add": 2, "sub": 2, "mul": 16},           "nf": np.uint32},
-    "int32_t":  { "offset": {"add": 2, "sub": 2, "mul": 16},           "nf": np.int32},
-    "uint64_t": { "offset": {"add": 2, "sub": 3, "mul": 34, "div": 2}, "nf": np.uint64},
-    "int64_t":  { "offset": {"add": 2, "sub": 3, "mul": 34, "div": 2}, "nf": np.int64},
+    "uint8_t":  { "offset": {"add": 2, "sub": 2, "mul": 3, "wmul": 1},             "nf": np.uint8},
+    "int8_t":   { "offset": {"add": 2, "sub": 2, "mul": 3, "wmul": 1},             "nf": np.int8},
+    "uint16_t": { "offset": {"add": 2, "sub": 2, "mul": 7, "wmul": 2},             "nf": np.uint16},
+    "int16_t":  { "offset": {"add": 2, "sub": 2, "mul": 7, "wmul": 2},             "nf": np.int16},
+    "uint32_t": { "offset": {"add": 2, "sub": 2, "mul": 24, "wmul": 16},           "nf": np.uint32},
+    "int32_t":  { "offset": {"add": 2, "sub": 2, "mul": 24, "wmul": 16},           "nf": np.int32},
+    "uint64_t": { "offset": {"add": 2, "sub": 3, "mul": 40, "wmul": 34, "div": 2}, "nf": np.uint64},
+    "int64_t":  { "offset": {"add": 2, "sub": 3, "mul": 40, "wmul": 34, "div": 2}, "nf": np.int64},
     #"half":   {"min": -1, "max": 1, "nf": np.float16},
     "float":  {"min": -1, "max": 1, "nf": np.float32},
     "double": {"min": -1, "max": 1, "nf": np.float64},

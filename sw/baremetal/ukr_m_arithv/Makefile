@@ -3,7 +3,7 @@ LOOPS ?= 1
 
 VEC_ONLY ?= 1 # not every (type x op) combination has vectorized flavor
 NFS := uint8 int8 uint16 int16
-OPS := add sub mul
+OPS := add sub wmul
 
 ifeq ($(strip $(VEC_ONLY)), 0)
 NFS += uint32 int32 uint64 int64 float32 float64
@@ -27,17 +27,17 @@ include ../Makefile.math_lib_opts.mk
 CFLAGS += $(MATH_LIB_FLAGS)
 
 APP_REQS := test_arrays_add.h test_arrays_sub.h \
-    test_arrays_mul.h test_arrays_div.h
+    test_arrays_wmul.h test_arrays_div.h
 CODEGEN_PY := ./codegen.py
 
-all: $(APP_REQS) add sub mul div
+all: $(APP_REQS) add sub wmul div
 
 codegen: $(APP_REQS)
 clean_codegen: clean_headers
 
 add: $(TARGETS_ADD)
 sub: $(TARGETS_SUB)
-mul: $(TARGETS_MUL)
+wmul: $(TARGETS_WMUL)
 div: $(TARGETS_DIV)
 
 headers: $(HEADERS)

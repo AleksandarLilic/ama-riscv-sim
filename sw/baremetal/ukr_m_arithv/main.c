@@ -13,8 +13,8 @@
 #include "test_arrays_add.h"
 #elif defined(OP_SUB)
 #include "test_arrays_sub.h"
-#elif defined(OP_MUL)
-#include "test_arrays_mul.h"
+#elif defined(OP_WMUL)
+#include "test_arrays_wmul.h"
 #elif defined(OP_DIV)
 #include "test_arrays_div.h"
 #else
@@ -39,15 +39,15 @@ _Static_assert(0, "No operation defined");
         #define NO_VEC
     #endif
 
-#elif defined(OP_MUL)
+#elif defined(OP_WMUL)
     #if defined(NF_INT16)
-        #define FUNC m_mul_i16
+        #define FUNC m_wmul_i16
     #elif defined(NF_UINT16)
-        #define FUNC m_mul_u16
+        #define FUNC m_wmul_u16
     #elif defined(NF_INT8)
-        #define FUNC m_mul_i8
+        #define FUNC m_wmul_i8
     #elif defined(NF_UINT8)
-        #define FUNC m_mul_u8
+        #define FUNC m_wmul_u8
     #else
         #define NO_VEC
     #endif

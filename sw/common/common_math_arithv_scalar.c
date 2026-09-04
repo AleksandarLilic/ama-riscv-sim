@@ -28,26 +28,26 @@ void m_sub_i8(const int8_t* a, const int8_t* b, int8_t* c, const size_t len)
 }
 
 INLINE_OPTION
-void m_mul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+void m_wmul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
 {
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
-void m_mul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+void m_wmul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
 {
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
-void m_mul_u16(
+void m_wmul_u16(
     const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
 {
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
 }
 
 INLINE_OPTION
-void m_mul_u8(
+void m_wmul_u8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
 {
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];

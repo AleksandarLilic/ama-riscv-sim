@@ -17,10 +17,10 @@ workloads:
   - sw/baremetal/ukr_m_arithv/add_int8.elf
   - sw/baremetal/ukr_m_arithv/add_uint16.elf
   - sw/baremetal/ukr_m_arithv/add_uint8.elf
-  - sw/baremetal/ukr_m_arithv/mul_int16.elf
-  - sw/baremetal/ukr_m_arithv/mul_int8.elf
-  - sw/baremetal/ukr_m_arithv/mul_uint16.elf
-  - sw/baremetal/ukr_m_arithv/mul_uint8.elf
+  - sw/baremetal/ukr_m_arithv/wmul_int16.elf
+  - sw/baremetal/ukr_m_arithv/wmul_int8.elf
+  - sw/baremetal/ukr_m_arithv/wmul_uint16.elf
+  - sw/baremetal/ukr_m_arithv/wmul_uint8.elf
   - sw/baremetal/ukr_m_arithv/sub_int16.elf
   - sw/baremetal/ukr_m_arithv/sub_int8.elf
   - sw/baremetal/ukr_m_arithv/sub_uint16.elf

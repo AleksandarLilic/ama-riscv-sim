@@ -125,7 +125,7 @@ void m_sub_i8(
 // 'define LOAD_OPT_USE_SCALAR' to fall back to the scalar cores for these four
 
 INLINE_OPTION
-void m_mul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
+void m_wmul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
 {
     #ifdef LOAD_OPT_USE_SCALAR
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
@@ -136,7 +136,7 @@ void m_mul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
         int32_t b_slice = *(const int32_t*)(b + k);
         // int32 output: one word per element, nothing to repack
         c[k + 1] = (a_slice >> 16) * (b_slice >> 16);
-        c[k]     = (int16_t)a_slice * (int16_t)b_slice;
+        c[k + 0] = (int16_t)a_slice * (int16_t)b_slice;
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
@@ -146,7 +146,7 @@ void m_mul_i16(const int16_t* a, const int16_t* b, int32_t* c, const size_t len)
 }
 
 INLINE_OPTION
-void m_mul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
+void m_wmul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
 {
     #ifdef LOAD_OPT_USE_SCALAR
     for (size_t k = 0; k < len; k++) c[k] = a[k] * b[k];
@@ -162,7 +162,7 @@ void m_mul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
             b_slice <<= 8;
         }
         // int16 output: two results per word, repack
-        *(int32_t*)(c + k)     = (p[1] << 16) | (p[0] & 0xFFFF);
+        *(int32_t*)(c + k + 0) = (p[1] << 16) | (p[0] & 0xFFFF);
         *(int32_t*)(c + k + 2) = (p[3] << 16) | (p[2] & 0xFFFF);
     }
     size_t rem = (len - len_s4);
@@ -173,7 +173,7 @@ void m_mul_i8(const int8_t* a, const int8_t* b, int16_t* c, const size_t len)
 }
 
 INLINE_OPTION
-void m_mul_u16(
+void m_wmul_u16(
     const uint16_t* a, const uint16_t* b, uint32_t* c, const size_t len)
 {
     #ifdef LOAD_OPT_USE_SCALAR
@@ -184,7 +184,7 @@ void m_mul_u16(
         uint32_t a_slice = *(const uint32_t*)(a + k);
         uint32_t b_slice = *(const uint32_t*)(b + k);
         c[k + 1] = (a_slice >> 16) * (b_slice >> 16);
-        c[k]     = (uint16_t)a_slice * (uint16_t)b_slice;
+        c[k + 0] = (uint16_t)a_slice * (uint16_t)b_slice;
     }
     size_t rem = (len - len_s2);
     if (rem > 0) {
@@ -194,7 +194,7 @@ void m_mul_u16(
 }
 
 INLINE_OPTION
-void m_mul_u8(
+void m_wmul_u8(
     const uint8_t* a, const uint8_t* b, uint16_t* c, const size_t len)
 {
     #ifdef LOAD_OPT_USE_SCALAR
@@ -210,7 +210,7 @@ void m_mul_u8(
             a_slice <<= 8;
             b_slice <<= 8;
         }
-        *(uint32_t*)(c + k)     = (p[1] << 16) | (p[0] & 0xFFFF);
+        *(uint32_t*)(c + k + 0) = (p[1] << 16) | (p[0] & 0xFFFF);
         *(uint32_t*)(c + k + 2) = (p[3] << 16) | (p[2] & 0xFFFF);
     }
     size_t rem = (len - len_s4);

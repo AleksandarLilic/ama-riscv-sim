@@ -10,15 +10,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from codegen_common import *
 
 
-def add(a, b): return a + b
-def sub(a, b): return a - b
-def mul(a, b): return a * b
-def div(a, b): return a / b
+def add(a, b): return np.add(a, b)
+def sub(a, b): return np.subtract(a, b)
+def mul(a, b): return np.multiply(a, b)
+def wmul(a, b): return mul(a, b) # just a dispatch
+def div(a, b): return np.divide(a, b)
 
 ARR_LEN = 128
-OPS = [add, sub, mul, div]
+OPS =      [add, sub, mul, wmul, div]
+OPS_SIGN = ["+", "-", "*",  "*", "/"]
 OPS_N = [op.__name__ for op in OPS]
-OPS_SIGN = ["+", "-", "*", "/"]
 
 if len(sys.argv) != 2:
     print(f"Usage: python3 codegen.py <{'|'.join(OPS_N)}>")
@@ -53,7 +54,6 @@ for idx, (key, value) in enumerate(iter_num("int", "uint", "fp", narrow=False)):
         typ_min = value["min"] >> shift_amount
         typ_max = value["max"] >> shift_amount
 
-
     value['a'] = rnd_gen_1d_arr(typ_min, typ_max, ARR_LEN, value["nf"])
     value['b'] = rnd_gen_1d_arr(typ_min, typ_max, ARR_LEN, value["nf"])
 
@@ -73,8 +73,8 @@ for idx, (key, value) in enumerate(iter_num("int", "uint", "fp", narrow=False)):
         value['b'] = np.where(value['b'] == 0, 0.01, value['b'])
 
     nf_out, ctype_out = value["nf"], "NF" # NF matches defined type
-    # allow for double width output types for mul of 8 and 16 bit
-    if op_name == "mul":
+    # allow for double width output types for wmul of 8 and 16 bit
+    if op_name == "wmul":
         if key == "uint8_t":
             nf_out = np.uint16
             ctype_out = "uint16_t"
