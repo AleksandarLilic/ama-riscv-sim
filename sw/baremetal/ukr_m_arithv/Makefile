@@ -18,7 +18,11 @@ HEADER_PREFIX := test_arrays_
 HEADERS := $(addsuffix .h, $(addprefix $(HEADER_PREFIX), $(OPS)))
 CODEGEN_PY := codegen.py
 
-OPT := -O1 -flto
+# at -O3, compiler would do SWAR for int8 through `-ftree-loop-vectorize`
+# which is a different point of comparison
+# use -O1 and add scheduling explicitly instead
+OPT := -O1 -fschedule-insns -fschedule-insns2
+OPT += -flto
 CFLAGS := -DLOOPS=$(LOOPS)
 
 MATH_LIB_UNROLL_DOTV ?= 1
