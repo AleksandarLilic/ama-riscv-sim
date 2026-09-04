@@ -30,7 +30,6 @@ ELF_TEXT_KEY = "text" # '.text' bytes, within the 'ELF_SIZE_KEY' group
 FMT = smarter_eng_formatter(places=1)
 
 IPC_COLOR = "#2b2b2b" # very dark gray
-TEXT_SIZE_COLOR = PLOTLY_COLORS[6]
 SEP_COLOR = "#888888" # mid gray
 GRID_COLOR = "#dddddd" # very light gray
 
@@ -40,7 +39,7 @@ GROUP_LABEL_Y = -0.35 # room for rotated tick labels
 SEP_DROP = .06 # how far the group separator runs past the group label
 LEGEND_W = 1.7 # room added on the right
 # all in inches, so the axes box doesn't scale with the number of entries
-MARGIN_L = .75 # y label and tick labels
+MARGIN_L = .80 # y label and tick labels
 MARGIN_R = .70 # always reserved, so the IPC axis doesn't shift the box
 SLOT_W = .5 # per entry, keeps the bars equally wide in every plot
 SLOT_W_LR = .3 # per entry, with the legend to the right
@@ -82,12 +81,12 @@ CYC_CATS = [
 ]
 # drawn as a second series, beside the cycles bar
 TEXT_CATS = [
-    ("text_size", "text_size", "Text size", TEXT_SIZE_COLOR),
+    ("text_size", "text_size", "Text size", PLOTLY_COLORS[6]),
 ]
 # all memory instructions, split to show the load/store contributions
 MEM_CATS = [
-    ("mem_loads", "mem_loads", "Loads", PLOTLY_COLORS[0]),
-    ("mem_stores", "mem_stores", "Stores", PLOTLY_COLORS[4]),
+    ("mem_loads", "mem_loads", "Loads", PLOTLY_COLORS[3]),
+    ("mem_stores", "mem_stores", "Stores", PLOTLY_COLORS[6]),
 ]
 
 PLOTS = [
