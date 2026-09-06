@@ -66,13 +66,9 @@ _Static_assert(0, "No operation defined");
 #endif
 
 void main(void) {
-    GLOBAL_SYMBOL("warmup");
-    for (uint32_t i = 0; i < WARMUP; i++) {
-        RUN
-    }
     GLOBAL_SYMBOL("bench");
-    PROF_START;
-    for (uint32_t i = 0; i < LOOPS; i++) {
+    for (uint32_t i = 0; i < (WARMUP + LOOPS); i++) {
+        if (i == WARMUP) { PROF_START; }
         RUN
     }
     PROF_STOP;

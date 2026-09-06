@@ -38,13 +38,9 @@ _Static_assert(0, "Unsupported number format: FUNC");
 
 void main(void) {
     volatile int32_t result;
-    GLOBAL_SYMBOL("warmup");
-    for (size_t i = 0; i < WARMUP; i++) {
-        result = FUNC(a, b, VEC_LEN);
-    }
     GLOBAL_SYMBOL("bench");
-    PROF_START;
-    for (size_t i = 0; i < LOOPS; i++) {
+    for (size_t i = 0; i < (WARMUP + LOOPS); i++) {
+        if (i == WARMUP) { PROF_START; }
         result = FUNC(a, b, VEC_LEN);
     }
     PROF_STOP;

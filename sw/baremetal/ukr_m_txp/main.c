@@ -37,13 +37,9 @@ _Static_assert(LDA >= N, "row stride of the source is shorter than its cols");
 _Static_assert(LDC >= M, "row stride of the destination is shorter than its cols");
 
 void main(void) {
-    GLOBAL_SYMBOL("warmup");
-    for (size_t i = 0; i < WARMUP; i++) {
-        FUNC(M, N, a, LDA, c, LDC);
-    }
     GLOBAL_SYMBOL("bench");
-    PROF_START;
-    for (size_t i = 0; i < LOOPS; i++) {
+    for (size_t i = 0; i < (WARMUP + LOOPS); i++) {
+        if (i == WARMUP) { PROF_START; }
         FUNC(M, N, a, LDA, c, LDC);
     }
     PROF_STOP;

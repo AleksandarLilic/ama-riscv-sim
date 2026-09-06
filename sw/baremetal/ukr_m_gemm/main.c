@@ -67,13 +67,9 @@ _Static_assert((M > KER_MR) && (N > KER_NR),
 _Static_assert(KER_MR == EDGE_MR, "gemm MR and dotf MR must match");
 
 void main(void) {
-    GLOBAL_SYMBOL("warmup");
-    for (size_t i = 0; i < WARMUP; i++) {
-        FUNC(M, N, VEC_LEN, a, LDA, b, LDB, c, LDC, true);
-    }
     GLOBAL_SYMBOL("bench");
-    PROF_START;
-    for (size_t i = 0; i < LOOPS; i++) {
+    for (size_t i = 0; i < (WARMUP + LOOPS); i++) {
+        if (i == WARMUP) { PROF_START; }
         // k is unconstrained, gemm hands it to the kernel which owns its tail
         FUNC(M, N, VEC_LEN, a, LDA, b, LDB, c, LDC, true);
     }
