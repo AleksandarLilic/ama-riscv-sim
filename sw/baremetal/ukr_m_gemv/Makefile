@@ -5,7 +5,9 @@ LOOPS ?= 1
 TYPES := int8 int4_int8 int2_int8
 
 ARR_LEN := 256
-# deliberately *not* a multiple of M_DOTF_<TYPES>_MR (4) to test the tail
+# rows the edge kernel writes, must match M_DOTF_<TYPES>_MR in common_math.h
+MR := 4
+# deliberately *not* a multiple of MR to test the tail
 M_OUT := 10
 # kernel K tile: K_ATOMIC 4 * K_UNROLL 4 on the SIMD flavor
 K_STEP := 16
@@ -28,7 +30,7 @@ all: $(APP_REQS) $(TARGETS)
 codegen: $(APP_REQS)
 clean_codegen: clean_headers
 
-CODEGEN_DATA_DIMS := -K $(ARR_LEN) -M $(M_OUT) --k_step $(K_STEP)
+CODEGEN_DATA_DIMS := -K $(ARR_LEN) -M $(M_OUT) --k_step $(K_STEP) --mr $(MR)
 $(APP_REQS): $(CODEGEN_PY) ../codegen_common.py ../codegen_gemm.py
 	$(CODEGEN_PY) $(CODEGEN_DATA_DIMS) --types $(TYPES) --ual --out_buf y poison
 

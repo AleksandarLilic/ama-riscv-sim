@@ -30,10 +30,15 @@ _Static_assert(0, "Unsupported number format: FUNC");
 
 _Static_assert(N == 1, "gemv writes a single column of outputs");
 _Static_assert(LDA >= K, "row stride cannot be shorter than the reduction");
-// tails/remainders, remove if used test is used for throughput runs
+// due to codegen, check that its MR/NR and kernel's MR/NR match
+_Static_assert(CG_MR == KER_MR, "test_arrays.h generated for a different MR");
+
+#ifndef NO_TAILS
+// tails/remainders
 _Static_assert(M % KER_MR,
     "M must not be a multiple of MR - gemv handles m % MR remainder"
 );
+#endif
 
 void main(void) {
     GLOBAL_SYMBOL("warmup");

@@ -8,10 +8,14 @@ TYPES := int8 int4_int8 int2_int8
 SQUARE ?= 0
 CODEGEN_FLAGS = --max_bytes 98304 # 96K for SQUARE=96, .text is up to ~6K
 
+# what the ukr writes per pass, must match M_GEMM_<TYPES>_MR/_NR in common_math.h
+MR := 4
+NR := 2
+
 ifeq ($(strip $(SQUARE)), 0)
 ARR_LEN := 256
-# deliberately *not* multiples of the ukr's MR (4) / NR (2), so that both the
-# m % MR and n % NR edges are exercised; N is the batch
+# deliberately *not* multiples of MR / NR, so that both the m % MR and
+# n % NR edges are exercised; N is the batch
 M_OUT := 10
 N_BATCH := 5
 else
@@ -48,7 +52,7 @@ clean_codegen: clean_headers
 # --c_t: C is written batch-major, C[n][m], so a column of it is contiguous
 CODEGEN_DATA_DIMS := \
     -K $(ARR_LEN) -M $(M_OUT) -N $(N_BATCH) \
-    --k_step $(K_STEP) --b_t --c_t $(CODEGEN_FLAGS)
+    --k_step $(K_STEP) --mr $(MR) --nr $(NR) --b_t --c_t $(CODEGEN_FLAGS)
 $(APP_REQS): $(CODEGEN_PY) ../codegen_common.py ../codegen_gemm.py
 	$(CODEGEN_PY) $(CODEGEN_DATA_DIMS) --types $(TYPES) --ual --out_buf c poison
 

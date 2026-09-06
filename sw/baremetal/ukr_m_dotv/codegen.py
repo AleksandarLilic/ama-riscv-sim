@@ -37,6 +37,8 @@ parser = argparse.ArgumentParser()
 cg.add_dim_args(parser)
 parser.add_argument("--types", nargs="+", required=True, type=nf_comb, help="NF tokens, passed straight from the Makefile's TYPES")
 parser.add_argument("--k_step", type=int, default=1, help="widest kernel K tile in elements (SIMD_UNROLL for dotv, K_STEP for dotf); K must be a multiple of it so the aligned target has no tail")
+parser.add_argument("--mr", type=int, default=None, help="rows the ukr writes per pass (M_<KER>_<TYPES>_MR); M must be a multiple of it for the m edge to have no tail. Emitted as CG_MR so the test can catch a header generated for a different kernel")
+parser.add_argument("--nr", type=int, default=None, help="columns the ukr writes per pass (M_<KER>_<TYPES>_NR), for a level-3 kernel; as --mr, but for the n edge, and emitted as CG_NR")
 parser.add_argument("--skip_k_limit_check", action="store_true", help="don't enforce K-limit check")
 parser.add_argument("--ual", action="store_true", help="also emit the unaligned companion length and its reference")
 parser.add_argument("--no_flatten", action="store_true", help="emit 2D arrays instead of flat pointer+stride ones")
@@ -111,8 +113,19 @@ code.append(f"#define N {N}")
 code.append(f"#define K {K}")
 # the outputs' inner dim, so a kernel taking an 'ldc' can be handed it; unpadded
 code.append(f"#define LDC {'M' if args.c_t else 'N'}\n")
-if (M == N == K):
-    code.append(f"#define NO_TAILS\n")
+# k is already tail-free by the K_TILE check above, so the m and n edges decide;
+# only the caller knows the ukr's tiling, staying quiet until it passes one
+no_m_tail = (args.mr is not None) and (M % args.mr == 0)
+no_n_tail = (args.nr is None) or (N % args.nr == 0)
+tiling = []
+if args.mr is not None:
+    tiling.append(f"#define CG_MR {args.mr}")
+if args.nr is not None:
+    tiling.append(f"#define CG_NR {args.nr}")
+if no_m_tail and no_n_tail:
+    tiling.append("#define NO_TAILS")
+if tiling:
+    code.append("\n".join(tiling) + "\n")
 
 for i, (ta, tb) in enumerate(COMBS):
     d = cg.gen(

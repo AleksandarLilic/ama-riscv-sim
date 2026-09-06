@@ -45,6 +45,10 @@ _Static_assert(LDB >= K,
 // catches a header gen without --c_t, where LDC would be N
 _Static_assert(LDC == M, "c_t = true: the outputs' leading dim is M");
 
+// due to codegen, check that its MR/NR and kernel's MR/NR match
+_Static_assert(CG_MR == KER_MR, "test_arrays.h generated for a different MR");
+_Static_assert(CG_NR == KER_NR, "test_arrays.h generated for a different NR");
+
 #ifndef NO_TAILS
 // tails/remainders
 _Static_assert(M % KER_MR,

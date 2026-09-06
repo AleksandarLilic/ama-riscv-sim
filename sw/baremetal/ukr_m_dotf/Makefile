@@ -28,7 +28,7 @@ all: $(APP_REQS) $(TARGETS)
 codegen: $(APP_REQS)
 clean_codegen: clean_headers
 
-CODEGEN_DATA_DIMS := -K $(ARR_LEN) -M $(MR) --k_step $(K_STEP)
+CODEGEN_DATA_DIMS := -K $(ARR_LEN) -M $(MR) --k_step $(K_STEP) --mr $(MR)
 $(APP_REQS): $(CODEGEN_PY) ../codegen_common.py ../codegen_gemm.py
 	$(CODEGEN_PY) $(CODEGEN_DATA_DIMS) --types $(TYPES) --ual --out_buf y poison
 
