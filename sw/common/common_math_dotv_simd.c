@@ -316,8 +316,8 @@ int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
     for (size_t k = 0; k < tile; k += p_inc) {
         int16x2_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
 
-        #pragma GCC unroll 8
-        for (size_t i = 0; i < 8; i++) {
+        #pragma GCC unroll 4
+        for (size_t i = 0; i < 4; i++) {
             a_arr[i] = v_load_int16x2(a + k + i * 2);
             b_arr[i] = v_load_int16x2(b + k + i * 2);
         }
@@ -333,7 +333,11 @@ int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
               [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
             :
         );
-        // let compiler schedule loads in between to reduce rf pressure
+        #pragma GCC unroll 4
+        for (size_t i = 4; i < 8; i++) {
+            a_arr[i] = v_load_int16x2(a + k + i * 2);
+            b_arr[i] = v_load_int16x2(b + k + i * 2);
+        }
         asm volatile (
             "dot16 %[c], %[a5], %[b5]\n\t"
             "dot16 %[c], %[a6], %[b6]\n\t"
@@ -367,8 +371,8 @@ int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
     for (size_t k = 0; k < tile; k += p_inc) {
         int8x4_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
 
-        #pragma GCC unroll 8
-        for (size_t i = 0; i < 8; i++) {
+        #pragma GCC unroll 4
+        for (size_t i = 0; i < 4; i++) {
             a_arr[i] = v_load_int8x4(a + k + i * 4);
             b_arr[i] = v_load_int8x4(b + k + i * 4);
         }
@@ -384,7 +388,11 @@ int32_t m_dotv_i8_i8(const int8_t* a, const int8_t* b, const size_t len) {
               [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
             :
         );
-        // let compiler schedule loads in between to reduce rf pressure
+        #pragma GCC unroll 4
+        for (size_t i = 4; i < 8; i++) {
+            a_arr[i] = v_load_int8x4(a + k + i * 4);
+            b_arr[i] = v_load_int8x4(b + k + i * 4);
+        }
         asm volatile (
             "dot8 %[c], %[a5], %[b5]\n\t"
             "dot8 %[c], %[a6], %[b6]\n\t"
@@ -421,8 +429,8 @@ int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
     for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
         int4x8_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
 
-        #pragma GCC unroll 8
-        for (size_t i = 0; i < 8; i++) {
+        #pragma GCC unroll 4
+        for (size_t i = 0; i < 4; i++) {
             a_arr[i] = v_load_int4x8(ap + i * 4);
             b_arr[i] = v_load_int4x8(bp + i * 4);
         }
@@ -438,7 +446,11 @@ int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
               [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
             :
         );
-        // let compiler schedule loads in between to reduce rf pressure
+        #pragma GCC unroll 4
+        for (size_t i = 4; i < 8; i++) {
+            a_arr[i] = v_load_int4x8(ap + i * 4);
+            b_arr[i] = v_load_int4x8(bp + i * 4);
+        }
         asm volatile (
             "dot4 %[c], %[a5], %[b5]\n\t"
             "dot4 %[c], %[a6], %[b6]\n\t"
@@ -464,7 +476,7 @@ int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
 INLINE_OPTION
 int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
-    static const size_t udeg = 2; // unroll degree
+    static const size_t udeg = 3; // unroll degree
     static const size_t deg = (4 + udeg); // +4 for crumbs to words
     size_t tile = ((len >> deg) << deg); // 'len' and 'k' are in crumbs
     const int8_t* ap = a;
@@ -473,7 +485,7 @@ int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
     const int8_t p_pinc = (p_inc >> 2); // packed increment, div 4 for i2
 
     for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
-        int2x16_t a_arr[4], b_arr[4]; // 4=(1<<udeg), but compiler is not happy
+        int2x16_t a_arr[8], b_arr[8]; // 8=(1<<udeg), but compiler is not happy
 
         #pragma GCC unroll 4
         for (size_t i = 0; i < 4; i++) {
@@ -490,6 +502,23 @@ int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
               [a1] "r" (a_arr[1]), [b1] "r" (b_arr[1]),
               [a2] "r" (a_arr[2]), [b2] "r" (b_arr[2]),
               [a3] "r" (a_arr[3]), [b3] "r" (b_arr[3])
+            :
+        );
+        #pragma GCC unroll 4
+        for (size_t i = 4; i < 8; i++) {
+            a_arr[i] = v_load_int2x16(ap + i * 4);
+            b_arr[i] = v_load_int2x16(bp + i * 4);
+        }
+        asm volatile (
+            "dot2 %[c], %[a5], %[b5]\n\t"
+            "dot2 %[c], %[a6], %[b6]\n\t"
+            "dot2 %[c], %[a7], %[b7]\n\t"
+            "dot2 %[c], %[a4], %[b4]\n\t"
+            : [c] "+r" (c)
+            : [a4] "r" (a_arr[4]), [b4] "r" (b_arr[4]),
+              [a5] "r" (a_arr[5]), [b5] "r" (b_arr[5]),
+              [a6] "r" (a_arr[6]), [b6] "r" (b_arr[6]),
+              [a7] "r" (a_arr[7]), [b7] "r" (b_arr[7])
             :
         );
     }
@@ -563,8 +592,6 @@ int32_t m_dotv_i16_i4(const int16_t* a, const int8_t* b, const size_t len) {
             b_slice = v_load_int4x8(bp + i * 4);
             a_slice_1 = v_load_int16x2(a + k     + i * 8);
             a_slice_2 = v_load_int16x2(a + k + 2 + i * 8);
-            a_slice_3 = v_load_int16x2(a + k + 4 + i * 8);
-            a_slice_4 = v_load_int16x2(a + k + 6 + i * 8);
 
             b_slice_wide_b = _widen4(b_slice, 0u); // low N to B
             b_slice_wide_h = _widen8(b_slice_wide_b.w.lo, 0u); // low B to H
@@ -576,6 +603,8 @@ int32_t m_dotv_i16_i4(const int16_t* a, const int8_t* b, const size_t len) {
                   [bw_hi] "r" (b_slice_wide_h.w.hi),
                   [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
             );
+            a_slice_3 = v_load_int16x2(a + k + 4 + i * 8);
+            a_slice_4 = v_load_int16x2(a + k + 6 + i * 8);
             b_slice_wide_h = _widen8(b_slice_wide_b.w.hi, 0u); // high B to H
             asm volatile (
                 "dot16 %[c], %[a3], %[bw_lo]\n\t"
@@ -724,8 +753,6 @@ int32_t m_dotv_i8_i2(const int8_t* a, const int8_t* b, const size_t len) {
             b_slice = v_load_int2x16(b + ((k + i * 16) >> 2)); // 0,   4,  8
             a_slice_1 = v_load_int8x4(a + k      + i * 16);    // 0,  16, 32
             a_slice_2 = v_load_int8x4(a + k +  4 + i * 16);    // 4,  20, 36
-            a_slice_3 = v_load_int8x4(a + k +  8 + i * 16);    // 8,  24, 40
-            a_slice_4 = v_load_int8x4(a + k + 12 + i * 16);    // 12, 28, 44
 
             b_slice_wide_n = _widen2(b_slice, 0u); // C to N
             b_slice_wide_b = _widen4(b_slice_wide_n.w.lo, 0u); // low N to B
@@ -737,6 +764,8 @@ int32_t m_dotv_i8_i2(const int8_t* a, const int8_t* b, const size_t len) {
                   [bw_hi] "r" (b_slice_wide_b.w.hi),
                   [a1] "r" (a_slice_1), [a2] "r" (a_slice_2)
             );
+            a_slice_3 = v_load_int8x4(a + k +  8 + i * 16);    // 8,  24, 40
+            a_slice_4 = v_load_int8x4(a + k + 12 + i * 16);    // 12, 28, 44
             b_slice_wide_b = _widen4(b_slice_wide_n.w.hi, 0u); // high N to B
             asm volatile (
                 "dot8 %[c], %[a3], %[bw_lo]\n\t"

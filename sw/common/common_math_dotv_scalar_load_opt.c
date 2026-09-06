@@ -62,6 +62,11 @@
     a_slice = *(const int32_t*)((a + k + off)); \
     b_slice = *(const int32_t*)((b + k + off));
 
+// packed operands are walked by pointer: 'k' counts elements, not bytes
+#define LOAD_SLICES_P(off) \
+    a_slice = *(const int32_t*)((ap + (off))); \
+    b_slice = *(const int32_t*)((bp + (off)));
+
 // mixed types consume the two operands at different rates
 #define LOAD_A(off) a_slice = *(const int32_t*)((ap + (off)));
 #define LOAD_B(off) b_slice = *(const int32_t*)((bp + (off)));
@@ -72,7 +77,7 @@
 INLINE_OPTION
 int32_t m_dotv_i16_i16(const int16_t* a, const int16_t* b, const size_t len) {
     int32_t c = 0;
-    static const size_t udeg = LO_UNROLL ? 3 : 0; // unroll degree
+    static const size_t udeg = LO_UNROLL ? 4 : 0; // unroll degree
     static const size_t deg = (1 + udeg); // +1 for halfwords to words
     size_t tile = ((len >> deg) << deg); // +1 to words, +3 for 8x unroll
     const size_t p_inc = (1 << deg); // pointer increment
@@ -123,24 +128,26 @@ INLINE_OPTION
 int32_t m_dotv_i4_i4(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     static const size_t udeg = LO_UNROLL ? 2 : 0; // unroll degree
-    static const size_t deg = (2 + udeg); // +2 for bytes to words
-    const size_t len_bytes = (len >> 1); // len passed in as number of nibbles
-    const size_t tile = ((len_bytes >> deg) << deg); // 'k' is in bytes
+    static const size_t deg = (3 + udeg); // +3 for 8 el per core step
+    const size_t tile = ((len >> deg) << deg); // 'len' and 'k' are in nibbles
+    const int8_t* ap = a;
+    const int8_t* bp = b;
     const size_t p_inc = (1 << deg);
+    const size_t p_pinc = (p_inc >> 1); // packed increment, div 2 for i4
 
-    for (size_t k = 0; k < tile; k += p_inc) {
+    for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
         int32_t a_slice, b_slice;
         static const size_t uval = (1 << udeg);
         #pragma GCC unroll uval
         for (size_t i = 0; i < uval; i++) {
-            LOAD_SLICES(i*4)
+            LOAD_SLICES_P(i*4)
             MAC_ITER_8(4, int8_t)
         }
     }
 
-    size_t rem = (len_bytes - tile);
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i4_i4_scalar_core(a + tile, b + tile, rem << 1);
+        c += m_dotv_i4_i4_scalar_core(a + (tile >> 1), b + (tile >> 1), rem);
     }
     return c;
 }
@@ -149,24 +156,26 @@ INLINE_OPTION
 int32_t m_dotv_i2_i2(const int8_t* a, const int8_t* b, const size_t len) {
     int32_t c = 0;
     static const size_t udeg = LO_UNROLL ? 1 : 0; // unroll degree
-    static const size_t deg = (2 + udeg); // +2 for bytes to words
-    const size_t len_bytes = (len >> 2); // len passed in as number of crumbs
-    const size_t tile = ((len_bytes >> deg) << deg); // 'k' is in bytes
+    static const size_t deg = (4 + udeg); // +4 for 16 el per core step
+    const size_t tile = ((len >> deg) << deg); // 'len' and 'k' are in crumbs
+    const int8_t* ap = a;
+    const int8_t* bp = b;
     const size_t p_inc = (1 << deg);
+    const size_t p_pinc = (p_inc >> 2); // packed increment, div 4 for i2
 
-    for (size_t k = 0; k < tile; k += p_inc) {
+    for (size_t k = 0; k < tile; k += p_inc, ap += p_pinc, bp += p_pinc) {
         int32_t a_slice, b_slice;
         static const size_t uval = (1 << udeg);
         #pragma GCC unroll uval
         for (size_t i = 0; i < uval; i++) {
-            LOAD_SLICES(i*4)
+            LOAD_SLICES_P(i*4)
             MAC_ITER_16(2, int8_t)
         }
     }
 
-    size_t rem = (len_bytes - tile);
+    size_t rem = (len - tile);
     if (rem > 0) {
-        c += m_dotv_i2_i2_scalar_core(a + tile, b + tile, rem << 2);
+        c += m_dotv_i2_i2_scalar_core(a + (tile >> 2), b + (tile >> 2), rem);
     }
     return c;
 }
@@ -361,6 +370,7 @@ int32_t m_dotv_i4_i2(const int8_t* a, const int8_t* b, const size_t len) {
 #undef MAC_ITER_MIXED_4
 #undef MAC_ITER_MIXED_8
 #undef LOAD_SLICES
+#undef LOAD_SLICES_P
 #undef LOAD_A
 #undef LOAD_B
 #undef LO_UNROLL
