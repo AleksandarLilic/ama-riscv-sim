@@ -1,5 +1,5 @@
-WARMUP ?= 1
-LOOPS ?= 1
+WARMUP ?= 3
+LOOPS ?= 3
 
 # types as (matrix, matrix)
 TYPES := int16 int8 int4 int2
@@ -39,7 +39,7 @@ MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 OPT := -O3 -flto
-CFLAGS += -DLOOPS=$(LOOPS) $(MATH_LIB_FLAGS) -DFORCE_INLINE
+CFLAGS += -DLOOPS=$(LOOPS) -DWARMUP=$(WARMUP) $(MATH_LIB_FLAGS) -DFORCE_INLINE
 
 APP_REQS := test_arrays.h
 CODEGEN_PY := ./codegen.py

@@ -1,5 +1,5 @@
-WARMUP ?= 1
-LOOPS ?= 1
+WARMUP ?= 3
+LOOPS ?= 3
 
 TYPES := int16 # int4 int8 int16 int16_int8 int16_int4 int8_int4 int8_int2
 LENGTHS := small large
@@ -14,7 +14,7 @@ include ../Makefile.math_lib_opts.mk
 
 MATH_LIB_FLAGS += -DFORCE_INLINE
 OPT := -O2 -flto
-CFLAGS := -DLOOPS=$(LOOPS) $(MATH_LIB_FLAGS)
+CFLAGS += -DLOOPS=$(LOOPS) -DWARMUP=$(WARMUP) $(MATH_LIB_FLAGS)
 CFLAGS += -DALIGNED
 
 all: $(TARGETS)

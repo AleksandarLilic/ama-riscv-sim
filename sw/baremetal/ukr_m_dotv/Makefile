@@ -1,5 +1,5 @@
-WARMUP ?= 1
-LOOPS ?= 1
+WARMUP ?= 3
+LOOPS ?= 3
 
 TYPES := int2 int4 int8 int16 int16_int8 int16_int4 int16_int2 int8_int4 int8_int2 int4_int2
 
@@ -18,7 +18,7 @@ MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 OPT := -O3 -flto
-CFLAGS += -DLOOPS=$(LOOPS) $(MATH_LIB_FLAGS)
+CFLAGS += -DLOOPS=$(LOOPS) -DWARMUP=$(WARMUP) $(MATH_LIB_FLAGS)
 # measure the kernel's steady-state loop, not a flattened copy of it:
 # gcc wants to unroll aggresively otherwise, and measurement gets muddy.
 # size-based, not 'max-completely-peel-times': the LOAD_OPT mixed kernels have

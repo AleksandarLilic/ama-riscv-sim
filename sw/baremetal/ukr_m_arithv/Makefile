@@ -1,5 +1,5 @@
-WARMUP ?= 1
-LOOPS ?= 1
+WARMUP ?= 3
+LOOPS ?= 3
 
 VEC_ONLY ?= 1 # not every (type x op) combination has vectorized flavor
 NFS := uint8 int8 uint16 int16
@@ -23,7 +23,7 @@ CODEGEN_PY := codegen.py
 # use -O1 and add scheduling explicitly instead
 OPT := -O1 -fschedule-insns -fschedule-insns2
 OPT += -flto
-CFLAGS := -DLOOPS=$(LOOPS)
+CFLAGS += -DLOOPS=$(LOOPS) -DWARMUP=$(WARMUP)
 
 MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk

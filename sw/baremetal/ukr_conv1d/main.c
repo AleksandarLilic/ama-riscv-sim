@@ -80,15 +80,9 @@ void main(void) {
     // filter gen can be done once at the beginning or on each call
     generate_filters();
 
-    GLOBAL_SYMBOL("warmup");
-     for (size_t i = 0; i < WARMUP; i++) {
-        //SCP_LCL(in);
-        conv1d_int16(in, IN_LEN, &fp[0][0], FP_LEN, out, OUT_LEN);
-        //SCP_REL(in);
-    }
     GLOBAL_SYMBOL("bench");
-    PROF_START;
-    for (size_t i = 0; i < LOOPS; i++) {
+    for (size_t i = 0; i < (WARMUP + LOOPS); i++) {
+        if (i == WARMUP) { PROF_START; }
         //SCP_LCL(in);
         conv1d_int16(in, IN_LEN, &fp[0][0], FP_LEN, out, OUT_LEN);
         //SCP_REL(in);

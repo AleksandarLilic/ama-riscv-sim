@@ -1,5 +1,5 @@
-WARMUP ?= 1
-LOOPS ?= 1
+WARMUP ?= 3
+LOOPS ?= 3
 
 # types read (matrix, vector), so the narrow weight combs are <narrow>_int8
 TYPES := int8 int4_int8 int2_int8
@@ -18,7 +18,7 @@ MATH_LIB_UNROLL_DOTV ?= 1
 include ../Makefile.math_lib_opts.mk
 
 OPT := -O3 -flto
-CFLAGS += -DLOOPS=$(LOOPS) $(MATH_LIB_FLAGS)
+CFLAGS += -DLOOPS=$(LOOPS) -DWARMUP=$(WARMUP) $(MATH_LIB_FLAGS)
 
 APP_REQS := test_arrays.h
 CODEGEN_PY := ./codegen.py
