@@ -13,10 +13,7 @@ void m_dotf_i8_i8_mr4(
     #define K_UNROLL 4
     #define K_STEP   (K_ATOMIC * K_UNROLL)
 
-    // 8 contiguous bytes of one 'a' row, across 2 regs
-    #define LOAD_A_ROW_2(row, off) \
-        a_arr[row][0] = v_load_int8x4(a + (row)*lda + kk + (off)); \
-        a_arr[row][1] = v_load_int8x4(a + (row)*lda + kk + (off) + 4)
+    #define A_ROW_ADDR(row, off) (a + (row)*lda + kk + (off))
 
     // 4 dot8 into 2 accumulators
     #define DOT8_BLOCK_4(c0, c1, x0, x1, a00, a01, a10, a11) \
@@ -32,45 +29,31 @@ void m_dotf_i8_i8_mr4(
             : \
         )
 
+    // rows are taken a pair at a time, 8 contiguous bytes of each
+    #define DOT8_ROW_I8_PAIR(r0, r1, off) \
+        do { \
+            const int8x4_t _a00 = v_load_int8x4(A_ROW_ADDR(r0, off)); \
+            const int8x4_t _a01 = v_load_int8x4(A_ROW_ADDR(r0, (off) + 4)); \
+            const int8x4_t _a10 = v_load_int8x4(A_ROW_ADDR(r1, off)); \
+            const int8x4_t _a11 = v_load_int8x4(A_ROW_ADDR(r1, (off) + 4)); \
+            DOT8_BLOCK_4(c[r0], c[r1], x0, x1, _a00, _a01, _a10, _a11); \
+        } while (0)
+
     int32_t c[4] = {0};
     const size_t kms = ((k / K_STEP) * K_STEP); // k max step-aligned
 
     for (size_t kk = 0; kk < kms; kk += K_STEP) {
-        int8x4_t x_arr[2], a_arr[4][2];
+        int8x4_t x0, x1;
 
-        x_arr[0] = v_load_int8x4(x + kk + 0);
-        x_arr[1] = v_load_int8x4(x + kk + 4);
-        LOAD_A_ROW_2(0, 0);
-        LOAD_A_ROW_2(1, 0);
-        LOAD_A_ROW_2(2, 0);
-        LOAD_A_ROW_2(3, 0);
-        DOT8_BLOCK_4(
-            c[0], c[1],
-            x_arr[0], x_arr[1],
-            a_arr[0][0], a_arr[0][1], a_arr[1][0], a_arr[1][1]
-        );
-        DOT8_BLOCK_4(
-            c[2], c[3],
-            x_arr[0], x_arr[1],
-            a_arr[2][0], a_arr[2][1], a_arr[3][0], a_arr[3][1]
-        );
+        x0 = v_load_int8x4(x + kk + 0);
+        x1 = v_load_int8x4(x + kk + 4);
+        DOT8_ROW_I8_PAIR(0, 1, 0);
+        DOT8_ROW_I8_PAIR(2, 3, 0);
 
-        x_arr[0] = v_load_int8x4(x + kk + 8);
-        x_arr[1] = v_load_int8x4(x + kk + 12);
-        LOAD_A_ROW_2(0, 8);
-        LOAD_A_ROW_2(1, 8);
-        LOAD_A_ROW_2(2, 8);
-        LOAD_A_ROW_2(3, 8);
-        DOT8_BLOCK_4(
-            c[0], c[1],
-            x_arr[0], x_arr[1],
-            a_arr[0][0], a_arr[0][1], a_arr[1][0], a_arr[1][1]
-        );
-        DOT8_BLOCK_4(
-            c[2], c[3],
-            x_arr[0], x_arr[1],
-            a_arr[2][0], a_arr[2][1], a_arr[3][0], a_arr[3][1]
-        );
+        x0 = v_load_int8x4(x + kk + 8);
+        x1 = v_load_int8x4(x + kk + 12);
+        DOT8_ROW_I8_PAIR(0, 1, 8);
+        DOT8_ROW_I8_PAIR(2, 3, 8);
     }
 
     // k tail: reuse dotv, which has its own tail
@@ -85,8 +68,9 @@ void m_dotf_i8_i8_mr4(
     y[2] = c[2];
     y[3] = c[3];
 
+    #undef DOT8_ROW_I8_PAIR
     #undef DOT8_BLOCK_4
-    #undef LOAD_A_ROW_2
+    #undef A_ROW_ADDR
     #undef K_STEP
     #undef K_UNROLL
     #undef K_ATOMIC
