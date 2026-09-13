@@ -23,7 +23,7 @@ void main() {
                 int16_t a[] = {100, -50};
                 int16_t b[] = {200, -50};
                 int16x2_t c = _add16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(300, -100), 101);
+                CHECK(c.v, (uint32_t)PK_I16(300, -100), 101);
             }
             {
                 GLOBAL_SYMBOL("op_add16_overflow");
@@ -51,7 +51,7 @@ void main() {
                 int8_t a[] = {10, -20, 30, -40};
                 int8_t b[] = {5, 5, 5, 5};
                 int8x4_t c = _add8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK_I8(15, -15, 35, -35), 111);
+                CHECK(c.v, (uint32_t)PK_I8(15, -15, 35, -35), 111);
             }
             {
                 GLOBAL_SYMBOL("op_add8_overflow");
@@ -79,7 +79,7 @@ void main() {
                 // 300 - 200 = 100
                 // -100 - (-50) = -50
                 int16x2_t c = _sub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(100, -50), 121);
+                CHECK(c.v, (uint32_t)PK_I16(100, -50), 121);
             }
             {
                 GLOBAL_SYMBOL("op_sub16_overflow_to_neg");
@@ -131,7 +131,7 @@ void main() {
                 int16_t a[] = {1000, -1000};
                 int16_t b[] = {1000, -1000};
                 int16x2_t c = _qadd16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(2000, -2000), 301);
+                CHECK(c.v, (uint32_t)PK_I16(2000, -2000), 301);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16_sat_max");
@@ -157,7 +157,7 @@ void main() {
                 uint16_t a[] = {1000, 50000};
                 uint16_t b[] = {2000, 10000};
                 uint16x2_t c = _qadd16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK_I16(3000, 60000), 311);
+                CHECK(c.v, (uint32_t)PK_I16(3000, 60000), 311);
             }
             {
                 GLOBAL_SYMBOL("op_qadd16u_sat_max_boundary");
@@ -235,7 +235,7 @@ void main() {
                 int16_t a[] = {1000, -1000};
                 int16_t b[] = {1, -1};
                 int16x2_t c = _qsub16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(999, -999), 341);
+                CHECK(c.v, (uint32_t)PK_I16(999, -999), 341);
             }
             {
                 GLOBAL_SYMBOL("op_qsub16_sat_max");

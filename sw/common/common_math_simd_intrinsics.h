@@ -8,6 +8,7 @@ extern "C" {
 #include "common.h"
 
 #ifdef __riscv_xsimd
+#include "common_math_simd_types.h"
 
 // -----------------------------------------------------------------------------
 // SIMD asm wrapper functions (aka intrinsics lite)
@@ -193,7 +194,7 @@ void _dot8(const int8x4_t a, const int8x4_t b, int32_t* c) {
 }
 
 static INLINE
-void _dot8u(const uint8x4_t a, const uint8x4_t b, int32_t* c) {
+void _dot8u(const uint8x4_t a, const uint8x4_t b, uint32_t* c) {
     asm volatile("dot8u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
@@ -203,7 +204,7 @@ void _dot4(const int4x8_t a, const int4x8_t b, int32_t* c) {
 }
 
 static INLINE
-void _dot4u(const uint4x8_t a, const uint4x8_t b, int32_t* c) {
+void _dot4u(const uint4x8_t a, const uint4x8_t b, uint32_t* c) {
     asm volatile("dot4u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 
@@ -213,7 +214,7 @@ void _dot2(const int2x16_t a, const int2x16_t b, int32_t* c) {
 }
 
 static INLINE
-void _dot2u(const uint2x16_t a, const uint2x16_t b, int32_t* c) {
+void _dot2u(const uint2x16_t a, const uint2x16_t b, uint32_t* c) {
     asm volatile("dot2u %0, %1, %2" : "+r"(*c) : "r"(a), "r"(b));
 }
 

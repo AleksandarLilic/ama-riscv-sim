@@ -26,7 +26,7 @@ void main() {
                 int16x2_t c = _slli16(v_load_int16x2(a), imm);
                 // 10 << 4 = 160
                 // -10 (0xFFF6) << 4 = 0xFF60 (-160)
-                CHECK(c.v, PK_I16(160, -160), 101);
+                CHECK(c.v, (uint32_t)PK_I16(160, -160), 101);
             }
             {
                 GLOBAL_SYMBOL("op_slli16_max_shift");
@@ -54,7 +54,7 @@ void main() {
                 int8_t a[] = {10, -10, 2, -2};
                 int32_t imm = 2;
                 int8x4_t c = _slli8(v_load_int8x4(a), imm);
-                CHECK(c.v, PK_I8(40, -40, 8, -8), 111);
+                CHECK(c.v, (uint32_t)PK_I8(40, -40, 8, -8), 111);
             }
             {
                 GLOBAL_SYMBOL("op_slli8_max_shift");
@@ -159,7 +159,7 @@ void main() {
                 int16_t a[] = {-1, -1};
                 int32_t imm = 8;
                 int16x2_t c = _srai16(v_load_int16x2(a), imm);
-                CHECK(c.v, PK_I16(-1, -1), 143);
+                CHECK(c.v, (uint32_t)PK_I16(-1, -1), 143);
             }
         }
 
@@ -185,7 +185,7 @@ void main() {
                 int8_t a[] = {-1, -1, -1, -1};
                 int32_t imm = 7;
                 int8x4_t c = _srai8(v_load_int8x4(a), imm);
-                CHECK(c.v, PK_I8(-1, -1, -1, -1), 153);
+                CHECK(c.v, (uint32_t)PK_I8(-1, -1, -1, -1), 153);
             }
         }
 

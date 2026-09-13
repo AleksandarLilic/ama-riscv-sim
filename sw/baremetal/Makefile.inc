@@ -85,6 +85,14 @@ GCC_OPTS += -Wl,--no-warn-rwx-segments
 #GCC_OPTS += -Wl,-Map=$(TARGET).map
 # optimizations not set - expected to come from test's Makefile
 
+STRICT_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
+STRICT_FLAGS += -Werror -pedantic
+
+BUILD_APP_STRICT ?= 0
+ifeq ($(strip $(BUILD_APP_STRICT)), 1)
+GCC_OPTS += $(STRICT_FLAGS)
+endif
+
 CXX_OPTS += -fno-exceptions -fno-rtti
 CXX_OPTS += -fno-threadsafe-statics -fno-use-cxa-atexit
 
@@ -131,8 +139,8 @@ HEX_GEN = \
 build_common: $(COMMON_OBJS)
 	@echo "math library built as '$(MATH_LIB_FLAGS_STR)'"
 
-COMMON_FLAGS := -Wall -Wextra -Wunreachable-code -Wnull-dereference -Wcast-qual
-COMMON_FLAGS += -Werror -pedantic
+# common always strict
+COMMON_FLAGS := $(STRICT_FLAGS)
 
 BUILD_COMMON = \
 	$(Q)$(GCC) $(GCC_OPTS) $(COMMON_FLAGS) $(OPT) $(CFLAGS) $(USER_DEFINES) \

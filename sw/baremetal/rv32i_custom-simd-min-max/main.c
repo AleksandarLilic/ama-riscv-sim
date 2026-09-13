@@ -23,7 +23,7 @@ void main() {
                 int16_t a[] = {100, -49};
                 int16_t b[] = {200, -50};
                 int16x2_t c = _min16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(100, -50), 101);
+                CHECK(c.v, (uint32_t)PK_I16(100, -50), 101);
             }
             {
                 GLOBAL_SYMBOL("op_min16_sign_diff");
@@ -39,7 +39,7 @@ void main() {
                 int16_t a[] = {33, -33};
                 int16_t b[] = {33, -33};
                 int16x2_t c = _min16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(33, -33), 103);
+                CHECK(c.v, (uint32_t)PK_I16(33, -33), 103);
             }
         }
 
@@ -65,7 +65,7 @@ void main() {
                 uint16_t a[] = {0, 0xFFFF};
                 uint16_t b[] = {1, 0xFFFF};
                 uint16x2_t c = _min16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK_I16(0, 0xFFFF), 113);
+                CHECK(c.v, (uint32_t)PK_I16(0, 0xFFFF), 113);
             }
         }
 
@@ -75,7 +75,7 @@ void main() {
                 int8_t a[] = {10, -20, 30, -40};
                 int8_t b[] = {5, 5, 5, 5};
                 int8x4_t c = _min8(v_load_int8x4(a), v_load_int8x4(b));
-                CHECK(c.v, PK_I8(5, -20, 5, -40), 121);
+                CHECK(c.v, (uint32_t)PK_I8(5, -20, 5, -40), 121);
             }
             {
                 GLOBAL_SYMBOL("op_min8_sign_diff");
@@ -115,7 +115,7 @@ void main() {
                 uint8_t a[] = {0, 255, 0, 255};
                 uint8_t b[] = {1, 255, 1, 255};
                 uint8x4_t c = _min8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK_I8(0, 255, 0, 255), 133);
+                CHECK(c.v, (uint32_t)PK_I8(0, 255, 0, 255), 133);
             }
         }
 
@@ -125,7 +125,7 @@ void main() {
                 int16_t a[] = {100, -49};
                 int16_t b[] = {200, -50};
                 int16x2_t c = _max16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(200, -49), 201);
+                CHECK(c.v, (uint32_t)PK_I16(200, -49), 201);
             }
             {
                 GLOBAL_SYMBOL("op_max16_sign_diff");
@@ -140,7 +140,7 @@ void main() {
                 int16_t a[] = {33, -33};
                 int16_t b[] = {33, -33};
                 int16x2_t c = _max16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I16(33, -33), 203);
+                CHECK(c.v, (uint32_t)PK_I16(33, -33), 203);
             }
         }
 
@@ -150,7 +150,7 @@ void main() {
                 uint16_t a[] = {100, 50000};
                 uint16_t b[] = {200, 10000};
                 uint16x2_t c = _max16u(v_load_uint16x2(a), v_load_uint16x2(b));
-                CHECK(c.v, PK_I16(200, 50000), 211);
+                CHECK(c.v, (uint32_t)PK_I16(200, 50000), 211);
             }
             {
                 GLOBAL_SYMBOL("op_max16u_high_bit");
@@ -201,7 +201,7 @@ void main() {
                 uint8_t a[] = {10, 200, 30, 150};
                 uint8_t b[] = {5, 5, 5, 5};
                 uint8x4_t c = _max8u(v_load_uint8x4(a), v_load_uint8x4(b));
-                CHECK(c.v, PK_I8(10, 200, 30, 150), 231);
+                CHECK(c.v, (uint32_t)PK_I8(10, 200, 30, 150), 231);
             }
             {
                 GLOBAL_SYMBOL("op_max8u_high_bit");

@@ -140,7 +140,7 @@ void main() {
                 int32_t a = 32767;
                 int32_t b = -32768;
                 int16x2_t c = _qnarrow32(a, b);
-                CHECK(c.v, PK_I16(32767, -32768), 101);
+                CHECK(c.v, (uint32_t)PK_I16(32767, -32768), 101);
             }
             {
                 GLOBAL_SYMBOL("op_qnarrow32_sat");
@@ -149,7 +149,7 @@ void main() {
                 int32_t a = 32768;
                 int32_t b = -32769;
                 int16x2_t c = _qnarrow32(a, b);
-                CHECK(c.v, PK_I16(32767, -32768), 102);
+                CHECK(c.v, (uint32_t)PK_I16(32767, -32768), 102);
             }
             {
                 GLOBAL_SYMBOL("op_qnarrow32_extreme");
@@ -158,7 +158,7 @@ void main() {
                 int32_t a = 2147483647;
                 int32_t b = (int32_t)0x80000000;
                 int16x2_t c = _qnarrow32(a, b);
-                CHECK(c.v, PK_I16(32767, -32768), 103);
+                CHECK(c.v, (uint32_t)PK_I16(32767, -32768), 103);
             }
         }
 
@@ -188,7 +188,7 @@ void main() {
                 int16_t a[] = {127, -128};
                 int16_t b[] = {0, -1};
                 int8x4_t c = _qnarrow16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I8(127, -128, 0, -1), 301);
+                CHECK(c.v, (uint32_t)PK_I8(127, -128, 0, -1), 301);
             }
             {
                 GLOBAL_SYMBOL("op_qnarrow16_sat");
@@ -197,7 +197,7 @@ void main() {
                 int16_t a[] = {128, -129};
                 int16_t b[] = {32767, -32768};
                 int8x4_t c = _qnarrow16(v_load_int16x2(a), v_load_int16x2(b));
-                CHECK(c.v, PK_I8(127, -128, 127, -128), 302);
+                CHECK(c.v, (uint32_t)PK_I8(127, -128, 127, -128), 302);
             }
         }
 

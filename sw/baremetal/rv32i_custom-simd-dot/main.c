@@ -135,7 +135,7 @@ void main() {
                 GLOBAL_SYMBOL("op_uint16");
                 uint16_t a[] = {1, 16153};
                 uint16_t b[] = {33561, 2};
-                int32_t c = 5412;
+                uint32_t c = 5412;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 71279, 201);
             }
@@ -143,7 +143,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot16u_zero");
                 uint16_t a[] = {0, 0};
                 uint16_t b[] = {0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 0, 202);
             }
@@ -151,7 +151,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot16u_single_lane_pos");
                 uint16_t a[] = {9, 0};
                 uint16_t b[] = {8, 0};
-                int32_t c = 20;
+                uint32_t c = 20;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, (9 * 8 + 20), 203);
             }
@@ -161,7 +161,7 @@ void main() {
                 // 0x8000 would be -32768, giving -65536 instead of +65536.
                 uint16_t a[] = {0x8000u, 0};
                 uint16_t b[] = {2, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 65536, 204);
             }
@@ -171,7 +171,7 @@ void main() {
                 // but unsigned lanes
                 uint16_t a[] = {(uint16_t)-256, 255};
                 uint16_t b[] = {255, (uint16_t)-256};
-                int32_t c = -1;
+                uint32_t c = -1;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 33292799, 205);
             }
@@ -182,15 +182,15 @@ void main() {
                 // + c (-1) => 0xFFFC0001
                 uint16_t a[] = {(uint16_t)-1, (uint16_t)-1};
                 uint16_t b[] = {(uint16_t)-1, (uint16_t)-1};
-                int32_t c = -1;
+                uint32_t c = -1;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
-                CHECK(c, (int32_t)0xFFFC0001u, 206);
+                CHECK(c, 0xFFFC0001u, 206);
             }
             {
                 GLOBAL_SYMBOL("op_dot16u_max_pos_pos");
                 uint16_t a[] = {32767, 32767};
                 uint16_t b[] = {32767, 32767};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, ((32767 * 32767) * 2), 207);
             }
@@ -200,7 +200,7 @@ void main() {
                 // but unsigned => (32768, 32768)
                 uint16_t a[] = {(uint16_t)-32768, (uint16_t)-32768};
                 uint16_t b[] = {32767, 32767};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 2147418112, 208);
             }
@@ -210,17 +210,17 @@ void main() {
                 // sum = 0x80000000 -> wraps to INT32_MIN
                 uint16_t a[] = {(uint16_t)-32768, (uint16_t)-32768};
                 uint16_t b[] = {(uint16_t)-32768, (uint16_t)-32768};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
-                CHECK(c, (int32_t)0x80000000u, 209);
+                CHECK(c, 0x80000000u, 209);
             }
             {
                 GLOBAL_SYMBOL("op_dot16u_acc_overflow");
                 uint16_t a[] = {1, 0};
                 uint16_t b[] = {1, 0};
-                int32_t c = 2147483647; // INT32_MAX
+                uint32_t c = 2147483647; // INT32_MAX
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
-                CHECK(c, (int32_t)0x80000000u, 210);
+                CHECK(c, 0x80000000u, 210);
             }
             {
                 GLOBAL_SYMBOL("op_dot16u_acc_underflow");
@@ -230,7 +230,7 @@ void main() {
                 // sum            = 0xFFFFFFFF
                 uint16_t a[] = {(uint16_t)-1, 2};
                 uint16_t b[] = {(uint16_t)-1, (uint16_t)-1};
-                int32_t c = (int32_t)0x80000000u; // INT32_MIN
+                uint32_t c = 0x80000000u; // INT32_MIN
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 2147483647, 211); // wraps to INT32_MAX
             }
@@ -239,7 +239,7 @@ void main() {
                 // dot = 0x80000000, start c = 0x80000000 => result 0x00000000
                 uint16_t a[] = {(uint16_t)-32768, (uint16_t)-32768};
                 uint16_t b[] = {(uint16_t)-32768, (uint16_t)-32768};
-                int32_t c = (int32_t)0x80000000u;
+                uint32_t c = 0x80000000u;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 0, 212);
             }
@@ -249,7 +249,7 @@ void main() {
                 // If treated signed by mistake, you'd get -1.
                 uint16_t a[] = {(uint16_t)-32768, 32767};
                 uint16_t b[] = {1, 1};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot16u(v_load_uint16x2(a), v_load_uint16x2(b), &c);
                 CHECK(c, 65535, 213);
             }
@@ -376,7 +376,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot8u");
                 uint8_t a[] = {188, 4, 127, 255};
                 uint8_t b[] = {7, 64, 1, 16};
-                int32_t c = 451;
+                uint32_t c = 451;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 6230, 401);
             }
@@ -384,7 +384,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot8u_zero");
                 uint8_t a[] = {0, 0, 0, 0};
                 uint8_t b[] = {0, 0, 0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 0, 402);
             }
@@ -392,7 +392,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot8u_lane_order");
                 uint8_t a[] = {1, 2, 3, 4};
                 uint8_t b[] = {5, 6, 7, 8};
-                int32_t c = 9;
+                uint32_t c = 9;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 79, 403);
             }
@@ -400,7 +400,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot8u_single_lane_lo");
                 uint8_t a[] = {9, 0, 0, 0};
                 uint8_t b[] = {8, 0, 0, 0};
-                int32_t c = 20;
+                uint32_t c = 20;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, (9 * 8 + 20), 404);
             }
@@ -409,7 +409,7 @@ void main() {
                 // Unsignedness trap: 0x80 must be 128 (not -128)
                 uint8_t a[] = {0x80u, 0, 0, 0};
                 uint8_t b[] = {2, 0, 0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 256, 405);
             }
@@ -418,7 +418,7 @@ void main() {
                 // Ensures lane3 is included (not only first 2 lanes, etc.)
                 uint8_t a[] = {0, 0, 0, 5};
                 uint8_t b[] = {0, 0, 0, 7};
-                int32_t c = 10;
+                uint32_t c = 10;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 45, 406);
             }
@@ -427,7 +427,7 @@ void main() {
                 // max dot = 4 * 255*255 = 260100
                 uint8_t a[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
                 uint8_t b[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
-                int32_t c = -1;
+                uint32_t c = -1;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 260099, 407);
             }
@@ -437,7 +437,7 @@ void main() {
                 // if treated signed, you'd get -1.
                 uint8_t a[] = {0x80u, 0x7Fu, 0, 0};
                 uint8_t b[] = {1, 1, 0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 255, 408);
             }
@@ -446,9 +446,9 @@ void main() {
                 // start at MAX, adding 1 should wrap to MIN
                 uint8_t a[] = {1, 0, 0, 0};
                 uint8_t b[] = {1, 0, 0, 0};
-                int32_t c = 2147483647;
+                uint32_t c = 2147483647;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
-                CHECK(c, (int32_t)0x80000000u, 409);
+                CHECK(c, 0x80000000u, 409);
             }
             {
                 GLOBAL_SYMBOL("op_dot8u_acc_overflow_large_dot");
@@ -456,9 +456,9 @@ void main() {
                 // pick c = INT32_MAX - 260100 + 1 so result wraps to INT32_MIN.
                 uint8_t a[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
                 uint8_t b[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
-                int32_t c = 2147223548; // 2147483647 - 260100 + 1
+                uint32_t c = 2147223548; // 2147483647 - 260100 + 1
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
-                CHECK(c, (int32_t)0x80000000u, 410);
+                CHECK(c, 0x80000000u, 410);
             }
             {
                 GLOBAL_SYMBOL("op_dot8u_large_cancel");
@@ -466,7 +466,7 @@ void main() {
                 // c = -260100 so result becomes 0 (tests wrap/cancel logic)
                 uint8_t a[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
                 uint8_t b[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
-                int32_t c = -260100;
+                uint32_t c = -260100;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 0, 411);
             }
@@ -477,9 +477,9 @@ void main() {
                 // INT32_MIN + 260100 = -2147223548 (no wrap expected)
                 uint8_t a[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
                 uint8_t b[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
-                int32_t c = (int32_t)0x80000000u; // INT32_MIN
+                uint32_t c = 0x80000000u; // INT32_MIN
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
-                CHECK(c, -2147223548, 412);
+                CHECK(c, -2147223548u, 412);
             }
             {
                 GLOBAL_SYMBOL("op_dot8u_acc_hit_max_exact");
@@ -487,7 +487,7 @@ void main() {
                 // c = INT32_MAX - 260100 = 2147223547; result should be 2147483647.
                 uint8_t a[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
                 uint8_t b[] = {(uint8_t)-1, (uint8_t)-1, (uint8_t)-1, (uint8_t)-1};
-                int32_t c = 2147223547;
+                uint32_t c = 2147223547;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 2147483647, 413);
             }
@@ -497,7 +497,7 @@ void main() {
                 // bit 17 set, bit 16 clear
                 uint8_t a[] = {255, 255, 14, 0};
                 uint8_t b[] = {255, 255, 73, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 131072, 414);
             }
@@ -507,7 +507,7 @@ void main() {
                 // bit 17 set, bit 16 clear
                 uint8_t a[] = {255, 255, 100, 0};
                 uint8_t b[] = {255, 255, 200, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 150050, 415);
             }
@@ -517,7 +517,7 @@ void main() {
                 // bit 17 set, bit 16 clear
                 uint8_t a[] = {255, 255, 14, 1};
                 uint8_t b[] = {255, 255, 73, 1};
-                int32_t c = -100;
+                uint32_t c = -100;
                 _dot8u(v_load_uint8x4(a), v_load_uint8x4(b), &c);
                 CHECK(c, 130973, 416);
             }
@@ -627,7 +627,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot4u");
                 uint8_t a[] = {116, 1, 8, 14}; // (4, 7), (1, 0), (8, 0), (14, 0)
                 uint8_t b[] = {1, 64, 5, 187}; // (1, 0), (0, 4), (5, 0), (11, 11)
-                int32_t c = 4509;
+                uint32_t c = 4509;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 4707, 601);
             }
@@ -635,7 +635,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot4u_zero");
                 uint8_t a[] = {0, 0, 0, 0};
                 uint8_t b[] = {0, 0, 0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 0, 602);
             }
@@ -644,7 +644,7 @@ void main() {
                 // Lane 0 = 15 (0xF), others 0
                 uint8_t a[] = {PK_SB_U4(15, 0), 0, 0, 0};
                 uint8_t b[] = {PK_SB_U4(1, 0), 0, 0, 0};
-                int32_t c = 10;
+                uint32_t c = 10;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, (15 * 1 + 10), 603);
             }
@@ -654,7 +654,7 @@ void main() {
                 // 0xFF = PK_SB_U4(15, 15)
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 // (15 * 15) * 8 = 225 * 8 = 1800
                 CHECK(c, 1800, 604);
@@ -665,9 +665,9 @@ void main() {
                 uint8_t a[] = {PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1)};
                 uint8_t b[] = {PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1), PK_SB_U4(1,1)};
                 // Start at MAX - 7. Adding 8 should wrap to MIN.
-                int32_t c = 2147483640;
+                uint32_t c = 2147483640;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
-                CHECK(c, (int32_t)0x80000000, 605);
+                CHECK(c, 0x80000000, 605);
             }
             {
                 GLOBAL_SYMBOL("op_dot4u_negative_acc_recovery");
@@ -676,7 +676,7 @@ void main() {
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0xFF}; // Max (15)
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF}; // Max (15)
                 // Sum = 1800. Start accumulator at -1800. Result should be 0.
-                int32_t c = -1800;
+                uint32_t c = -1800;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 0, 606);
             }
@@ -687,7 +687,7 @@ void main() {
                 // Result should be 0.
                 uint8_t a[] = {PK_SB_U4(0, 15), 0, 0, 0};
                 uint8_t b[] = {PK_SB_U4(15, 0), 0, 0, 0};
-                int32_t c = 100;
+                uint32_t c = 100;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 100, 607);
             }
@@ -697,7 +697,7 @@ void main() {
                 // bit 10 set, bit 9 clear: extraction blind spot
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot4u(v_load_uint4x8(a), v_load_uint4x8(b), &c);
                 CHECK(c, 1350, 608);
             }
@@ -802,7 +802,7 @@ void main() {
                 uint8_t a[] = {68, 85, 109, 184};
                 // (3, 0, 2, 2), (0, 1, 1, 0), (0, 3, 1, 2), (2, 3, 2, 3)
                 uint8_t b[] = {202, 20, 54, 187};
-                int32_t c = 99;
+                uint32_t c = 99;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, 134, 801);
             }
@@ -810,7 +810,7 @@ void main() {
                 GLOBAL_SYMBOL("op_dot2u_zero");
                 uint8_t a[] = {0, 0, 0, 0};
                 uint8_t b[] = {0, 0, 0, 0};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, 0, 802);
             }
@@ -819,7 +819,7 @@ void main() {
                 // Lane 0 = 3, others 0
                 uint8_t a[] = {PK_SB_U2(0,0,0,3), 0, 0, 0};
                 uint8_t b[] = {PK_SB_U2(0,0,0,2), 0, 0, 0};
-                int32_t c = 10;
+                uint32_t c = 10;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, (3 * 2 + 10), 803);
             }
@@ -829,7 +829,7 @@ void main() {
                 // 0xFF = 11111111
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
-                int32_t c = 0;
+                uint32_t c = 0;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 // (3 * 3) * 16 = 9 * 16 = 144
                 CHECK(c, 144, 804);
@@ -841,9 +841,9 @@ void main() {
                 uint8_t a[] = {0x55, 0x55, 0x55, 0x55};
                 uint8_t b[] = {0x55, 0x55, 0x55, 0x55};
                 // Start at MAX - 15. Adding 16 should wrap to MIN.
-                int32_t c = 2147483632;
+                uint32_t c = 2147483632;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
-                CHECK(c, (int32_t)0x80000000, 805);
+                CHECK(c, 0x80000000, 805);
             }
             {
                 GLOBAL_SYMBOL("op_dot2u_negative_acc_recovery");
@@ -851,7 +851,7 @@ void main() {
                 uint8_t a[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 uint8_t b[] = {0xFF, 0xFF, 0xFF, 0xFF};
                 // Start at -144. Result should be 0.
-                int32_t c = -144;
+                uint32_t c = -144;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, 0, 806);
             }
@@ -863,7 +863,7 @@ void main() {
                 // Product should be 0.
                 uint8_t a[] = {PK_SB_U2(0,0,0,3), 0, 0, 0};
                 uint8_t b[] = {PK_SB_U2(0,0,3,0), 0, 0, 0};
-                int32_t c = 77;
+                uint32_t c = 77;
                 _dot2u(v_load_uint2x16(a), v_load_uint2x16(b), &c);
                 CHECK(c, 77, 807);
             }

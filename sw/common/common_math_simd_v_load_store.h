@@ -8,6 +8,7 @@ extern "C" {
 #include "common.h"
 
 #ifdef __riscv_xsimd
+#include "common_math_simd_types.h"
 
 // -----------------------------------------------------------------------------
 // SIMD vector loads
