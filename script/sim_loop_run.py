@@ -65,18 +65,28 @@ def run_one(
     insts = ""
     if executed is not None:
         if profiled is not None:
-            insts = f"executed: {executed:,},  profiled: {profiled:,}"
+            insts = f"executed: {executed:,}  profiled: {profiled:,}"
             if executed == profiled:
                 insts += " (all)"
             else:
-                insts += f",  diff: {profiled - executed:,}"
+                insts += f"  diff: {profiled - executed:,}"
         else:
             insts = f"executed: {executed:,}"
 
     # only estimate for a passing run
+    sim_pass = (status == "PASS")
+    sim_prof = (profiled != 0)
+    can_run_perf_est = (perf_est and sim_pass and sim_prof)
     perf_est_res = init_res()
-    perf_est_core = 0
-    if perf_est and status == "PASS":
+    perf_est_core = {}
+
+    if perf_est:
+        if not sim_pass:
+            perf_est_res['error_msg'] += " simulation failed"
+        if not sim_prof:
+            perf_est_res['error_msg'] += " no instructions profiled"
+
+    if can_run_perf_est:
         out_dir = sim_out_dir(work_dir, app, sim_args)
         perf_est_res = run_perf_est(out_dir, work_dir, timeout)
         with open(os.path.join(out_dir, "hw_stats_perf_est.json"), "r") as f:
